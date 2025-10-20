@@ -44,3 +44,82 @@
 "等宽字体" = "Monospace";
 
 "语言" = "Language";
+
+// Reading status
+"想读" = "Want to Read";
+"在读" = "Reading";
+"已读" = "Finished";
+"暂停" = "Paused";
+
+// ProgressView & LibraryView new keys
+"时间范围" = "Time Range";
+"本周" = "This Week";
+"本月" = "This Month";
+"今年" = "This Year";
+"阅读时长" = "Reading Time";
+"平均进度" = "Average Progress";
+"阅读书籍" = "Books Read";
+"目标达成" = "Goal Achievement";
+"最近阅读" = "Recently Read";
+"阅读统计" = "Reading Statistics";
+"阅读目标" = "Reading Goal";
+"分钟" = "minutes";
+"目标达成!" = "Goal Achieved!";
+"搜索书籍或作者" = "Search books or authors";
+"我的书架" = "My Library";
+"继续阅读" = "Continue Reading";
+"书籍信息" = "Book Info";
+"添加到收藏" = "Add to Favorites";
+"从书架移除" = "Remove from Library";
+"书架空空如也" = "Your library is empty";
+"导入您的第一本电子书开始阅读之旅" = "Import your first eBook to start reading";
+"导入书籍" = "Import Books";
+"阅读状态" = "Reading Status";
+"全部" = "All";
+"筛选" = "Filter";
+"导入电子书" = "Import eBooks";
+"支持 ePub、TXT 等格式\n从文件 App 或其他应用导入" = "Supports ePub, TXT, etc.\nImport from Files app or other apps";
+"从文件 App 选择" = "Choose from Files app";
+"从 iCloud Drive 导入" = "Import from iCloud Drive";
+"取消" = "Cancel";
+
+// ReaderView keys
+"第 %d 页 / 共 %d 页" = "Page %d of %d";
+"目录" = "Table of Contents";
+"AI 阅读助手" = "AI Reading Assistant";
+"向 AI 提问..." = "Ask AI...";
+"建议问题:" = "Suggested questions:";
+"这章的主要内容是什么？" = "What is the main content of this chapter?";
+"解释一下这个概念" = "Explain this concept";
+"总结一下要点" = "Summarize the key points";
+"选中文本" = "Selected Text";
+"高亮标记" = "Highlight";
+"添加笔记" = "Add Note";
+"翻译" = "Translate";
+"AI 解释" = "AI Explain";
+"复制" = "Copy";
+"文本操作" = "Text Actions";
+
+// SettingsView additional keys
+"数据导出" = "Data Export";
+"存储管理" = "Storage Management";
+"缓存大小" = "Cache Size";
+"清理缓存" = "Clear Cache";
+"危险操作" = "Danger Zone";
+"清除所有数据" = "Clear All Data";
+"确认清除" = "Confirm Clear";
+"此操作将删除所有书籍、阅读进度、笔记和设置。此操作不可撤销。" = "This will delete all books, reading progress, notes, and settings. This action cannot be undone.";
+"导出数据" = "Export Data";
+"选择要导出的数据类型" = "Select data types to export";
+"阅读进度" = "Reading Progress";
+"笔记和高亮" = "Notes & Highlights";
+"应用设置" = "App Settings";
+"书籍阅读进度和统计" = "Book reading progress and statistics";
+"所有笔记、高亮和注释" = "All notes, highlights, and annotations";
+"主题、字体等偏好设置" = "Preferences like theme and fonts";
+"开始导出" = "Start Export";
+
+// Format keys used in code
+"progress_completed_format" = "%.0f%% Complete";
+"daily_goal_minutes_format" = "Daily %d minutes";
+"第 %d 页" = "Page %d";

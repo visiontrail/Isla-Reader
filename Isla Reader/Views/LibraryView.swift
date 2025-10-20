@@ -209,7 +209,7 @@ struct StatusBadge: View {
     let status: ReadingStatus
     
     var body: some View {
-        Text(status.displayName)
+        Text(status.displayNameKey)
             .font(.caption2)
             .fontWeight(.medium)
             .padding(.horizontal, 8)
@@ -346,7 +346,7 @@ struct FilterSheetView: View {
                             dismiss()
                         }) {
                             HStack {
-                                Text(status.displayName)
+                                Text(status.displayNameKey)
                                 Spacer()
                                 if selectedFilter == status {
                                     Image(systemName: "checkmark")

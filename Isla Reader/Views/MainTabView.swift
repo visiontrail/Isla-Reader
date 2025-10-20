@@ -56,7 +56,7 @@ struct SidebarView: View {
         case progress = "progress"
         case settings = "settings"
         
-        var title: String {
+        var titleKey: LocalizedStringKey {
             switch self {
             case .library:
                 return "书架"
@@ -82,7 +82,7 @@ struct SidebarView: View {
     var body: some View {
         List(SidebarTab.allCases, id: \.rawValue) { tab in
             NavigationLink(destination: destinationView(for: tab)) {
-                Label(tab.title, systemImage: tab.icon)
+                Label(tab.titleKey, systemImage: tab.icon)
             }
         }
         .navigationTitle("Isla Reader")

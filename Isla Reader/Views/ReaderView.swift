@@ -30,7 +30,7 @@ struct ReaderView: View {
 
     每个人的生命中都有那么一些时刻，它们如同夜空中最亮的星，指引着我们前进的方向。对于我们的主人公来说，这个早晨就是这样的时刻。
 
-    窗外的阳光透过薄薄的窗帘洒进房间，在地板上投下斑驳的光影。空气中弥漫着淡淡的花香，那是从花园里飘来的茉莉花的味道。
+    窗外的阳光透过薄薄的窗帘洒进房间，在地板上投下斑驳的光影。空气中弥漫着淡淡的的花香，那是从花园里飘来的茉莉花的味道。
 
     这是一个充满希望的开始，也是一个充满挑战的开始。但正如古人所说："千里之行，始于足下。"无论前路如何，重要的是迈出第一步。
 
@@ -155,7 +155,7 @@ struct ReaderTopToolbar: View {
                     .fontWeight(.medium)
                     .lineLimit(1)
                 
-                Text("第 \(currentPage) 页 / 共 \(totalPages) 页")
+                Text(String(format: NSLocalizedString("第 %d 页 / 共 %d 页", comment: ""), currentPage, totalPages))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

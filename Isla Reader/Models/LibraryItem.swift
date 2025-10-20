@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreData
+import SwiftUI
 
 public enum ReadingStatus: String, CaseIterable {
     case wantToRead = "want_to_read"
@@ -15,6 +16,19 @@ public enum ReadingStatus: String, CaseIterable {
     case paused = "paused"
     
     var displayName: String {
+        switch self {
+        case .wantToRead:
+            return "想读"
+        case .reading:
+            return "在读"
+        case .finished:
+            return "已读"
+        case .paused:
+            return "暂停"
+        }
+    }
+    
+    var displayNameKey: LocalizedStringKey {
         switch self {
         case .wantToRead:
             return "想读"

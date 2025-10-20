@@ -24,7 +24,7 @@ struct ReadingProgressView: View {
         case month = "month"
         case year = "year"
         
-        var displayName: String {
+        var displayNameKey: LocalizedStringKey {
             switch self {
             case .week:
                 return "本周"
@@ -69,7 +69,7 @@ struct ReadingProgressView: View {
                     // Time Range Picker
                     Picker("时间范围", selection: $selectedTimeRange) {
                         ForEach(TimeRange.allCases, id: \.rawValue) { range in
-                            Text(range.displayName).tag(range)
+                            Text(range.displayNameKey).tag(range)
                         }
                     }
                     .pickerStyle(SegmentedPickerStyle())
@@ -181,7 +181,7 @@ struct ReadingProgressView: View {
 }
 
 struct StatCard: View {
-    let title: String
+    let title: LocalizedStringKey
     let value: String
     let icon: String
     let color: Color
@@ -230,7 +230,7 @@ struct ReadingGoalCard: View {
                         .font(.headline)
                         .fontWeight(.semibold)
                     
-                    Text("每日 \(dailyGoal) 分钟")
+                    Text(String(format: NSLocalizedString("daily_goal_minutes_format", comment: ""), dailyGoal))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -268,7 +268,7 @@ struct ReadingGoalCard: View {
             .frame(height: 8)
             
             HStack {
-                Text(String(format: "%.0f%% 完成", progressPercentage * 100))
+                Text(String(format: NSLocalizedString("progress_completed_format", comment: ""), progressPercentage * 100))
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
