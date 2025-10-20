@@ -1,9 +1,82 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="1" systemVersion="11A491" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="true" userDefinedModelVersionIdentifier="">
-    <entity name="Item" representedClassName="Item" syncable="YES" codeGenerationType="class">
-        <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="1" systemVersion="11A491" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="false" userDefinedModelVersionIdentifier="">
+    <!-- Core Data Entities for Isla Reader -->
+    <entity name="LibraryItem" representedClassName="LibraryItem" syncable="YES" codeGenerationType="none">
+        <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="statusRaw" optional="NO" attributeType="String"/>
+        <attribute name="tags" optional="YES" attributeType="String"/>
+        <attribute name="isFavorite" optional="NO" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="rating" optional="NO" attributeType="Integer 16" usesScalarValueType="YES"/>
+        <attribute name="addedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="lastAccessedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="sortOrder" optional="NO" attributeType="Integer 32" usesScalarValueType="YES"/>
+        <relationship name="book" destinationEntity="Book" inverseName="libraryItem" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Nullify" optional="NO" toMany="NO"/>
     </entity>
+
+    <entity name="Book" representedClassName="Book" syncable="YES" codeGenerationType="none">
+        <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="title" optional="NO" attributeType="String"/>
+        <attribute name="author" optional="YES" attributeType="String"/>
+        <attribute name="language" optional="YES" attributeType="String"/>
+        <attribute name="coverImageData" optional="YES" attributeType="Binary"/>
+        <attribute name="filePath" optional="NO" attributeType="String"/>
+        <attribute name="fileFormat" optional="NO" attributeType="String"/>
+        <attribute name="fileSize" optional="NO" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="checksum" optional="NO" attributeType="String"/>
+        <attribute name="totalPages" optional="NO" attributeType="Integer 32" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="metadata" optional="YES" attributeType="String"/>
+        <relationship name="readingProgress" destinationEntity="ReadingProgress" inverseName="book" inverseEntity="ReadingProgress" minCount="0" maxCount="1" deleteRule="Cascade" optional="YES" toMany="NO"/>
+        <relationship name="highlights" destinationEntity="Highlight" inverseName="book" inverseEntity="Highlight" minCount="0" maxCount="0" deleteRule="Cascade" optional="YES" toMany="YES"/>
+        <relationship name="annotations" destinationEntity="Annotation" inverseName="book" inverseEntity="Annotation" minCount="0" maxCount="0" deleteRule="Cascade" optional="YES" toMany="YES"/>
+        <relationship name="libraryItem" destinationEntity="LibraryItem" inverseName="book" inverseEntity="LibraryItem" minCount="0" maxCount="1" deleteRule="Cascade" optional="YES" toMany="NO"/>
+    </entity>
+
+    <entity name="Highlight" representedClassName="Highlight" syncable="YES" codeGenerationType="none">
+        <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="selectedText" optional="NO" attributeType="String"/>
+        <attribute name="startPosition" optional="NO" attributeType="String"/>
+        <attribute name="endPosition" optional="NO" attributeType="String"/>
+        <attribute name="chapter" optional="YES" attributeType="String"/>
+        <attribute name="pageNumber" optional="NO" attributeType="Integer 32" usesScalarValueType="YES"/>
+        <attribute name="colorHex" optional="NO" attributeType="String"/>
+        <attribute name="note" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="book" destinationEntity="Book" inverseName="highlights" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Nullify" optional="NO" toMany="NO"/>
+    </entity>
+
+    <entity name="Annotation" representedClassName="Annotation" syncable="YES" codeGenerationType="none">
+        <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="content" optional="NO" attributeType="String"/>
+        <attribute name="position" optional="NO" attributeType="String"/>
+        <attribute name="chapter" optional="YES" attributeType="String"/>
+        <attribute name="pageNumber" optional="NO" attributeType="Integer 32" usesScalarValueType="YES"/>
+        <attribute name="associatedText" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="book" destinationEntity="Book" inverseName="annotations" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Nullify" optional="NO" toMany="NO"/>
+    </entity>
+
+    <entity name="ReadingProgress" representedClassName="ReadingProgress" syncable="YES" codeGenerationType="none">
+        <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="currentPage" optional="NO" attributeType="Integer 32" usesScalarValueType="YES"/>
+        <attribute name="currentChapter" optional="YES" attributeType="String"/>
+        <attribute name="currentPosition" optional="YES" attributeType="String"/>
+        <attribute name="progressPercentage" optional="NO" attributeType="Double" usesScalarValueType="YES"/>
+        <attribute name="lastReadAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="totalReadingTime" optional="NO" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="book" destinationEntity="Book" inverseName="readingProgress" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Nullify" optional="NO" toMany="NO"/>
+    </entity>
+
     <elements>
-        <element name="Item" positionX="-63" positionY="-18" width="128" height="44"/>
+        <element name="LibraryItem" positionX="-63" positionY="-18" width="128" height="44"/>
+        <element name="Book" positionX="-63" positionY="-18" width="128" height="44"/>
+        <element name="Highlight" positionX="-63" positionY="-18" width="128" height="44"/>
+        <element name="Annotation" positionX="-63" positionY="-18" width="128" height="44"/>
+        <element name="ReadingProgress" positionX="-63" positionY="-18" width="128" height="44"/>
     </elements>
 </model>
