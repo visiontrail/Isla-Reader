@@ -97,8 +97,54 @@ public enum ReadingFont: String, CaseIterable {
     }
 }
 
+public enum AppLanguage: String, CaseIterable {
+    case system = "system"
+    case en = "en"
+    case zhHans = "zh-Hans"
+    case ja = "ja"
+    case ko = "ko"
+    
+    var displayName: String {
+        switch self {
+        case .system:
+            return NSLocalizedString("跟随系统", comment: "Follow system language")
+        case .en:
+            return "English"
+        case .zhHans:
+            return "中文"
+        case .ja:
+            return "日本語"
+        case .ko:
+            return "한국어"
+        }
+    }
+    
+    var locale: Locale {
+        switch self {
+        case .system:
+            return Locale.current
+        case .en:
+            return Locale(identifier: "en")
+        case .zhHans:
+            return Locale(identifier: "zh-Hans")
+        case .ja:
+            return Locale(identifier: "ja")
+        case .ko:
+            return Locale(identifier: "ko")
+        }
+    }
+}
+
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
+    
+    @Published var language: AppLanguage {
+        didSet {
+            UserDefaults.standard.set(language.rawValue, forKey: "app_language")
+        }
+    }
+    
+    var locale: Locale { language.locale }
     
     @Published var theme: AppTheme {
         didSet {
@@ -149,6 +195,7 @@ class AppSettings: ObservableObject {
     }
     
     private init() {
+        self.language = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language") ?? "") ?? .en
         self.theme = AppTheme(rawValue: UserDefaults.standard.string(forKey: "app_theme") ?? "") ?? .system
         self.readingFontSize = ReadingFontSize(rawValue: UserDefaults.standard.string(forKey: "reading_font_size") ?? "") ?? .medium
         self.readingFont = ReadingFont(rawValue: UserDefaults.standard.string(forKey: "reading_font") ?? "") ?? .system

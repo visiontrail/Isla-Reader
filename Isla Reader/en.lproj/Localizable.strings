@@ -1,0 +1,46 @@
+"书架" = "Library";
+"进度" = "Progress";
+"设置" = "Settings";
+"阅读设置" = "Reading Settings";
+"数据与同步" = "Data & Sync";
+"通知提醒" = "Notifications";
+"关于" = "About";
+"支持" = "Support";
+"阅读偏好" = "Reading Preferences";
+"主题外观" = "Theme Appearance";
+"iCloud 同步" = "iCloud Sync";
+"数据管理" = "Data Management";
+"阅读提醒" = "Reading Reminder";
+"每日目标" = "Daily Goal";
+"关于 Isla Reader" = "About Isla Reader";
+"版本" = "Version";
+"联系我们" = "Contact Us";
+"隐私政策" = "Privacy Policy";
+"服务条款" = "Terms of Service";
+"完成" = "Done";
+
+"主要文本颜色" = "Primary Text Color";
+"次要文本颜色" = "Secondary Text Color";
+"强调色" = "Accent Color";
+"主题选择" = "Theme Selection";
+"主题预览" = "Theme Preview";
+
+"字体设置" = "Font Settings";
+"排版设置" = "Typography Settings";
+"字体大小" = "Font Size";
+"字体类型" = "Font Type";
+"行间距" = "Line Spacing";
+"页面边距" = "Page Margins";
+"预览" = "Preview";
+"示例文本" = "Sample Text";
+
+"跟随系统" = "Follow System";
+"小" = "Small";
+"中" = "Medium";
+"大" = "Large";
+"特大" = "Extra Large";
+"系统字体" = "System";
+"衬线字体" = "Serif";
+"等宽字体" = "Monospace";
+
+"语言" = "Language";

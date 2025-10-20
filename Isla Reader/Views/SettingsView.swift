@@ -15,6 +15,20 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             List {
+                // Language
+                Section("语言") {
+                    HStack {
+                        Label("语言", systemImage: "globe")
+                        Spacer()
+                        Picker("语言", selection: $appSettings.language) {
+                            ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
+                                Text(lang.displayName).tag(lang)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                }
+                
                 // Reading Settings
                 Section("阅读设置") {
                     NavigationLink(destination: ReadingSettingsView()) {
