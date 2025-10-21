@@ -21,6 +21,8 @@ struct ReaderView: View {
     @State private var showingSettings = false
     @State private var selectedText = ""
     @State private var showingTextActions = false
+    @State private var showingAISummary = true
+    @State private var isFirstOpen = true
     
     // Sample content for demonstration
     private let sampleContent = """
@@ -64,6 +66,14 @@ struct ReaderView: View {
                         // Main Text Area
                         ScrollView {
                             VStack(alignment: .leading, spacing: 0) {
+                                // AI 导读摘要（首次打开时显示）
+                                if showingAISummary && isFirstOpen {
+                                    AISummaryCard(book: book)
+                                        .padding(.horizontal, appSettings.pageMargins)
+                                        .padding(.vertical, 20)
+                                        .transition(.opacity.combined(with: .move(edge: .top)))
+                                }
+                                
                                 Text(sampleContent)
                                     .font(.system(size: appSettings.readingFontSize.fontSize))
                                     .lineSpacing(appSettings.lineSpacing * 4)
@@ -130,8 +140,33 @@ struct ReaderView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: showingToolbar)
         .animation(.easeInOut(duration: 0.3), value: showingAIChat)
-    }
-}
+        .animation(.easeInOut(duration: 0.3), value: showingAISummary)
+        .onAppear {
+            // 检查是否是首次打开这本书
+            checkFirstTimeOpen()
+        }
+     }
+     
+     private func checkFirstTimeOpen() {
+         // 检查阅读进度，如果是新书或进度很少，则认为是首次打开
+         if let progress = book.readingProgress {
+             isFirstOpen = progress.progressPercentage < 0.05 // 小于5%认为是首次打开
+         } else {
+             isFirstOpen = true
+         }
+         
+         // 如果是首次打开，延迟显示AI摘要以获得更好的用户体验
+         if isFirstOpen {
+             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                 withAnimation(.easeInOut(duration: 0.5)) {
+                     showingAISummary = true
+                 }
+             }
+         } else {
+             showingAISummary = false
+         }
+     }
+ }
 
 struct ReaderTopToolbar: View {
     let bookTitle: String

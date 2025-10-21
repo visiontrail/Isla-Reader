@@ -63,7 +63,7 @@
   - 验收：成功选择文件后可加入书架；在阅读器中正常渲染目录与正文。
 - AI 摘要
   - 功能：首次打开书籍生成导读摘要；支持章节级摘要与全文级综述；可手动刷新。
-  - 验收：摘要在 5 秒内开始流式输出；摘要含要点与目录映射；缓存命中可秒开。
+  - 验收：摘要在 3 秒内开始流式输出；摘要含要点与目录映射；缓存命中可秒开。
 - 阅读器
   - 功能：目录跳转、页内搜索、书签、划线、注释、进度同步、主题/字体/行距/夜间模式、离线阅读。
   - 验收：基础操作无明显卡顿（>60fps）；离线后可阅读已缓存书籍与笔记。
@@ -73,13 +73,22 @@
 - AI 推荐
   - 功能：基于阅读历史、偏好标签、停留时长等行为构建画像；提供每日/每周推荐书单与主题合集。
   - 验收：冷启动时提供通用优质榜单；使用 3 天后推荐点击率提升。
-
 - 理解诊断与建议
   - 功能：自动生成理解测验（2-5 题起步），即时评分与解析；给出后续阅读路径或辅助资料建议。
   - 验收：题目覆盖书籍主要概念；答案含引用原文段落；建议可一键加入“学习计划”。
 - 账号与同步
   - 功能：使用 iCloud/CloudKit 自动同步；无应用内注册；支持导入/导出与仅本地保存；提供云数据删除入口。
   - 验收：同一 Apple ID 设备间进度/书签/笔记一致；可在设置中关闭 iCloud 同步并保留本地；可一键清空 CloudKit 私有数据。
+
+#### 用户故事：本地导入与 AI 摘要
+- 作为希望快速开始阅读并把握重点的读者，我在书架点击“＋ 导入”，从“文件”App 选择 ePub 文件。
+- 系统解析并将书籍加入书架，显示书封与标题；我点开该书进入阅读器，目录与正文正常渲染。
+- 首次打开时，阅读器主界面模拟书本的首页显示“AI 导读摘要”，在 5 秒内开始流式输出，包含要点与章节映射；
+- 我可点击“刷新”重新生成摘要。
+
+##### 用户故事：本地导入与 AI 摘要 的 其他要求
+- 调用云端大模型的API和对应的模型暂时在代码中写死（预留填写位置，后续补充，OpenAI的调用风格即可）
+- 对于导入的书籍，系统会调用云端大模型的API生成摘要，提示词请先按照你的理解写一个版本，后续再进行调整。
 
 ### 交互与信息架构
 - 导航结构：书架（我的图书/导入管理/阅读进度）— 阅读器（当前阅读）— 我的（笔记/设置/账号）。
@@ -132,8 +141,7 @@
 
 ### 技术架构概览（初稿）
 - 客户端：iOS/iPadOS（首发）。
-- 服务端：AI 网关、上下文构建服务（规则式，无向量库）、推荐服务、社区与任务服务（无内容抓取/下载）。
-- 存储：关系型数据库（核心业务）、本地文件存储（书文件与封面缓存）、缓存（会话/摘要缓存）。
+- 服务端：AI 网关、上下文构建服务（规则式，无向量库）、推荐服务。
 - 数据同步（用户数据）：iCloud/CloudKit（私有数据库），无应用内注册；可关闭与删除云数据。
 - 实时交互：WebSocket/Server-Sent Events 用于流式与实时互动。
 
@@ -144,21 +152,10 @@
 - LibraryItem：userId，bookId，status（在读/已读/想读），tags。
 - ReadingProgress：userId，bookId，location，updatedAt。
 - Highlight：id，userId，bookId，range，note，createdAt。
-- Annotation：id，userId，bookId，content，range，createdAt。
-
+- Annotation：id，userId，bookId，content，range，createdAt
 - Quiz：id，bookId，userId，questions[]，createdAt。
 - RecommendationEvent：userId，bookId，eventType，timestamp。
 
-### API 草案（选摘）
-- Import：本地文件导入（无服务端 API）。
-- Reader：/progress，/highlights，/annotations。
-- AI：
-  - /ai/summary（bookId|chapterId）。
-  - /ai/qa（scope: selection|chapter|book，text|range）。
-  - /ai/quiz/generate（bookId）。
-- Recommend：/feed，/lists，/trending。
-
-- Analytics：/events（阅读/AI/交互）。
 
 ### 里程碑与范围
 - v0.1 MVP

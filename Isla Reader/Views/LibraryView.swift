@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CoreData
+import UniformTypeIdentifiers
 
 struct LibraryView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -373,52 +374,74 @@ struct FilterSheetView: View {
 
 struct ImportBookView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var viewContext
+    @StateObject private var importService = BookImportService.shared
+    
+    @State private var showingFilePicker = false
+    @State private var showingAlert = false
+    @State private var alertMessage = ""
+    @State private var importedBook: Book?
     
     var body: some View {
         NavigationView {
             VStack(spacing: 32) {
                 Spacer()
                 
-                Image(systemName: "square.and.arrow.down")
-                    .font(.system(size: 60))
-                    .foregroundColor(.accentColor)
-                
-                VStack(spacing: 16) {
-                    Text("导入电子书")
-                        .font(.title)
-                        .fontWeight(.bold)
+                if importService.isImporting {
+                    VStack(spacing: 16) {
+                        ProgressView(value: importService.importProgress)
+                            .progressViewStyle(LinearProgressViewStyle())
+                            .frame(maxWidth: 200)
+                        
+                        Text("正在导入书籍...")
+                            .font(.headline)
+                        
+                        Text("\(Int(importService.importProgress * 100))%")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } else {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 60))
+                        .foregroundColor(.accentColor)
                     
-                    Text("支持 ePub、TXT 等格式\n从文件 App 或其他应用导入")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                
-                VStack(spacing: 16) {
-                    Button(action: {}) {
-                        HStack {
-                            Image(systemName: "folder")
-                            Text("从文件 App 选择")
-                        }
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.accentColor)
-                        .cornerRadius(12)
+                    VStack(spacing: 16) {
+                        Text("导入电子书")
+                            .font(.title)
+                            .fontWeight(.bold)
+                        
+                        Text("支持 ePub 格式\n从文件 App 或其他应用导入")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
                     }
                     
-                    Button(action: {}) {
-                        HStack {
-                            Image(systemName: "icloud")
-                            Text("从 iCloud Drive 导入")
+                    VStack(spacing: 16) {
+                        Button(action: { showingFilePicker = true }) {
+                            HStack {
+                                Image(systemName: "folder")
+                                Text("从文件 App 选择")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.accentColor)
+                            .cornerRadius(12)
                         }
-                        .font(.headline)
-                        .foregroundColor(.accentColor)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.accentColor.opacity(0.1))
-                        .cornerRadius(12)
+                        
+                        Button(action: { showingFilePicker = true }) {
+                            HStack {
+                                Image(systemName: "icloud")
+                                Text("从 iCloud Drive 导入")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.accentColor)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.accentColor.opacity(0.1))
+                            .cornerRadius(12)
+                        }
                     }
                 }
                 
@@ -432,8 +455,58 @@ struct ImportBookView: View {
                     Button("取消") {
                         dismiss()
                     }
+                    .disabled(importService.isImporting)
                 }
             }
+            .fileImporter(
+                isPresented: $showingFilePicker,
+                allowedContentTypes: [.epub],
+                allowsMultipleSelection: false
+            ) { result in
+                handleFileImport(result: result)
+            }
+            .alert("导入结果", isPresented: $showingAlert) {
+                Button("确定") {
+                    if importedBook != nil {
+                        dismiss()
+                    }
+                }
+            } message: {
+                Text(alertMessage)
+            }
+            .onChange(of: importService.importError) { error in
+                if let error = error {
+                    alertMessage = error
+                    showingAlert = true
+                }
+            }
+        }
+    }
+    
+    private func handleFileImport(result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            
+            Task {
+                do {
+                    let book = try await importService.importBook(from: url, context: viewContext)
+                    await MainActor.run {
+                        importedBook = book
+                        alertMessage = "书籍《\(book.displayTitle)》导入成功！"
+                        showingAlert = true
+                    }
+                } catch {
+                    await MainActor.run {
+                        alertMessage = error.localizedDescription
+                        showingAlert = true
+                    }
+                }
+            }
+            
+        case .failure(let error):
+            alertMessage = "选择文件时出错：\(error.localizedDescription)"
+            showingAlert = true
         }
     }
 }

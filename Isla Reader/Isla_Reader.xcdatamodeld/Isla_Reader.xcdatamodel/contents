@@ -27,6 +27,9 @@
         <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="metadata" optional="YES" attributeType="String"/>
+        <attribute name="aiSummary" optional="YES" attributeType="String"/>
+        <attribute name="aiKeyPoints" optional="YES" attributeType="String"/>
+        <attribute name="aiSummaryGeneratedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="readingProgress" destinationEntity="ReadingProgress" inverseName="book" inverseEntity="ReadingProgress" minCount="0" maxCount="1" deleteRule="Cascade" optional="YES" toMany="NO"/>
         <relationship name="highlights" destinationEntity="Highlight" inverseName="book" inverseEntity="Highlight" minCount="0" maxCount="0" deleteRule="Cascade" optional="YES" toMany="YES"/>
         <relationship name="annotations" destinationEntity="Annotation" inverseName="book" inverseEntity="Annotation" minCount="0" maxCount="0" deleteRule="Cascade" optional="YES" toMany="YES"/>

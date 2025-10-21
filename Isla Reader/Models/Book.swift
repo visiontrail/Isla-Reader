@@ -33,6 +33,9 @@ extension Book {
     @NSManaged public var createdAt: Date
     @NSManaged public var updatedAt: Date
     @NSManaged public var metadata: String? // JSON string for additional metadata
+    @NSManaged public var aiSummary: String?
+    @NSManaged public var aiKeyPoints: String? // JSON string for key points array
+    @NSManaged public var aiSummaryGeneratedAt: Date?
     
     // Relationships
     @NSManaged public var readingProgress: ReadingProgress?
