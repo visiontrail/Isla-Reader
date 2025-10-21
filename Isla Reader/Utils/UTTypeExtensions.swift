@@ -9,6 +9,6 @@ import UniformTypeIdentifiers
 
 extension UTType {
     static var epub: UTType {
-        UTType(filenameExtension: "epub") ?? UTType.data
+        UTType("org.idpf.epub-container") ?? UTType(filenameExtension: "epub") ?? UTType.data
     }
 }
