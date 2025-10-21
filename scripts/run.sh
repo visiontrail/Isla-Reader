@@ -22,7 +22,7 @@ PROJECT_NAME="Isla Reader"
 BUNDLE_ID="LeoGuo.Isla-Reader"
 BUILD_DIR="./build"
 CONFIGURATION="Debug"
-DEFAULT_SIMULATOR="iPhone 15"
+DEFAULT_SIMULATOR="iPhone 16"
 
 # 获取脚本所在目录的父目录（项目根目录）
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

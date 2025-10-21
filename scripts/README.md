@@ -41,12 +41,12 @@
 
 **使用方法：**
 ```bash
-# 使用默认模拟器（iPhone 15）
+# 使用默认模拟器（iPhone 16）
 ./scripts/run.sh
 
 # 指定模拟器
+./scripts/run.sh "iPhone 16 Pro"
 ./scripts/run.sh "iPhone 15 Pro"
-./scripts/run.sh "iPhone 14"
 ./scripts/run.sh "iPad Pro (12.9-inch)"
 ```
 
@@ -74,7 +74,7 @@ xcrun simctl list devices available | grep iPhone
 ./scripts/dev.sh
 
 # 指定模拟器
-./scripts/dev.sh "iPhone 15 Pro"
+./scripts/dev.sh "iPhone 16 Pro"
 ```
 
 **执行流程：**
@@ -174,14 +174,14 @@ logger.error("❌ 加载失败: \(error.localizedDescription)")
 ### 指定不同的模拟器
 
 ```bash
-# iPhone 系列
-./scripts/run.sh "iPhone 15 Pro Max"
-./scripts/run.sh "iPhone 14 Pro"
-./scripts/run.sh "iPhone SE (3rd generation)"
+# iPhone 系列（推荐使用 iOS 18.2+ 的模拟器）
+./scripts/run.sh "iPhone 16 Pro Max"
+./scripts/run.sh "iPhone 16 Pro"
+./scripts/run.sh "iPhone 16"
 
-# iPad 系列
+# iPad 系列（需要 iOS 18.2+ 版本）
 ./scripts/run.sh "iPad Pro (12.9-inch)"
-./scripts/run.sh "iPad Air (5th generation)"
+./scripts/run.sh "iPad Air 11-inch (M3)"
 ```
 
 ### 编译特定配置
@@ -210,6 +210,8 @@ nohup ./scripts/run.sh > /dev/null 2>&1 &
 
 ## 🐛 故障排查
 
+> 💡 **提示**: 更多详细的故障排查信息，请查看 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+
 ### 问题 1：权限不足
 
 **症状：**
@@ -224,11 +226,13 @@ chmod +x ./scripts/*.sh
 
 ---
 
-### 问题 2：找不到模拟器
+### 问题 2：找不到模拟器或 iOS 版本不兼容
 
 **症状：**
 ```
-❌ 错误: 未找到模拟器 'iPhone 15'
+❌ 错误: 未找到模拟器 'iPhone 16'
+或
+App installation failed: "Isla Reader" Requires a Newer Version of iOS
 ```
 
 **解决方案：**
@@ -236,12 +240,16 @@ chmod +x ./scripts/*.sh
 # 1. 查看可用模拟器
 xcrun simctl list devices available
 
-# 2. 使用实际存在的模拟器名称
-./scripts/run.sh "iPhone 14"
+# 2. 使用支持 iOS 18.2+ 的模拟器
+./scripts/run.sh "iPhone 16"
+./scripts/run.sh "iPhone 16 Pro"
 
 # 3. 或在 Xcode 中添加新模拟器
 # Xcode → Window → Devices and Simulators → Simulators → +
+# 选择 iPhone 16 系列，iOS 18.2 或更高版本
 ```
+
+**详细说明**: 由于 Xcode 16.4 构建的应用需要 iOS 18.5+，请使用 iPhone 16 系列模拟器。详见 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
 
 ---
 
@@ -345,10 +353,10 @@ less build.log
 
 ```bash
 # iPhone 测试
-./scripts/run.sh "iPhone 15"
+./scripts/run.sh "iPhone 16"
 
 # iPad 测试
-./scripts/run.sh "iPad Pro (12.9-inch)"
+./scripts/run.sh "iPad Pro 13-inch (M4)"
 ```
 
 ### 场景 3：Debug 特定功能
@@ -377,7 +385,7 @@ if ./scripts/build.sh release; then
     # 运行测试
     xcodebuild test -project "Isla Reader.xcodeproj" \
         -scheme "Isla Reader" \
-        -destination 'platform=iOS Simulator,name=iPhone 15'
+        -destination 'platform=iOS Simulator,name=iPhone 16'
 else
     echo "❌ 编译失败"
     exit 1

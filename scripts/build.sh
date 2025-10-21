@@ -96,7 +96,7 @@ xcodebuild build \
     -project "$PROJECT_FILE" \
     -scheme "$SCHEME" \
     -configuration "$CONFIGURATION" \
-    -destination 'platform=iOS Simulator,name=iPhone 15' \
+    -destination 'platform=iOS Simulator,name=iPhone 16' \
     -derivedDataPath "$BUILD_DIR" \
     -quiet \
     | tee build.log \
