@@ -123,3 +123,27 @@
 "progress_completed_format" = "%.0f%% 完了";
 "daily_goal_minutes_format" = "毎日 %d 分";
 "第 %d 页" = "%d ページ";
+
+// AI Summary Prompts
+"ai.summary.book.prompt.title" = "次の本の読書ガイド要約を生成してください：";
+"ai.summary.book.prompt.book_info" = "書籍情報：";
+"ai.summary.book.prompt.content_excerpt" = "書籍内容抜粋：";
+"ai.summary.book.prompt.requirements" = "次を生成してください：";
+"ai.summary.book.prompt.requirement1" = "1. 主な内容、核心概念、読書価値を含む200-300文字の全書要約";
+"ai.summary.book.prompt.requirement2" = "2. 3-5個のキーポイント";
+"ai.summary.book.prompt.requirement3" = "3. 簡潔明瞭で、書籍内容を素早く理解するのに適している";
+"ai.summary.book.prompt.format" = "フォーマット要件：";
+"ai.summary.book.prompt.format1" = "- 要約部分は自然な段落形式";
+"ai.summary.book.prompt.format2" = "- キーポイントは • で始まるリスト形式";
+
+"ai.summary.chapter.prompt.title" = "次の章の要約を生成してください：";
+"ai.summary.chapter.prompt.chapter_title" = "章タイトル：";
+"ai.summary.chapter.prompt.chapter_content" = "章の内容：";
+"ai.summary.chapter.prompt.requirements" = "次を生成してください：";
+"ai.summary.chapter.prompt.requirement1" = "1. 100-150文字の章要約";
+"ai.summary.chapter.prompt.requirement2" = "2. 2-3個のキーポイント";
+"ai.summary.chapter.prompt.format" = "フォーマットは簡潔明瞭にしてください。";
+
+"ai.summary.book_name" = "書名：";
+"ai.summary.author" = "著者：";
+"ai.summary.chapter_count" = "章数：";

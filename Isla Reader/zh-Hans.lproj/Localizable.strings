@@ -117,3 +117,27 @@
 "progress_completed_format" = "%.0f%% 完成";
 "daily_goal_minutes_format" = "每日 %d 分钟";
 "第 %d 页" = "第 %d 页";
+
+// AI Summary Prompts
+"ai.summary.book.prompt.title" = "请为以下书籍生成一份导读摘要：";
+"ai.summary.book.prompt.book_info" = "书籍信息：";
+"ai.summary.book.prompt.content_excerpt" = "书籍内容节选：";
+"ai.summary.book.prompt.requirements" = "请生成：";
+"ai.summary.book.prompt.requirement1" = "1. 一份200-300字的全书导读摘要，包含主要内容、核心观点和阅读价值";
+"ai.summary.book.prompt.requirement2" = "2. 3-5个关键要点";
+"ai.summary.book.prompt.requirement3" = "3. 简洁明了，适合快速了解书籍内容";
+"ai.summary.book.prompt.format" = "格式要求：";
+"ai.summary.book.prompt.format1" = "- 摘要部分用自然段落形式";
+"ai.summary.book.prompt.format2" = "- 关键要点用 • 开头的列表形式";
+
+"ai.summary.chapter.prompt.title" = "请为以下章节生成摘要：";
+"ai.summary.chapter.prompt.chapter_title" = "章节标题：";
+"ai.summary.chapter.prompt.chapter_content" = "章节内容：";
+"ai.summary.chapter.prompt.requirements" = "请生成：";
+"ai.summary.chapter.prompt.requirement1" = "1. 100-150字的章节摘要";
+"ai.summary.chapter.prompt.requirement2" = "2. 2-3个关键要点";
+"ai.summary.chapter.prompt.format" = "格式要求简洁明了。";
+
+"ai.summary.book_name" = "书名：";
+"ai.summary.author" = "作者：";
+"ai.summary.chapter_count" = "章节数：";

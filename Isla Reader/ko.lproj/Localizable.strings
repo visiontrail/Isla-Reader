@@ -123,3 +123,27 @@
 "progress_completed_format" = "%.0f%% 완료";
 "daily_goal_minutes_format" = "매일 %d분";
 "第 %d 页" = "%d페이지";
+
+// AI Summary Prompts
+"ai.summary.book.prompt.title" = "다음 책에 대한 독서 가이드 요약을 생성해 주세요：";
+"ai.summary.book.prompt.book_info" = "책 정보：";
+"ai.summary.book.prompt.content_excerpt" = "책 내용 발췌：";
+"ai.summary.book.prompt.requirements" = "다음을 생성해 주세요：";
+"ai.summary.book.prompt.requirement1" = "1. 주요 내용, 핵심 개념 및 독서 가치를 포함하는 200-300자의 전체 책 요약";
+"ai.summary.book.prompt.requirement2" = "2. 3-5개의 핵심 포인트";
+"ai.summary.book.prompt.requirement3" = "3. 간결하고 명확하며 책 내용을 빠르게 이해하는 데 적합";
+"ai.summary.book.prompt.format" = "형식 요구사항：";
+"ai.summary.book.prompt.format1" = "- 요약 부분은 자연스러운 단락 형식";
+"ai.summary.book.prompt.format2" = "- 핵심 포인트는 • 로 시작하는 목록 형식";
+
+"ai.summary.chapter.prompt.title" = "다음 장의 요약을 생성해 주세요：";
+"ai.summary.chapter.prompt.chapter_title" = "장 제목：";
+"ai.summary.chapter.prompt.chapter_content" = "장 내용：";
+"ai.summary.chapter.prompt.requirements" = "다음을 생성해 주세요：";
+"ai.summary.chapter.prompt.requirement1" = "1. 100-150자의 장 요약";
+"ai.summary.chapter.prompt.requirement2" = "2. 2-3개의 핵심 포인트";
+"ai.summary.chapter.prompt.format" = "형식은 간결하고 명확하게 해주세요.";
+
+"ai.summary.book_name" = "제목：";
+"ai.summary.author" = "저자：";
+"ai.summary.chapter_count" = "장 수：";

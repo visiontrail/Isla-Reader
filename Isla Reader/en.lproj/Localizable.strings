@@ -123,3 +123,27 @@
 "progress_completed_format" = "%.0f%% Complete";
 "daily_goal_minutes_format" = "Daily %d minutes";
 "第 %d 页" = "Page %d";
+
+// AI Summary Prompts
+"ai.summary.book.prompt.title" = "Please generate a reading guide summary for the following book:";
+"ai.summary.book.prompt.book_info" = "Book Information:";
+"ai.summary.book.prompt.content_excerpt" = "Book Content Excerpt:";
+"ai.summary.book.prompt.requirements" = "Please generate:";
+"ai.summary.book.prompt.requirement1" = "1. A 200-300 word book summary including main content, core ideas, and reading value";
+"ai.summary.book.prompt.requirement2" = "2. 3-5 key points";
+"ai.summary.book.prompt.requirement3" = "3. Clear and concise, suitable for quickly understanding the book content";
+"ai.summary.book.prompt.format" = "Format requirements:";
+"ai.summary.book.prompt.format1" = "- Summary part in natural paragraph form";
+"ai.summary.book.prompt.format2" = "- Key points in list form starting with •";
+
+"ai.summary.chapter.prompt.title" = "Please generate a summary for the following chapter:";
+"ai.summary.chapter.prompt.chapter_title" = "Chapter Title:";
+"ai.summary.chapter.prompt.chapter_content" = "Chapter Content:";
+"ai.summary.chapter.prompt.requirements" = "Please generate:";
+"ai.summary.chapter.prompt.requirement1" = "1. A 100-150 word chapter summary";
+"ai.summary.chapter.prompt.requirement2" = "2. 2-3 key points";
+"ai.summary.chapter.prompt.format" = "Keep the format clear and concise.";
+
+"ai.summary.book_name" = "Title:";
+"ai.summary.author" = "Author:";
+"ai.summary.chapter_count" = "Chapters:";

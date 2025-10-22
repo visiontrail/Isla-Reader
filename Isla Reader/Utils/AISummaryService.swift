@@ -323,32 +323,50 @@ class AISummaryService: ObservableObject {
     private func buildSummaryPrompt(book: Book, chapters: [Chapter]) -> String {
         DebugLogger.info("AISummaryService: 开始构建摘要提示词")
         
+        // Get localized strings based on user's language setting
+        let bookName = NSLocalizedString("ai.summary.book_name", comment: "")
+        let author = NSLocalizedString("ai.summary.author", comment: "")
+        let chapterCount = NSLocalizedString("ai.summary.chapter_count", comment: "")
+        
         let bookInfo = """
-        书名：\(book.displayTitle)
-        作者：\(book.displayAuthor)
-        章节数：\(chapters.count)
+        \(bookName) \(book.displayTitle)
+        \(author) \(book.displayAuthor)
+        \(chapterCount) \(chapters.count)
         """
         
         let content = chapters.prefix(3).map { chapter in
             "【\(chapter.title)】\n\(String(chapter.content.prefix(500)))..."
         }.joined(separator: "\n\n")
         
-        let prompt = """
-        请为以下书籍生成一份导读摘要：
+        // Get localized prompt strings
+        let promptTitle = NSLocalizedString("ai.summary.book.prompt.title", comment: "")
+        let bookInfoLabel = NSLocalizedString("ai.summary.book.prompt.book_info", comment: "")
+        let contentExcerpt = NSLocalizedString("ai.summary.book.prompt.content_excerpt", comment: "")
+        let requirements = NSLocalizedString("ai.summary.book.prompt.requirements", comment: "")
+        let requirement1 = NSLocalizedString("ai.summary.book.prompt.requirement1", comment: "")
+        let requirement2 = NSLocalizedString("ai.summary.book.prompt.requirement2", comment: "")
+        let requirement3 = NSLocalizedString("ai.summary.book.prompt.requirement3", comment: "")
+        let format = NSLocalizedString("ai.summary.book.prompt.format", comment: "")
+        let format1 = NSLocalizedString("ai.summary.book.prompt.format1", comment: "")
+        let format2 = NSLocalizedString("ai.summary.book.prompt.format2", comment: "")
         
+        let prompt = """
+        \(promptTitle)
+        
+        \(bookInfoLabel)
         \(bookInfo)
         
-        书籍内容节选：
+        \(contentExcerpt)
         \(content)
         
-        请生成：
-        1. 一份200-300字的全书导读摘要，包含主要内容、核心观点和阅读价值
-        2. 3-5个关键要点
-        3. 简洁明了，适合快速了解书籍内容
+        \(requirements)
+        \(requirement1)
+        \(requirement2)
+        \(requirement3)
         
-        格式要求：
-        - 摘要部分用自然段落形式
-        - 关键要点用"• "开头的列表形式
+        \(format)
+        \(format1)
+        \(format2)
         """
         
         DebugLogger.info("AISummaryService: === 提示词 (Prompt) 开始 ===")
@@ -363,17 +381,26 @@ class AISummaryService: ObservableObject {
         DebugLogger.info("AISummaryService: 开始构建章节摘要提示词")
         DebugLogger.info("AISummaryService: 章节标题 = \(chapter.title)")
         
+        // Get localized strings based on user's language setting
+        let promptTitle = NSLocalizedString("ai.summary.chapter.prompt.title", comment: "")
+        let chapterTitle = NSLocalizedString("ai.summary.chapter.prompt.chapter_title", comment: "")
+        let chapterContent = NSLocalizedString("ai.summary.chapter.prompt.chapter_content", comment: "")
+        let requirements = NSLocalizedString("ai.summary.chapter.prompt.requirements", comment: "")
+        let requirement1 = NSLocalizedString("ai.summary.chapter.prompt.requirement1", comment: "")
+        let requirement2 = NSLocalizedString("ai.summary.chapter.prompt.requirement2", comment: "")
+        let format = NSLocalizedString("ai.summary.chapter.prompt.format", comment: "")
+        
         let prompt = """
-        请为以下章节生成摘要：
+        \(promptTitle)
         
-        章节标题：\(chapter.title)
-        章节内容：\(String(chapter.content.prefix(1000)))...
+        \(chapterTitle) \(chapter.title)
+        \(chapterContent) \(String(chapter.content.prefix(1000)))...
         
-        请生成：
-        1. 100-150字的章节摘要
-        2. 2-3个关键要点
+        \(requirements)
+        \(requirement1)
+        \(requirement2)
         
-        格式要求简洁明了。
+        \(format)
         """
         
         DebugLogger.info("AISummaryService: === 章节提示词开始 ===")
@@ -418,17 +445,8 @@ class AISummaryService: ObservableObject {
         DebugLogger.info("AISummaryService: 模拟网络延迟 1秒...")
         try await Task.sleep(nanoseconds: 1_000_000_000) // 1秒延迟
         
-        let mockResponse = """
-        这是一本关于个人成长和自我发现的精彩作品。作者通过生动的故事情节，展现了主人公在人生旅途中的种种经历和感悟。书中深入探讨了人性的复杂性、成长的必要性以及面对挑战时的勇气与智慧。
-        
-        通过阅读这本书，读者可以获得关于人生意义、价值观塑造以及如何在困境中保持希望的深刻启发。作者的文笔优美，情节引人入胜，既有哲理思考又有情感共鸣，是一本值得反复品读的佳作。
-        
-        • 探索个人成长的心路历程
-        • 面对人生挑战的智慧与勇气
-        • 价值观的形成与人生意义的思考
-        • 在困境中保持希望与坚持的重要性
-        • 人际关系与自我认知的平衡
-        """
+        // Generate localized mock response based on user's language setting
+        let mockResponse = generateLocalizedMockResponse()
         
         DebugLogger.info("AISummaryService: === AI响应 (Response) 开始 ===")
         DebugLogger.info("\n\(mockResponse)")
@@ -437,6 +455,65 @@ class AISummaryService: ObservableObject {
         DebugLogger.success("AISummaryService: ===== AI API调用完成 =====")
         
         return mockResponse
+    }
+    
+    private func generateLocalizedMockResponse() -> String {
+        // Get current language from user's locale
+        let currentLanguage = Locale.current.language.languageCode?.identifier ?? "en"
+        
+        switch currentLanguage {
+        case "zh":
+            return """
+            这是一本关于个人成长和自我发现的精彩作品。作者通过生动的故事情节，展现了主人公在人生旅途中的种种经历和感悟。书中深入探讨了人性的复杂性、成长的必要性以及面对挑战时的勇气与智慧。
+            
+            通过阅读这本书，读者可以获得关于人生意义、价值观塑造以及如何在困境中保持希望的深刻启发。作者的文笔优美，情节引人入胜，既有哲理思考又有情感共鸣，是一本值得反复品读的佳作。
+            
+            • 探索个人成长的心路历程
+            • 面对人生挑战的智慧与勇气
+            • 价值观的形成与人生意义的思考
+            • 在困境中保持希望与坚持的重要性
+            • 人际关系与自我认知的平衡
+            """
+            
+        case "ja":
+            return """
+            これは個人の成長と自己発見に関する素晴らしい作品です。著者は生き生きとした物語を通じて、主人公の人生における様々な経験と気づきを描いています。本書は人間性の複雑さ、成長の必要性、そして困難に直面する際の勇気と知恵を深く探求しています。
+            
+            本書を読むことで、読者は人生の意味、価値観の形成、そして困難な状況で希望を持ち続ける方法について深い洞察を得ることができます。著者の文章は美しく、物語は魅力的で、哲学的思考と感情的共鳴の両方を備えた、何度も読み返す価値のある名作です。
+            
+            • 個人の成長の道のりを探求
+            • 人生の課題に対する知恵と勇気
+            • 価値観の形成と人生の意味の考察
+            • 困難な状況で希望と忍耐を保つ重要性
+            • 人間関係と自己認識のバランス
+            """
+            
+        case "ko":
+            return """
+            이것은 개인의 성장과 자기 발견에 관한 훌륭한 작품입니다. 저자는 생생한 스토리를 통해 주인공이 인생 여정에서 겪는 다양한 경험과 깨달음을 보여줍니다. 책은 인간성의 복잡성, 성장의 필요성, 그리고 도전에 직면했을 때의 용기와 지혜를 깊이 탐구합니다.
+            
+            이 책을 읽으면서 독자는 인생의 의미, 가치관 형성, 그리고 역경 속에서 희망을 유지하는 방법에 대한 깊은 통찰을 얻을 수 있습니다. 저자의 문체는 아름답고 줄거리는 매력적이며, 철학적 사고와 감정적 공명을 모두 갖춘 반복해서 읽을 가치가 있는 걸작입니다.
+            
+            • 개인 성장의 여정 탐구
+            • 인생의 도전에 대한 지혜와 용기
+            • 가치관 형성과 인생의 의미에 대한 고찰
+            • 역경 속에서 희망과 인내를 유지하는 중요성
+            • 인간관계와 자기 인식의 균형
+            """
+            
+        default: // English
+            return """
+            This is an excellent work about personal growth and self-discovery. Through vivid storytelling, the author presents the protagonist's various experiences and insights throughout their life journey. The book deeply explores the complexity of human nature, the necessity of growth, and the courage and wisdom needed when facing challenges.
+            
+            By reading this book, readers can gain profound insights into the meaning of life, the formation of values, and how to maintain hope in difficult circumstances. The author's writing is beautiful, the plot is engaging, and it offers both philosophical reflection and emotional resonance, making it a masterpiece worth reading repeatedly.
+            
+            • Exploring the journey of personal growth
+            • Wisdom and courage in facing life's challenges
+            • Formation of values and reflection on life's meaning
+            • The importance of maintaining hope and perseverance in adversity
+            • Balance between interpersonal relationships and self-awareness
+            """
+        }
     }
     
     private func parseSummaryResponse(_ response: String) -> (summary: String, keyPoints: [String]) {
