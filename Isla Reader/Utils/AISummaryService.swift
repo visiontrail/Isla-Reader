@@ -322,11 +322,12 @@ class AISummaryService: ObservableObject {
     
     private func buildSummaryPrompt(book: Book, chapters: [Chapter]) -> String {
         DebugLogger.info("AISummaryService: 开始构建摘要提示词")
+        DebugLogger.info("AISummaryService: 当前应用语言设置 = \(AppSettings.shared.language.rawValue)")
         
         // Get localized strings based on user's language setting
-        let bookName = NSLocalizedString("ai.summary.book_name", comment: "")
-        let author = NSLocalizedString("ai.summary.author", comment: "")
-        let chapterCount = NSLocalizedString("ai.summary.chapter_count", comment: "")
+        let bookName = LocalizationHelper.localizedString("ai.summary.book_name", comment: "")
+        let author = LocalizationHelper.localizedString("ai.summary.author", comment: "")
+        let chapterCount = LocalizationHelper.localizedString("ai.summary.chapter_count", comment: "")
         
         let bookInfo = """
         \(bookName) \(book.displayTitle)
@@ -343,17 +344,17 @@ class AISummaryService: ObservableObject {
         }.joined(separator: "\n\n")
         
         // Get localized prompt strings
-        let promptTitle = NSLocalizedString("ai.summary.book.prompt.title", comment: "")
-        let bookInfoLabel = NSLocalizedString("ai.summary.book.prompt.book_info", comment: "")
-        let contentExcerpt = NSLocalizedString("ai.summary.book.prompt.content_excerpt", comment: "")
-        let requirements = NSLocalizedString("ai.summary.book.prompt.requirements", comment: "")
-        let requirement1 = NSLocalizedString("ai.summary.book.prompt.requirement1", comment: "")
-        let requirement2 = NSLocalizedString("ai.summary.book.prompt.requirement2", comment: "")
-        let requirement3 = NSLocalizedString("ai.summary.book.prompt.requirement3", comment: "")
-        let format = NSLocalizedString("ai.summary.book.prompt.format", comment: "")
-        let format1 = NSLocalizedString("ai.summary.book.prompt.format1", comment: "")
-        let format2 = NSLocalizedString("ai.summary.book.prompt.format2", comment: "")
-        let language = NSLocalizedString("ai.summary.book.prompt.language", comment: "")
+        let promptTitle = LocalizationHelper.localizedString("ai.summary.book.prompt.title", comment: "")
+        let bookInfoLabel = LocalizationHelper.localizedString("ai.summary.book.prompt.book_info", comment: "")
+        let contentExcerpt = LocalizationHelper.localizedString("ai.summary.book.prompt.content_excerpt", comment: "")
+        let requirements = LocalizationHelper.localizedString("ai.summary.book.prompt.requirements", comment: "")
+        let requirement1 = LocalizationHelper.localizedString("ai.summary.book.prompt.requirement1", comment: "")
+        let requirement2 = LocalizationHelper.localizedString("ai.summary.book.prompt.requirement2", comment: "")
+        let requirement3 = LocalizationHelper.localizedString("ai.summary.book.prompt.requirement3", comment: "")
+        let format = LocalizationHelper.localizedString("ai.summary.book.prompt.format", comment: "")
+        let format1 = LocalizationHelper.localizedString("ai.summary.book.prompt.format1", comment: "")
+        let format2 = LocalizationHelper.localizedString("ai.summary.book.prompt.format2", comment: "")
+        let language = LocalizationHelper.localizedString("ai.summary.book.prompt.language", comment: "")
         
         let prompt = """
         \(promptTitle)
@@ -386,16 +387,17 @@ class AISummaryService: ObservableObject {
     private func buildChapterSummaryPrompt(chapter: Chapter) -> String {
         DebugLogger.info("AISummaryService: 开始构建章节摘要提示词")
         DebugLogger.info("AISummaryService: 章节标题 = \(chapter.title)")
+        DebugLogger.info("AISummaryService: 当前应用语言设置 = \(AppSettings.shared.language.rawValue)")
         
         // Get localized strings based on user's language setting
-        let promptTitle = NSLocalizedString("ai.summary.chapter.prompt.title", comment: "")
-        let chapterTitle = NSLocalizedString("ai.summary.chapter.prompt.chapter_title", comment: "")
-        let chapterContent = NSLocalizedString("ai.summary.chapter.prompt.chapter_content", comment: "")
-        let requirements = NSLocalizedString("ai.summary.chapter.prompt.requirements", comment: "")
-        let requirement1 = NSLocalizedString("ai.summary.chapter.prompt.requirement1", comment: "")
-        let requirement2 = NSLocalizedString("ai.summary.chapter.prompt.requirement2", comment: "")
-        let format = NSLocalizedString("ai.summary.chapter.prompt.format", comment: "")
-        let language = NSLocalizedString("ai.summary.chapter.prompt.language", comment: "")
+        let promptTitle = LocalizationHelper.localizedString("ai.summary.chapter.prompt.title", comment: "")
+        let chapterTitle = LocalizationHelper.localizedString("ai.summary.chapter.prompt.chapter_title", comment: "")
+        let chapterContent = LocalizationHelper.localizedString("ai.summary.chapter.prompt.chapter_content", comment: "")
+        let requirements = LocalizationHelper.localizedString("ai.summary.chapter.prompt.requirements", comment: "")
+        let requirement1 = LocalizationHelper.localizedString("ai.summary.chapter.prompt.requirement1", comment: "")
+        let requirement2 = LocalizationHelper.localizedString("ai.summary.chapter.prompt.requirement2", comment: "")
+        let format = LocalizationHelper.localizedString("ai.summary.chapter.prompt.format", comment: "")
+        let language = LocalizationHelper.localizedString("ai.summary.chapter.prompt.language", comment: "")
         
         // Include full chapter content or more substantial portion for accurate summary
         // Use up to 5000 characters or full content if shorter
@@ -512,8 +514,22 @@ class AISummaryService: ObservableObject {
     }
     
     private func generateLocalizedMockResponse() -> String {
-        // Get current language from user's locale
-        let currentLanguage = Locale.current.language.languageCode?.identifier ?? "en"
+        // Get current language from app settings
+        let appLanguage = AppSettings.shared.language
+        let currentLanguage: String
+        
+        switch appLanguage {
+        case .system:
+            currentLanguage = Locale.current.language.languageCode?.identifier ?? "en"
+        case .en:
+            currentLanguage = "en"
+        case .zhHans:
+            currentLanguage = "zh"
+        case .ja:
+            currentLanguage = "ja"
+        case .ko:
+            currentLanguage = "ko"
+        }
         
         switch currentLanguage {
         case "zh":
