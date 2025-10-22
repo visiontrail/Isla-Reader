@@ -57,7 +57,7 @@ struct LibraryView: View {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.secondary)
-                        TextField("搜索书籍或作者", text: $searchText)
+                        TextField(NSLocalizedString("搜索书籍或作者", comment: ""), text: $searchText)
                             .textFieldStyle(PlainTextFieldStyle())
                     }
                     .padding(.horizontal, 12)
@@ -93,7 +93,7 @@ struct LibraryView: View {
                     }
                 }
             }
-            .navigationTitle("我的书架")
+            .navigationTitle(NSLocalizedString("我的书架", comment: ""))
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -126,7 +126,7 @@ struct LibraryView: View {
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) {
-                                Button("完成") {
+                                Button(NSLocalizedString("完成", comment: "")) {
                                     DebugLogger.info("LibraryView: 完成按钮点击，关闭AI摘要界面")
                                     bookToShowAISummary = nil
                                 }
@@ -295,21 +295,21 @@ struct BookContextMenu: View {
     
     var body: some View {
         Button(action: {}) {
-            Label("继续阅读", systemImage: "book.open")
+            Label(NSLocalizedString("继续阅读", comment: ""), systemImage: "book.open")
         }
         
         Button(action: {}) {
-            Label("书籍信息", systemImage: "info.circle")
+            Label(NSLocalizedString("书籍信息", comment: ""), systemImage: "info.circle")
         }
         
         Button(action: {}) {
-            Label("添加到收藏", systemImage: "heart")
+            Label(NSLocalizedString("添加到收藏", comment: ""), systemImage: "heart")
         }
         
         Divider()
         
         Button(role: .destructive, action: {}) {
-            Label("从书架移除", systemImage: "trash")
+            Label(NSLocalizedString("从书架移除", comment: ""), systemImage: "trash")
         }
     }
 }
@@ -326,11 +326,11 @@ struct EmptyLibraryView: View {
                 .foregroundColor(.secondary)
             
             VStack(spacing: 8) {
-                Text("书架空空如也")
+                Text(NSLocalizedString("书架空空如也", comment: ""))
                     .font(.title2)
                     .fontWeight(.medium)
                 
-                Text("导入您的第一本电子书开始阅读之旅")
+                Text(NSLocalizedString("导入您的第一本电子书开始阅读之旅", comment: ""))
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -339,7 +339,7 @@ struct EmptyLibraryView: View {
             Button(action: { showingImportSheet = true }) {
                 HStack {
                     Image(systemName: "plus")
-                    Text("导入书籍")
+                    Text(NSLocalizedString("导入书籍", comment: ""))
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -362,13 +362,13 @@ struct FilterSheetView: View {
     var body: some View {
         NavigationView {
             List {
-                Section("阅读状态") {
+                Section(NSLocalizedString("阅读状态", comment: "")) {
                     Button(action: {
                         selectedFilter = nil
                         dismiss()
                     }) {
                         HStack {
-                            Text("全部")
+                            Text(NSLocalizedString("全部", comment: ""))
                             Spacer()
                             if selectedFilter == nil {
                                 Image(systemName: "checkmark")
@@ -396,11 +396,11 @@ struct FilterSheetView: View {
                     }
                 }
             }
-            .navigationTitle("筛选")
+            .navigationTitle(NSLocalizedString("筛选", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
+                    Button(NSLocalizedString("完成", comment: "")) {
                         dismiss()
                     }
                 }
@@ -432,7 +432,7 @@ struct ImportBookView: View {
                             .progressViewStyle(LinearProgressViewStyle())
                             .frame(maxWidth: 200)
                         
-                        Text("正在导入书籍...")
+                        Text(NSLocalizedString("正在导入书籍...", comment: ""))
                             .font(.headline)
                         
                         Text("\(Int(importService.importProgress * 100))%")
@@ -445,11 +445,11 @@ struct ImportBookView: View {
                         .foregroundColor(.accentColor)
                     
                     VStack(spacing: 16) {
-                        Text("导入电子书")
+                        Text(NSLocalizedString("导入电子书", comment: ""))
                             .font(.title)
                             .fontWeight(.bold)
                         
-                        Text("支持 ePub 格式\n从文件 App 或其他应用导入")
+                        Text(NSLocalizedString("支持 ePub、TXT 等格式\n从文件 App 或其他应用导入", comment: ""))
                             .font(.body)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -459,7 +459,7 @@ struct ImportBookView: View {
                         Button(action: { showingFilePicker = true }) {
                             HStack {
                                 Image(systemName: "folder")
-                                Text("从文件 App 选择")
+                                Text(NSLocalizedString("从文件 App 选择", comment: ""))
                             }
                             .font(.headline)
                             .foregroundColor(.white)
@@ -472,7 +472,7 @@ struct ImportBookView: View {
                         Button(action: { showingFilePicker = true }) {
                             HStack {
                                 Image(systemName: "icloud")
-                                Text("从 iCloud Drive 导入")
+                                Text(NSLocalizedString("从 iCloud Drive 导入", comment: ""))
                             }
                             .font(.headline)
                             .foregroundColor(.accentColor)
@@ -487,11 +487,11 @@ struct ImportBookView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("导入书籍")
+            .navigationTitle(NSLocalizedString("导入书籍", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
+                    Button(NSLocalizedString("取消", comment: "")) {
                         dismiss()
                     }
                     .disabled(importService.isImporting)
@@ -504,8 +504,8 @@ struct ImportBookView: View {
             ) { result in
                 handleFileImport(result: result)
             }
-            .alert("导入结果", isPresented: $showingAlert) {
-                Button("确定") {
+            .alert(NSLocalizedString("导入结果", comment: ""), isPresented: $showingAlert) {
+                Button(NSLocalizedString("确定", comment: "")) {
                     if importedBook != nil {
                         dismiss()
                     }

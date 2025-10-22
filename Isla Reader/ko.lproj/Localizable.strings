@@ -147,3 +147,34 @@
 "ai.summary.book_name" = "제목：";
 "ai.summary.author" = "저자：";
 "ai.summary.chapter_count" = "장 수：";
+
+// AI Summary View UI
+"加载中..." = "로딩 중...";
+"ai.summary.title" = "AI 독서 가이드";
+"ai.summary.subtitle" = "책 내용을 빠르게 이해";
+"ai.summary.content_summary" = "내용 요약";
+"ai.summary.key_points" = "핵심 포인트";
+"ai.summary.generating" = "요약 생성 중...";
+"ai.summary.analyzing" = "책 내용 분석 중...";
+"ai.summary.error.title" = "요약 생성 오류";
+"ai.summary.error.retry" = "재시도";
+"ai.summary.no_content" = "표시할 콘텐츠가 없습니다";
+"ai.summary.generated_at" = "생성일";
+"ai.summary.card.view_detail" = "탭하여 자세히 보기";
+"ai.summary.card.generate" = "탭하여 요약 생성";
+
+// Additional UI strings
+"Isla Reader" = "Isla Reader";
+"正在导入书籍..." = "책을 가져오는 중...";
+"导入结果" = "가져오기 결과";
+"确定" = "확인";
+"主题" = "테마";
+"根据系统设置自动切换" = "시스템 설정 따라가기";
+"始终使用浅色主题" = "항상 라이트 테마 사용";
+"始终使用深色主题" = "항상 다크 테마 사용";
+"导出阅读数据" = "읽기 데이터 내보내기";
+"导出笔记和高亮" = "메모 및 하이라이트 내보내기";
+"这是一段示例文本，用于预览当前的字体和排版设置效果。您可以调整上面的设置来获得最佳的阅读体验。" = "이것은 현재 글꼴 및 레이아웃 설정 효과를 미리 보기 위한 샘플 텍스트입니다. 위의 설정을 조정하여 최고의 읽기 경험을 얻을 수 있습니다.";
+"把每本书变成一位可对话的导师：获取、阅读、理解与交流，一站式完成。" = "모든 책을 대화형 튜터로: 획득, 읽기, 이해 및 소통을 원스톱으로.";
+"用心打造的阅读体验" = "정성껏 제작한 읽기 경험";
+"向 AI 提问关于这本书的任何问题" = "이 책에 대해 AI에게 무엇이든 질문하세요";

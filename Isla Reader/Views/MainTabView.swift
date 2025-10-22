@@ -26,19 +26,19 @@ struct MainTabView: View {
                     LibraryView()
                         .tabItem {
                             Image(systemName: "books.vertical")
-                            Text("书架")
+                            Text(NSLocalizedString("书架", comment: ""))
                         }
                     
                     ReadingProgressView()
                         .tabItem {
                             Image(systemName: "chart.line.uptrend.xyaxis")
-                            Text("进度")
+                            Text(NSLocalizedString("进度", comment: ""))
                         }
                     
                     SettingsView()
                         .tabItem {
                             Image(systemName: "gearshape")
-                            Text("设置")
+                            Text(NSLocalizedString("设置", comment: ""))
                         }
                 }
                 .accentColor(.primary)
@@ -56,14 +56,14 @@ struct SidebarView: View {
         case progress = "progress"
         case settings = "settings"
         
-        var titleKey: LocalizedStringKey {
+        var titleKey: String {
             switch self {
             case .library:
-                return "书架"
+                return NSLocalizedString("书架", comment: "")
             case .progress:
-                return "进度"
+                return NSLocalizedString("进度", comment: "")
             case .settings:
-                return "设置"
+                return NSLocalizedString("设置", comment: "")
             }
         }
         
@@ -85,7 +85,7 @@ struct SidebarView: View {
                 Label(tab.titleKey, systemImage: tab.icon)
             }
         }
-        .navigationTitle("Isla Reader")
+        .navigationTitle(NSLocalizedString("Isla Reader", comment: ""))
         .navigationBarTitleDisplayMode(.large)
     }
     

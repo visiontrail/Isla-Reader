@@ -147,3 +147,34 @@
 "ai.summary.book_name" = "Title:";
 "ai.summary.author" = "Author:";
 "ai.summary.chapter_count" = "Chapters:";
+
+// AI Summary View UI
+"加载中..." = "Loading...";
+"ai.summary.title" = "AI Reading Guide";
+"ai.summary.subtitle" = "Quickly understand book content";
+"ai.summary.content_summary" = "Content Summary";
+"ai.summary.key_points" = "Key Points";
+"ai.summary.generating" = "Generating summary...";
+"ai.summary.analyzing" = "Analyzing book content...";
+"ai.summary.error.title" = "Error Generating Summary";
+"ai.summary.error.retry" = "Retry";
+"ai.summary.no_content" = "No content to display";
+"ai.summary.generated_at" = "Generated on";
+"ai.summary.card.view_detail" = "Tap to view details";
+"ai.summary.card.generate" = "Tap to generate summary";
+
+// Additional UI strings
+"Isla Reader" = "Isla Reader";
+"正在导入书籍..." = "Importing book...";
+"导入结果" = "Import Result";
+"确定" = "OK";
+"主题" = "Theme";
+"根据系统设置自动切换" = "Follow system settings";
+"始终使用浅色主题" = "Always use light theme";
+"始终使用深色主题" = "Always use dark theme";
+"导出阅读数据" = "Export Reading Data";
+"导出笔记和高亮" = "Export Notes & Highlights";
+"这是一段示例文本，用于预览当前的字体和排版设置效果。您可以调整上面的设置来获得最佳的阅读体验。" = "This is a sample text to preview current font and layout settings. You can adjust the settings above for the best reading experience.";
+"把每本书变成一位可对话的导师：获取、阅读、理解与交流，一站式完成。" = "Turn every book into a conversational tutor: acquire, read, understand, and communicate, all in one place.";
+"用心打造的阅读体验" = "Reading experience crafted with care";
+"向 AI 提问关于这本书的任何问题" = "Ask AI any questions about this book";

@@ -67,7 +67,7 @@ struct ReadingProgressView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     // Time Range Picker
-                    Picker("时间范围", selection: $selectedTimeRange) {
+                    Picker(NSLocalizedString("时间范围", comment: ""), selection: $selectedTimeRange) {
                         ForEach(TimeRange.allCases, id: \.rawValue) { range in
                             Text(range.displayNameKey).tag(range)
                         }
@@ -122,7 +122,7 @@ struct ReadingProgressView: View {
                     if !recentlyReadBooks.isEmpty {
                         VStack(alignment: .leading, spacing: 16) {
                             HStack {
-                                Text("最近阅读")
+                                Text(NSLocalizedString("最近阅读", comment: ""))
                                     .font(.headline)
                                     .fontWeight(.semibold)
                                 Spacer()
@@ -140,7 +140,7 @@ struct ReadingProgressView: View {
                 }
                 .padding(.vertical)
             }
-            .navigationTitle("阅读统计")
+            .navigationTitle(NSLocalizedString("阅读统计", comment: ""))
             .navigationBarTitleDisplayMode(.large)
         }
     }
@@ -226,7 +226,7 @@ struct ReadingGoalCard: View {
         VStack(spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("阅读目标")
+                    Text(NSLocalizedString("阅读目标", comment: ""))
                         .font(.headline)
                         .fontWeight(.semibold)
                     
@@ -242,7 +242,7 @@ struct ReadingGoalCard: View {
                         .font(.title3)
                         .fontWeight(.semibold)
                     
-                    Text("分钟")
+                    Text(NSLocalizedString("分钟", comment: ""))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -278,7 +278,7 @@ struct ReadingGoalCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
-                        Text("目标达成!")
+                        Text(NSLocalizedString("目标达成!", comment: ""))
                             .foregroundColor(.green)
                     }
                     .font(.caption)

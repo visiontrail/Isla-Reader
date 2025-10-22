@@ -334,8 +334,12 @@ class AISummaryService: ObservableObject {
         \(chapterCount) \(chapters.count)
         """
         
-        let content = chapters.prefix(3).map { chapter in
-            "【\(chapter.title)】\n\(String(chapter.content.prefix(500)))..."
+        // Include more chapters and more content per chapter for better summary
+        // Use up to 10 chapters with 2000 chars each to provide comprehensive context
+        let chaptersToInclude = min(chapters.count, 10)
+        let content = chapters.prefix(chaptersToInclude).map { chapter in
+            let contentPreview = String(chapter.content.prefix(2000))
+            return "【\(chapter.title)】\n\(contentPreview)\(chapter.content.count > 2000 ? "..." : "")"
         }.joined(separator: "\n\n")
         
         // Get localized prompt strings
@@ -390,11 +394,18 @@ class AISummaryService: ObservableObject {
         let requirement2 = NSLocalizedString("ai.summary.chapter.prompt.requirement2", comment: "")
         let format = NSLocalizedString("ai.summary.chapter.prompt.format", comment: "")
         
+        // Include full chapter content or more substantial portion for accurate summary
+        // Use up to 5000 characters or full content if shorter
+        let maxContentLength = 5000
+        let contentToUse = chapter.content.count > maxContentLength ? 
+            String(chapter.content.prefix(maxContentLength)) + "..." : 
+            chapter.content
+        
         let prompt = """
         \(promptTitle)
         
         \(chapterTitle) \(chapter.title)
-        \(chapterContent) \(String(chapter.content.prefix(1000)))...
+        \(chapterContent) \(contentToUse)
         
         \(requirements)
         \(requirement1)
@@ -417,44 +428,83 @@ class AISummaryService: ObservableObject {
         DebugLogger.info("AISummaryService: API Key前缀 = \(String(apiKey.prefix(10)))...")
         DebugLogger.info("AISummaryService: 提示词长度 = \(prompt.count) 字符")
         
-        // 这里是模拟实现，实际应该调用真实的API
-        // 预留OpenAI API调用的位置
+        // Construct the API request URL
+        guard let url = URL(string: "\(apiEndpoint)/chat/completions") else {
+            DebugLogger.error("AISummaryService: 无效的API端点URL")
+            throw AISummaryError.apiError("Invalid API endpoint URL")
+        }
         
-        /*
-        // 真实API调用代码示例：
-        DebugLogger.info("AISummaryService: 准备API请求体")
-        let request = OpenAIRequest(
-            model: model,
-            messages: [
-                OpenAIMessage(role: "user", content: prompt)
+        // Prepare the request body
+        let requestBody: [String: Any] = [
+            "model": model,
+            "messages": [
+                ["role": "user", "content": prompt]
             ],
-            temperature: 0.7,
-            maxTokens: 1000
-        )
+            "temperature": 0.7,
+            "max_tokens": 2000
+        ]
+        
+        DebugLogger.info("AISummaryService: 准备API请求体")
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            DebugLogger.error("AISummaryService: 请求体序列化失败")
+            throw AISummaryError.apiError("Failed to serialize request body")
+        }
+        
+        // Create the URL request
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+        request.timeoutInterval = 60.0
         
         DebugLogger.info("AISummaryService: 发送API请求...")
-        let response = try await openAIClient.chat(request: request)
-        DebugLogger.success("AISummaryService: API请求成功")
-        DebugLogger.info("AISummaryService: 响应内容长度 = \(response.choices.first?.message.content.count ?? 0)")
-        return response.choices.first?.message.content ?? ""
-        */
         
-        DebugLogger.warning("AISummaryService: 当前使用模拟响应（非真实API）")
-        
-        // 模拟响应
-        DebugLogger.info("AISummaryService: 模拟网络延迟 1秒...")
-        try await Task.sleep(nanoseconds: 1_000_000_000) // 1秒延迟
-        
-        // Generate localized mock response based on user's language setting
-        let mockResponse = generateLocalizedMockResponse()
-        
-        DebugLogger.info("AISummaryService: === AI响应 (Response) 开始 ===")
-        DebugLogger.info("\n\(mockResponse)")
-        DebugLogger.info("AISummaryService: === AI响应 (Response) 结束 ===")
-        DebugLogger.info("AISummaryService: 响应内容长度 = \(mockResponse.count) 字符")
-        DebugLogger.success("AISummaryService: ===== AI API调用完成 =====")
-        
-        return mockResponse
+        // Make the API call
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DebugLogger.error("AISummaryService: 响应类型无效")
+                throw AISummaryError.networkError
+            }
+            
+            DebugLogger.info("AISummaryService: HTTP状态码 = \(httpResponse.statusCode)")
+            
+            guard httpResponse.statusCode == 200 else {
+                let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                DebugLogger.error("AISummaryService: API返回错误 - \(errorMessage)")
+                throw AISummaryError.apiError("API returned status code \(httpResponse.statusCode): \(errorMessage)")
+            }
+            
+            // Parse the response
+            guard let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = jsonResponse["choices"] as? [[String: Any]],
+                  let firstChoice = choices.first,
+                  let message = firstChoice["message"] as? [String: Any],
+                  let content = message["content"] as? String else {
+                DebugLogger.error("AISummaryService: 响应解析失败")
+                let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode"
+                DebugLogger.error("AISummaryService: 原始响应 = \(responseString)")
+                throw AISummaryError.parseError
+            }
+            
+            DebugLogger.success("AISummaryService: API请求成功")
+            DebugLogger.info("AISummaryService: === AI响应 (Response) 开始 ===")
+            DebugLogger.info("\n\(content)")
+            DebugLogger.info("AISummaryService: === AI响应 (Response) 结束 ===")
+            DebugLogger.info("AISummaryService: 响应内容长度 = \(content.count) 字符")
+            DebugLogger.success("AISummaryService: ===== AI API调用完成 =====")
+            
+            return content
+            
+        } catch let error as AISummaryError {
+            throw error
+        } catch {
+            DebugLogger.error("AISummaryService: 网络请求失败 - \(error.localizedDescription)")
+            throw AISummaryError.networkError
+        }
     }
     
     private func generateLocalizedMockResponse() -> String {

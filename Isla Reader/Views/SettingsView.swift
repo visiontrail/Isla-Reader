@@ -16,11 +16,11 @@ struct SettingsView: View {
         NavigationView {
             List {
                 // Language
-                Section("语言") {
+                Section(NSLocalizedString("语言", comment: "")) {
                     HStack {
-                        Label("语言", systemImage: "globe")
+                        Label(NSLocalizedString("语言", comment: ""), systemImage: "globe")
                         Spacer()
-                        Picker("语言", selection: $appSettings.language) {
+                        Picker(NSLocalizedString("语言", comment: ""), selection: $appSettings.language) {
                             ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
                                 Text(lang.displayName).tag(lang)
                             }
@@ -30,43 +30,43 @@ struct SettingsView: View {
                 }
                 
                 // Reading Settings
-                Section("阅读设置") {
+                Section(NSLocalizedString("阅读设置", comment: "")) {
                     NavigationLink(destination: ReadingSettingsView()) {
-                        Label("阅读偏好", systemImage: "textformat")
+                        Label(NSLocalizedString("阅读偏好", comment: ""), systemImage: "textformat")
                     }
                     
                     NavigationLink(destination: ThemeSettingsView()) {
-                        Label("主题外观", systemImage: "paintbrush")
+                        Label(NSLocalizedString("主题外观", comment: ""), systemImage: "paintbrush")
                     }
                 }
                 
                 // Data & Sync
-                Section("数据与同步") {
+                Section(NSLocalizedString("数据与同步", comment: "")) {
                     HStack {
-                        Label("iCloud 同步", systemImage: "icloud")
+                        Label(NSLocalizedString("iCloud 同步", comment: ""), systemImage: "icloud")
                         Spacer()
                         Toggle("", isOn: $appSettings.isAutoSyncEnabled)
                     }
                     
                     Button(action: { showingDataManagement = true }) {
-                        Label("数据管理", systemImage: "externaldrive")
+                        Label(NSLocalizedString("数据管理", comment: ""), systemImage: "externaldrive")
                             .foregroundColor(.primary)
                     }
                 }
                 
                 // Notifications
-                Section("通知提醒") {
+                Section(NSLocalizedString("通知提醒", comment: "")) {
                     HStack {
-                        Label("阅读提醒", systemImage: "bell")
+                        Label(NSLocalizedString("阅读提醒", comment: ""), systemImage: "bell")
                         Spacer()
                         Toggle("", isOn: $appSettings.isReadingReminderEnabled)
                     }
                     
                     if appSettings.isReadingReminderEnabled {
                         HStack {
-                            Text("每日目标")
+                            Text(NSLocalizedString("每日目标", comment: ""))
                             Spacer()
-                            Stepper("\(appSettings.dailyReadingGoal) 分钟", 
+                            Stepper("\(appSettings.dailyReadingGoal) \(NSLocalizedString("分钟", comment: ""))", 
                                    value: $appSettings.dailyReadingGoal, 
                                    in: 10...180, 
                                    step: 10)
@@ -75,14 +75,14 @@ struct SettingsView: View {
                 }
                 
                 // About
-                Section("关于") {
+                Section(NSLocalizedString("关于", comment: "")) {
                     Button(action: { showingAbout = true }) {
-                        Label("关于 Isla Reader", systemImage: "info.circle")
+                        Label(NSLocalizedString("关于 Isla Reader", comment: ""), systemImage: "info.circle")
                             .foregroundColor(.primary)
                     }
                     
                     HStack {
-                        Label("版本", systemImage: "number")
+                        Label(NSLocalizedString("版本", comment: ""), systemImage: "number")
                         Spacer()
                         Text("1.0.0")
                             .foregroundColor(.secondary)
@@ -90,21 +90,21 @@ struct SettingsView: View {
                 }
                 
                 // Support
-                Section("支持") {
+                Section(NSLocalizedString("支持", comment: "")) {
                     Link(destination: URL(string: "mailto:support@islareader.com")!) {
-                        Label("联系我们", systemImage: "envelope")
+                        Label(NSLocalizedString("联系我们", comment: ""), systemImage: "envelope")
                     }
                     
                     Link(destination: URL(string: "https://islareader.com/privacy")!) {
-                        Label("隐私政策", systemImage: "hand.raised")
+                        Label(NSLocalizedString("隐私政策", comment: ""), systemImage: "hand.raised")
                     }
                     
                     Link(destination: URL(string: "https://islareader.com/terms")!) {
-                        Label("服务条款", systemImage: "doc.text")
+                        Label(NSLocalizedString("服务条款", comment: ""), systemImage: "doc.text")
                     }
                 }
             }
-            .navigationTitle("设置")
+            .navigationTitle(NSLocalizedString("设置", comment: ""))
             .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $showingAbout) {
                 AboutView()
@@ -121,11 +121,11 @@ struct ReadingSettingsView: View {
     
     var body: some View {
         List {
-            Section("字体设置") {
+            Section(NSLocalizedString("字体设置", comment: "")) {
                 HStack {
-                    Text("字体大小")
+                    Text(NSLocalizedString("字体大小", comment: ""))
                     Spacer()
-                    Picker("字体大小", selection: $appSettings.readingFontSize) {
+                    Picker(NSLocalizedString("字体大小", comment: ""), selection: $appSettings.readingFontSize) {
                         ForEach(ReadingFontSize.allCases, id: \.rawValue) { size in
                             Text(size.displayName).tag(size)
                         }
@@ -134,9 +134,9 @@ struct ReadingSettingsView: View {
                 }
                 
                 HStack {
-                    Text("字体类型")
+                    Text(NSLocalizedString("字体类型", comment: ""))
                     Spacer()
-                    Picker("字体类型", selection: $appSettings.readingFont) {
+                    Picker(NSLocalizedString("字体类型", comment: ""), selection: $appSettings.readingFont) {
                         ForEach(ReadingFont.allCases, id: \.rawValue) { font in
                             Text(font.displayName).tag(font)
                         }
@@ -145,10 +145,10 @@ struct ReadingSettingsView: View {
                 }
             }
             
-            Section("排版设置") {
+            Section(NSLocalizedString("排版设置", comment: "")) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("行间距")
+                        Text(NSLocalizedString("行间距", comment: ""))
                         Spacer()
                         Text(String(format: "%.1f", appSettings.lineSpacing))
                             .foregroundColor(.secondary)
@@ -160,7 +160,7 @@ struct ReadingSettingsView: View {
                 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("页面边距")
+                        Text(NSLocalizedString("页面边距", comment: ""))
                         Spacer()
                         Text("\(Int(appSettings.pageMargins))pt")
                             .foregroundColor(.secondary)
@@ -171,12 +171,12 @@ struct ReadingSettingsView: View {
                 }
             }
             
-            Section("预览") {
+            Section(NSLocalizedString("预览", comment: "")) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("示例文本")
+                    Text(NSLocalizedString("示例文本", comment: ""))
                         .font(.headline)
                     
-                    Text("这是一段示例文本，用于预览当前的字体和排版设置效果。您可以调整上面的设置来获得最佳的阅读体验。")
+                    Text(NSLocalizedString("这是一段示例文本，用于预览当前的字体和排版设置效果。您可以调整上面的设置来获得最佳的阅读体验。", comment: ""))
                         .font(.system(size: appSettings.readingFontSize.fontSize))
                         .lineSpacing(appSettings.lineSpacing * 4)
                         .padding(.horizontal, appSettings.pageMargins / 2)
@@ -186,7 +186,7 @@ struct ReadingSettingsView: View {
                 }
             }
         }
-        .navigationTitle("阅读偏好")
+        .navigationTitle(NSLocalizedString("阅读偏好", comment: ""))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -196,7 +196,7 @@ struct ThemeSettingsView: View {
     
     var body: some View {
         List {
-            Section("主题选择") {
+            Section(NSLocalizedString("主题选择", comment: "")) {
                 ForEach(AppTheme.allCases, id: \.rawValue) { theme in
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -223,14 +223,14 @@ struct ThemeSettingsView: View {
                 }
             }
             
-            Section("主题预览") {
+            Section(NSLocalizedString("主题预览", comment: "")) {
                 VStack(spacing: 16) {
                     HStack {
                         Circle()
                             .fill(Color.primary)
                             .frame(width: 20, height: 20)
                         
-                        Text("主要文本颜色")
+                        Text(NSLocalizedString("主要文本颜色", comment: ""))
                             .font(.body)
                         
                         Spacer()
@@ -241,7 +241,7 @@ struct ThemeSettingsView: View {
                             .fill(Color.secondary)
                             .frame(width: 20, height: 20)
                         
-                        Text("次要文本颜色")
+                        Text(NSLocalizedString("次要文本颜色", comment: ""))
                             .font(.body)
                             .foregroundColor(.secondary)
                         
@@ -253,7 +253,7 @@ struct ThemeSettingsView: View {
                             .fill(Color.accentColor)
                             .frame(width: 20, height: 20)
                         
-                        Text("强调色")
+                        Text(NSLocalizedString("强调色", comment: ""))
                             .font(.body)
                             .foregroundColor(.accentColor)
                         
@@ -265,18 +265,18 @@ struct ThemeSettingsView: View {
                 .cornerRadius(12)
             }
         }
-        .navigationTitle("主题外观")
+        .navigationTitle(NSLocalizedString("主题外观", comment: ""))
         .navigationBarTitleDisplayMode(.inline)
     }
     
     private func themeDescription(_ theme: AppTheme) -> String {
         switch theme {
         case .system:
-            return "根据系统设置自动切换"
+            return NSLocalizedString("根据系统设置自动切换", comment: "")
         case .light:
-            return "始终使用浅色主题"
+            return NSLocalizedString("始终使用浅色主题", comment: "")
         case .dark:
-            return "始终使用深色主题"
+            return NSLocalizedString("始终使用深色主题", comment: "")
         }
     }
 }
@@ -289,55 +289,55 @@ struct DataManagementView: View {
     var body: some View {
         NavigationView {
             List {
-                Section("数据导出") {
+                Section(NSLocalizedString("数据导出", comment: "")) {
                     Button(action: { showingExportSheet = true }) {
-                        Label("导出阅读数据", systemImage: "square.and.arrow.up")
+                        Label(NSLocalizedString("导出阅读数据", comment: ""), systemImage: "square.and.arrow.up")
                             .foregroundColor(.blue)
                     }
                     
                     Button(action: {}) {
-                        Label("导出笔记和高亮", systemImage: "note.text")
+                        Label(NSLocalizedString("导出笔记和高亮", comment: ""), systemImage: "note.text")
                             .foregroundColor(.blue)
                     }
                 }
                 
-                Section("存储管理") {
+                Section(NSLocalizedString("存储管理", comment: "")) {
                     HStack {
-                        Label("缓存大小", systemImage: "internaldrive")
+                        Label(NSLocalizedString("缓存大小", comment: ""), systemImage: "internaldrive")
                         Spacer()
                         Text("128 MB")
                             .foregroundColor(.secondary)
                     }
                     
                     Button(action: {}) {
-                        Label("清理缓存", systemImage: "trash")
+                        Label(NSLocalizedString("清理缓存", comment: ""), systemImage: "trash")
                             .foregroundColor(.orange)
                     }
                 }
                 
-                Section("危险操作") {
+                Section(NSLocalizedString("危险操作", comment: "")) {
                     Button(action: { showingClearDataAlert = true }) {
-                        Label("清除所有数据", systemImage: "exclamationmark.triangle")
+                        Label(NSLocalizedString("清除所有数据", comment: ""), systemImage: "exclamationmark.triangle")
                             .foregroundColor(.red)
                     }
                 }
             }
-            .navigationTitle("数据管理")
+            .navigationTitle(NSLocalizedString("数据管理", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
+                    Button(NSLocalizedString("完成", comment: "")) {
                         dismiss()
                     }
                 }
             }
-            .alert("清除所有数据", isPresented: $showingClearDataAlert) {
-                Button("取消", role: .cancel) { }
-                Button("确认清除", role: .destructive) {
+            .alert(NSLocalizedString("清除所有数据", comment: ""), isPresented: $showingClearDataAlert) {
+                Button(NSLocalizedString("取消", comment: ""), role: .cancel) { }
+                Button(NSLocalizedString("确认清除", comment: ""), role: .destructive) {
                     // Clear all data
                 }
             } message: {
-                Text("此操作将删除所有书籍、阅读进度、笔记和设置。此操作不可撤销。")
+                Text(NSLocalizedString("此操作将删除所有书籍、阅读进度、笔记和设置。此操作不可撤销。", comment: ""))
             }
             .sheet(isPresented: $showingExportSheet) {
                 ExportDataView()
@@ -359,23 +359,23 @@ struct ExportDataView: View {
                     .foregroundColor(.blue)
                 
                 VStack(spacing: 8) {
-                    Text("导出数据")
+                    Text(NSLocalizedString("导出数据", comment: ""))
                         .font(.title)
                         .fontWeight(.bold)
                     
-                    Text("选择要导出的数据类型")
+                    Text(NSLocalizedString("选择要导出的数据类型", comment: ""))
                         .font(.body)
                         .foregroundColor(.secondary)
                 }
                 
                 VStack(spacing: 12) {
-                    ExportOptionRow(title: "阅读进度", description: "书籍阅读进度和统计", isSelected: true)
-                    ExportOptionRow(title: "笔记和高亮", description: "所有笔记、高亮和注释", isSelected: true)
-                    ExportOptionRow(title: "应用设置", description: "主题、字体等偏好设置", isSelected: false)
+                    ExportOptionRow(title: NSLocalizedString("阅读进度", comment: ""), description: NSLocalizedString("书籍阅读进度和统计", comment: ""), isSelected: true)
+                    ExportOptionRow(title: NSLocalizedString("笔记和高亮", comment: ""), description: NSLocalizedString("所有笔记、高亮和注释", comment: ""), isSelected: true)
+                    ExportOptionRow(title: NSLocalizedString("应用设置", comment: ""), description: NSLocalizedString("主题、字体等偏好设置", comment: ""), isSelected: false)
                 }
                 
                 Button(action: {}) {
-                    Text("开始导出")
+                    Text(NSLocalizedString("开始导出", comment: ""))
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -387,11 +387,11 @@ struct ExportDataView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("导出数据")
+            .navigationTitle(NSLocalizedString("导出数据", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
+                    Button(NSLocalizedString("取消", comment: "")) {
                         dismiss()
                     }
                 }
@@ -454,12 +454,12 @@ struct AboutView: View {
                         .font(.title)
                         .fontWeight(.bold)
                     
-                    Text("版本 1.0.0")
+                    Text("\(NSLocalizedString("版本", comment: "")) 1.0.0")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
                 
-                Text("把每本书变成一位可对话的导师：获取、阅读、理解与交流，一站式完成。")
+                Text(NSLocalizedString("把每本书变成一位可对话的导师：获取、阅读、理解与交流，一站式完成。", comment: ""))
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
@@ -470,7 +470,7 @@ struct AboutView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    Text("用心打造的阅读体验")
+                    Text(NSLocalizedString("用心打造的阅读体验", comment: ""))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -478,11 +478,11 @@ struct AboutView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("关于")
+            .navigationTitle(NSLocalizedString("关于", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
+                    Button(NSLocalizedString("完成", comment: "")) {
                         dismiss()
                     }
                 }

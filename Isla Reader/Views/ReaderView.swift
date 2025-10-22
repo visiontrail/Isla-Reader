@@ -320,7 +320,7 @@ struct TableOfContentsView: View {
                         
                         Spacer()
                         
-                        Text("第 \(chapter.2) 页")
+                        Text(String(format: NSLocalizedString("第 %d 页", comment: ""), chapter.2))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -332,11 +332,11 @@ struct TableOfContentsView: View {
                     }
                 }
             }
-            .navigationTitle("目录")
+            .navigationTitle(NSLocalizedString("目录", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
+                    Button(NSLocalizedString("完成", comment: "")) {
                         dismiss()
                     }
                 }
@@ -352,11 +352,11 @@ struct ReaderSettingsView: View {
     var body: some View {
         NavigationView {
             List {
-                Section("字体设置") {
+                Section(NSLocalizedString("字体设置", comment: "")) {
                     HStack {
-                        Text("字体大小")
+                        Text(NSLocalizedString("字体大小", comment: ""))
                         Spacer()
-                        Picker("字体大小", selection: $appSettings.readingFontSize) {
+                        Picker(NSLocalizedString("字体大小", comment: ""), selection: $appSettings.readingFontSize) {
                             ForEach(ReadingFontSize.allCases, id: \.rawValue) { size in
                                 Text(size.displayName).tag(size)
                             }
@@ -365,10 +365,10 @@ struct ReaderSettingsView: View {
                     }
                 }
                 
-                Section("排版设置") {
+                Section(NSLocalizedString("排版设置", comment: "")) {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("行间距")
+                            Text(NSLocalizedString("行间距", comment: ""))
                             Spacer()
                             Text(String(format: "%.1f", appSettings.lineSpacing))
                                 .foregroundColor(.secondary)
@@ -380,7 +380,7 @@ struct ReaderSettingsView: View {
                     
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("页面边距")
+                            Text(NSLocalizedString("页面边距", comment: ""))
                             Spacer()
                             Text("\(Int(appSettings.pageMargins))pt")
                                 .foregroundColor(.secondary)
@@ -391,8 +391,8 @@ struct ReaderSettingsView: View {
                     }
                 }
                 
-                Section("主题") {
-                    Picker("主题", selection: $appSettings.theme) {
+                Section(NSLocalizedString("主题", comment: "")) {
+                    Picker(NSLocalizedString("主题", comment: ""), selection: $appSettings.theme) {
                         ForEach(AppTheme.allCases, id: \.rawValue) { theme in
                             Text(theme.displayName).tag(theme)
                         }
@@ -400,11 +400,11 @@ struct ReaderSettingsView: View {
                     .pickerStyle(SegmentedPickerStyle())
                 }
             }
-            .navigationTitle("阅读设置")
+            .navigationTitle(NSLocalizedString("阅读设置", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
+                    Button(NSLocalizedString("完成", comment: "")) {
                         dismiss()
                     }
                 }
@@ -422,7 +422,7 @@ struct AIChatSidebar: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("AI 阅读助手")
+                Text(NSLocalizedString("AI 阅读助手", comment: ""))
                     .font(.headline)
                     .fontWeight(.semibold)
                 
@@ -445,20 +445,20 @@ struct AIChatSidebar: View {
                                 .font(.system(size: 40))
                                 .foregroundColor(.secondary)
                             
-                            Text("向 AI 提问关于这本书的任何问题")
+                            Text(NSLocalizedString("向 AI 提问关于这本书的任何问题", comment: ""))
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                             
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("建议问题:")
+                                Text(NSLocalizedString("建议问题:", comment: ""))
                                     .font(.caption)
                                     .fontWeight(.medium)
                                     .foregroundColor(.secondary)
                                 
-                                SuggestedQuestionButton(question: "这章的主要内容是什么？")
-                                SuggestedQuestionButton(question: "解释一下这个概念")
-                                SuggestedQuestionButton(question: "总结一下要点")
+                                SuggestedQuestionButton(question: NSLocalizedString("这章的主要内容是什么？", comment: ""))
+                                SuggestedQuestionButton(question: NSLocalizedString("解释一下这个概念", comment: ""))
+                                SuggestedQuestionButton(question: NSLocalizedString("总结一下要点", comment: ""))
                             }
                         }
                         .padding()
@@ -473,7 +473,7 @@ struct AIChatSidebar: View {
             
             // Input
             HStack {
-                TextField("向 AI 提问...", text: $inputText)
+                TextField(NSLocalizedString("向 AI 提问...", comment: ""), text: $inputText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                 
                 Button(action: sendMessage) {
@@ -527,11 +527,11 @@ struct AIChatView: View {
     var body: some View {
         NavigationView {
             AIChatSidebar(book: book)
-                .navigationTitle("AI 阅读助手")
+                .navigationTitle(NSLocalizedString("AI 阅读助手", comment: ""))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("完成") {
+                        Button(NSLocalizedString("完成", comment: "")) {
                             dismiss()
                         }
                     }
@@ -599,28 +599,28 @@ struct TextActionsView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 24) {
-                Text("选中文本")
+                Text(NSLocalizedString("选中文本", comment: ""))
                     .font(.headline)
                     .padding()
                     .background(Color(.systemGray6))
                     .cornerRadius(8)
                 
                 VStack(spacing: 16) {
-                    ActionButton(title: "高亮标记", icon: "highlighter", color: .yellow) {}
-                    ActionButton(title: "添加笔记", icon: "note.text", color: .blue) {}
-                    ActionButton(title: "翻译", icon: "globe", color: .green) {}
-                    ActionButton(title: "AI 解释", icon: "brain.head.profile", color: .purple) {}
-                    ActionButton(title: "复制", icon: "doc.on.doc", color: .gray) {}
+                    ActionButton(title: NSLocalizedString("高亮标记", comment: ""), icon: "highlighter", color: .yellow) {}
+                    ActionButton(title: NSLocalizedString("添加笔记", comment: ""), icon: "note.text", color: .blue) {}
+                    ActionButton(title: NSLocalizedString("翻译", comment: ""), icon: "globe", color: .green) {}
+                    ActionButton(title: NSLocalizedString("AI 解释", comment: ""), icon: "brain.head.profile", color: .purple) {}
+                    ActionButton(title: NSLocalizedString("复制", comment: ""), icon: "doc.on.doc", color: .gray) {}
                 }
                 
                 Spacer()
             }
             .padding()
-            .navigationTitle("文本操作")
+            .navigationTitle(NSLocalizedString("文本操作", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
+                    Button(NSLocalizedString("完成", comment: "")) {
                         dismiss()
                     }
                 }

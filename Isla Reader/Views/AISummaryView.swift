@@ -19,7 +19,7 @@ struct AISummaryView: View {
                 summaryContent
                     .transition(.opacity.combined(with: .move(edge: .top)))
             } else {
-                Text("加载中...")
+                Text(NSLocalizedString("加载中...", comment: "Loading"))
                     .foregroundColor(.secondary)
             }
         }
@@ -77,7 +77,7 @@ struct AISummaryView: View {
                     DebugLogger.error("AISummaryView: 显示错误视图 - \(error)")
                 }
         } else {
-            Text("没有可显示的内容")
+            Text(NSLocalizedString("ai.summary.no_content", comment: "No content to display"))
                 .foregroundColor(.secondary)
                 .onAppear {
                     DebugLogger.warning("AISummaryView: 没有内容显示")
@@ -93,12 +93,12 @@ struct AISummaryView: View {
                         .foregroundColor(.blue)
                         .font(.title2)
                     
-                    Text("AI 导读摘要")
+                    Text(NSLocalizedString("ai.summary.title", comment: "AI Reading Guide"))
                         .font(.headline)
                         .fontWeight(.semibold)
                 }
                 
-                Text("为您快速了解书籍内容")
+                Text(NSLocalizedString("ai.summary.subtitle", comment: "Quickly understand book content"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -144,7 +144,7 @@ struct AISummaryView: View {
             
             if !summaryService.currentSummary.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("正在生成摘要...")
+                    Text(NSLocalizedString("ai.summary.generating", comment: "Generating summary..."))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
@@ -158,7 +158,7 @@ struct AISummaryView: View {
                     ProgressView()
                         .scaleEffect(1.2)
                     
-                    Text("正在分析书籍内容...")
+                    Text(NSLocalizedString("ai.summary.analyzing", comment: "Analyzing book content..."))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -173,7 +173,7 @@ struct AISummaryView: View {
                 HStack {
                     Image(systemName: "doc.text")
                         .foregroundColor(.blue)
-                    Text("内容摘要")
+                    Text(NSLocalizedString("ai.summary.content_summary", comment: "Content Summary"))
                         .font(.headline)
                         .fontWeight(.medium)
                 }
@@ -194,7 +194,7 @@ struct AISummaryView: View {
                     HStack {
                         Image(systemName: "list.bullet")
                             .foregroundColor(.orange)
-                        Text("关键要点")
+                        Text(NSLocalizedString("ai.summary.key_points", comment: "Key Points"))
                             .font(.headline)
                             .fontWeight(.medium)
                     }
@@ -222,7 +222,7 @@ struct AISummaryView: View {
             if let generatedAt = book.aiSummaryGeneratedAt {
                 HStack {
                     Spacer()
-                    Text("生成于 \(formatDate(generatedAt))")
+                    Text("\(NSLocalizedString("ai.summary.generated_at", comment: "Generated on")) \(formatDate(generatedAt))")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -236,7 +236,7 @@ struct AISummaryView: View {
                 .font(.system(size: 40))
                 .foregroundColor(.orange)
             
-            Text("生成摘要时出错")
+            Text(NSLocalizedString("ai.summary.error.title", comment: "Error Generating Summary"))
                 .font(.headline)
                 .fontWeight(.medium)
             
@@ -248,7 +248,7 @@ struct AISummaryView: View {
             Button(action: refreshSummary) {
                 HStack {
                     Image(systemName: "arrow.clockwise")
-                    Text("重试")
+                    Text(NSLocalizedString("ai.summary.error.retry", comment: "Retry"))
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -353,17 +353,17 @@ struct AISummaryCard: View {
                         .font(.title2)
                     
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("AI 导读摘要")
+                        Text(NSLocalizedString("ai.summary.title", comment: "AI Reading Guide"))
                             .font(.headline)
                             .fontWeight(.semibold)
                             .foregroundColor(.primary)
                         
                         if book.aiSummary != nil {
-                            Text("点击查看详细摘要")
+                            Text(NSLocalizedString("ai.summary.card.view_detail", comment: "Tap to view details"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         } else {
-                            Text("点击生成摘要")
+                            Text(NSLocalizedString("ai.summary.card.generate", comment: "Tap to generate summary"))
                                 .font(.caption)
                                 .foregroundColor(.blue)
                         }

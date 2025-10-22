@@ -141,3 +141,34 @@
 "ai.summary.book_name" = "书名：";
 "ai.summary.author" = "作者：";
 "ai.summary.chapter_count" = "章节数：";
+
+// AI Summary View UI
+"加载中..." = "加载中...";
+"ai.summary.title" = "AI 导读摘要";
+"ai.summary.subtitle" = "为您快速了解书籍内容";
+"ai.summary.content_summary" = "内容摘要";
+"ai.summary.key_points" = "关键要点";
+"ai.summary.generating" = "正在生成摘要...";
+"ai.summary.analyzing" = "正在分析书籍内容...";
+"ai.summary.error.title" = "生成摘要时出错";
+"ai.summary.error.retry" = "重试";
+"ai.summary.no_content" = "没有可显示的内容";
+"ai.summary.generated_at" = "生成于";
+"ai.summary.card.view_detail" = "点击查看详细摘要";
+"ai.summary.card.generate" = "点击生成摘要";
+
+// Additional UI strings
+"Isla Reader" = "Isla Reader";
+"正在导入书籍..." = "正在导入书籍...";
+"导入结果" = "导入结果";
+"确定" = "确定";
+"主题" = "主题";
+"根据系统设置自动切换" = "根据系统设置自动切换";
+"始终使用浅色主题" = "始终使用浅色主题";
+"始终使用深色主题" = "始终使用深色主题";
+"导出阅读数据" = "导出阅读数据";
+"导出笔记和高亮" = "导出笔记和高亮";
+"这是一段示例文本，用于预览当前的字体和排版设置效果。您可以调整上面的设置来获得最佳的阅读体验。" = "这是一段示例文本，用于预览当前的字体和排版设置效果。您可以调整上面的设置来获得最佳的阅读体验。";
+"把每本书变成一位可对话的导师：获取、阅读、理解与交流，一站式完成。" = "把每本书变成一位可对话的导师：获取、阅读、理解与交流，一站式完成。";
+"用心打造的阅读体验" = "用心打造的阅读体验";
+"向 AI 提问关于这本书的任何问题" = "向 AI 提问关于这本书的任何问题";
