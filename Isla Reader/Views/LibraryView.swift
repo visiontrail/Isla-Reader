@@ -22,6 +22,7 @@ struct LibraryView: View {
     @State private var selectedFilter: ReadingStatus? = nil
     @State private var showingImportSheet = false
     @State private var showingFilterSheet = false
+    @State private var bookToShowAISummary: Book? = nil
     
     private var filteredBooks: [LibraryItem] {
         var items = Array(libraryItems)
@@ -80,7 +81,12 @@ struct LibraryView: View {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 20) {
                             ForEach(filteredBooks) { item in
-                                BookCardView(libraryItem: item)
+                                BookCardView(libraryItem: item, onTap: {
+                                    DebugLogger.info("LibraryView: 书籍卡片点击")
+                                    DebugLogger.info("LibraryView: 点击的书籍 = \(item.book.displayTitle)")
+                                    bookToShowAISummary = item.book
+                                    DebugLogger.info("LibraryView: 设置 bookToShowAISummary")
+                                })
                             }
                         }
                         .padding()
@@ -98,10 +104,40 @@ struct LibraryView: View {
                 }
             }
             .sheet(isPresented: $showingImportSheet) {
-                ImportBookView()
+                ImportBookView(onBookImported: { book in
+                    // 导入成功后，等待sheet关闭后再打开AI摘要
+                    DebugLogger.info("LibraryView: onBookImported 回调触发")
+                    DebugLogger.info("LibraryView: 导入的书籍 = \(book.displayTitle)")
+                    // 等待ImportSheet完全关闭后再设置book，这会自动触发AI摘要sheet
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        DebugLogger.info("LibraryView: 延迟后打开AI摘要")
+                        bookToShowAISummary = book
+                        DebugLogger.info("LibraryView: 已设置 bookToShowAISummary = \(book.displayTitle)")
+                    }
+                })
             }
             .sheet(isPresented: $showingFilterSheet) {
                 FilterSheetView(selectedFilter: $selectedFilter)
+            }
+            .sheet(item: $bookToShowAISummary) { book in
+                NavigationView {
+                    AISummaryView(book: book)
+                        .navigationTitle(book.displayTitle)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("完成") {
+                                    DebugLogger.info("LibraryView: 完成按钮点击，关闭AI摘要界面")
+                                    bookToShowAISummary = nil
+                                }
+                            }
+                        }
+                }
+                .environment(\.managedObjectContext, viewContext)
+                .onAppear {
+                    DebugLogger.info("LibraryView: AI摘要Sheet正在显示")
+                    DebugLogger.info("LibraryView: 选中的书籍 = \(book.displayTitle)")
+                }
             }
         }
     }
@@ -109,6 +145,7 @@ struct LibraryView: View {
 
 struct BookCardView: View {
     let libraryItem: LibraryItem
+    var onTap: (() -> Void)? = nil
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     private var cardWidth: CGFloat {
@@ -198,7 +235,7 @@ struct BookCardView: View {
             .frame(width: cardWidth, alignment: .leading)
         }
         .onTapGesture {
-            // Navigate to reader
+            onTap?()
         }
         .contextMenu {
             BookContextMenu(libraryItem: libraryItem)
@@ -373,6 +410,8 @@ struct FilterSheetView: View {
 }
 
 struct ImportBookView: View {
+    var onBookImported: ((Book) -> Void)? = nil
+    
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var importService = BookImportService.shared
@@ -533,8 +572,14 @@ struct ImportBookView: View {
                     
                     await MainActor.run {
                         importedBook = book
-                        alertMessage = "书籍《\(book.displayTitle)》导入成功！"
-                        showingAlert = true
+                        // 先关闭导入界面
+                        DebugLogger.info("ImportBookView: 关闭导入界面")
+                        dismiss()
+                        // 延迟调用回调，确保sheet完全关闭
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            DebugLogger.info("ImportBookView: 调用 onBookImported 回调")
+                            onBookImported?(book)
+                        }
                     }
                 } catch {
                     DebugLogger.error("书籍导入失败: \(error.localizedDescription)")
@@ -555,6 +600,7 @@ struct ImportBookView: View {
         }
     }
 }
+
 
 #Preview {
     LibraryView()

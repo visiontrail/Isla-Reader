@@ -109,18 +109,14 @@ xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
 echo -e "${GREEN}✅ 应用安装成功${NC}"
 echo ""
 
-# 启动应用
-echo -e "${YELLOW}🚀 启动应用...${NC}"
-xcrun simctl launch "$SIMULATOR_UDID" "$BUNDLE_ID"
-echo -e "${GREEN}✅ 应用已启动${NC}"
-echo ""
-
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${CYAN}📋 应用控制台日志输出（按 Ctrl+C 退出）:${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# 实时输出应用日志
-# 使用 xcrun simctl spawn 来跟踪日志
-xcrun simctl spawn "$SIMULATOR_UDID" log stream --predicate "processImagePath CONTAINS \"$PROJECT_NAME\"" --style compact --color always
+# 启动应用并同时捕获标准输出和标准错误
+# --console 选项会将应用的 stdout/stderr 输出到当前终端
+# --console-pty 选项提供伪终端支持，确保实时输出
+echo -e "${YELLOW}🚀 启动应用并开始日志跟踪...${NC}"
+xcrun simctl launch --console-pty "$SIMULATOR_UDID" "$BUNDLE_ID"
 

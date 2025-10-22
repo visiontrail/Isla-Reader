@@ -18,12 +18,23 @@ struct AISummaryView: View {
             if showingSummary {
                 summaryContent
                     .transition(.opacity.combined(with: .move(edge: .top)))
+            } else {
+                Text("加载中...")
+                    .foregroundColor(.secondary)
             }
         }
         .onAppear {
+            DebugLogger.info("AISummaryView: onAppear触发")
+            DebugLogger.info("AISummaryView: 书籍标题 = \(book.displayTitle)")
+            DebugLogger.info("AISummaryView: isFirstOpen = \(isFirstOpen)")
+            DebugLogger.info("AISummaryView: showingSummary = \(showingSummary)")
+            
             if isFirstOpen {
+                DebugLogger.info("AISummaryView: 首次打开，调用checkAndGenerateSummary")
                 checkAndGenerateSummary()
                 isFirstOpen = false
+            } else {
+                DebugLogger.info("AISummaryView: 非首次打开，跳过")
             }
         }
     }
@@ -36,13 +47,7 @@ struct AISummaryView: View {
             // 摘要内容
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    if summaryService.isGenerating {
-                        generatingView
-                    } else if !summaryService.currentSummary.isEmpty {
-                        summaryTextView
-                    } else if let error = summaryService.error {
-                        errorView(error)
-                    }
+                    contentBodyView
                 }
                 .padding()
             }
@@ -52,6 +57,32 @@ struct AISummaryView: View {
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
         .padding()
+    }
+    
+    @ViewBuilder
+    private var contentBodyView: some View {
+        if summaryService.isGenerating {
+            generatingView
+                .onAppear {
+                    DebugLogger.info("AISummaryView: 显示生成中视图")
+                }
+        } else if !summaryService.currentSummary.isEmpty {
+            summaryTextView
+                .onAppear {
+                    DebugLogger.info("AISummaryView: 显示摘要文本视图")
+                }
+        } else if let error = summaryService.error {
+            errorView(error)
+                .onAppear {
+                    DebugLogger.error("AISummaryView: 显示错误视图 - \(error)")
+                }
+        } else {
+            Text("没有可显示的内容")
+                .foregroundColor(.secondary)
+                .onAppear {
+                    DebugLogger.warning("AISummaryView: 没有内容显示")
+                }
+        }
     }
     
     private var summaryHeader: some View {
@@ -231,40 +262,64 @@ struct AISummaryView: View {
     }
     
     private func checkAndGenerateSummary() {
+        DebugLogger.info("AISummaryView: checkAndGenerateSummary 开始")
+        
         // 检查是否已有摘要
-        if book.aiSummary != nil && book.aiSummaryGeneratedAt != nil {
+        let hasAISummary = book.aiSummary != nil
+        let hasGeneratedAt = book.aiSummaryGeneratedAt != nil
+        
+        DebugLogger.info("AISummaryView: hasAISummary = \(hasAISummary)")
+        DebugLogger.info("AISummaryView: hasGeneratedAt = \(hasGeneratedAt)")
+        
+        if hasAISummary && hasGeneratedAt {
+            DebugLogger.success("AISummaryView: 书籍已有摘要，直接显示")
             summaryService.currentSummary = book.aiSummary ?? ""
+            DebugLogger.info("AISummaryView: 摘要内容长度 = \(summaryService.currentSummary.count)")
+            
             withAnimation(.easeInOut(duration: 0.5).delay(1.0)) {
+                DebugLogger.info("AISummaryView: 设置 showingSummary = true")
                 showingSummary = true
             }
         } else {
             // 首次打开，生成摘要
+            DebugLogger.info("AISummaryView: 书籍没有摘要，准备生成")
             generateSummaryWithStream()
         }
     }
     
     private func generateSummaryWithStream() {
+        DebugLogger.info("AISummaryView: generateSummaryWithStream 开始")
+        
         withAnimation(.easeInOut(duration: 0.3)) {
+            DebugLogger.info("AISummaryView: 显示摘要容器")
             showingSummary = true
         }
         
         Task {
             do {
+                DebugLogger.info("AISummaryView: 开始调用 summaryService.generateSummaryStream")
                 for try await partialSummary in summaryService.generateSummaryStream(for: book) {
+                    DebugLogger.info("AISummaryView: 收到部分摘要，长度 = \(partialSummary.count)")
                     // 流式输出已在service中处理
                 }
+                DebugLogger.success("AISummaryView: 摘要生成完成")
             } catch {
-                print("生成摘要失败: \(error)")
+                DebugLogger.error("AISummaryView: 生成摘要失败 - \(error.localizedDescription)")
+                DebugLogger.error("AISummaryView: 错误详情 - \(error)")
             }
         }
     }
     
     private func refreshSummary() {
+        DebugLogger.info("AISummaryView: refreshSummary 触发")
+        
         // 清除当前摘要
         summaryService.currentSummary = ""
         book.aiSummary = nil
         book.aiKeyPoints = nil
         book.aiSummaryGeneratedAt = nil
+        
+        DebugLogger.info("AISummaryView: 已清除旧摘要，准备重新生成")
         
         // 重新生成
         generateSummaryWithStream()
