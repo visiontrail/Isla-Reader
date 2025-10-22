@@ -6,126 +6,51 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct ReaderView: View {
     let book: Book
     @StateObject private var appSettings = AppSettings.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.managedObjectContext) private var viewContext
     
-    @State private var currentPage = 0
-    @State private var totalPages = 100
-    @State private var showingToolbar = true
+    @State private var chapters: [Chapter] = []
+    @State private var currentChapterIndex = 0
+    @State private var isLoading = true
+    @State private var loadError: String?
+    
+    @State private var showingToolbar = false
     @State private var showingTableOfContents = false
     @State private var showingAIChat = false
     @State private var showingSettings = false
     @State private var selectedText = ""
     @State private var showingTextActions = false
-    @State private var showingAISummary = true
+    @State private var showingAISummary = false
     @State private var isFirstOpen = true
     
-    // Sample content for demonstration
-    private let sampleContent = """
-    第一章 开始的地方
-
-    在一个阳光明媚的早晨，主人公踏上了一段全新的旅程。这是一个关于成长、发现和自我实现的故事。
-
-    每个人的生命中都有那么一些时刻，它们如同夜空中最亮的星，指引着我们前进的方向。对于我们的主人公来说，这个早晨就是这样的时刻。
-
-    窗外的阳光透过薄薄的窗帘洒进房间，在地板上投下斑驳的光影。空气中弥漫着淡淡的的花香，那是从花园里飘来的茉莉花的味道。
-
-    这是一个充满希望的开始，也是一个充满挑战的开始。但正如古人所说："千里之行，始于足下。"无论前路如何，重要的是迈出第一步。
-
-    在接下来的章节中，我们将跟随主人公一起经历这段奇妙的旅程，见证他的成长和蜕变。
-    """
+    @State private var scrollOffset: CGFloat = 0
+    @State private var lastTapTime: Date = Date()
     
     var body: some View {
         ZStack {
-            // Background
-            Color(.systemBackground)
+            // Premium background with subtle gradient
+            backgroundView
                 .ignoresSafeArea()
             
-            // Main Content
-            VStack(spacing: 0) {
-                // Top Toolbar
-                if showingToolbar {
-                    ReaderTopToolbar(
-                        bookTitle: book.displayTitle,
-                        currentPage: currentPage,
-                        totalPages: totalPages,
-                        onBack: { dismiss() },
-                        onTableOfContents: { showingTableOfContents = true },
-                        onSettings: { showingSettings = true }
-                    )
-                    .transition(.move(edge: .top))
-                }
-                
-                // Reading Content
-                GeometryReader { geometry in
-                    HStack(spacing: 0) {
-                        // Main Text Area
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 0) {
-                                // AI 导读摘要（首次打开时显示）
-                                if showingAISummary && isFirstOpen {
-                                    AISummaryCard(book: book)
-                                        .padding(.horizontal, appSettings.pageMargins)
-                                        .padding(.vertical, 20)
-                                        .transition(.opacity.combined(with: .move(edge: .top)))
-                                }
-                                
-                                Text(sampleContent)
-                                    .font(.system(size: appSettings.readingFontSize.fontSize))
-                                    .lineSpacing(appSettings.lineSpacing * 4)
-                                    .padding(.horizontal, appSettings.pageMargins)
-                                    .padding(.vertical, 20)
-                                    .textSelection(.enabled)
-                                    .onTapGesture {
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            showingToolbar.toggle()
-                                        }
-                                    }
-                            }
-                        }
-                        .frame(maxWidth: horizontalSizeClass == .regular && showingAIChat ? geometry.size.width * 0.6 : .infinity)
-                        
-                        // AI Chat Sidebar (iPad only)
-                        if horizontalSizeClass == .regular && showingAIChat {
-                            Divider()
-                            
-                            AIChatSidebar(book: book)
-                                .frame(width: geometry.size.width * 0.4)
-                                .transition(.move(edge: .trailing))
-                        }
-                    }
-                }
-                
-                // Bottom Toolbar
-                if showingToolbar {
-                    ReaderBottomToolbar(
-                        currentPage: $currentPage,
-                        totalPages: totalPages,
-                        onBookmark: {},
-                        onHighlight: { showingTextActions = true },
-                        onAIChat: { 
-                            if horizontalSizeClass == .regular {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showingAIChat.toggle()
-                                }
-                            } else {
-                                showingAIChat = true
-                            }
-                        },
-                        onShare: {}
-                    )
-                    .transition(.move(edge: .bottom))
-                }
+            if isLoading {
+                loadingView
+            } else if let error = loadError {
+                errorView(error)
+            } else {
+                mainContentView
             }
         }
         .navigationBarHidden(true)
         .preferredColorScheme(appSettings.theme.colorScheme)
+        .statusBar(hidden: !showingToolbar)
         .sheet(isPresented: $showingTableOfContents) {
-            TableOfContentsView(book: book)
+            TableOfContentsView(chapters: chapters, currentChapterIndex: $currentChapterIndex)
         }
         .sheet(isPresented: $showingSettings) {
             ReaderSettingsView()
@@ -138,14 +63,367 @@ struct ReaderView: View {
         .sheet(isPresented: $showingTextActions) {
             TextActionsView(selectedText: selectedText)
         }
-        .animation(.easeInOut(duration: 0.3), value: showingToolbar)
-        .animation(.easeInOut(duration: 0.3), value: showingAIChat)
-        .animation(.easeInOut(duration: 0.3), value: showingAISummary)
         .onAppear {
-            // 检查是否是首次打开这本书
+            loadBookContent()
             checkFirstTimeOpen()
         }
-     }
+    }
+    
+    // MARK: - View Components
+    
+    private var backgroundView: some View {
+        Group {
+            if appSettings.theme == .dark {
+                // Deep, rich dark theme with subtle gradient
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.05, green: 0.05, blue: 0.08),
+                        Color(red: 0.02, green: 0.02, blue: 0.05)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            } else {
+                // Clean, paper-like light theme with warmth
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.98, green: 0.98, blue: 0.99),
+                        Color(red: 0.96, green: 0.96, blue: 0.97)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+        }
+    }
+    
+    private var loadingView: some View {
+        VStack(spacing: 24) {
+            ProgressView()
+                .scaleEffect(1.2)
+                .tint(.primary.opacity(0.6))
+            
+            Text(NSLocalizedString("正在加载书籍...", comment: ""))
+                .font(.system(.body, design: .rounded))
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    private func errorView(_ error: String) -> some View {
+        VStack(spacing: 24) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 50))
+                .foregroundColor(.orange)
+            
+            Text(NSLocalizedString("加载失败", comment: ""))
+                .font(.system(.title2, design: .rounded))
+                .fontWeight(.semibold)
+            
+            Text(error)
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            
+            Button(action: { dismiss() }) {
+                Text(NSLocalizedString("返回", comment: ""))
+                    .font(.system(.body, design: .rounded))
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 12)
+                    .background(Color.blue)
+                    .cornerRadius(12)
+            }
+        }
+    }
+    
+    private var mainContentView: some View {
+        ZStack {
+            // Reading content
+            GeometryReader { geometry in
+                TabView(selection: $currentChapterIndex) {
+                    ForEach(Array(chapters.enumerated()), id: \.element.order) { index, chapter in
+                        chapterView(chapter: chapter, geometry: geometry)
+                            .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .onChange(of: currentChapterIndex) { _ in
+                    saveReadingProgress()
+                }
+            }
+            
+            // Elegant toolbar overlay
+            VStack(spacing: 0) {
+                if showingToolbar {
+                    topToolbar
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                
+                Spacer()
+                
+                if showingToolbar {
+                    bottomToolbar
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.86), value: showingToolbar)
+        }
+    }
+    
+    private func chapterView(chapter: Chapter, geometry: GeometryProxy) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                // AI Summary card for first chapter on first open
+                if showingAISummary && isFirstOpen && chapter.order == 0 {
+                    AISummaryCard(book: book)
+                        .padding(.horizontal, horizontalPadding(for: geometry))
+                        .padding(.top, 60)
+                        .padding(.bottom, 32)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+                
+                // Chapter title with elegant typography
+                Text(chapter.title)
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(.primary.opacity(0.95))
+                    .padding(.horizontal, horizontalPadding(for: geometry))
+                    .padding(.top, showingAISummary && isFirstOpen && chapter.order == 0 ? 0 : 80)
+                    .padding(.bottom, 32)
+                
+                // Chapter content with beautiful typography
+                Text(chapter.content)
+                    .font(.system(size: appSettings.readingFontSize.fontSize, design: .serif))
+                    .lineSpacing(appSettings.lineSpacing * 8)
+                    .foregroundColor(.primary.opacity(0.87))
+                    .padding(.horizontal, horizontalPadding(for: geometry))
+                    .padding(.bottom, 100)
+                    .textSelection(.enabled)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            handleTap()
+        }
+    }
+    
+    private func horizontalPadding(for geometry: GeometryProxy) -> CGFloat {
+        let width = geometry.size.width
+        // Adaptive padding based on screen size for optimal reading width
+        if width > 1000 {
+            return width * 0.20 // Large iPad
+        } else if width > 700 {
+            return width * 0.15 // iPad
+        } else {
+            return max(appSettings.pageMargins, 24) // iPhone
+        }
+    }
+    
+    private var topToolbar: some View {
+        HStack(spacing: 16) {
+            // Back button
+            Button(action: { dismiss() }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(Color.primary.opacity(0.08))
+                            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+                    )
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(book.displayTitle)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                
+                if !chapters.isEmpty {
+                    Text(chapters[currentChapterIndex].title)
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            
+            Spacer()
+            
+            // Table of contents
+            Button(action: { showingTableOfContents = true }) {
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(Color.primary.opacity(0.08))
+                            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+                    )
+            }
+            
+            // Settings
+            Button(action: { showingSettings = true }) {
+                Image(systemName: "textformat.size")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(Color.primary.opacity(0.08))
+                            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+                    )
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(
+            .ultraThinMaterial,
+            in: RoundedRectangle(cornerRadius: 0)
+        )
+    }
+    
+    private var bottomToolbar: some View {
+        VStack(spacing: 16) {
+            // Chapter progress indicator
+            if chapters.count > 1 {
+                HStack(spacing: 8) {
+                    Text("\(currentChapterIndex + 1)")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .frame(minWidth: 30)
+                    
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            // Track
+                            Capsule()
+                                .fill(Color.primary.opacity(0.1))
+                                .frame(height: 4)
+                            
+                            // Progress
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.blue, .blue.opacity(0.8)]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: geometry.size.width * CGFloat(currentChapterIndex + 1) / CGFloat(chapters.count), height: 4)
+                        }
+                    }
+                    .frame(height: 4)
+                    
+                    Text("\(chapters.count)")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .frame(minWidth: 30)
+                }
+                .padding(.horizontal, 20)
+            }
+            
+            // Action buttons
+            HStack(spacing: 0) {
+                toolbarButton(icon: "bookmark", action: {})
+                toolbarButton(icon: "highlighter", action: { showingTextActions = true })
+                toolbarButton(icon: "message.fill", action: { showingAIChat = true })
+                toolbarButton(icon: "square.and.arrow.up", action: {})
+            }
+            .padding(.horizontal, 8)
+        }
+        .padding(.vertical, 16)
+        .background(
+            .ultraThinMaterial,
+            in: RoundedRectangle(cornerRadius: 0)
+        )
+    }
+    
+    private func toolbarButton(icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+        }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func handleTap() {
+        let now = Date()
+        if now.timeIntervalSince(lastTapTime) < 0.3 {
+            // Double tap - do nothing or custom action
+            return
+        }
+        lastTapTime = now
+        
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+            showingToolbar.toggle()
+        }
+    }
+    
+    private func loadBookContent() {
+        isLoading = true
+        loadError = nil
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                // Get the book file path
+                let fileURL = URL(fileURLWithPath: book.filePath)
+                
+                // Parse EPUB
+                let metadata = try EPubParser.parseEPub(from: fileURL)
+                
+                DispatchQueue.main.async {
+                    self.chapters = metadata.chapters
+                    
+                    // Restore reading progress
+                    if let progress = book.readingProgress {
+                        self.currentChapterIndex = min(Int(progress.currentPage), metadata.chapters.count - 1)
+                    }
+                    
+                    self.isLoading = false
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.loadError = error.localizedDescription
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+    
+    private func saveReadingProgress() {
+        guard !chapters.isEmpty else { return }
+        
+        // Create or update reading progress
+        if book.readingProgress == nil {
+            let progress = ReadingProgress(context: viewContext)
+            progress.id = UUID()
+            progress.createdAt = Date()
+            progress.updatedAt = Date()
+            progress.totalReadingTime = 0
+            progress.book = book
+            book.readingProgress = progress
+        }
+        
+        if let progress = book.readingProgress {
+            progress.currentPage = Int32(currentChapterIndex)
+            progress.progressPercentage = Double(currentChapterIndex + 1) / Double(chapters.count)
+            progress.lastReadAt = Date()
+            progress.updatedAt = Date()
+            
+            // Update book's totalPages if needed
+            if book.totalPages != Int32(chapters.count) {
+                book.totalPages = Int32(chapters.count)
+            }
+            
+            try? viewContext.save()
+        }
+    }
      
      private func checkFirstTimeOpen() {
          // 检查阅读进度，如果是新书或进度很少，则认为是首次打开
@@ -168,167 +446,75 @@ struct ReaderView: View {
      }
  }
 
-struct ReaderTopToolbar: View {
-    let bookTitle: String
-    let currentPage: Int
-    let totalPages: Int
-    let onBack: () -> Void
-    let onTableOfContents: () -> Void
-    let onSettings: () -> Void
-    
-    var body: some View {
-        HStack {
-            Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .font(.title2)
-                    .foregroundColor(.primary)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(bookTitle)
-                    .font(.headline)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-                
-                Text(String(format: NSLocalizedString("第 %d 页 / 共 %d 页", comment: ""), currentPage, totalPages))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            HStack(spacing: 16) {
-                Button(action: onTableOfContents) {
-                    Image(systemName: "list.bullet")
-                        .font(.title2)
-                        .foregroundColor(.primary)
-                }
-                
-                Button(action: onSettings) {
-                    Image(systemName: "textformat")
-                        .font(.title2)
-                        .foregroundColor(.primary)
-                }
-            }
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 12)
-        .background(Color(.systemBackground).opacity(0.95))
-        .overlay(
-            Rectangle()
-                .frame(height: 0.5)
-                .foregroundColor(Color(.separator)),
-            alignment: .bottom
-        )
-    }
-}
-
-struct ReaderBottomToolbar: View {
-    @Binding var currentPage: Int
-    let totalPages: Int
-    let onBookmark: () -> Void
-    let onHighlight: () -> Void
-    let onAIChat: () -> Void
-    let onShare: () -> Void
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            // Progress Slider
-            HStack {
-                Text("\(currentPage)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .frame(width: 30)
-                
-                Slider(value: Binding(
-                    get: { Double(currentPage) },
-                    set: { currentPage = Int($0) }
-                ), in: 1...Double(totalPages), step: 1)
-                .accentColor(.blue)
-                
-                Text("\(totalPages)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .frame(width: 30)
-            }
-            .padding(.horizontal)
-            
-            // Action Buttons
-            HStack(spacing: 0) {
-                ToolbarButton(icon: "bookmark", action: onBookmark)
-                ToolbarButton(icon: "highlighter", action: onHighlight)
-                ToolbarButton(icon: "message", action: onAIChat)
-                ToolbarButton(icon: "square.and.arrow.up", action: onShare)
-            }
-        }
-        .padding(.vertical, 12)
-        .background(Color(.systemBackground).opacity(0.95))
-        .overlay(
-            Rectangle()
-                .frame(height: 0.5)
-                .foregroundColor(Color(.separator)),
-            alignment: .top
-        )
-    }
-}
-
-struct ToolbarButton: View {
-    let icon: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-        }
-    }
-}
 
 struct TableOfContentsView: View {
-    let book: Book
+    let chapters: [Chapter]
+    @Binding var currentChapterIndex: Int
     @Environment(\.dismiss) private var dismiss
-    
-    // Sample table of contents
-    private let chapters = [
-        ("第一章", "开始的地方", 1),
-        ("第二章", "初次相遇", 15),
-        ("第三章", "意外的发现", 28),
-        ("第四章", "深入探索", 42),
-        ("第五章", "转折点", 56),
-        ("第六章", "新的理解", 71),
-        ("第七章", "挑战与成长", 85),
-        ("第八章", "最终的答案", 98)
-    ]
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(Array(chapters.enumerated()), id: \.offset) { index, chapter in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(chapter.0)
-                                .font(.headline)
-                                .fontWeight(.medium)
-                            
-                            Text(chapter.1)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+            ScrollViewReader { proxy in
+                List {
+                    ForEach(Array(chapters.enumerated()), id: \.element.order) { index, chapter in
+                        Button(action: {
+                            currentChapterIndex = index
+                            dismiss()
+                        }) {
+                            HStack(spacing: 12) {
+                                // Chapter number indicator
+                                ZStack {
+                                    Circle()
+                                        .fill(index == currentChapterIndex ? 
+                                              LinearGradient(gradient: Gradient(colors: [.blue, .blue.opacity(0.7)]), 
+                                                           startPoint: .topLeading, 
+                                                           endPoint: .bottomTrailing) :
+                                              LinearGradient(gradient: Gradient(colors: [.gray.opacity(0.2), .gray.opacity(0.1)]), 
+                                                           startPoint: .topLeading, 
+                                                           endPoint: .bottomTrailing))
+                                        .frame(width: 36, height: 36)
+                                    
+                                    Text("\(index + 1)")
+                                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                        .foregroundColor(index == currentChapterIndex ? .white : .secondary)
+                                }
+                                
+                                // Chapter title
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(chapter.title)
+                                        .font(.system(size: 16, weight: .medium, design: .serif))
+                                        .foregroundColor(.primary)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
+                                    
+                                    if index == currentChapterIndex {
+                                        Text(NSLocalizedString("当前章节", comment: ""))
+                                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                if index == currentChapterIndex {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .padding(.vertical, 8)
                         }
-                        
-                        Spacer()
-                        
-                        Text(String(format: NSLocalizedString("第 %d 页", comment: ""), chapter.2))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        .buttonStyle(PlainButtonStyle())
+                        .id(index)
                     }
-                    .padding(.vertical, 4)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        // Navigate to chapter
-                        dismiss()
+                }
+                .listStyle(.insetGrouped)
+                .onAppear {
+                    // Scroll to current chapter
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation {
+                            proxy.scrollTo(currentChapterIndex, anchor: .center)
+                        }
                     }
                 }
             }
@@ -336,8 +522,10 @@ struct TableOfContentsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(NSLocalizedString("完成", comment: "")) {
-                        dismiss()
+                    Button(action: { dismiss() }) {
+                        Text(NSLocalizedString("完成", comment: ""))
+                            .font(.system(.body, design: .rounded))
+                            .fontWeight(.medium)
                     }
                 }
             }

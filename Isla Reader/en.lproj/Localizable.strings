@@ -181,3 +181,9 @@
 "把每本书变成一位可对话的导师：获取、阅读、理解与交流，一站式完成。" = "Turn every book into a conversational tutor: acquire, read, understand, and communicate, all in one place.";
 "用心打造的阅读体验" = "Reading experience crafted with care";
 "向 AI 提问关于这本书的任何问题" = "Ask AI any questions about this book";
+
+// Reader View new strings
+"正在加载书籍..." = "Loading book...";
+"加载失败" = "Load Failed";
+"返回" = "Back";
+"当前章节" = "Current Chapter";
