@@ -164,6 +164,7 @@
 "ai.summary.generated_at" = "Generated on";
 "ai.summary.card.view_detail" = "Tap to view details";
 "ai.summary.card.generate" = "Tap to generate summary";
+"ai.summary.start_reading" = "Start Reading";
 
 // Additional UI strings
 "Isla Reader" = "Isla Reader";

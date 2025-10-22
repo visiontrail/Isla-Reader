@@ -158,6 +158,7 @@
 "ai.summary.generated_at" = "生成于";
 "ai.summary.card.view_detail" = "点击查看详细摘要";
 "ai.summary.card.generate" = "点击生成摘要";
+"ai.summary.start_reading" = "开始阅读";
 
 // Additional UI strings
 "Isla Reader" = "Isla Reader";

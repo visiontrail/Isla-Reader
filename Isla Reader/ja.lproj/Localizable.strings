@@ -164,6 +164,7 @@
 "ai.summary.generated_at" = "生成日時";
 "ai.summary.card.view_detail" = "タップして詳細を表示";
 "ai.summary.card.generate" = "タップして要約を生成";
+"ai.summary.start_reading" = "読み始める";
 
 // Additional UI strings
 "Isla Reader" = "Isla Reader";

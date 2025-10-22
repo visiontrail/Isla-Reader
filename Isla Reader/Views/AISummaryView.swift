@@ -114,16 +114,29 @@ struct AISummaryView: View {
                 }
                 .disabled(summaryService.isGenerating)
                 
-                // 收起按钮
-                Button(action: { 
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        showingSummary = false
+                // 开始阅读按钮
+                NavigationLink(destination: ReaderView(book: book)) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "book.fill")
+                            .font(.callout)
+                        Text(NSLocalizedString("ai.summary.start_reading", comment: "Start Reading"))
+                            .font(.callout)
+                            .fontWeight(.semibold)
                     }
-                }) {
-                    Image(systemName: "chevron.up")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.8)]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(8)
                 }
+                .buttonStyle(PlainButtonStyle())
+                
             }
         }
         .padding()

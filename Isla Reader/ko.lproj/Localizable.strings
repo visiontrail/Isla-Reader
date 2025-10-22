@@ -164,6 +164,7 @@
 "ai.summary.generated_at" = "생성일";
 "ai.summary.card.view_detail" = "탭하여 자세히 보기";
 "ai.summary.card.generate" = "탭하여 요약 생성";
+"ai.summary.start_reading" = "읽기 시작";
 
 // Additional UI strings
 "Isla Reader" = "Isla Reader";
