@@ -119,23 +119,27 @@ struct LibraryView: View {
             .sheet(isPresented: $showingFilterSheet) {
                 FilterSheetView(selectedFilter: $selectedFilter)
             }
-            .sheet(item: $bookToShowAISummary) { book in
+            .fullScreenCover(item: $bookToShowAISummary) { book in
                 NavigationView {
                     AISummaryView(book: book)
                         .navigationTitle(book.displayTitle)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button(NSLocalizedString("完成", comment: "")) {
-                                    DebugLogger.info("LibraryView: 完成按钮点击，关闭AI摘要界面")
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button(action: {
+                                    DebugLogger.info("LibraryView: 关闭按钮点击，关闭AI摘要界面")
                                     bookToShowAISummary = nil
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.secondary)
                                 }
                             }
                         }
                 }
                 .environment(\.managedObjectContext, viewContext)
                 .onAppear {
-                    DebugLogger.info("LibraryView: AI摘要Sheet正在显示")
+                    DebugLogger.info("LibraryView: AI摘要全屏界面正在显示")
                     DebugLogger.info("LibraryView: 选中的书籍 = \(book.displayTitle)")
                 }
             }
