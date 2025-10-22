@@ -129,6 +129,7 @@
 "ai.summary.book.prompt.format" = "格式要求：";
 "ai.summary.book.prompt.format1" = "- 摘要部分用自然段落形式";
 "ai.summary.book.prompt.format2" = "- 关键要点用 • 开头的列表形式";
+"ai.summary.book.prompt.language" = "请使用简体中文回复。";
 
 "ai.summary.chapter.prompt.title" = "请为以下章节生成摘要：";
 "ai.summary.chapter.prompt.chapter_title" = "章节标题：";
@@ -137,6 +138,7 @@
 "ai.summary.chapter.prompt.requirement1" = "1. 100-150字的章节摘要";
 "ai.summary.chapter.prompt.requirement2" = "2. 2-3个关键要点";
 "ai.summary.chapter.prompt.format" = "格式要求简洁明了。";
+"ai.summary.chapter.prompt.language" = "请使用简体中文回复。";
 
 "ai.summary.book_name" = "书名：";
 "ai.summary.author" = "作者：";

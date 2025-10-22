@@ -353,6 +353,7 @@ class AISummaryService: ObservableObject {
         let format = NSLocalizedString("ai.summary.book.prompt.format", comment: "")
         let format1 = NSLocalizedString("ai.summary.book.prompt.format1", comment: "")
         let format2 = NSLocalizedString("ai.summary.book.prompt.format2", comment: "")
+        let language = NSLocalizedString("ai.summary.book.prompt.language", comment: "")
         
         let prompt = """
         \(promptTitle)
@@ -371,6 +372,7 @@ class AISummaryService: ObservableObject {
         \(format)
         \(format1)
         \(format2)
+        \(language)
         """
         
         DebugLogger.info("AISummaryService: === 提示词 (Prompt) 开始 ===")
@@ -393,6 +395,7 @@ class AISummaryService: ObservableObject {
         let requirement1 = NSLocalizedString("ai.summary.chapter.prompt.requirement1", comment: "")
         let requirement2 = NSLocalizedString("ai.summary.chapter.prompt.requirement2", comment: "")
         let format = NSLocalizedString("ai.summary.chapter.prompt.format", comment: "")
+        let language = NSLocalizedString("ai.summary.chapter.prompt.language", comment: "")
         
         // Include full chapter content or more substantial portion for accurate summary
         // Use up to 5000 characters or full content if shorter
@@ -412,6 +415,7 @@ class AISummaryService: ObservableObject {
         \(requirement2)
         
         \(format)
+        \(language)
         """
         
         DebugLogger.info("AISummaryService: === 章节提示词开始 ===")

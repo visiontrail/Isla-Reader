@@ -135,6 +135,7 @@
 "ai.summary.book.prompt.format" = "형식 요구사항：";
 "ai.summary.book.prompt.format1" = "- 요약 부분은 자연스러운 단락 형식";
 "ai.summary.book.prompt.format2" = "- 핵심 포인트는 • 로 시작하는 목록 형식";
+"ai.summary.book.prompt.language" = "한국어로 답변해 주세요.";
 
 "ai.summary.chapter.prompt.title" = "다음 장의 요약을 생성해 주세요：";
 "ai.summary.chapter.prompt.chapter_title" = "장 제목：";
@@ -143,6 +144,7 @@
 "ai.summary.chapter.prompt.requirement1" = "1. 100-150자의 장 요약";
 "ai.summary.chapter.prompt.requirement2" = "2. 2-3개의 핵심 포인트";
 "ai.summary.chapter.prompt.format" = "형식은 간결하고 명확하게 해주세요.";
+"ai.summary.chapter.prompt.language" = "한국어로 답변해 주세요.";
 
 "ai.summary.book_name" = "제목：";
 "ai.summary.author" = "저자：";

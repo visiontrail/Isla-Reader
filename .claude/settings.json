@@ -1,0 +1,10 @@
+{
+    "env": {
+        "ANTHROPIC_AUTH_TOKEN": "sk-rebTXHBiV7Nr1PRzaODQOZKztKqpv7bPoQE10dNItF9yIyBh",
+        "ANTHROPIC_BASE_URL": "http://oneapi.yhroot.com",
+        "API_TIMEOUT_MS": "3000000",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v3.1-chat",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v3.1-chat",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v3.1-chat"
+    }
+}

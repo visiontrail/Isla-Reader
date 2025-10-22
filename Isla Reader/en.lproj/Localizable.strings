@@ -135,6 +135,7 @@
 "ai.summary.book.prompt.format" = "Format requirements:";
 "ai.summary.book.prompt.format1" = "- Summary part in natural paragraph form";
 "ai.summary.book.prompt.format2" = "- Key points in list form starting with •";
+"ai.summary.book.prompt.language" = "Please respond in English.";
 
 "ai.summary.chapter.prompt.title" = "Please generate a summary for the following chapter:";
 "ai.summary.chapter.prompt.chapter_title" = "Chapter Title:";
@@ -143,6 +144,7 @@
 "ai.summary.chapter.prompt.requirement1" = "1. A 100-150 word chapter summary";
 "ai.summary.chapter.prompt.requirement2" = "2. 2-3 key points";
 "ai.summary.chapter.prompt.format" = "Keep the format clear and concise.";
+"ai.summary.chapter.prompt.language" = "Please respond in English.";
 
 "ai.summary.book_name" = "Title:";
 "ai.summary.author" = "Author:";
