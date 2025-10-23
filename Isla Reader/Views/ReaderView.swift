@@ -8,6 +8,15 @@
 import SwiftUI
 import CoreData
 
+struct Page: Identifiable, Equatable {
+    let id = UUID()
+    let chapterIndex: Int
+    let pageIndex: Int
+    let content: String
+    let chapterTitle: String
+    let isFirstPageOfChapter: Bool
+}
+
 struct ReaderView: View {
     let book: Book
     @StateObject private var appSettings = AppSettings.shared
@@ -16,6 +25,8 @@ struct ReaderView: View {
     @Environment(\.managedObjectContext) private var viewContext
     
     @State private var chapters: [Chapter] = []
+    @State private var pages: [Page] = []
+    @State private var currentPageIndex = 0
     @State private var currentChapterIndex = 0
     @State private var isLoading = true
     @State private var loadError: String?
@@ -31,6 +42,7 @@ struct ReaderView: View {
     
     @State private var scrollOffset: CGFloat = 0
     @State private var lastTapTime: Date = Date()
+    @State private var viewSize: CGSize = .zero
     
     var body: some View {
         ZStack {
@@ -50,10 +62,25 @@ struct ReaderView: View {
         .preferredColorScheme(appSettings.theme.colorScheme)
         .statusBar(hidden: !showingToolbar)
         .sheet(isPresented: $showingTableOfContents) {
-            TableOfContentsView(chapters: chapters, currentChapterIndex: $currentChapterIndex)
+            TableOfContentsView(
+                chapters: chapters,
+                currentChapterIndex: $currentChapterIndex,
+                pages: pages,
+                onChapterSelected: { chapterIndex in
+                    // Find first page of selected chapter
+                    if let firstPageIndex = pages.firstIndex(where: { $0.chapterIndex == chapterIndex }) {
+                        currentPageIndex = firstPageIndex
+                    }
+                }
+            )
         }
         .sheet(isPresented: $showingSettings) {
-            ReaderSettingsView()
+            ReaderSettingsView(onSettingsChanged: {
+                // Re-paginate content when settings change
+                if !chapters.isEmpty && viewSize != .zero {
+                    paginateContent()
+                }
+            })
         }
         .sheet(isPresented: $showingAIChat) {
             if horizontalSizeClass == .compact {
@@ -66,6 +93,11 @@ struct ReaderView: View {
         .onAppear {
             loadBookContent()
             checkFirstTimeOpen()
+        }
+        .onChange(of: viewSize) { _ in
+            if !chapters.isEmpty && viewSize != .zero {
+                paginateContent()
+            }
         }
     }
     
@@ -140,18 +172,33 @@ struct ReaderView: View {
     
     private var mainContentView: some View {
         ZStack {
-            // Reading content
+            // Reading content with page turning
             GeometryReader { geometry in
-                TabView(selection: $currentChapterIndex) {
-                    ForEach(Array(chapters.enumerated()), id: \.element.order) { index, chapter in
-                        chapterView(chapter: chapter, geometry: geometry)
+                TabView(selection: $currentPageIndex) {
+                    ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
+                        pageView(page: page, geometry: geometry)
                             .tag(index)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .onChange(of: currentChapterIndex) { _ in
-                    saveReadingProgress()
+                .onChange(of: currentPageIndex) { newValue in
+                    if !pages.isEmpty && newValue < pages.count {
+                        currentChapterIndex = pages[newValue].chapterIndex
+                        saveReadingProgress()
+                    }
                 }
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.onAppear {
+                            viewSize = geo.size
+                        }
+                        .onChange(of: geo.size) { newSize in
+                            if viewSize != newSize {
+                                viewSize = newSize
+                            }
+                        }
+                    }
+                )
             }
             
             // Elegant toolbar overlay
@@ -172,37 +219,52 @@ struct ReaderView: View {
         }
     }
     
-    private func chapterView(chapter: Chapter, geometry: GeometryProxy) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
-                // AI Summary card for first chapter on first open
-                if showingAISummary && isFirstOpen && chapter.order == 0 {
-                    AISummaryCard(book: book)
-                        .padding(.horizontal, horizontalPadding(for: geometry))
-                        .padding(.top, 60)
-                        .padding(.bottom, 32)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-                
-                // Chapter title with elegant typography
-                Text(chapter.title)
-                    .font(.system(size: 28, weight: .bold, design: .serif))
+    private func pageView(page: Page, geometry: GeometryProxy) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // AI Summary card for first page
+            if showingAISummary && isFirstOpen && page.chapterIndex == 0 && page.pageIndex == 0 {
+                AISummaryCard(book: book)
+                    .padding(.horizontal, horizontalPadding(for: geometry))
+                    .padding(.top, 60)
+                    .padding(.bottom, 24)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            
+            // Chapter title on first page of chapter
+            if page.isFirstPageOfChapter {
+                Text(page.chapterTitle)
+                    .font(.system(size: 26, weight: .bold, design: .serif))
                     .foregroundColor(.primary.opacity(0.95))
                     .padding(.horizontal, horizontalPadding(for: geometry))
-                    .padding(.top, showingAISummary && isFirstOpen && chapter.order == 0 ? 0 : 80)
-                    .padding(.bottom, 32)
-                
-                // Chapter content with beautiful typography
-                Text(chapter.content)
-                    .font(.system(size: appSettings.readingFontSize.fontSize, design: .serif))
-                    .lineSpacing(appSettings.lineSpacing * 8)
-                    .foregroundColor(.primary.opacity(0.87))
-                    .padding(.horizontal, horizontalPadding(for: geometry))
-                    .padding(.bottom, 100)
-                    .textSelection(.enabled)
+                    .padding(.top, (showingAISummary && isFirstOpen && page.chapterIndex == 0 && page.pageIndex == 0) ? 0 : 80)
+                    .padding(.bottom, 28)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            // Page content with beautiful typography
+            Text(page.content)
+                .font(.system(size: appSettings.readingFontSize.fontSize, design: .serif))
+                .lineSpacing(appSettings.lineSpacing * 8)
+                .foregroundColor(.primary.opacity(0.87))
+                .kerning(0.3)
+                .padding(.horizontal, horizontalPadding(for: geometry))
+                .padding(.top, page.isFirstPageOfChapter ? 0 : 80)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+            
+            Spacer()
+            
+            // Page number at bottom
+            HStack {
+                Spacer()
+                Text("\(currentPageIndex + 1) / \(pages.count)")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundColor(.secondary.opacity(0.6))
+                Spacer()
+            }
+            .padding(.bottom, 24)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .onTapGesture {
             handleTap()
@@ -287,13 +349,13 @@ struct ReaderView: View {
     
     private var bottomToolbar: some View {
         VStack(spacing: 16) {
-            // Chapter progress indicator
-            if chapters.count > 1 {
+            // Reading progress indicator
+            if !pages.isEmpty {
                 HStack(spacing: 8) {
-                    Text("\(currentChapterIndex + 1)")
+                    Text("\(currentPageIndex + 1)")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
-                        .frame(minWidth: 30)
+                        .frame(minWidth: 36)
                     
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
@@ -311,15 +373,15 @@ struct ReaderView: View {
                                         endPoint: .trailing
                                     )
                                 )
-                                .frame(width: geometry.size.width * CGFloat(currentChapterIndex + 1) / CGFloat(chapters.count), height: 4)
+                                .frame(width: geometry.size.width * CGFloat(currentPageIndex + 1) / CGFloat(pages.count), height: 4)
                         }
                     }
                     .frame(height: 4)
                     
-                    Text("\(chapters.count)")
+                    Text("\(pages.count)")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
-                        .frame(minWidth: 30)
+                        .frame(minWidth: 36)
                 }
                 .padding(.horizontal, 20)
             }
@@ -380,9 +442,9 @@ struct ReaderView: View {
                 DispatchQueue.main.async {
                     self.chapters = metadata.chapters
                     
-                    // Restore reading progress
-                    if let progress = book.readingProgress {
-                        self.currentChapterIndex = min(Int(progress.currentPage), metadata.chapters.count - 1)
+                    // Paginate content after loading
+                    if self.viewSize != .zero {
+                        self.paginateContent()
                     }
                     
                     self.isLoading = false
@@ -396,8 +458,99 @@ struct ReaderView: View {
         }
     }
     
+    private func paginateContent() {
+        guard !chapters.isEmpty, viewSize != .zero else { return }
+        
+        var allPages: [Page] = []
+        let availableHeight = viewSize.height - 200 // Account for top/bottom padding and toolbar
+        let horizontalPadding = calculateHorizontalPadding()
+        let availableWidth = viewSize.width - (horizontalPadding * 2)
+        
+        // Calculate approximate characters per page
+        let fontSize = appSettings.readingFontSize.fontSize
+        let lineSpacing = appSettings.lineSpacing * 8
+        let lineHeight = fontSize + lineSpacing
+        let linesPerPage = Int(availableHeight / lineHeight)
+        let charsPerLine = Int(availableWidth / (fontSize * 0.5)) // Approximate
+        let charsPerPage = linesPerPage * charsPerLine
+        
+        for (chapterIndex, chapter) in chapters.enumerated() {
+            let content = chapter.content
+            let contentLength = content.count
+            
+            if contentLength <= charsPerPage {
+                // Single page chapter
+                allPages.append(Page(
+                    chapterIndex: chapterIndex,
+                    pageIndex: 0,
+                    content: content,
+                    chapterTitle: chapter.title,
+                    isFirstPageOfChapter: true
+                ))
+            } else {
+                // Multi-page chapter
+                var pageIndex = 0
+                var startIndex = content.startIndex
+                
+                while startIndex < content.endIndex {
+                    let remainingLength = content.distance(from: startIndex, to: content.endIndex)
+                    let pageLength = min(charsPerPage, remainingLength)
+                    
+                    var endIndex = content.index(startIndex, offsetBy: pageLength)
+                    
+                    // Try to break at paragraph or sentence
+                    if endIndex < content.endIndex {
+                        let searchRange = content.index(endIndex, offsetBy: -min(200, pageLength))...endIndex
+                        if let paragraphBreak = content[searchRange].lastIndex(of: "\n") {
+                            endIndex = paragraphBreak
+                        } else if let sentenceBreak = content[searchRange].lastIndex(where: { "。！？.!?".contains($0) }) {
+                            endIndex = content.index(after: sentenceBreak)
+                        }
+                    }
+                    
+                    let pageContent = String(content[startIndex..<endIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    
+                    allPages.append(Page(
+                        chapterIndex: chapterIndex,
+                        pageIndex: pageIndex,
+                        content: pageContent,
+                        chapterTitle: chapter.title,
+                        isFirstPageOfChapter: pageIndex == 0
+                    ))
+                    
+                    startIndex = endIndex
+                    pageIndex += 1
+                }
+            }
+        }
+        
+        pages = allPages
+        
+        // Restore reading progress
+        if let progress = book.readingProgress {
+            let savedPage = Int(progress.currentPage)
+            if savedPage < pages.count {
+                currentPageIndex = savedPage
+                if !pages.isEmpty {
+                    currentChapterIndex = pages[savedPage].chapterIndex
+                }
+            }
+        }
+    }
+    
+    private func calculateHorizontalPadding() -> CGFloat {
+        let width = viewSize.width
+        if width > 1000 {
+            return width * 0.20 // Large iPad
+        } else if width > 700 {
+            return width * 0.15 // iPad
+        } else {
+            return max(appSettings.pageMargins, 24) // iPhone
+        }
+    }
+    
     private func saveReadingProgress() {
-        guard !chapters.isEmpty else { return }
+        guard !pages.isEmpty else { return }
         
         // Create or update reading progress
         if book.readingProgress == nil {
@@ -411,14 +564,14 @@ struct ReaderView: View {
         }
         
         if let progress = book.readingProgress {
-            progress.currentPage = Int32(currentChapterIndex)
-            progress.progressPercentage = Double(currentChapterIndex + 1) / Double(chapters.count)
+            progress.currentPage = Int32(currentPageIndex)
+            progress.progressPercentage = Double(currentPageIndex + 1) / Double(pages.count)
             progress.lastReadAt = Date()
             progress.updatedAt = Date()
             
             // Update book's totalPages if needed
-            if book.totalPages != Int32(chapters.count) {
-                book.totalPages = Int32(chapters.count)
+            if book.totalPages != Int32(pages.count) {
+                book.totalPages = Int32(pages.count)
             }
             
             try? viewContext.save()
@@ -450,6 +603,8 @@ struct ReaderView: View {
 struct TableOfContentsView: View {
     let chapters: [Chapter]
     @Binding var currentChapterIndex: Int
+    let pages: [Page]
+    let onChapterSelected: (Int) -> Void
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -458,7 +613,7 @@ struct TableOfContentsView: View {
                 List {
                     ForEach(Array(chapters.enumerated()), id: \.element.order) { index, chapter in
                         Button(action: {
-                            currentChapterIndex = index
+                            onChapterSelected(index)
                             dismiss()
                         }) {
                             HStack(spacing: 12) {
@@ -536,6 +691,7 @@ struct TableOfContentsView: View {
 struct ReaderSettingsView: View {
     @StateObject private var appSettings = AppSettings.shared
     @Environment(\.dismiss) private var dismiss
+    let onSettingsChanged: () -> Void
     
     var body: some View {
         NavigationView {
@@ -596,6 +752,15 @@ struct ReaderSettingsView: View {
                         dismiss()
                     }
                 }
+            }
+            .onChange(of: appSettings.readingFontSize) { _ in
+                onSettingsChanged()
+            }
+            .onChange(of: appSettings.lineSpacing) { _ in
+                onSettingsChanged()
+            }
+            .onChange(of: appSettings.pageMargins) { _ in
+                onSettingsChanged()
             }
         }
     }
