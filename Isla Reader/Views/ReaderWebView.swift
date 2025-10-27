@@ -9,14 +9,17 @@ import SwiftUI
 import WebKit
 
 // MARK: - WebView Coordinator
-class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, UIScrollViewDelegate {
     var parent: ReaderWebView
+    private var didApplyPagination = false
     
     init(_ parent: ReaderWebView) {
         self.parent = parent
     }
     
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // Apply pagination after load
+        applyPagination(on: webView)
         parent.onLoadFinished?()
     }
     
@@ -25,7 +28,49 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             parent.onToolbarToggle?()
         } else if message.name == "textSelection", let text = message.body as? String {
             parent.onTextSelected?(text)
+        } else if message.name == "pageMetrics" {
+            if let dict = message.body as? [String: Any] {
+                if let type = dict["type"] as? String, type == "pageCount", let value = dict["value"] as? Int {
+                    parent.totalPages = value
+                }
+            } else if let pages = message.body as? Int {
+                parent.totalPages = pages
+            }
         }
+    }
+
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        updateCurrentPage(with: scrollView)
+    }
+    
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+        updateCurrentPage(with: scrollView)
+    }
+    
+    private func updateCurrentPage(with scrollView: UIScrollView) {
+        let pageWidth = max(scrollView.bounds.width, 1)
+        let rawPage = (scrollView.contentOffset.x + pageWidth / 2) / pageWidth
+        let page = max(0, Int(rawPage))
+        if parent.currentPageIndex != page {
+            parent.currentPageIndex = page
+        }
+    }
+    
+    private func applyPagination(on webView: WKWebView) {
+        guard !didApplyPagination else { return }
+        didApplyPagination = true
+        let js = "applyPagination()"
+        webView.evaluateJavaScript(js) { [weak self] _, _ in
+            guard let self = self else { return }
+            // After pagination applied, ensure we are at the desired page
+            self.scrollToCurrentPage(on: webView)
+        }
+    }
+    
+    func scrollToCurrentPage(on webView: WKWebView, animated: Bool = false) {
+        let page = max(0, min(parent.currentPageIndex, max(parent.totalPages - 1, 0)))
+        let js = "scrollToPage(\(page), \(animated ? "true" : "false"))"
+        webView.evaluateJavaScript(js, completionHandler: nil)
     }
 }
 
@@ -34,6 +79,8 @@ struct ReaderWebView: UIViewRepresentable {
     let htmlContent: String
     let appSettings: AppSettings
     let isDarkMode: Bool
+    @Binding var currentPageIndex: Int
+    @Binding var totalPages: Int
     
     var onToolbarToggle: (() -> Void)?
     var onTextSelected: ((String) -> Void)?
@@ -52,6 +99,7 @@ struct ReaderWebView: UIViewRepresentable {
         // 添加消息处理器
         userContentController.add(context.coordinator, name: "toggleToolbar")
         userContentController.add(context.coordinator, name: "textSelection")
+        userContentController.add(context.coordinator, name: "pageMetrics")
         
         // 添加JavaScript代码
         let script = WKUserScript(source: getJavaScriptCode(), injectionTime: .atDocumentEnd, forMainFrameOnly: true)
@@ -74,13 +122,29 @@ struct ReaderWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
+        webView.scrollView.isPagingEnabled = true
+        webView.scrollView.showsHorizontalScrollIndicator = false
+        webView.scrollView.showsVerticalScrollIndicator = false
+        webView.scrollView.alwaysBounceVertical = false
+        webView.scrollView.alwaysBounceHorizontal = false
+        webView.scrollView.bounces = false
+        webView.scrollView.isDirectionalLockEnabled = true
+        webView.scrollView.delegate = context.coordinator
         
         return webView
     }
     
     func updateUIView(_ webView: WKWebView, context: Context) {
-        let fullHTML = generateFullHTML()
-        webView.loadHTMLString(fullHTML, baseURL: nil)
+        // Compute a signature that represents the visual content (chapter html + typography settings + theme)
+        let signature = "sig::\(htmlContent.hashValue):\(appSettings.readingFontSize.fontSize):\(appSettings.lineSpacing):\(isDarkMode ? "dark" : "light"):\(Int(appSettings.pageMargins))"
+        if webView.accessibilityHint != signature {
+            webView.accessibilityHint = signature
+            let html = generateFullHTML()
+            webView.loadHTMLString(html, baseURL: nil)
+        } else {
+            // If pagination already applied (subsequent updates), ensure scrolling to current page
+            context.coordinator.scrollToCurrentPage(on: webView, animated: true)
+        }
     }
     
     private func generateFullHTML() -> String {
@@ -112,6 +176,7 @@ struct ReaderWebView: UIViewRepresentable {
         let backgroundColor = isDarkMode ? "#0d0d12" : "#fafafa"
         let textColor = isDarkMode ? "rgba(255, 255, 255, 0.87)" : "rgba(0, 0, 0, 0.87)"
         let linkColor = isDarkMode ? "#64b5f6" : "#1976d2"
+        let pageMargin = Int(appSettings.pageMargins)
         
         return """
         /* 基础样式 - 移动端优化 */
@@ -125,7 +190,7 @@ struct ReaderWebView: UIViewRepresentable {
         html, body {
             width: 100%;
             height: 100%;
-            overflow-x: hidden;
+            overflow: hidden;
             background-color: \(backgroundColor);
             color: \(textColor);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
@@ -144,12 +209,20 @@ struct ReaderWebView: UIViewRepresentable {
         
         /* 主内容容器 */
         .reader-content {
+            width: 100vw;
+            height: 100vh;
             max-width: 100%;
-            padding: 0;
-            margin: 0 auto;
+            padding-left: \(pageMargin)px;
+            padding-right: \(pageMargin)px;
+            margin: 0;
             word-wrap: break-word;
             overflow-wrap: break-word;
             word-break: break-word;
+            /* 分栏以实现横向分页 */
+            -webkit-column-width: 100vw;
+            column-width: 100vw;
+            -webkit-column-gap: 0px;
+            column-gap: 0px;
         }
         
         /* 段落样式 */
@@ -358,7 +431,7 @@ struct ReaderWebView: UIViewRepresentable {
     private func getJavaScriptCode() -> String {
         return """
         // 点击处理
-        let lastTapTime = 0;
+        var lastTapTime = 0;
         document.addEventListener('click', function(e) {
             const now = Date.now();
             if (now - lastTapTime < 300) {
@@ -391,7 +464,7 @@ struct ReaderWebView: UIViewRepresentable {
         });
         
         // 防止双击缩放
-        let lastTouchEnd = 0;
+        var lastTouchEnd = 0;
         document.addEventListener('touchend', function(event) {
             const now = Date.now();
             if (now - lastTouchEnd <= 300) {
@@ -399,6 +472,53 @@ struct ReaderWebView: UIViewRepresentable {
             }
             lastTouchEnd = now;
         }, false);
+        
+        // 分页相关
+        function computePageCount() {
+            const totalWidth = document.scrollingElement ? document.scrollingElement.scrollWidth : document.body.scrollWidth;
+            const vw = window.innerWidth || document.documentElement.clientWidth;
+            const pages = Math.max(1, Math.ceil(totalWidth / Math.max(1, vw)));
+            try { window.webkit.messageHandlers.pageMetrics.postMessage({ type: 'pageCount', value: pages }); } catch (e) {}
+            return pages;
+        }
+        
+        function applyPagination() {
+            const container = document.querySelector('.reader-content');
+            if (!container) return;
+            // 强制刷新布局
+            container.style.webkitColumnWidth = '100vw';
+            container.style.columnWidth = '100vw';
+            container.style.webkitColumnGap = '0px';
+            container.style.columnGap = '0px';
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+            // 重新计算页数
+            setTimeout(computePageCount, 0);
+        }
+        
+        function scrollToPage(index, animated) {
+            const vw = window.innerWidth || document.documentElement.clientWidth;
+            const x = Math.max(0, Math.floor(index) * Math.max(1, vw));
+            if (animated) {
+                window.scrollTo({ left: x, top: 0, behavior: 'smooth' });
+            } else {
+                window.scrollTo(x, 0);
+            }
+        }
+        
+        window.addEventListener('load', function() {
+            applyPagination();
+            // 初始跳转到指定页（若宿主设置了）
+            try { window.webkit.messageHandlers.pageMetrics.postMessage({ type: 'pageCount', value: computePageCount() }); } catch (e) {}
+        });
+        
+        window.addEventListener('resize', function() {
+            // 在旋转或尺寸改变时保持页位置
+            const vw = window.innerWidth || document.documentElement.clientWidth;
+            const currentPage = Math.round((window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft) / Math.max(1, vw));
+            applyPagination();
+            setTimeout(function(){ scrollToPage(currentPage, false); }, 0);
+        });
         """
     }
 }

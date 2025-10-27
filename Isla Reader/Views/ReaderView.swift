@@ -32,6 +32,10 @@ struct ReaderView: View {
     @State private var scrollOffset: CGFloat = 0
     @State private var lastTapTime: Date = Date()
     
+    // Pagination states per chapter
+    @State private var chapterPageIndices: [Int] = []
+    @State private var chapterTotalPages: [Int] = []
+    
     var body: some View {
         ZStack {
             // Premium background with subtle gradient
@@ -144,7 +148,7 @@ struct ReaderView: View {
             GeometryReader { geometry in
                 TabView(selection: $currentChapterIndex) {
                     ForEach(Array(chapters.enumerated()), id: \.element.order) { index, chapter in
-                        chapterView(chapter: chapter, geometry: geometry)
+                        chapterView(index: index, chapter: chapter, geometry: geometry)
                             .tag(index)
                     }
                 }
@@ -172,45 +176,82 @@ struct ReaderView: View {
         }
     }
     
-    private func chapterView(chapter: Chapter, geometry: GeometryProxy) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
-                // AI Summary card for first chapter on first open
-                if showingAISummary && isFirstOpen && chapter.order == 0 {
+    private func chapterView(index: Int, chapter: Chapter, geometry: GeometryProxy) -> some View {
+        ZStack {
+            // Content WebView with horizontal pagination
+            ReaderWebView(
+                htmlContent: chapter.htmlContent,
+                appSettings: appSettings,
+                isDarkMode: appSettings.theme == .dark,
+                currentPageIndex: Binding(
+                    get: { safeChapterPageIndex(index) },
+                    set: { newValue in setChapterPageIndex(index, newValue) }
+                ),
+                totalPages: Binding(
+                    get: { safeChapterTotalPages(index) },
+                    set: { newValue in setChapterTotalPages(index, newValue) }
+                ),
+                onToolbarToggle: {
+                    handleTap()
+                },
+                onTextSelected: { text in
+                    selectedText = text
+                    showingTextActions = true
+                }
+            )
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            
+            // AI Summary overlay for first chapter on first open
+            if showingAISummary && isFirstOpen && chapter.order == 0 {
+                VStack {
                     AISummaryCard(book: book)
                         .padding(.horizontal, horizontalPadding(for: geometry))
                         .padding(.top, 60)
-                        .padding(.bottom, 32)
                         .transition(.opacity.combined(with: .move(edge: .top)))
+                    Spacer()
                 }
-                
-                // Chapter title with elegant typography
-                Text(chapter.title)
-                    .font(.system(size: 28, weight: .bold, design: .serif))
-                    .foregroundColor(.primary.opacity(0.95))
-                    .padding(.horizontal, horizontalPadding(for: geometry))
-                    .padding(.top, showingAISummary && isFirstOpen && chapter.order == 0 ? 0 : 80)
-                    .padding(.bottom, 32)
-                
-                // Chapter content with WebView for HTML rendering
-                ReaderWebView(
-                    htmlContent: chapter.htmlContent,
-                    appSettings: appSettings,
-                    isDarkMode: appSettings.theme == .dark,
-                    onToolbarToggle: {
-                        handleTap()
-                    },
-                    onTextSelected: { text in
-                        selectedText = text
-                        showingTextActions = true
-                    }
-                )
-                .frame(minHeight: geometry.size.height - 200)
-                .padding(.horizontal, horizontalPadding(for: geometry))
-                .padding(.bottom, 100)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            // Tap zones: left/right for prev/next page
+            HStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+                    .frame(width: geometry.size.width * 0.28)
+                    .onTapGesture { previousPageOrChapter() }
+                
+                Spacer(minLength: 0)
+                    .frame(minWidth: 0)
+                
+                Rectangle()
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+                    .frame(width: geometry.size.width * 0.28)
+                    .onTapGesture { nextPageOrChapter() }
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            
+            // Page indicator (bottom center)
+            if safeChapterTotalPages(index) > 1 {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Text("\(safeChapterPageIndex(index) + 1) / \(safeChapterTotalPages(index))")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(12)
+                        Spacer()
+                    }
+                    .padding(.bottom, 28)
+                }
+                .transition(.opacity)
+            }
         }
+        .ignoresSafeArea(edges: .bottom)
     }
     
     private func horizontalPadding(for geometry: GeometryProxy) -> CGFloat {
@@ -416,7 +457,14 @@ struct ReaderView: View {
         
         if let progress = book.readingProgress {
             progress.currentPage = Int32(currentChapterIndex)
-            progress.progressPercentage = Double(currentChapterIndex + 1) / Double(chapters.count)
+            // Estimate percentage by chapter index and current page within chapter
+            let chapterCount = max(chapters.count, 1)
+            let base = Double(currentChapterIndex) / Double(chapterCount)
+            let pageInChapter = Double(safeChapterPageIndex(currentChapterIndex))
+            let totalInChapter = Double(max(safeChapterTotalPages(currentChapterIndex), 1))
+            let perChapterWeight = 1.0 / Double(chapterCount)
+            let within = (totalInChapter > 0) ? (pageInChapter / totalInChapter) * perChapterWeight : 0
+            progress.progressPercentage = min(1.0, base + within)
             progress.lastReadAt = Date()
             progress.updatedAt = Date()
             
@@ -448,6 +496,66 @@ struct ReaderView: View {
              showingAISummary = false
          }
      }
+
+    // MARK: - Pagination helpers
+    private func ensurePageArrays() {
+        if chapterPageIndices.count != chapters.count {
+            chapterPageIndices = Array(repeating: 0, count: max(chapters.count, 1))
+        }
+        if chapterTotalPages.count != chapters.count {
+            chapterTotalPages = Array(repeating: 1, count: max(chapters.count, 1))
+        }
+    }
+    
+    private func safeChapterPageIndex(_ index: Int) -> Int {
+        ensurePageArrays()
+        guard index >= 0 && index < chapterPageIndices.count else { return 0 }
+        return chapterPageIndices[index]
+    }
+    
+    private func setChapterPageIndex(_ index: Int, _ value: Int) {
+        ensurePageArrays()
+        guard index >= 0 && index < chapterPageIndices.count else { return }
+        chapterPageIndices[index] = max(0, value)
+    }
+    
+    private func safeChapterTotalPages(_ index: Int) -> Int {
+        ensurePageArrays()
+        guard index >= 0 && index < chapterTotalPages.count else { return 1 }
+        return max(1, chapterTotalPages[index])
+    }
+    
+    private func setChapterTotalPages(_ index: Int, _ value: Int) {
+        ensurePageArrays()
+        guard index >= 0 && index < chapterTotalPages.count else { return }
+        chapterTotalPages[index] = max(1, value)
+    }
+    
+    private func nextPageOrChapter() {
+        ensurePageArrays()
+        let total = safeChapterTotalPages(currentChapterIndex)
+        let page = safeChapterPageIndex(currentChapterIndex)
+        if page < total - 1 {
+            setChapterPageIndex(currentChapterIndex, page + 1)
+        } else if currentChapterIndex < chapters.count - 1 {
+            currentChapterIndex += 1
+            setChapterPageIndex(currentChapterIndex, 0)
+        }
+        saveReadingProgress()
+    }
+    
+    private func previousPageOrChapter() {
+        ensurePageArrays()
+        let page = safeChapterPageIndex(currentChapterIndex)
+        if page > 0 {
+            setChapterPageIndex(currentChapterIndex, page - 1)
+        } else if currentChapterIndex > 0 {
+            currentChapterIndex -= 1
+            let lastPage = safeChapterTotalPages(currentChapterIndex) - 1
+            setChapterPageIndex(currentChapterIndex, max(0, lastPage))
+        }
+        saveReadingProgress()
+    }
  }
 
 
