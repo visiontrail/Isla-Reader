@@ -30,6 +30,13 @@ struct OPFInfo {
     var coverId: String?
     var manifestMap: [String: String] = [:]
     var spineItems: [String] = []
+    var tocId: String? // NCX file ID
+}
+
+struct TOCEntry {
+    let title: String
+    let href: String
+    let order: Int
 }
 
 class EPubParser {
@@ -109,8 +116,12 @@ class EPubParser {
             DebugLogger.info("EPubParser: 作者: \(author ?? "未知")")
             DebugLogger.info("EPubParser: 语言: \(language ?? "未知")")
             
+            // 解析目录（TOC）
+            let tocEntries = parseTOC(tocId: opfInfo.tocId, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL)
+            DebugLogger.info("EPubParser: 从TOC解析了 \(tocEntries.count) 个标题")
+            
             // 解析章节
-            let chapters = try parseChapters(spineItems: opfInfo.spineItems, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL)
+            let chapters = try parseChapters(spineItems: opfInfo.spineItems, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL, tocEntries: tocEntries)
             DebugLogger.success("EPubParser: 成功解析 \(chapters.count) 个章节")
             
             // 提取封面图片（如果存在）
@@ -309,10 +320,16 @@ class EPubParser {
             }
         }
         
-        // 解析 spine
+        // 解析 spine (包括 toc 属性)
         let spinePattern = "<itemref\\s+([^>]+)>"
         if let spineRange = xmlString.range(of: "<spine([\\s\\S]*?)</spine>", options: .regularExpression) {
             let spineContent = String(xmlString[spineRange])
+            
+            // 提取 spine 标签的 toc 属性
+            if let spineTagRange = xmlString.range(of: "<spine[^>]*>", options: .regularExpression) {
+                let spineTag = String(xmlString[spineTagRange])
+                info.tocId = extractAttribute(from: spineTag, attribute: "toc")
+            }
             
             let regex = try? NSRegularExpression(pattern: spinePattern, options: [])
             let nsString = spineContent as NSString
@@ -326,7 +343,7 @@ class EPubParser {
             }
         }
         
-        DebugLogger.info("EPubParser: 解析OPF完成 - manifest项: \(info.manifestMap.count), spine项: \(info.spineItems.count)")
+        DebugLogger.info("EPubParser: 解析OPF完成 - manifest项: \(info.manifestMap.count), spine项: \(info.spineItems.count), TOC ID: \(info.tocId ?? "无")")
         
         return info
     }
@@ -353,12 +370,126 @@ class EPubParser {
         return nil
     }
     
+    // MARK: - 目录解析
+    
+    private static func parseTOC(tocId: String?, manifestMap: [String: String], baseURL: URL) -> [TOCEntry] {
+        guard let tocId = tocId, let tocHref = manifestMap[tocId] else {
+            DebugLogger.info("EPubParser: 未找到TOC文件引用")
+            return []
+        }
+        
+        let tocURL = baseURL.appendingPathComponent(tocHref)
+        guard let tocData = try? Data(contentsOf: tocURL),
+              let tocString = String(data: tocData, encoding: .utf8) else {
+            DebugLogger.warning("EPubParser: 无法读取TOC文件: \(tocHref)")
+            return []
+        }
+        
+        // 判断是NCX还是NAV格式
+        if tocString.contains("<ncx") {
+            return parseNCX(tocString, baseURL: tocURL.deletingLastPathComponent())
+        } else if tocString.contains("epub:type=\"toc\"") || tocString.contains("<nav") {
+            return parseNAV(tocString, baseURL: tocURL.deletingLastPathComponent())
+        }
+        
+        return []
+    }
+    
+    private static func parseNCX(_ ncxString: String, baseURL: URL) -> [TOCEntry] {
+        var entries: [TOCEntry] = []
+        
+        // 提取所有 navPoint 标签
+        let navPointPattern = "<navPoint[^>]*>([\\s\\S]*?)</navPoint>"
+        guard let regex = try? NSRegularExpression(pattern: navPointPattern, options: []) else {
+            return []
+        }
+        
+        let nsString = ncxString as NSString
+        let matches = regex.matches(in: ncxString, options: [], range: NSRange(location: 0, length: nsString.length))
+        
+        for (index, match) in matches.enumerated() {
+            let navPointContent = nsString.substring(with: match.range)
+            
+            // 提取标题 (navLabel > text)
+            if let textRange = navPointContent.range(of: "<text>([^<]+)</text>", options: .regularExpression) {
+                var title = String(navPointContent[textRange])
+                title = title.replacingOccurrences(of: "<text>", with: "")
+                title = title.replacingOccurrences(of: "</text>", with: "")
+                title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                // 提取 href (content src)
+                if let contentRange = navPointContent.range(of: "<content\\s+src=\"([^\"]+)\"", options: .regularExpression) {
+                    let contentTag = String(navPointContent[contentRange])
+                    if let href = extractAttribute(from: contentTag, attribute: "src") {
+                        // 规范化 href（移除锚点）
+                        let normalizedHref = href.components(separatedBy: "#").first ?? href
+                        
+                        entries.append(TOCEntry(title: title, href: normalizedHref, order: index))
+                        DebugLogger.info("EPubParser: NCX条目[\(index + 1)] - \(title) -> \(normalizedHref)")
+                    }
+                }
+            }
+        }
+        
+        return entries
+    }
+    
+    private static func parseNAV(_ navString: String, baseURL: URL) -> [TOCEntry] {
+        var entries: [TOCEntry] = []
+        
+        // 提取 TOC nav 部分
+        guard let navRange = navString.range(of: "<nav[^>]*epub:type=\"toc\"[^>]*>([\\s\\S]*?)</nav>", options: .regularExpression) else {
+            DebugLogger.warning("EPubParser: 未找到epub:type=\"toc\"的nav标签")
+            return []
+        }
+        
+        let navContent = String(navString[navRange])
+        
+        // 提取所有链接
+        let linkPattern = "<a[^>]+href=\"([^\"]+)\"[^>]*>([^<]+)</a>"
+        guard let regex = try? NSRegularExpression(pattern: linkPattern, options: []) else {
+            return []
+        }
+        
+        let nsString = navContent as NSString
+        let matches = regex.matches(in: navContent, options: [], range: NSRange(location: 0, length: nsString.length))
+        
+        for (index, match) in matches.enumerated() {
+            let linkContent = nsString.substring(with: match.range)
+            
+            if let href = extractAttribute(from: linkContent, attribute: "href") {
+                // 提取链接文本
+                if let textRange = linkContent.range(of: ">([^<]+)<", options: .regularExpression) {
+                    var title = String(linkContent[textRange])
+                    title = title.replacingOccurrences(of: ">", with: "")
+                    title = title.replacingOccurrences(of: "<", with: "")
+                    title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                    
+                    // 规范化 href（移除锚点）
+                    let normalizedHref = href.components(separatedBy: "#").first ?? href
+                    
+                    entries.append(TOCEntry(title: title, href: normalizedHref, order: index))
+                    DebugLogger.info("EPubParser: NAV条目[\(index + 1)] - \(title) -> \(normalizedHref)")
+                }
+            }
+        }
+        
+        return entries
+    }
+    
     // MARK: - 章节解析
     
-    private static func parseChapters(spineItems: [String], manifestMap: [String: String], baseURL: URL) throws -> [Chapter] {
+    private static func parseChapters(spineItems: [String], manifestMap: [String: String], baseURL: URL, tocEntries: [TOCEntry]) throws -> [Chapter] {
         DebugLogger.info("EPubParser: 开始解析章节")
         DebugLogger.info("EPubParser: Spine中有 \(spineItems.count) 个项目")
         DebugLogger.info("EPubParser: Manifest中有 \(manifestMap.count) 个项目")
+        DebugLogger.info("EPubParser: TOC中有 \(tocEntries.count) 个条目")
+        
+        // 创建 href -> title 的映射
+        var hrefToTitle: [String: String] = [:]
+        for entry in tocEntries {
+            hrefToTitle[entry.href] = entry.title
+        }
         
         var chapters: [Chapter] = []
         
@@ -377,19 +508,48 @@ class EPubParser {
             let chapterURL = baseURL.appendingPathComponent(decodedHref)
             
             do {
-                let chapterContent = try extractChapterContent(from: chapterURL)
+                let htmlContent = try String(contentsOf: chapterURL, encoding: .utf8)
+                let chapterContent = cleanHTML(htmlContent)
                 
-                // 提取章节标题（从内容中的第一行非空文本）
-                let chapterTitle = extractChapterTitle(from: chapterContent, defaultTitle: "Chapter \(index + 1)")
+                // 尝试从TOC获取标题
+                var chapterTitle: String?
+                
+                // 规范化 href 用于查找
+                let normalizedHref = decodedHref.components(separatedBy: "#").first ?? decodedHref
+                let fileName = (normalizedHref as NSString).lastPathComponent
+                
+                // 先尝试完整路径匹配
+                if let tocTitle = hrefToTitle[normalizedHref] {
+                    chapterTitle = tocTitle
+                } else if let tocTitle = hrefToTitle[fileName] {
+                    // 尝试只用文件名匹配
+                    chapterTitle = tocTitle
+                } else {
+                    // 尝试从href中查找包含该文件名的条目
+                    for (tocHref, tocTitle) in hrefToTitle {
+                        if tocHref.hasSuffix(fileName) || tocHref.contains(fileName) {
+                            chapterTitle = tocTitle
+                            break
+                        }
+                    }
+                }
+                
+                // 如果TOC中没有找到，尝试从HTML提取
+                if chapterTitle == nil {
+                    chapterTitle = extractChapterTitleFromHTML(htmlContent)
+                }
+                
+                // 如果还是没有，使用默认标题
+                let finalTitle = chapterTitle ?? "Chapter \(index + 1)"
                 
                 let chapter = Chapter(
-                    title: chapterTitle,
+                    title: finalTitle,
                     content: chapterContent,
                     order: index
                 )
                 
                 chapters.append(chapter)
-                DebugLogger.info("EPubParser: 解析章节[\(index + 1)] - \(chapterTitle) (内容长度: \(chapterContent.count) 字符)")
+                DebugLogger.info("EPubParser: 解析章节[\(index + 1)] - \(finalTitle) (内容长度: \(chapterContent.count) 字符)")
                 
             } catch {
                 DebugLogger.warning("EPubParser: 无法读取章节文件: \(chapterURL.path), 错误: \(error.localizedDescription)")
@@ -399,26 +559,81 @@ class EPubParser {
         return chapters
     }
     
-    private static func extractChapterContent(from url: URL) throws -> String {
-        let htmlData = try Data(contentsOf: url)
-        guard let htmlString = String(data: htmlData, encoding: .utf8) else {
-            throw EPubParseError.unsupportedFormat
-        }
+    private static func extractChapterTitleFromHTML(_ htmlString: String) -> String? {
+        // 尝试从HTML标签中提取标题
         
-        // 使用简单的HTML标签清理
-        return cleanHTML(htmlString)
-    }
-    
-    private static func extractChapterTitle(from content: String, defaultTitle: String) -> String {
-        // 尝试从内容中提取第一行非空文本作为标题
-        let lines = content.components(separatedBy: .newlines)
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty && trimmed.count < 100 {
-                return trimmed
+        // 1. 尝试提取 <title> 标签
+        if let titleRange = htmlString.range(of: "<title>([^<]+)</title>", options: .regularExpression) {
+            var title = String(htmlString[titleRange])
+            title = title.replacingOccurrences(of: "<title>", with: "")
+            title = title.replacingOccurrences(of: "</title>", with: "")
+            title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // 移除常见的书名前缀/后缀（如 "Project Gutenberg"）
+            let cleanedTitle = cleanTitleString(title)
+            if !cleanedTitle.isEmpty && cleanedTitle.count < 200 {
+                return cleanedTitle
             }
         }
-        return defaultTitle
+        
+        // 2. 尝试提取 <h1> 标签
+        if let h1Range = htmlString.range(of: "<h1[^>]*>([\\s\\S]*?)</h1>", options: .regularExpression) {
+            var title = String(htmlString[h1Range])
+            title = title.replacingOccurrences(of: "<h1[^>]*>", with: "", options: .regularExpression)
+            title = title.replacingOccurrences(of: "</h1>", with: "")
+            title = cleanHTML(title)
+            
+            let cleanedTitle = cleanTitleString(title)
+            if !cleanedTitle.isEmpty && cleanedTitle.count < 200 {
+                return cleanedTitle
+            }
+        }
+        
+        // 3. 尝试提取 <h2> 标签
+        if let h2Range = htmlString.range(of: "<h2[^>]*>([\\s\\S]*?)</h2>", options: .regularExpression) {
+            var title = String(htmlString[h2Range])
+            title = title.replacingOccurrences(of: "<h2[^>]*>", with: "", options: .regularExpression)
+            title = title.replacingOccurrences(of: "</h2>", with: "")
+            title = cleanHTML(title)
+            
+            let cleanedTitle = cleanTitleString(title)
+            if !cleanedTitle.isEmpty && cleanedTitle.count < 200 {
+                return cleanedTitle
+            }
+        }
+        
+        // 4. 尝试提取 <h3> 标签
+        if let h3Range = htmlString.range(of: "<h3[^>]*>([\\s\\S]*?)</h3>", options: .regularExpression) {
+            var title = String(htmlString[h3Range])
+            title = title.replacingOccurrences(of: "<h3[^>]*>", with: "", options: .regularExpression)
+            title = title.replacingOccurrences(of: "</h3>", with: "")
+            title = cleanHTML(title)
+            
+            let cleanedTitle = cleanTitleString(title)
+            if !cleanedTitle.isEmpty && cleanedTitle.count < 200 {
+                return cleanedTitle
+            }
+        }
+        
+        return nil
+    }
+    
+    private static func cleanTitleString(_ title: String) -> String {
+        var cleaned = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 移除常见的不需要的前缀/后缀
+        let patternsToRemove = [
+            "\\s*[|\\-–—]\\s*Project Gutenberg.*$",
+            "^The Project Gutenberg.*?[|\\-–—]\\s*",
+            "\\s*[|\\-–—]\\s*eBook.*$",
+            "^eBook.*?[|\\-–—]\\s*"
+        ]
+        
+        for pattern in patternsToRemove {
+            cleaned = cleaned.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
+        }
+        
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     private static func cleanHTML(_ html: String) -> String {
