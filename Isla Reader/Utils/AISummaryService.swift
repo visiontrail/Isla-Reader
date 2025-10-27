@@ -191,7 +191,7 @@ class AISummaryService: ObservableObject {
                 DebugLogger.warning("AISummaryService: 跳过无效章节数据")
                 return nil
             }
-            return Chapter(title: title, content: content, order: order)
+            return Chapter(title: title, content: content, htmlContent: "", order: order)
         }
         
         DebugLogger.success("AISummaryService: 书籍内容解析完成，有效章节数 = \(chapters.count)")

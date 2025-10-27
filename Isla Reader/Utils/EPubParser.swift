@@ -15,11 +15,13 @@ struct EPubMetadata {
     let coverImageData: Data?
     let chapters: [Chapter]
     let totalPages: Int
+    let resourcesBaseURL: URL? // 资源文件的基础URL
 }
 
 struct Chapter {
     let title: String
     let content: String
+    let htmlContent: String // 保留原始HTML内容，已处理图片
     let order: Int
 }
 
@@ -133,7 +135,8 @@ class EPubParser {
                 language: language,
                 coverImageData: coverImageData,
                 chapters: chapters,
-                totalPages: chapters.count * 10 // 粗略估计
+                totalPages: chapters.count * 10, // 粗略估计
+                resourcesBaseURL: nil // 图片已嵌入HTML，不需要baseURL
             )
             
             DebugLogger.success("EPubParser: ePub解析完成")
@@ -542,9 +545,13 @@ class EPubParser {
                 // 如果还是没有，使用默认标题
                 let finalTitle = chapterTitle ?? "Chapter \(index + 1)"
                 
+                // 清理HTML用于移动端显示，并嵌入图片
+                let cleanedHTML = cleanHTMLForMobileDisplay(htmlContent, baseURL: chapterURL.deletingLastPathComponent())
+                
                 let chapter = Chapter(
                     title: finalTitle,
                     content: chapterContent,
+                    htmlContent: cleanedHTML,
                     order: index
                 )
                 
@@ -661,6 +668,106 @@ class EPubParser {
         text = text.replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
         
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    // 清理HTML用于移动端显示，保留结构但移除不需要的元素
+    private static func cleanHTMLForMobileDisplay(_ html: String, baseURL: URL) -> String {
+        var cleanedHTML = html
+        
+        // 移除脚本和样式标签
+        cleanedHTML = cleanedHTML.replacingOccurrences(of: "<script[^>]*>[\\s\\S]*?</script>", with: "", options: .regularExpression)
+        cleanedHTML = cleanedHTML.replacingOccurrences(of: "<style[^>]*>[\\s\\S]*?</style>", with: "", options: .regularExpression)
+        
+        // 移除注释
+        cleanedHTML = cleanedHTML.replacingOccurrences(of: "<!--[\\s\\S]*?-->", with: "", options: .regularExpression)
+        
+        // 移除可能影响布局的内联样式中的固定宽度
+        cleanedHTML = cleanedHTML.replacingOccurrences(of: "width:\\s*\\d+px", with: "width: 100%", options: .regularExpression)
+        cleanedHTML = cleanedHTML.replacingOccurrences(of: "max-width:\\s*\\d+px", with: "max-width: 100%", options: .regularExpression)
+        
+        // 处理图片标签，将图片转换为base64嵌入
+        cleanedHTML = embedImagesAsBase64(in: cleanedHTML, baseURL: baseURL)
+        
+        // 提取body内容（如果存在）
+        if let bodyRange = cleanedHTML.range(of: "<body[^>]*>([\\s\\S]*?)</body>", options: .regularExpression) {
+            let bodyContent = String(cleanedHTML[bodyRange])
+            cleanedHTML = bodyContent.replacingOccurrences(of: "<body[^>]*>", with: "", options: .regularExpression)
+            cleanedHTML = cleanedHTML.replacingOccurrences(of: "</body>", with: "")
+        }
+        
+        return cleanedHTML.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    // 将HTML中的图片转换为base64嵌入
+    private static func embedImagesAsBase64(in html: String, baseURL: URL) -> String {
+        var result = html
+        
+        // 查找所有img标签
+        let imgPattern = "<img[^>]+src=\"([^\"]+)\"[^>]*>"
+        guard let regex = try? NSRegularExpression(pattern: imgPattern, options: []) else {
+            return result
+        }
+        
+        let nsString = html as NSString
+        let matches = regex.matches(in: html, options: [], range: NSRange(location: 0, length: nsString.length))
+        
+        // 从后往前替换，避免索引变化
+        for match in matches.reversed() {
+            let imgTag = nsString.substring(with: match.range)
+            
+            // 提取src属性
+            if let srcRange = imgTag.range(of: "src=\"([^\"]+)\"", options: .regularExpression) {
+                var src = String(imgTag[srcRange])
+                src = src.replacingOccurrences(of: "src=\"", with: "")
+                src = src.replacingOccurrences(of: "\"", with: "")
+                
+                // 跳过已经是base64或http的图片
+                if src.hasPrefix("data:") || src.hasPrefix("http://") || src.hasPrefix("https://") {
+                    continue
+                }
+                
+                // 构建图片文件的完整路径
+                let imageURL = baseURL.appendingPathComponent(src)
+                
+                // 尝试读取图片数据
+                if let imageData = try? Data(contentsOf: imageURL) {
+                    // 检测图片类型
+                    let mimeType = getMimeType(from: src)
+                    
+                    // 转换为base64
+                    let base64String = imageData.base64EncodedString()
+                    let dataURI = "data:\(mimeType);base64,\(base64String)"
+                    
+                    // 替换原有的src
+                    let newImgTag = imgTag.replacingOccurrences(of: src, with: dataURI)
+                    result = result.replacingOccurrences(of: imgTag, with: newImgTag)
+                    
+                    DebugLogger.info("EPubParser: 嵌入图片 - \(src)")
+                }
+            }
+        }
+        
+        return result
+    }
+    
+    // 根据文件扩展名获取MIME类型
+    private static func getMimeType(from filename: String) -> String {
+        let ext = (filename as NSString).pathExtension.lowercased()
+        
+        switch ext {
+        case "jpg", "jpeg":
+            return "image/jpeg"
+        case "png":
+            return "image/png"
+        case "gif":
+            return "image/gif"
+        case "svg":
+            return "image/svg+xml"
+        case "webp":
+            return "image/webp"
+        default:
+            return "image/jpeg"
+        }
     }
     
     // MARK: - 封面提取

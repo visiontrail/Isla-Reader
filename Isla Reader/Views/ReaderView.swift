@@ -192,20 +192,24 @@ struct ReaderView: View {
                     .padding(.top, showingAISummary && isFirstOpen && chapter.order == 0 ? 0 : 80)
                     .padding(.bottom, 32)
                 
-                // Chapter content with beautiful typography
-                Text(chapter.content)
-                    .font(.system(size: appSettings.readingFontSize.fontSize, design: .serif))
-                    .lineSpacing(appSettings.lineSpacing * 8)
-                    .foregroundColor(.primary.opacity(0.87))
-                    .padding(.horizontal, horizontalPadding(for: geometry))
-                    .padding(.bottom, 100)
-                    .textSelection(.enabled)
+                // Chapter content with WebView for HTML rendering
+                ReaderWebView(
+                    htmlContent: chapter.htmlContent,
+                    appSettings: appSettings,
+                    isDarkMode: appSettings.theme == .dark,
+                    onToolbarToggle: {
+                        handleTap()
+                    },
+                    onTextSelected: { text in
+                        selectedText = text
+                        showingTextActions = true
+                    }
+                )
+                .frame(minHeight: geometry.size.height - 200)
+                .padding(.horizontal, horizontalPadding(for: geometry))
+                .padding(.bottom, 100)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            handleTap()
         }
     }
     
