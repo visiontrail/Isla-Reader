@@ -68,6 +68,13 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         let page = max(0, min(parent.currentPageIndex, max(parent.totalPages - 1, 0)))
         let js = "scrollToPage(\(page), \(animated ? "true" : "false"))"
         webView.evaluateJavaScript(js, completionHandler: nil)
+        // Native fallback to ensure position updates even if JS scrolling is ignored
+        DispatchQueue.main.async {
+            let pageWidth = webView.scrollView.bounds.width
+            guard pageWidth > 0 else { return }
+            let targetX = CGFloat(page) * pageWidth
+            webView.scrollView.setContentOffset(CGPoint(x: targetX, y: 0), animated: animated)
+        }
     }
     
     // MARK: - Page Curl
@@ -147,6 +154,17 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             parent.currentPageIndex = target
         }
     }
+
+    // Sync latest SwiftUI state to coordinator
+    func updateParent(_ newParent: ReaderWebView) {
+        self.parent = newParent
+    }
+
+    // Reset flags when reloading HTML content
+    func prepareForNewLoad() {
+        self.didApplyPagination = false
+        self.isLoaded = false
+    }
 }
 
 // MARK: - Reader WebView
@@ -201,7 +219,7 @@ struct ReaderWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
-        webView.scrollView.isPagingEnabled = true
+        webView.scrollView.isPagingEnabled = false
         webView.scrollView.showsHorizontalScrollIndicator = false
         webView.scrollView.showsVerticalScrollIndicator = false
         webView.scrollView.alwaysBounceVertical = false
@@ -209,8 +227,10 @@ struct ReaderWebView: UIViewRepresentable {
         webView.scrollView.bounces = false
         webView.scrollView.isDirectionalLockEnabled = true
         webView.scrollView.delegate = context.coordinator
-        // 禁用默认滚动，改为自定义翻页动画
-        webView.scrollView.isScrollEnabled = false
+        // 允许编程式滚动，但禁用用户滑动手势
+        webView.scrollView.isScrollEnabled = true
+        webView.scrollView.panGestureRecognizer.isEnabled = false
+        webView.scrollView.pinchGestureRecognizer?.isEnabled = false
         
         webView.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(webView)
@@ -230,15 +250,18 @@ struct ReaderWebView: UIViewRepresentable {
     
     func updateUIView(_ container: UIView, context: Context) {
         guard let webView = context.coordinator.webView else { return }
+        // Sync latest SwiftUI state to coordinator
+        context.coordinator.updateParent(self)
         // Compute a signature that represents the visual content (chapter html + typography settings + theme)
         let signature = "sig::\(htmlContent.hashValue):\(appSettings.readingFontSize.fontSize):\(appSettings.lineSpacing):\(isDarkMode ? "dark" : "light"):\(Int(appSettings.pageMargins))"
         if container.accessibilityHint != signature {
             container.accessibilityHint = signature
             let html = generateFullHTML()
+            context.coordinator.prepareForNewLoad()
             webView.loadHTMLString(html, baseURL: nil)
         } else {
-            // 分页已应用后，使用仿真翻页动画
-            context.coordinator.performPageCurlIfNeeded(for: container, webView: webView)
+            // 内容未重载时，直接同步到当前页，确保页面内容与页码一致
+            context.coordinator.scrollToCurrentPage(on: webView, animated: false)
         }
     }
     
@@ -573,12 +596,14 @@ struct ReaderWebView: UIViewRepresentable {
         }, false);
         
         // 分页相关
+        function getPerPage() {
+            // 与CSS设置一致：每页宽度等于100vw
+            return Math.max(1, window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 1);
+        }
+
         function computePageCount() {
-            const styles = window.getComputedStyle(document.body);
-            const cw = parseFloat(styles.columnWidth);
-            const gap = parseFloat(styles.columnGap);
             const totalWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
-            const perPage = Math.max(1, cw + gap);
+            const perPage = getPerPage();
             const pages = Math.max(1, Math.ceil(totalWidth / perPage));
             try { window.webkit.messageHandlers.pageMetrics.postMessage({ type: 'pageCount', value: pages }); } catch (e) {}
             return pages;
@@ -594,17 +619,25 @@ struct ReaderWebView: UIViewRepresentable {
             setTimeout(computePageCount, 0);
         }
         
+        function setScrollLeft(x, animated) {
+            // 直接针对窗口滚动（与CSS overflow: auto 设置一致）
+            try {
+                if (animated) {
+                    window.scrollTo({ left: x, top: 0, behavior: 'smooth' });
+                } else {
+                    window.scrollTo(x, 0);
+                }
+            } catch (e) {}
+            // 兜底设置常见滚动宿主
+            try { if (!animated && document.scrollingElement) { document.scrollingElement.scrollLeft = x; document.scrollingElement.scrollTop = 0; } } catch (e) {}
+            try { if (!animated && document.documentElement) { document.documentElement.scrollLeft = x; document.documentElement.scrollTop = 0; } } catch (e) {}
+            try { if (!animated && document.body) { document.body.scrollLeft = x; document.body.scrollTop = 0; } } catch (e) {}
+        }
+
         function scrollToPage(index, animated) {
-            const styles = window.getComputedStyle(document.body);
-            const cw = parseFloat(styles.columnWidth);
-            const gap = parseFloat(styles.columnGap);
-            const perPage = Math.max(1, cw + gap);
+            const perPage = getPerPage();
             const x = Math.max(0, Math.floor(index) * perPage);
-            if (animated) {
-                window.scrollTo({ left: x, top: 0, behavior: 'smooth' });
-            } else {
-                window.scrollTo(x, 0);
-            }
+            setScrollLeft(x, animated);
         }
         
         window.addEventListener('load', function() {
@@ -615,11 +648,9 @@ struct ReaderWebView: UIViewRepresentable {
         
         window.addEventListener('resize', function() {
             // 在旋转或尺寸改变时保持页位置
-            const styles = window.getComputedStyle(document.body);
-            const cw = parseFloat(styles.columnWidth);
-            const gap = parseFloat(styles.columnGap);
-            const perPage = Math.max(1, cw + gap);
-            const currentPage = Math.round((window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft) / perPage);
+            const perPage = getPerPage();
+            const currentScroll = (window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0);
+            const currentPage = Math.round(currentScroll / perPage);
             applyPagination();
             setTimeout(function(){ scrollToPage(currentPage, false); }, 0);
         });
