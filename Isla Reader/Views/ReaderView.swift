@@ -146,15 +146,9 @@ struct ReaderView: View {
         ZStack {
             // Reading content
             GeometryReader { geometry in
-                TabView(selection: $currentChapterIndex) {
-                    ForEach(Array(chapters.enumerated()), id: \.element.order) { index, chapter in
-                        chapterView(index: index, chapter: chapter, geometry: geometry)
-                            .tag(index)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .onChange(of: currentChapterIndex) { _ in
-                    saveReadingProgress()
+                if !chapters.isEmpty && currentChapterIndex >= 0 && currentChapterIndex < chapters.count {
+                    chapterView(index: currentChapterIndex, chapter: chapters[currentChapterIndex], geometry: geometry)
+                        .id(currentChapterIndex)
                 }
             }
             
@@ -200,6 +194,16 @@ struct ReaderView: View {
                 }
             )
             .frame(width: geometry.size.width, height: geometry.size.height)
+            .onChange(of: appSettings.pageMargins) { _ in
+                // 版心变化后，保持页码在合法范围
+                clampCurrentPage(index)
+            }
+            .onChange(of: appSettings.readingFontSize) { _ in
+                clampCurrentPage(index)
+            }
+            .onChange(of: appSettings.lineSpacing) { _ in
+                clampCurrentPage(index)
+            }
             
             // AI Summary overlay for first chapter on first open
             if showingAISummary && isFirstOpen && chapter.order == 0 {
@@ -230,6 +234,22 @@ struct ReaderView: View {
                     .onTapGesture { nextPageOrChapter() }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 20, coordinateSpace: .local)
+                    .onEnded { value in
+                        let dx = value.translation.width
+                        let dy = value.translation.height
+                        // Ensure mostly horizontal gesture
+                        if abs(dx) > max(30, abs(dy)) {
+                            if dx < 0 {
+                                nextPageOrChapter()
+                            } else {
+                                previousPageOrChapter()
+                            }
+                        }
+                    }
+            )
             
             // Page indicator (bottom center)
             if safeChapterTotalPages(index) > 1 {
@@ -555,6 +575,17 @@ struct ReaderView: View {
             setChapterPageIndex(currentChapterIndex, max(0, lastPage))
         }
         saveReadingProgress()
+    }
+
+    private func clampCurrentPage(_ index: Int) {
+        let total = safeChapterTotalPages(index)
+        let page = safeChapterPageIndex(index)
+        if total == 0 {
+            setChapterTotalPages(index, 1)
+            setChapterPageIndex(index, 0)
+        } else if page >= total {
+            setChapterPageIndex(index, max(0, total - 1))
+        }
     }
  }
 
