@@ -66,7 +66,8 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     
     func scrollToCurrentPage(on webView: WKWebView, animated: Bool = false) {
         let page = max(0, min(parent.currentPageIndex, max(parent.totalPages - 1, 0)))
-        let js = "scrollToPage(\(page), \(animated ? "true" : "false"))"
+        // Always perform JS jump without animation; we animate natively for smoothness
+        let js = "scrollToPage(\(page), false)"
         webView.evaluateJavaScript(js, completionHandler: nil)
         // Native fallback to ensure position updates even if JS scrolling is ignored
         DispatchQueue.main.async {
@@ -75,6 +76,16 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             let targetX = CGFloat(page) * pageWidth
             webView.scrollView.setContentOffset(CGPoint(x: targetX, y: 0), animated: animated)
         }
+    }
+
+    // Animate to the latest SwiftUI-bound page if it differs from what is currently displayed
+    @discardableResult
+    func animateToCurrentPageIfChanged(on webView: WKWebView) -> Bool {
+        let newIndex = max(0, min(parent.currentPageIndex, max(parent.totalPages - 1, 0)))
+        guard newIndex != lastDisplayedPageIndex else { return false }
+        scrollToCurrentPage(on: webView, animated: true)
+        lastDisplayedPageIndex = newIndex
+        return true
     }
     
     // MARK: - Page Curl
@@ -138,20 +149,19 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     }
     
     @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
-        guard let webView = webView, let container = containerView, isLoaded, !isAnimatingCurl else { return }
+        guard let webView = webView, isLoaded, !isAnimatingCurl else { return }
         if gesture.direction == .left {
             let target = min(parent.totalPages - 1, parent.currentPageIndex + 1)
             guard target != parent.currentPageIndex else { return }
-            // Perform curl first, then update binding
-            lastDisplayedPageIndex = parent.currentPageIndex
-            performPageCurl(to: target, direction: .forward, container: container, webView: webView)
             parent.currentPageIndex = target
+            scrollToCurrentPage(on: webView, animated: true)
+            lastDisplayedPageIndex = target
         } else if gesture.direction == .right {
             let target = max(0, parent.currentPageIndex - 1)
             guard target != parent.currentPageIndex else { return }
-            lastDisplayedPageIndex = parent.currentPageIndex
-            performPageCurl(to: target, direction: .backward, container: container, webView: webView)
             parent.currentPageIndex = target
+            scrollToCurrentPage(on: webView, animated: true)
+            lastDisplayedPageIndex = target
         }
     }
 
@@ -260,8 +270,11 @@ struct ReaderWebView: UIViewRepresentable {
             context.coordinator.prepareForNewLoad()
             webView.loadHTMLString(html, baseURL: nil)
         } else {
-            // 内容未重载时，直接同步到当前页，确保页面内容与页码一致
-            context.coordinator.scrollToCurrentPage(on: webView, animated: false)
+            // 内容未重载：若页码变化则执行滑动动画；若未变化则确保位置同步
+            let animated = context.coordinator.animateToCurrentPageIfChanged(on: webView)
+            if !animated {
+                context.coordinator.scrollToCurrentPage(on: webView, animated: false)
+            }
         }
     }
     

@@ -224,8 +224,11 @@ struct ReaderView: View {
                     .frame(width: geometry.size.width * 0.28)
                     .onTapGesture { previousPageOrChapter() }
                 
-                Spacer(minLength: 0)
-                    .frame(minWidth: 0)
+                // Center tap zone to toggle toolbar/menu
+                Rectangle()
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+                    .onTapGesture { handleTap() }
                 
                 Rectangle()
                     .fill(Color.clear)
