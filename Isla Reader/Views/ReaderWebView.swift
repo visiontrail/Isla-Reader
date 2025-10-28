@@ -292,6 +292,7 @@ struct ReaderWebView: UIViewRepresentable {
             </style>
         </head>
         <body>
+            <div class="viewport-edge-right"></div>
             <div class="reader-content">
                 \(htmlContent)
             </div>
@@ -337,28 +338,44 @@ struct ReaderWebView: UIViewRepresentable {
         body {
             font-size: \(Int(fontSize))px;
             line-height: \(lineHeight);
-            padding: 0 \(pageMargin)px; /* 首末页外侧留白 */
             margin: 0;
             width: 100vw;
             height: 100vh; /* 每列高度 = 视口高度 */
-            /* 分栏实现横向分页：每页宽度 = 列宽 + 列间距 = 100vw */
-            -webkit-column-width: calc(100vw - \(columnGap)px);
-            column-width: calc(100vw - \(columnGap)px);
-            -webkit-column-gap: \(columnGap)px;
-            column-gap: \(columnGap)px;
-            -webkit-column-fill: auto;
-            column-fill: auto;
+            padding: 0 \(pageMargin)px; /* 首末页外侧留白，保证最后一页右侧外边距可见 */
         }
-        
-        /* 主内容容器，去除分栏相关，避免影响根滚动宽度 */
+
+        /* 主内容容器启用分栏以实现横向分页 */
         .reader-content {
             max-width: 100%;
+            height: 100%;
             padding: 0;
             margin: 0;
             word-wrap: break-word;
             overflow-wrap: break-word;
             word-break: break-word;
+            /* 分栏实现横向分页：每页宽度 = 列宽 + 列间距 = 100vw
+               由于 body 有左右 padding，需要在列宽计算中扣除 */
+            -webkit-column-width: calc(100vw - \(pageMargin * 2)px - \(columnGap)px);
+            column-width: calc(100vw - \(pageMargin * 2)px - \(columnGap)px);
+            -webkit-column-gap: \(columnGap)px;
+            column-gap: \(columnGap)px;
+            -webkit-column-fill: auto;
+            column-fill: auto;
         }
+
+        /* 视口右侧覆盖留白，保证末页右缘不被内容占据 */
+        .viewport-edge-right {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: \(pageMargin)px;
+            height: 100vh;
+            background-color: \(backgroundColor);
+            pointer-events: none;
+            z-index: 9999;
+            display: none; /* 默认隐藏，仅末页显示，避免遮挡文本 */
+        }
+
         
         /* 段落样式 */
         p {
@@ -614,11 +631,32 @@ struct ReaderWebView: UIViewRepresentable {
             return Math.max(1, window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 1);
         }
 
+        function getScrollLeft() {
+            return (window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0);
+        }
+
+        function getTotalWidth() {
+            return Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+        }
+
+        function updateEdgeOverlay() {
+            try {
+                var overlay = document.querySelector('.viewport-edge-right');
+                if (!overlay) return;
+                const perPage = getPerPage();
+                const totalWidth = getTotalWidth();
+                const x = getScrollLeft();
+                const atLast = (x + perPage) >= (totalWidth - 1);
+                overlay.style.display = atLast ? 'block' : 'none';
+            } catch (e) {}
+        }
+
         function computePageCount() {
-            const totalWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+            const totalWidth = getTotalWidth();
             const perPage = getPerPage();
             const pages = Math.max(1, Math.ceil(totalWidth / perPage));
             try { window.webkit.messageHandlers.pageMetrics.postMessage({ type: 'pageCount', value: pages }); } catch (e) {}
+            updateEdgeOverlay();
             return pages;
         }
         
@@ -629,7 +667,7 @@ struct ReaderWebView: UIViewRepresentable {
             document.body.style.overflowX = 'auto';
             document.body.style.overflowY = 'hidden';
             // 重新计算页数
-            setTimeout(computePageCount, 0);
+            setTimeout(function(){ computePageCount(); updateEdgeOverlay(); }, 0);
         }
         
         function setScrollLeft(x, animated) {
@@ -645,6 +683,12 @@ struct ReaderWebView: UIViewRepresentable {
             try { if (!animated && document.scrollingElement) { document.scrollingElement.scrollLeft = x; document.scrollingElement.scrollTop = 0; } } catch (e) {}
             try { if (!animated && document.documentElement) { document.documentElement.scrollLeft = x; document.documentElement.scrollTop = 0; } } catch (e) {}
             try { if (!animated && document.body) { document.body.scrollLeft = x; document.body.scrollTop = 0; } } catch (e) {}
+            // 更新右缘覆盖层显示状态
+            if (animated) {
+                setTimeout(updateEdgeOverlay, 360);
+            } else {
+                updateEdgeOverlay();
+            }
         }
 
         function scrollToPage(index, animated) {
@@ -657,12 +701,15 @@ struct ReaderWebView: UIViewRepresentable {
             applyPagination();
             // 初始跳转到指定页（若宿主设置了）
             try { window.webkit.messageHandlers.pageMetrics.postMessage({ type: 'pageCount', value: computePageCount() }); } catch (e) {}
+            updateEdgeOverlay();
         });
+        
+        window.addEventListener('scroll', function(){ updateEdgeOverlay(); }, { passive: true });
         
         window.addEventListener('resize', function() {
             // 在旋转或尺寸改变时保持页位置
             const perPage = getPerPage();
-            const currentScroll = (window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0);
+            const currentScroll = getScrollLeft();
             const currentPage = Math.round(currentScroll / perPage);
             applyPagination();
             setTimeout(function(){ scrollToPage(currentPage, false); }, 0);
