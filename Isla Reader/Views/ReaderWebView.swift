@@ -348,20 +348,25 @@ struct ReaderWebView: UIViewRepresentable {
         .reader-content {
             max-width: 100%;
             height: 100%;
-            /* 首末页外侧留白，保证最后一页右侧外边距可见 */
-            padding: 0 \(pageMargin)px;
             margin: 0;
+            padding: 0;
             word-wrap: break-word;
             overflow-wrap: break-word;
             word-break: break-word;
-            /* 分栏实现横向分页：每页宽度 = 列宽 + 列间距 = 100vw
-               由于 .reader-content 有左右 padding，需要在列宽计算中扣除 */
-            -webkit-column-width: calc(100vw - \(pageMargin * 2)px - \(columnGap)px);
-            column-width: calc(100vw - \(pageMargin * 2)px - \(columnGap)px);
-            -webkit-column-gap: \(columnGap)px;
-            column-gap: \(columnGap)px;
+            /* 分栏实现横向分页：每页宽度 = 100vw */
+            -webkit-column-width: 100vw;
+            column-width: 100vw;
+            -webkit-column-gap: 0;
+            column-gap: 0;
             -webkit-column-fill: auto;
             column-fill: auto;
+        }
+        
+        /* 为所有内容元素添加左右边距，确保文字不会贴到屏幕边缘 */
+        .reader-content * {
+            padding-left: \(pageMargin)px !important;
+            padding-right: \(pageMargin)px !important;
+            box-sizing: border-box;
         }
         
         
