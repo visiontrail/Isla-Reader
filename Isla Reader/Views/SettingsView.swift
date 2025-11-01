@@ -18,9 +18,10 @@ struct SettingsView: View {
                 // Language
                 Section(NSLocalizedString("语言", comment: "")) {
                     HStack {
-                        Label(NSLocalizedString("语言", comment: ""), systemImage: "globe")
+                        Label("", systemImage: "globe")
+                        Text(NSLocalizedString("语言", comment: ""))
                         Spacer()
-                        Picker(NSLocalizedString("语言", comment: ""), selection: $appSettings.language) {
+                        Picker("", selection: $appSettings.language) {
                             ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
                                 Text(lang.displayName).tag(lang)
                             }
