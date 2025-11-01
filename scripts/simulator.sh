@@ -18,7 +18,7 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 PROJECT_NAME="Isla Reader"
-BUNDLE_ID="LeoGuo.Isla-Reader"
+BUNDLE_ID="LeoGuo.Isla-Reader-Local"
 
 # 显示帮助信息
 show_help() {
