@@ -292,7 +292,6 @@ struct ReaderWebView: UIViewRepresentable {
             </style>
         </head>
         <body>
-            <div class="viewport-edge-right"></div>
             <div class="reader-content">
                 \(htmlContent)
             </div>
@@ -341,20 +340,22 @@ struct ReaderWebView: UIViewRepresentable {
             margin: 0;
             width: 100vw;
             height: 100vh; /* 每列高度 = 视口高度 */
-            padding: 0 \(pageMargin)px; /* 首末页外侧留白，保证最后一页右侧外边距可见 */
+            /* 将外侧留白移动到内容容器，避免根元素特殊滚动行为导致末页无右侧留白 */
+            padding: 0; 
         }
 
         /* 主内容容器启用分栏以实现横向分页 */
         .reader-content {
             max-width: 100%;
             height: 100%;
-            padding: 0;
+            /* 首末页外侧留白，保证最后一页右侧外边距可见 */
+            padding: 0 \(pageMargin)px;
             margin: 0;
             word-wrap: break-word;
             overflow-wrap: break-word;
             word-break: break-word;
             /* 分栏实现横向分页：每页宽度 = 列宽 + 列间距 = 100vw
-               由于 body 有左右 padding，需要在列宽计算中扣除 */
+               由于 .reader-content 有左右 padding，需要在列宽计算中扣除 */
             -webkit-column-width: calc(100vw - \(pageMargin * 2)px - \(columnGap)px);
             column-width: calc(100vw - \(pageMargin * 2)px - \(columnGap)px);
             -webkit-column-gap: \(columnGap)px;
@@ -362,20 +363,7 @@ struct ReaderWebView: UIViewRepresentable {
             -webkit-column-fill: auto;
             column-fill: auto;
         }
-
-        /* 视口右侧覆盖留白，保证末页右缘不被内容占据 */
-        .viewport-edge-right {
-            position: fixed;
-            right: 0;
-            top: 0;
-            width: \(pageMargin)px;
-            height: 100vh;
-            background-color: \(backgroundColor);
-            pointer-events: none;
-            z-index: 9999;
-            display: none; /* 默认隐藏，仅末页显示，避免遮挡文本 */
-        }
-
+        
         
         /* 段落样式 */
         p {
