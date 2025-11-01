@@ -339,7 +339,7 @@ struct ReaderWebView: UIViewRepresentable {
             line-height: \(lineHeight);
             margin: 0;
             width: 100vw;
-            height: 100vh; /* 每列高度 = 视口高度 */
+            height: 100vh; /* 每列高度 = 视口高度，WebView已经为页码预留了空间 */
             /* 将外侧留白移动到内容容器，避免根元素特殊滚动行为导致末页无右侧留白 */
             padding: 0; 
         }

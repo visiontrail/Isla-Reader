@@ -173,6 +173,10 @@ struct ReaderView: View {
     private func chapterView(index: Int, chapter: Chapter, geometry: GeometryProxy) -> some View {
         ZStack {
             // Content WebView with horizontal pagination
+            // 为页码显示预留空间：页码高度约50px（包括padding和背景）
+            let pageIndicatorHeight: CGFloat = 50
+            let webViewHeight = geometry.size.height - pageIndicatorHeight
+            
             ReaderWebView(
                 htmlContent: chapter.htmlContent,
                 appSettings: appSettings,
@@ -193,7 +197,7 @@ struct ReaderView: View {
                     showingTextActions = true
                 }
             )
-            .frame(width: geometry.size.width, height: geometry.size.height)
+            .frame(width: geometry.size.width, height: webViewHeight)
             .onChange(of: appSettings.pageMargins) { _ in
                 // 版心变化后，保持页码在合法范围
                 clampCurrentPage(index)
@@ -254,10 +258,13 @@ struct ReaderView: View {
                     }
             )
             
-            // Page indicator (bottom center)
+            // Page indicator (在预留的空间中显示)
             if safeChapterTotalPages(index) > 1 {
                 VStack {
                     Spacer()
+                        .frame(height: webViewHeight) // 占据WebView的高度
+                    
+                    // 页码显示在预留的空间中
                     HStack {
                         Spacer()
                         Text("\(safeChapterPageIndex(index) + 1) / \(safeChapterTotalPages(index))")
@@ -269,7 +276,7 @@ struct ReaderView: View {
                             .cornerRadius(12)
                         Spacer()
                     }
-                    .padding(.bottom, 28)
+                    .frame(height: pageIndicatorHeight) // 使用预留的高度
                 }
                 .transition(.opacity)
             }
