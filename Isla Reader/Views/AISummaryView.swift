@@ -161,9 +161,7 @@ struct AISummaryView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    Text(summaryService.currentSummary)
-                        .font(.body)
-                        .lineSpacing(4)
+                    MarkdownText(summaryService.currentSummary, lineSpacing: 4)
                         .animation(.easeInOut, value: summaryService.currentSummary)
                 }
             } else {
@@ -191,10 +189,7 @@ struct AISummaryView: View {
                         .fontWeight(.medium)
                 }
                 
-                Text(summaryService.currentSummary)
-                    .font(.body)
-                    .lineSpacing(6)
-                    .fixedSize(horizontal: false, vertical: true)
+                MarkdownText(summaryService.currentSummary, lineSpacing: 6)
             }
             
             // 关键要点
