@@ -18,26 +18,26 @@ public enum ReadingStatus: String, CaseIterable {
     var displayName: String {
         switch self {
         case .wantToRead:
-            return "想读"
+            return NSLocalizedString("想读", comment: "Want to read status")
         case .reading:
-            return "在读"
+            return NSLocalizedString("在读", comment: "Currently reading status")
         case .finished:
-            return "已读"
+            return NSLocalizedString("已读", comment: "Finished reading status")
         case .paused:
-            return "暂停"
+            return NSLocalizedString("暂停", comment: "Paused reading status")
         }
     }
     
     var displayNameKey: LocalizedStringKey {
         switch self {
         case .wantToRead:
-            return "想读"
+            return LocalizedStringKey("想读")
         case .reading:
-            return "在读"
+            return LocalizedStringKey("在读")
         case .finished:
-            return "已读"
+            return LocalizedStringKey("已读")
         case .paused:
-            return "暂停"
+            return LocalizedStringKey("暂停")
         }
     }
 }

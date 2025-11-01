@@ -16,11 +16,11 @@ public enum AppTheme: String, CaseIterable {
     var displayName: String {
         switch self {
         case .system:
-            return "跟随系统"
+            return NSLocalizedString("跟随系统", comment: "Follow system theme")
         case .light:
-            return "浅色模式"
+            return NSLocalizedString("始终使用浅色主题", comment: "Always use light theme")
         case .dark:
-            return "深色模式"
+            return NSLocalizedString("始终使用深色主题", comment: "Always use dark theme")
         }
     }
     
@@ -45,13 +45,13 @@ public enum ReadingFontSize: String, CaseIterable {
     var displayName: String {
         switch self {
         case .small:
-            return "小"
+            return NSLocalizedString("小", comment: "Small font size")
         case .medium:
-            return "中"
+            return NSLocalizedString("中", comment: "Medium font size")
         case .large:
-            return "大"
+            return NSLocalizedString("大", comment: "Large font size")
         case .extraLarge:
-            return "特大"
+            return NSLocalizedString("特大", comment: "Extra large font size")
         }
     }
     
@@ -77,11 +77,11 @@ public enum ReadingFont: String, CaseIterable {
     var displayName: String {
         switch self {
         case .system:
-            return "系统字体"
+            return NSLocalizedString("系统字体", comment: "System font")
         case .serif:
-            return "衬线字体"
+            return NSLocalizedString("衬线字体", comment: "Serif font")
         case .monospace:
-            return "等宽字体"
+            return NSLocalizedString("等宽字体", comment: "Monospace font")
         }
     }
     
