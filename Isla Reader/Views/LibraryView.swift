@@ -161,82 +161,59 @@ struct BookCardView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Book Cover
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(LinearGradient(
-                        gradient: Gradient(colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.8)]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ))
+        // Book Cover
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(LinearGradient(
+                    gradient: Gradient(colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.8)]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+                .frame(width: cardWidth, height: cardHeight)
+            
+            if let coverImage = libraryItem.book.coverImage {
+                coverImage
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
                     .frame(width: cardWidth, height: cardHeight)
-                
-                if let coverImage = libraryItem.book.coverImage {
-                    coverImage
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: cardWidth, height: cardHeight)
-                        .clipped()
-                        .cornerRadius(12)
-                } else {
-                    VStack {
-                        Image(systemName: "book.closed")
-                            .font(.system(size: 40))
-                            .foregroundColor(.white)
-                        
-                        Text(libraryItem.book.displayTitle)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(3)
-                            .padding(.horizontal, 8)
-                    }
-                }
-                
-                // Status Badge
+                    .clipped()
+                    .cornerRadius(12)
+            } else {
                 VStack {
-                    HStack {
-                        Spacer()
-                        StatusBadge(status: libraryItem.status)
-                    }
-                    Spacer()
-                }
-                .padding(8)
-                
-                // Progress Indicator
-                if libraryItem.status == .reading,
-                   let progress = libraryItem.book.readingProgress {
-                    VStack {
-                        Spacer()
-                        ProgressBar(progress: progress.progressPercentage)
-                            .padding(.horizontal, 8)
-                            .padding(.bottom, 8)
-                    }
+                    Image(systemName: "book.closed")
+                        .font(.system(size: 40))
+                        .foregroundColor(.white)
+                    
+                    Text(libraryItem.book.displayTitle)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .padding(.horizontal, 8)
                 }
             }
             
-            // Book Info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(libraryItem.book.displayTitle)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                
-                Text(libraryItem.book.displayAuthor)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                
-                if libraryItem.hasRating {
-                    Text(libraryItem.ratingStars)
-                        .font(.caption2)
-                        .foregroundColor(.orange)
+            // Status Badge
+            VStack {
+                HStack {
+                    Spacer()
+                    StatusBadge(status: libraryItem.status)
+                }
+                Spacer()
+            }
+            .padding(8)
+            
+            // Progress Indicator
+            if libraryItem.status == .reading,
+               let progress = libraryItem.book.readingProgress {
+                VStack {
+                    Spacer()
+                    ProgressBar(progress: progress.progressPercentage)
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 8)
                 }
             }
-            .frame(width: cardWidth, alignment: .leading)
         }
         .onTapGesture {
             onTap?()
