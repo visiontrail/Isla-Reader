@@ -84,10 +84,16 @@ struct ReaderView: View {
             startReadingSession()
         }
         .onDisappear {
+            // Save reading progress when view disappears (e.g., user navigates back)
+            saveReadingProgress()
             endReadingSession()
         }
         .onChange(of: scenePhase) { newPhase in
             handleScenePhaseChange(newPhase)
+        }
+        .onChange(of: currentChapterIndex) { _ in
+            // Save progress when chapter changes
+            saveReadingProgress()
         }
     }
     
@@ -329,7 +335,11 @@ struct ReaderView: View {
     private var topToolbar: some View {
         HStack(spacing: 16) {
             // Back button
-            Button(action: { dismiss() }) {
+            Button(action: { 
+                // Save reading progress before dismissing
+                saveReadingProgress()
+                dismiss() 
+            }) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(.primary)
@@ -488,6 +498,23 @@ struct ReaderView: View {
                     // Restore reading progress
                     if let progress = book.readingProgress {
                         self.currentChapterIndex = min(Int(progress.currentPage), metadata.chapters.count - 1)
+                        
+                        // Restore the page within chapter from currentPosition JSON
+                        if let positionJSON = progress.currentPosition,
+                           let data = positionJSON.data(using: .utf8),
+                           let positionData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let savedChapterIndex = positionData["chapterIndex"] as? Int,
+                           let savedPageIndex = positionData["pageIndex"] as? Int {
+                            
+                            // Ensure arrays are initialized
+                            self.ensurePageArrays()
+                            
+                            // Only restore page if we're on the same chapter
+                            if savedChapterIndex == self.currentChapterIndex {
+                                self.setChapterPageIndex(savedChapterIndex, savedPageIndex)
+                                print("✅ Reading progress restored: Chapter \(savedChapterIndex), Page \(savedPageIndex)")
+                            }
+                        }
                     }
                     
                     self.isLoading = false
@@ -517,6 +544,18 @@ struct ReaderView: View {
         
         if let progress = book.readingProgress {
             progress.currentPage = Int32(currentChapterIndex)
+            
+            // Save the current page within chapter to currentPosition as JSON
+            let positionData: [String: Any] = [
+                "chapterIndex": currentChapterIndex,
+                "pageIndex": safeChapterPageIndex(currentChapterIndex),
+                "totalPages": safeChapterTotalPages(currentChapterIndex)
+            ]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: positionData),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                progress.currentPosition = jsonString
+            }
+            
             // Estimate percentage by chapter index and current page within chapter
             let chapterCount = max(chapters.count, 1)
             let base = Double(currentChapterIndex) / Double(chapterCount)
@@ -533,7 +572,12 @@ struct ReaderView: View {
                 book.totalPages = Int32(chapters.count)
             }
             
-            try? viewContext.save()
+            do {
+                try viewContext.save()
+                print("✅ Reading progress saved: Chapter \(currentChapterIndex), Page \(safeChapterPageIndex(currentChapterIndex))")
+            } catch {
+                print("❌ Failed to save reading progress: \(error)")
+            }
         }
     }
      
@@ -681,12 +725,14 @@ struct ReaderView: View {
                 resumeReadingSession()
             }
         case .inactive:
-            // Pause tracking when app becomes inactive
+            // Save reading progress and pause tracking when app becomes inactive
+            saveReadingProgress()
             if isActivelyReading {
                 pauseReadingSession()
             }
         case .background:
-            // Save reading time when app goes to background
+            // Save reading progress and reading time when app goes to background
+            saveReadingProgress()
             if isActivelyReading {
                 pauseReadingSession()
             }
