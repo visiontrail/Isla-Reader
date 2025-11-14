@@ -141,7 +141,9 @@ struct ReadingProgressView: View {
                 .padding(.vertical)
             }
             .navigationTitle(NSLocalizedString("阅读统计", comment: ""))
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
+            #endif
         }
     }
     

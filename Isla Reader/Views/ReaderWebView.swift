@@ -253,7 +253,8 @@ struct ReaderWebView: UIViewRepresentable {
         
         context.coordinator.webView = webView
         context.coordinator.containerView = container
-        context.coordinator.attachSwipeGestures(to: container)
+        // 注释掉滑动手势，让ReaderView完全控制翻页
+        // context.coordinator.attachSwipeGestures(to: container)
         
         return container
     }

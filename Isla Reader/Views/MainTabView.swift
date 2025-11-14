@@ -86,7 +86,9 @@ struct SidebarView: View {
             }
         }
         .navigationTitle(NSLocalizedString("Isla Reader", comment: ""))
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
     }
     
     @ViewBuilder

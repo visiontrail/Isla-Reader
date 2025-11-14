@@ -106,7 +106,9 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle(NSLocalizedString("设置", comment: ""))
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
+            #endif
             .sheet(isPresented: $showingAbout) {
                 AboutView()
             }
@@ -188,7 +190,9 @@ struct ReadingSettingsView: View {
             }
         }
         .navigationTitle(NSLocalizedString("阅读偏好", comment: ""))
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
 }
 
@@ -267,7 +271,9 @@ struct ThemeSettingsView: View {
             }
         }
         .navigationTitle(NSLocalizedString("主题外观", comment: ""))
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
     
     private func themeDescription(_ theme: AppTheme) -> String {
@@ -324,13 +330,23 @@ struct DataManagementView: View {
                 }
             }
             .navigationTitle(NSLocalizedString("数据管理", comment: ""))
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(NSLocalizedString("完成", comment: "")) {
                         dismiss()
                     }
                 }
+                #else
+                ToolbarItem(placement: .primaryAction) {
+                    Button(NSLocalizedString("完成", comment: "")) {
+                        dismiss()
+                    }
+                }
+                #endif
             }
             .alert(NSLocalizedString("清除所有数据", comment: ""), isPresented: $showingClearDataAlert) {
                 Button(NSLocalizedString("取消", comment: ""), role: .cancel) { }
@@ -389,7 +405,9 @@ struct ExportDataView: View {
             }
             .padding()
             .navigationTitle(NSLocalizedString("导出数据", comment: ""))
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(NSLocalizedString("取消", comment: "")) {
@@ -480,13 +498,23 @@ struct AboutView: View {
             }
             .padding()
             .navigationTitle(NSLocalizedString("关于", comment: ""))
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(NSLocalizedString("完成", comment: "")) {
                         dismiss()
                     }
                 }
+                #else
+                ToolbarItem(placement: .primaryAction) {
+                    Button(NSLocalizedString("完成", comment: "")) {
+                        dismiss()
+                    }
+                }
+                #endif
             }
         }
     }

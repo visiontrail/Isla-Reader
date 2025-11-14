@@ -32,6 +32,12 @@ struct ReaderView: View {
     @State private var scrollOffset: CGFloat = 0
     @State private var lastTapTime: Date = Date()
     
+    // 新增滑动翻页相关状态
+    @State private var dragOffset: CGFloat = 0
+    @State private var isDragging: Bool = false
+    @State private var dragStartLocation: CGPoint = .zero
+    @State private var isAnimatingPageTurn: Bool = false
+    
     // Pagination states per chapter
     @State private var chapterPageIndices: [Int] = []
     @State private var chapterTotalPages: [Int] = []
@@ -226,37 +232,49 @@ struct ReaderView: View {
                     .fill(Color.clear)
                     .contentShape(Rectangle())
                     .frame(width: geometry.size.width * 0.28)
-                    .onTapGesture { previousPageOrChapter() }
+                    .onTapGesture { 
+                        if !isDragging && !isAnimatingPageTurn {
+                            previousPageOrChapter() 
+                        }
+                    }
                 
                 // Center tap zone to toggle toolbar/menu
                 Rectangle()
                     .fill(Color.clear)
                     .contentShape(Rectangle())
-                    .onTapGesture { handleTap() }
+                    .onTapGesture { 
+                        if !isDragging && !isAnimatingPageTurn {
+                            handleTap() 
+                        }
+                    }
                 
                 Rectangle()
                     .fill(Color.clear)
                     .contentShape(Rectangle())
                     .frame(width: geometry.size.width * 0.28)
-                    .onTapGesture { nextPageOrChapter() }
+                    .onTapGesture { 
+                        if !isDragging && !isAnimatingPageTurn {
+                            nextPageOrChapter() 
+                        }
+                    }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .contentShape(Rectangle())
+            .offset(x: dragOffset)
             .gesture(
-                DragGesture(minimumDistance: 20, coordinateSpace: .local)
+                DragGesture(minimumDistance: 10, coordinateSpace: .local)
+                    .onChanged { value in
+                        handleDragChanged(value, geometry: geometry)
+                    }
                     .onEnded { value in
-                        let dx = value.translation.width
-                        let dy = value.translation.height
-                        // Ensure mostly horizontal gesture
-                        if abs(dx) > max(30, abs(dy)) {
-                            if dx < 0 {
-                                nextPageOrChapter()
-                            } else {
-                                previousPageOrChapter()
-                            }
-                        }
+                        handleDragEnded(value, geometry: geometry)
                     }
             )
+            
+            // 滑动视觉反馈
+            if isDragging {
+                slideVisualFeedback(geometry: geometry)
+            }
             
             // Page indicator (在预留的空间中显示)
             if safeChapterTotalPages(index) > 1 {
@@ -597,8 +615,274 @@ struct ReaderView: View {
             setChapterPageIndex(index, max(0, total - 1))
         }
     }
- }
-
+    
+    // MARK: - 滑动手势处理
+    
+    private func handleDragChanged(_ value: DragGesture.Value, geometry: GeometryProxy) {
+        // 防止在动画过程中处理新的拖拽
+        guard !isAnimatingPageTurn else { return }
+        
+        let translation = value.translation
+        let startLocation = value.startLocation
+        
+        // 检查是否是水平滑动（水平移动距离大于垂直移动距离）
+        if abs(translation.width) > abs(translation.height) && abs(translation.width) > 10 {
+            if !isDragging {
+                isDragging = true
+                dragStartLocation = startLocation
+                // 轻微触觉反馈表示开始滑动
+                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                impactFeedback.impactOccurred()
+                
+                // 隐藏工具栏以获得更好的滑动体验
+                if showingToolbar {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        showingToolbar = false
+                    }
+                }
+            }
+            
+            // 计算拖拽偏移，添加阻尼效果
+            let maxOffset = geometry.size.width * 0.3 // 最大偏移为屏幕宽度的30%
+            let dampingFactor: CGFloat = 0.6
+            let rawOffset = translation.width * dampingFactor
+            
+            // 检查是否可以翻页
+            let canGoNext = canNavigateToNextPage()
+            let canGoPrevious = canNavigateToPreviousPage()
+            
+            if rawOffset > 0 && !canGoPrevious {
+                // 向右滑动但无法向前翻页，减少阻力
+                dragOffset = min(rawOffset * 0.3, maxOffset * 0.3)
+            } else if rawOffset < 0 && !canGoNext {
+                // 向左滑动但无法向后翻页，减少阻力
+                dragOffset = max(rawOffset * 0.3, -maxOffset * 0.3)
+            } else {
+                // 正常滑动
+                dragOffset = max(-maxOffset, min(maxOffset, rawOffset))
+            }
+            
+            // 当达到翻页阈值时提供触觉反馈
+            let threshold = geometry.size.width * 0.25
+            if abs(dragOffset) > threshold * 0.8 && abs(translation.width) > threshold * 0.8 {
+                // 只在第一次达到阈值时触发反馈
+                let currentTime = Date().timeIntervalSince1970
+                if currentTime - lastTapTime.timeIntervalSince1970 > 0.3 {
+                    let selectionFeedback = UISelectionFeedbackGenerator()
+                    selectionFeedback.selectionChanged()
+                    lastTapTime = Date()
+                }
+            }
+        }
+    }
+    
+    private func handleDragEnded(_ value: DragGesture.Value, geometry: GeometryProxy) {
+        guard isDragging else { return }
+        
+        let translation = value.translation
+        let velocity = CGPoint(
+            x: value.predictedEndTranslation.width - value.translation.width,
+            y: value.predictedEndTranslation.height - value.translation.height
+        )
+        
+        // 判断翻页阈值
+        let threshold = geometry.size.width * 0.25 // 25%的屏幕宽度
+        let velocityThreshold: CGFloat = 300 // 速度阈值
+        
+        let shouldTurnPage = abs(translation.width) > threshold || abs(velocity.x) > velocityThreshold
+        
+        if shouldTurnPage && abs(translation.width) > abs(translation.height) {
+            if translation.width > 0 && canNavigateToPreviousPage() {
+                // 向右滑动，翻到上一页
+                performPageTurn(direction: .previous, geometry: geometry)
+            } else if translation.width < 0 && canNavigateToNextPage() {
+                // 向左滑动，翻到下一页
+                performPageTurn(direction: .next, geometry: geometry)
+            } else {
+                // 无法翻页，回弹
+                animateBackToOriginalPosition()
+            }
+        } else {
+            // 滑动距离不够，回弹
+            animateBackToOriginalPosition()
+        }
+        
+        isDragging = false
+    }
+    
+    private func performPageTurn(direction: PageTurnDirection, geometry: GeometryProxy) {
+        guard !isAnimatingPageTurn else { return }
+        
+        isAnimatingPageTurn = true
+        
+        // 成功翻页的触觉反馈
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // 立即执行翻页逻辑
+        switch direction {
+        case .next:
+            nextPageOrChapter()
+        case .previous:
+            previousPageOrChapter()
+        }
+        
+        // 计算最终偏移位置
+        let finalOffset: CGFloat = direction == .next ? -geometry.size.width : geometry.size.width
+        
+        // 执行翻页动画
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0)) {
+            dragOffset = finalOffset
+        }
+        
+        // 动画完成后重置状态
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            self.dragOffset = 0
+            self.isAnimatingPageTurn = false
+        }
+    }
+    
+    private func animateBackToOriginalPosition() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            dragOffset = 0
+        }
+    }
+    
+    private func canNavigateToNextPage() -> Bool {
+        ensurePageArrays()
+        let total = safeChapterTotalPages(currentChapterIndex)
+        let page = safeChapterPageIndex(currentChapterIndex)
+        return page < total - 1 || currentChapterIndex < chapters.count - 1
+    }
+    
+    private func canNavigateToPreviousPage() -> Bool {
+        ensurePageArrays()
+        let page = safeChapterPageIndex(currentChapterIndex)
+        return page > 0 || currentChapterIndex > 0
+    }
+    
+    private enum PageTurnDirection {
+        case next
+        case previous
+    }
+    
+    // MARK: - 滑动视觉反馈
+    
+    private func slideVisualFeedback(geometry: GeometryProxy) -> some View {
+        ZStack {
+            // 滑动方向指示器
+            if abs(dragOffset) > 20 {
+                VStack {
+                    Spacer()
+                    
+                    HStack {
+                        if dragOffset > 0 {
+                            // 向右滑动 - 上一页指示器
+                            slideIndicator(
+                                direction: .previous,
+                                progress: min(abs(dragOffset) / (geometry.size.width * 0.25), 1.0),
+                                canNavigate: canNavigateToPreviousPage()
+                            )
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .leading).combined(with: .opacity),
+                                removal: .opacity
+                            ))
+                            
+                            Spacer()
+                        } else {
+                            // 向左滑动 - 下一页指示器
+                            Spacer()
+                            
+                            slideIndicator(
+                                direction: .next,
+                                progress: min(abs(dragOffset) / (geometry.size.width * 0.25), 1.0),
+                                canNavigate: canNavigateToNextPage()
+                            )
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal: .opacity
+                            ))
+                        }
+                    }
+                    .padding(.horizontal, 40)
+                    
+                    Spacer()
+                }
+            }
+            
+            // 边缘发光效果
+            if abs(dragOffset) > 10 {
+                edgeGlowEffect(geometry: geometry)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+    
+    private func slideIndicator(direction: PageTurnDirection, progress: CGFloat, canNavigate: Bool) -> some View {
+        VStack(spacing: 8) {
+            // 箭头图标
+            Image(systemName: direction == .next ? "chevron.right" : "chevron.left")
+                .font(.system(size: 24, weight: .medium))
+                .foregroundColor(canNavigate ? .primary : .secondary)
+                .scaleEffect(0.8 + progress * 0.4)
+                .opacity(0.6 + progress * 0.4)
+            
+            // 进度指示器
+            RoundedRectangle(cornerRadius: 2)
+                .fill(canNavigate ? Color.blue : Color.secondary)
+                .frame(width: 40, height: 4)
+                .scaleEffect(x: progress, y: 1.0, anchor: .center)
+                .opacity(0.7)
+            
+            // 提示文本
+            Text(direction == .next ? "下一页" : "上一页")
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundColor(canNavigate ? .primary : .secondary)
+                .opacity(progress > 0.5 ? 0.8 : 0.0)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.ultraThinMaterial)
+                .opacity(0.8 + progress * 0.2)
+        )
+        .scaleEffect(0.9 + progress * 0.1)
+    }
+    
+    private func edgeGlowEffect(geometry: GeometryProxy) -> some View {
+        HStack {
+            if dragOffset > 0 {
+                // 左边缘发光
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        canNavigateToPreviousPage() ? Color.blue.opacity(0.3) : Color.red.opacity(0.2),
+                        Color.clear
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: 8)
+                .opacity(min(abs(dragOffset) / CGFloat(100), 1.0))
+                
+                Spacer()
+            } else {
+                Spacer()
+                
+                // 右边缘发光
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.clear,
+                        canNavigateToNextPage() ? Color.blue.opacity(0.3) : Color.red.opacity(0.2)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: 8)
+                .opacity(min(abs(dragOffset) / CGFloat(100), 1.0))
+            }
+        }
+    }
+}
 
 struct TableOfContentsView: View {
     let chapters: [Chapter]
@@ -672,7 +956,9 @@ struct TableOfContentsView: View {
                 }
             }
             .navigationTitle(NSLocalizedString("目录", comment: ""))
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { dismiss() }) {
@@ -742,13 +1028,27 @@ struct ReaderSettingsView: View {
                 }
             }
             .navigationTitle(NSLocalizedString("阅读设置", comment: ""))
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(NSLocalizedString("完成", comment: "")) {
-                        dismiss()
+                    Button(action: { dismiss() }) {
+                        Text(NSLocalizedString("完成", comment: ""))
+                            .font(.system(.body, design: .rounded))
+                            .fontWeight(.medium)
                     }
                 }
+                #else
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: { dismiss() }) {
+                        Text(NSLocalizedString("完成", comment: ""))
+                            .font(.system(.body, design: .rounded))
+                            .fontWeight(.medium)
+                    }
+                }
+                #endif
             }
         }
     }
@@ -775,7 +1075,7 @@ struct AIChatSidebar: View {
                 }
             }
             .padding()
-            .background(Color(.systemGray6))
+            .background(.gray.opacity(0.1))
             
             // Messages
             ScrollView {
@@ -825,7 +1125,7 @@ struct AIChatSidebar: View {
             }
             .padding()
         }
-        .background(Color(.systemBackground))
+        .background(.background)
     }
     
     private func sendMessage() {
@@ -854,7 +1154,7 @@ struct SuggestedQuestionButton: View {
                 .font(.caption)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color(.systemGray5))
+                .background(.gray.opacity(0.2))
                 .cornerRadius(12)
         }
         .buttonStyle(PlainButtonStyle())
@@ -869,13 +1169,23 @@ struct AIChatView: View {
         NavigationView {
             AIChatSidebar(book: book)
                 .navigationTitle(NSLocalizedString("AI 阅读助手", comment: ""))
+                #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
+                #endif
                 .toolbar {
+                    #if os(iOS)
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(NSLocalizedString("完成", comment: "")) {
                             dismiss()
                         }
                     }
+                    #else
+                    ToolbarItem(placement: .primaryAction) {
+                        Button(NSLocalizedString("完成", comment: "")) {
+                            dismiss()
+                        }
+                    }
+                    #endif
                 }
         }
     }
@@ -912,7 +1222,7 @@ struct ChatMessageView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(message.content)
                         .padding()
-                        .background(Color(.systemGray5))
+                        .background(.gray.opacity(0.2))
                         .cornerRadius(16)
                     
                     Text(formatTime(message.timestamp))
@@ -943,7 +1253,7 @@ struct TextActionsView: View {
                 Text(NSLocalizedString("选中文本", comment: ""))
                     .font(.headline)
                     .padding()
-                    .background(Color(.systemGray6))
+                    .background(.gray.opacity(0.1))
                     .cornerRadius(8)
                 
                 VStack(spacing: 16) {
@@ -958,13 +1268,23 @@ struct TextActionsView: View {
             }
             .padding()
             .navigationTitle(NSLocalizedString("文本操作", comment: ""))
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(NSLocalizedString("完成", comment: "")) {
                         dismiss()
                     }
                 }
+                #else
+                ToolbarItem(placement: .primaryAction) {
+                    Button(NSLocalizedString("完成", comment: "")) {
+                        dismiss()
+                    }
+                }
+                #endif
             }
         }
     }
@@ -993,7 +1313,7 @@ struct ActionButton: View {
                     .foregroundColor(.secondary)
             }
             .padding()
-            .background(Color(.systemGray6))
+            .background(.gray.opacity(0.1))
             .cornerRadius(12)
         }
         .buttonStyle(PlainButtonStyle())

@@ -94,14 +94,25 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle(NSLocalizedString("我的书架", comment: ""))
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingImportSheet = true }) {
                         Image(systemName: "plus")
                             .font(.title2)
                     }
                 }
+                #else
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: { showingImportSheet = true }) {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                    }
+                }
+                #endif
             }
             .sheet(isPresented: $showingImportSheet) {
                 ImportBookView(onBookImported: { book in
@@ -123,7 +134,9 @@ struct LibraryView: View {
                 NavigationView {
                     AISummaryView(book: book)
                         .navigationTitle(book.displayTitle)
+                        #if os(iOS)
                         .navigationBarTitleDisplayMode(.inline)
+                        #endif
                         .toolbar {
                             ToolbarItem(placement: .navigationBarLeading) {
                                 Button(action: {
@@ -380,11 +393,19 @@ struct FilterSheetView: View {
             .navigationTitle(NSLocalizedString("筛选", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(NSLocalizedString("完成", comment: "")) {
                         dismiss()
                     }
                 }
+                #else
+                ToolbarItem(placement: .primaryAction) {
+                    Button(NSLocalizedString("完成", comment: "")) {
+                        dismiss()
+                    }
+                }
+                #endif
             }
         }
     }
