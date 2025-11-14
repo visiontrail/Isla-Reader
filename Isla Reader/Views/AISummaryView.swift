@@ -12,6 +12,7 @@ struct AISummaryView: View {
     @StateObject private var summaryService = AISummaryService.shared
     @State private var showingSummary = false
     @State private var isFirstOpen = true
+    @Environment(\.managedObjectContext) private var viewContext
     
     var body: some View {
         VStack(spacing: 0) {
@@ -272,8 +273,11 @@ struct AISummaryView: View {
     private func checkAndGenerateSummary() {
         DebugLogger.info("AISummaryView: checkAndGenerateSummary 开始")
         
+        // 刷新 Book 对象以确保获取最新数据
+        viewContext.refresh(book, mergeChanges: true)
+        
         // 检查是否已有摘要
-        let hasAISummary = book.aiSummary != nil
+        let hasAISummary = book.aiSummary != nil && !(book.aiSummary?.isEmpty ?? true)
         let hasGeneratedAt = book.aiSummaryGeneratedAt != nil
         
         DebugLogger.info("AISummaryView: hasAISummary = \(hasAISummary)")
@@ -281,6 +285,7 @@ struct AISummaryView: View {
         
         if hasAISummary && hasGeneratedAt {
             DebugLogger.success("AISummaryView: 书籍已有摘要，直接显示")
+            DebugLogger.info("AISummaryView: 摘要生成时间 = \(String(describing: book.aiSummaryGeneratedAt))")
             summaryService.currentSummary = book.aiSummary ?? ""
             DebugLogger.info("AISummaryView: 摘要内容长度 = \(summaryService.currentSummary.count)")
             
@@ -327,7 +332,17 @@ struct AISummaryView: View {
         book.aiKeyPoints = nil
         book.aiSummaryGeneratedAt = nil
         
-        DebugLogger.info("AISummaryView: 已清除旧摘要，准备重新生成")
+        // 保存清除操作到 Core Data
+        do {
+            if viewContext.hasChanges {
+                try viewContext.save()
+                DebugLogger.info("AISummaryView: 已清除旧摘要并保存到Core Data")
+            }
+        } catch {
+            DebugLogger.error("AISummaryView: 保存清除操作失败 - \(error.localizedDescription)")
+        }
+        
+        DebugLogger.info("AISummaryView: 准备重新生成")
         
         // 重新生成
         generateSummaryWithStream()

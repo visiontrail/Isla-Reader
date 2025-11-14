@@ -633,8 +633,12 @@ class AISummaryService: ObservableObject {
     
     private func getCachedSummary(for book: Book) throws -> BookSummary? {
         DebugLogger.info("AISummaryService: 检查缓存摘要")
+        DebugLogger.info("AISummaryService: book.aiSummary 是否存在 = \(book.aiSummary != nil)")
+        DebugLogger.info("AISummaryService: book.aiKeyPoints 是否存在 = \(book.aiKeyPoints != nil)")
+        DebugLogger.info("AISummaryService: book.aiSummaryGeneratedAt 是否存在 = \(book.aiSummaryGeneratedAt != nil)")
         
         guard let aiSummary = book.aiSummary,
+              !aiSummary.isEmpty,
               let aiKeyPointsString = book.aiKeyPoints,
               let generatedAt = book.aiSummaryGeneratedAt else {
             DebugLogger.info("AISummaryService: 没有找到缓存的摘要数据")
@@ -643,10 +647,12 @@ class AISummaryService: ObservableObject {
         
         DebugLogger.info("AISummaryService: 找到缓存摘要，生成时间 = \(generatedAt)")
         
-        // 检查摘要是否过期（7天）
-        let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        if generatedAt < sevenDaysAgo {
-            DebugLogger.warning("AISummaryService: 缓存摘要已过期（超过7天）")
+        // 检查摘要是否过期（30天）- 延长到30天以便测试和使用
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        if generatedAt < thirtyDaysAgo {
+            DebugLogger.warning("AISummaryService: 缓存摘要已过期（超过30天）")
+            DebugLogger.info("AISummaryService: 当前时间 = \(Date())")
+            DebugLogger.info("AISummaryService: 摘要生成时间 = \(generatedAt)")
             return nil
         }
         
@@ -687,12 +693,25 @@ class AISummaryService: ObservableObject {
         DebugLogger.info("AISummaryService: Book对象属性已更新")
         
         // 保存到Core Data
-        if let context = book.managedObjectContext {
-            DebugLogger.info("AISummaryService: 准备保存到Core Data")
+        guard let context = book.managedObjectContext else {
+            DebugLogger.warning("AISummaryService: Book对象没有关联的managedObjectContext")
+            throw AISummaryError.apiError("Book对象没有关联的管理对象上下文")
+        }
+        
+        DebugLogger.info("AISummaryService: 准备保存到Core Data")
+        DebugLogger.info("AISummaryService: Context has changes: \(context.hasChanges)")
+        
+        do {
             try context.save()
             DebugLogger.success("AISummaryService: 摘要已成功保存到Core Data")
-        } else {
-            DebugLogger.warning("AISummaryService: Book对象没有关联的managedObjectContext")
+            
+            // 验证保存是否成功
+            DebugLogger.info("AISummaryService: 验证保存结果...")
+            DebugLogger.info("AISummaryService: book.aiSummary 长度 = \(book.aiSummary?.count ?? 0)")
+            DebugLogger.info("AISummaryService: book.aiSummaryGeneratedAt = \(String(describing: book.aiSummaryGeneratedAt))")
+        } catch {
+            DebugLogger.error("AISummaryService: Core Data 保存失败 - \(error.localizedDescription)")
+            throw error
         }
     }
     

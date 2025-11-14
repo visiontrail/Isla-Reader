@@ -23,7 +23,6 @@ struct LibraryView: View {
     @State private var showingImportSheet = false
     @State private var showingFilterSheet = false
     @State private var bookToShowAISummary: Book? = nil
-    @State private var bookToRead: Book? = nil
     
     private var filteredBooks: [LibraryItem] {
         var items = Array(libraryItems)
@@ -85,7 +84,8 @@ struct LibraryView: View {
                                 BookCardView(libraryItem: item, onTap: {
                                     DebugLogger.info("LibraryView: 书籍卡片点击")
                                     DebugLogger.info("LibraryView: 点击的书籍 = \(item.book.displayTitle)")
-                                    handleBookTap(item.book)
+                                    bookToShowAISummary = item.book
+                                    DebugLogger.info("LibraryView: 设置 bookToShowAISummary")
                                 })
                             }
                         }
@@ -156,32 +156,6 @@ struct LibraryView: View {
                     DebugLogger.info("LibraryView: 选中的书籍 = \(book.displayTitle)")
                 }
             }
-            .fullScreenCover(item: $bookToRead) { book in
-                ReaderView(book: book)
-            }
-        }
-    }
-    
-    // MARK: - Helper Methods
-    
-    /// 处理书籍点击事件：如果已有摘要则直接打开阅读器，否则先显示AI摘要
-    private func handleBookTap(_ book: Book) {
-        // 检查是否已经生成过摘要
-        let hasAISummary = book.aiSummary != nil && !book.aiSummary!.isEmpty
-        let hasGeneratedAt = book.aiSummaryGeneratedAt != nil
-        
-        DebugLogger.info("LibraryView: handleBookTap - 书籍 = \(book.displayTitle)")
-        DebugLogger.info("LibraryView: hasAISummary = \(hasAISummary)")
-        DebugLogger.info("LibraryView: hasGeneratedAt = \(hasGeneratedAt)")
-        
-        if hasAISummary && hasGeneratedAt {
-            // 已有摘要，直接打开阅读器
-            DebugLogger.success("LibraryView: 书籍已有摘要，直接打开阅读器")
-            bookToRead = book
-        } else {
-            // 没有摘要，先显示AI摘要界面
-            DebugLogger.info("LibraryView: 书籍没有摘要，显示AI摘要界面")
-            bookToShowAISummary = book
         }
     }
 }
