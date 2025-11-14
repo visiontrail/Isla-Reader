@@ -127,7 +127,9 @@ class BookImportService: ObservableObject {
             readingProgress.totalReadingTime = 0
             readingProgress.createdAt = Date()
             readingProgress.updatedAt = Date()
-            DebugLogger.info("BookImportService: ReadingProgress创建完成")
+            // 显式设置反向关系
+            book.readingProgress = readingProgress
+            DebugLogger.info("BookImportService: ReadingProgress创建完成，进度=\(readingProgress.progressPercentage)")
             
             // 9. 保存章节信息到metadata
             DebugLogger.info("BookImportService: 步骤9 - 保存章节信息")

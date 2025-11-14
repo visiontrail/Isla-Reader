@@ -18,6 +18,9 @@ struct LibraryView: View {
         animation: .default)
     private var libraryItems: FetchedResults<LibraryItem>
     
+    // 强制刷新视图的状态
+    @State private var refreshID = UUID()
+    
     @State private var searchText = ""
     @State private var selectedFilter: ReadingStatus? = nil
     @State private var showingImportSheet = false
@@ -90,6 +93,7 @@ struct LibraryView: View {
                             }
                         }
                         .padding()
+                        .id(refreshID)
                     }
                 }
             }
@@ -142,6 +146,8 @@ struct LibraryView: View {
                                 Button(action: {
                                     DebugLogger.info("LibraryView: 关闭按钮点击，关闭AI摘要界面")
                                     bookToShowAISummary = nil
+                                    // 关闭时刷新数据
+                                    refreshData()
                                 }) {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.title2)
@@ -156,7 +162,19 @@ struct LibraryView: View {
                     DebugLogger.info("LibraryView: 选中的书籍 = \(book.displayTitle)")
                 }
             }
+            .onAppear {
+                DebugLogger.info("LibraryView: 视图出现，刷新数据")
+                refreshData()
+            }
         }
+    }
+    
+    // 刷新数据的辅助方法
+    private func refreshData() {
+        DebugLogger.info("LibraryView: 执行数据刷新")
+        viewContext.refreshAllObjects()
+        refreshID = UUID()
+        DebugLogger.info("LibraryView: 数据刷新完成")
     }
 }
 
@@ -210,8 +228,9 @@ struct BookCardView: View {
             // Progress Indicator and Status Badge
             VStack {
                 HStack(spacing: 6) {
-                    // Progress Indicator - show for all books with reading progress
-                    if let progress = libraryItem.book.readingProgress {
+                    // Progress Indicator - show for all books with reading progress > 0
+                    if let progress = libraryItem.book.readingProgress,
+                       progress.progressPercentage > 0 {
                         ProgressIndicatorBadge(progress: progress.progressPercentage)
                     }
                     
@@ -229,6 +248,14 @@ struct BookCardView: View {
         }
         .contextMenu {
             BookContextMenu(libraryItem: libraryItem)
+        }
+        .onAppear {
+            // 调试：打印进度信息
+            if let progress = libraryItem.book.readingProgress {
+                DebugLogger.info("BookCard[\(libraryItem.book.displayTitle)]: 进度 = \(progress.progressPercentage * 100)%")
+            } else {
+                DebugLogger.info("BookCard[\(libraryItem.book.displayTitle)]: 没有进度数据")
+            }
         }
     }
 }
