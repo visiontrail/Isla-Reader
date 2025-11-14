@@ -207,26 +207,22 @@ struct BookCardView: View {
                 }
             }
             
-            // Status Badge
+            // Progress Indicator and Status Badge
             VStack {
-                HStack {
+                HStack(spacing: 6) {
+                    // Progress Indicator - show for all books with reading progress
+                    if let progress = libraryItem.book.readingProgress {
+                        ProgressIndicatorBadge(progress: progress.progressPercentage)
+                    }
+                    
                     Spacer()
+                    
+                    // Status Badge
                     StatusBadge(status: libraryItem.status)
                 }
                 Spacer()
             }
             .padding(8)
-            
-            // Progress Indicator
-            if libraryItem.status == .reading,
-               let progress = libraryItem.book.readingProgress {
-                VStack {
-                    Spacer()
-                    ProgressBar(progress: progress.progressPercentage)
-                        .padding(.horizontal, 8)
-                        .padding(.bottom, 8)
-                }
-            }
         }
         .onTapGesture {
             onTap?()
@@ -261,6 +257,41 @@ struct StatusBadge: View {
             return .green
         case .paused:
             return .orange
+        }
+    }
+}
+
+struct ProgressIndicatorBadge: View {
+    let progress: Double
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "chart.bar.fill")
+                .font(.system(size: 10))
+            Text(progressText)
+                .font(.caption2)
+                .fontWeight(.medium)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(progressColor.opacity(0.9))
+        .foregroundColor(.white)
+        .cornerRadius(8)
+    }
+    
+    private var progressText: String {
+        return String(format: "%.0f%%", progress * 100)
+    }
+    
+    private var progressColor: Color {
+        if progress < 0.3 {
+            return .orange
+        } else if progress < 0.7 {
+            return .blue
+        } else if progress < 1.0 {
+            return .purple
+        } else {
+            return .green
         }
     }
 }
