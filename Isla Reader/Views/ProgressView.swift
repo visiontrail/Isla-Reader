@@ -148,12 +148,12 @@ struct ReadingProgressView: View {
     }
     
     private var goalAchievementText: String {
-        let dailyMinutes = Int(totalReadingTime / 60)
+        let totalMinutes = Int(totalReadingTime / 60)
         let daysInRange = daysInCurrentRange()
         let targetMinutes = appSettings.dailyReadingGoal * daysInRange
         
         if targetMinutes > 0 {
-            let percentage = min(100, (dailyMinutes * 100) / targetMinutes)
+            let percentage = min(100, (totalMinutes * 100) / targetMinutes)
             return "\(percentage)%"
         }
         return "0%"
@@ -219,9 +219,25 @@ struct ReadingGoalCard: View {
     let currentProgress: Int
     let timeRange: ReadingProgressView.TimeRange
     
+    private var totalGoal: Int {
+        let days = daysInCurrentRange()
+        return dailyGoal * days
+    }
+    
     private var progressPercentage: Double {
-        guard dailyGoal > 0 else { return 0 }
-        return min(1.0, Double(currentProgress) / Double(dailyGoal))
+        guard totalGoal > 0 else { return 0 }
+        return min(1.0, Double(currentProgress) / Double(totalGoal))
+    }
+    
+    private func daysInCurrentRange() -> Int {
+        switch timeRange {
+        case .week:
+            return 7
+        case .month:
+            return Calendar.current.range(of: .day, in: .month, for: Date())?.count ?? 30
+        case .year:
+            return Calendar.current.range(of: .day, in: .year, for: Date())?.count ?? 365
+        }
     }
     
     var body: some View {
@@ -240,7 +256,7 @@ struct ReadingGoalCard: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("\(currentProgress)/\(dailyGoal)")
+                    Text("\(currentProgress)/\(totalGoal)")
                         .font(.title3)
                         .fontWeight(.semibold)
                     

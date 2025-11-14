@@ -42,6 +42,11 @@ struct ReaderView: View {
     @State private var chapterPageIndices: [Int] = []
     @State private var chapterTotalPages: [Int] = []
     
+    // Reading time tracking
+    @State private var readingStartTime: Date?
+    @State private var isActivelyReading: Bool = false
+    @Environment(\.scenePhase) private var scenePhase
+    
     var body: some View {
         ZStack {
             // Premium background with subtle gradient
@@ -76,6 +81,13 @@ struct ReaderView: View {
         .onAppear {
             loadBookContent()
             checkFirstTimeOpen()
+            startReadingSession()
+        }
+        .onDisappear {
+            endReadingSession()
+        }
+        .onChange(of: scenePhase) { newPhase in
+            handleScenePhaseChange(newPhase)
         }
     }
     
@@ -603,6 +615,84 @@ struct ReaderView: View {
             setChapterPageIndex(currentChapterIndex, max(0, lastPage))
         }
         saveReadingProgress()
+    }
+    
+    // MARK: - Reading Time Tracking
+    
+    private func startReadingSession() {
+        readingStartTime = Date()
+        isActivelyReading = true
+    }
+    
+    private func endReadingSession() {
+        updateReadingTime()
+        readingStartTime = nil
+        isActivelyReading = false
+    }
+    
+    private func pauseReadingSession() {
+        updateReadingTime()
+        readingStartTime = nil
+        isActivelyReading = false
+    }
+    
+    private func resumeReadingSession() {
+        readingStartTime = Date()
+        isActivelyReading = true
+    }
+    
+    private func updateReadingTime() {
+        guard let startTime = readingStartTime, isActivelyReading else { return }
+        
+        let timeElapsed = Date().timeIntervalSince(startTime)
+        
+        // Only count if the reading session is meaningful (more than 1 second)
+        guard timeElapsed > 1 else { return }
+        
+        // Create or get reading progress
+        if book.readingProgress == nil {
+            let progress = ReadingProgress(context: viewContext)
+            progress.id = UUID()
+            progress.createdAt = Date()
+            progress.updatedAt = Date()
+            progress.totalReadingTime = 0
+            progress.book = book
+            book.readingProgress = progress
+        }
+        
+        if let progress = book.readingProgress {
+            // Add elapsed time to total
+            progress.totalReadingTime += Int64(timeElapsed)
+            progress.updatedAt = Date()
+            
+            do {
+                try viewContext.save()
+            } catch {
+                print("Failed to save reading time: \(error)")
+            }
+        }
+    }
+    
+    private func handleScenePhaseChange(_ phase: ScenePhase) {
+        switch phase {
+        case .active:
+            // Resume tracking when app becomes active
+            if !isActivelyReading {
+                resumeReadingSession()
+            }
+        case .inactive:
+            // Pause tracking when app becomes inactive
+            if isActivelyReading {
+                pauseReadingSession()
+            }
+        case .background:
+            // Save reading time when app goes to background
+            if isActivelyReading {
+                pauseReadingSession()
+            }
+        @unknown default:
+            break
+        }
     }
 
     private func clampCurrentPage(_ index: Int) {
