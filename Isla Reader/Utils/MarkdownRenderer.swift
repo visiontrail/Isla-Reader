@@ -14,7 +14,7 @@ struct MarkdownRenderer {
     /// 将markdown文本转换为AttributedString
     /// - Parameter markdown: 原始markdown文本
     /// - Returns: 格式化的AttributedString
-    static func render(_ markdown: String) -> AttributedString {
+    static func render(_ markdown: String, textColor: Color = .primary) -> AttributedString {
         var attributedString = AttributedString()
         
         let lines = markdown.components(separatedBy: .newlines)
@@ -37,17 +37,17 @@ struct MarkdownRenderer {
                 // 一级标题
                 lineAttributedString = AttributedString(String(trimmedLine.dropFirst(2)))
                 lineAttributedString.font = .title.bold()
-                lineAttributedString.foregroundColor = .primary
+                lineAttributedString.foregroundColor = textColor
             } else if trimmedLine.hasPrefix("## ") {
                 // 二级标题
                 lineAttributedString = AttributedString(String(trimmedLine.dropFirst(3)))
                 lineAttributedString.font = .title2.bold()
-                lineAttributedString.foregroundColor = .primary
+                lineAttributedString.foregroundColor = textColor
             } else if trimmedLine.hasPrefix("### ") {
                 // 三级标题
                 lineAttributedString = AttributedString(String(trimmedLine.dropFirst(4)))
                 lineAttributedString.font = .title3.bold()
-                lineAttributedString.foregroundColor = .primary
+                lineAttributedString.foregroundColor = textColor
             } else if trimmedLine.hasPrefix("• ") || trimmedLine.hasPrefix("- ") || trimmedLine.hasPrefix("* ") {
                 // 列表项
                 let bulletPoint = "• "
@@ -59,20 +59,20 @@ struct MarkdownRenderer {
                 
                 var contentString = AttributedString(content)
                 contentString.font = .body
-                contentString.foregroundColor = .primary
+                contentString.foregroundColor = textColor
                 
                 lineAttributedString = bulletString + contentString
             } else if trimmedLine.contains("**") {
                 // 处理粗体文本
-                lineAttributedString = processBoldText(trimmedLine)
+                lineAttributedString = processBoldText(trimmedLine, textColor: textColor)
             } else if containsItalicMarkdown(trimmedLine) {
                 // 处理斜体文本
-                lineAttributedString = processItalicText(trimmedLine)
+                lineAttributedString = processItalicText(trimmedLine, textColor: textColor)
             } else {
                 // 普通段落
                 lineAttributedString = AttributedString(trimmedLine)
                 lineAttributedString.font = .body
-                lineAttributedString.foregroundColor = .primary
+                lineAttributedString.foregroundColor = textColor
             }
             
             attributedString += lineAttributedString
@@ -101,7 +101,7 @@ struct MarkdownRenderer {
     }
     
     /// 处理粗体文本
-    private static func processBoldText(_ text: String) -> AttributedString {
+    private static func processBoldText(_ text: String, textColor: Color) -> AttributedString {
         var result = AttributedString()
         let components = text.components(separatedBy: "**")
         
@@ -114,7 +114,7 @@ struct MarkdownRenderer {
             } else {
                 componentString.font = .body
             }
-            componentString.foregroundColor = .primary
+            componentString.foregroundColor = textColor
             
             result += componentString
         }
@@ -123,7 +123,7 @@ struct MarkdownRenderer {
     }
     
     /// 处理斜体文本
-    private static func processItalicText(_ text: String) -> AttributedString {
+    private static func processItalicText(_ text: String, textColor: Color) -> AttributedString {
         var result = AttributedString()
         
         // 使用正则表达式匹配成对的单星号
@@ -141,7 +141,7 @@ struct MarkdownRenderer {
                 if let beforeText = Range(beforeRange, in: text) {
                     var beforeString = AttributedString(String(text[beforeText]))
                     beforeString.font = .body
-                    beforeString.foregroundColor = .primary
+                    beforeString.foregroundColor = textColor
                     result += beforeString
                 }
             }
@@ -152,7 +152,7 @@ struct MarkdownRenderer {
                 if let italicText = Range(italicRange, in: text) {
                     var italicString = AttributedString(String(text[italicText]))
                     italicString.font = .body.italic()
-                    italicString.foregroundColor = .primary
+                    italicString.foregroundColor = textColor
                     result += italicString
                 }
             }
@@ -166,7 +166,7 @@ struct MarkdownRenderer {
             if let remainingText = Range(remainingRange, in: text) {
                 var remainingString = AttributedString(String(text[remainingText]))
                 remainingString.font = .body
-                remainingString.foregroundColor = .primary
+                remainingString.foregroundColor = textColor
                 result += remainingString
             }
         }
@@ -175,7 +175,7 @@ struct MarkdownRenderer {
         if matches.isEmpty {
             var plainString = AttributedString(text)
             plainString.font = .body
-            plainString.foregroundColor = .primary
+            plainString.foregroundColor = textColor
             result = plainString
         }
         
@@ -187,14 +187,16 @@ struct MarkdownRenderer {
 struct MarkdownText: View {
     let markdown: String
     let lineSpacing: CGFloat
+    let textColor: Color
     
-    init(_ markdown: String, lineSpacing: CGFloat = 6) {
+    init(_ markdown: String, lineSpacing: CGFloat = 6, textColor: Color = .primary) {
         self.markdown = markdown
         self.lineSpacing = lineSpacing
+        self.textColor = textColor
     }
     
     var body: some View {
-        Text(MarkdownRenderer.render(markdown))
+        Text(MarkdownRenderer.render(markdown, textColor: textColor))
             .lineSpacing(lineSpacing)
             .fixedSize(horizontal: false, vertical: true)
     }

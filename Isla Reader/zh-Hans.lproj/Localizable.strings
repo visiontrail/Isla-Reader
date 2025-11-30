@@ -158,6 +158,35 @@
 "ai.summary.key_points" = "关键要点";
 "ai.summary.generating" = "正在生成摘要...";
 "ai.summary.analyzing" = "正在分析书籍内容...";
+
+// Skimming Mode
+"略读模式" = "略读模式";
+"skimming.mode_badge" = "略读模式";
+"skimming.subtitle" = "AI 略读，快速抓住骨架";
+"skimming.loading_chapters" = "正在准备略读模式...";
+"skimming.no_chapters" = "暂时没有可略读的章节";
+"skimming.retry" = "重试";
+"skimming.generate" = "生成当前章节略读";
+"skimming.generating" = "AI 正在生成章节骨架...";
+"skimming.placeholder" = "暂无略读内容";
+"skimming.time_estimate" = "略读约 %d 分钟";
+"skimming.goal" = "阅读目标";
+"skimming.structure" = "章节骨架";
+"skimming.key_sentences" = "关键句";
+"skimming.keywords" = "关键词";
+"skimming.questions" = "检视问题";
+"skimming.narrative" = "AI 略读讲解";
+"skimming.switch_to_full" = "转为正式阅读";
+"skimming.switch_now" = "开始正式阅读";
+"skimming.error.metadata_missing" = "无法找到书籍章节信息";
+"skimming.error.metadata_corrupted" = "章节数据损坏，无法开启略读模式";
+"skimming.error.network" = "网络连接异常，略读内容加载失败";
+"skimming.error.parse" = "AI 返回内容无法解析";
+"skimming.fallback.structure_title" = "章节概览";
+"skimming.fallback.goal" = "聚焦章节主旨与论证框架";
+"skimming.fallback.key_sentence" = "AI 暂无法提供关键句，请稍后重试。";
+"skimming.fallback.keyword" = "结构";
+"skimming.fallback.question" = "这章试图回答的核心问题是什么？";
 "ai.summary.error.title" = "生成摘要时出错";
 "ai.summary.error.retry" = "重试";
 "ai.summary.no_content" = "没有可显示的内容";

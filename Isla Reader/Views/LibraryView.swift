@@ -26,6 +26,7 @@ struct LibraryView: View {
     @State private var showingImportSheet = false
     @State private var showingFilterSheet = false
     @State private var bookToShowAISummary: Book? = nil
+    @State private var bookForSkimming: Book? = nil
     
     private var filteredBooks: [LibraryItem] {
         var items = Array(libraryItems)
@@ -89,6 +90,9 @@ struct LibraryView: View {
                                     DebugLogger.info("LibraryView: 点击的书籍 = \(item.book.displayTitle)")
                                     bookToShowAISummary = item.book
                                     DebugLogger.info("LibraryView: 设置 bookToShowAISummary")
+                                }, onSkim: {
+                                    DebugLogger.info("LibraryView: 进入略读模式 - \(item.book.displayTitle)")
+                                    bookForSkimming = item.book
                                 })
                             }
                         }
@@ -162,6 +166,15 @@ struct LibraryView: View {
                     DebugLogger.info("LibraryView: 选中的书籍 = \(book.displayTitle)")
                 }
             }
+            .fullScreenCover(item: $bookForSkimming) { book in
+                NavigationView {
+                    SkimmingModeView(book: book)
+                        .navigationBarHidden(true)
+                }
+                .onAppear {
+                    DebugLogger.info("LibraryView: 略读模式界面显示 - \(book.displayTitle)")
+                }
+            }
             .onAppear {
                 DebugLogger.info("LibraryView: 视图出现，刷新数据")
                 refreshData()
@@ -181,6 +194,7 @@ struct LibraryView: View {
 struct BookCardView: View {
     let libraryItem: LibraryItem
     var onTap: (() -> Void)? = nil
+    var onSkim: (() -> Void)? = nil
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     private var cardWidth: CGFloat {
@@ -247,6 +261,9 @@ struct BookCardView: View {
             onTap?()
         }
         .contextMenu {
+            Button(action: { onSkim?() }) {
+                Label(NSLocalizedString("略读模式", comment: ""), systemImage: "sparkles.rectangle.stack")
+            }
             BookContextMenu(libraryItem: libraryItem)
         }
         .onAppear {

@@ -158,6 +158,35 @@
 "ai.summary.key_points" = "Key Points";
 "ai.summary.generating" = "Generating summary...";
 "ai.summary.analyzing" = "Analyzing book content...";
+
+// Skimming Mode
+"略读模式" = "Skimming Mode";
+"skimming.mode_badge" = "Skimming Mode";
+"skimming.subtitle" = "AI skimming, structure-first";
+"skimming.loading_chapters" = "Loading skimming experience...";
+"skimming.no_chapters" = "No chapters available for skimming yet";
+"skimming.retry" = "Retry";
+"skimming.generate" = "Generate skimming summary";
+"skimming.generating" = "AI is crafting the chapter scaffold...";
+"skimming.placeholder" = "No skimming content yet";
+"skimming.time_estimate" = "Skim in about %d min";
+"skimming.goal" = "Reading Goal";
+"skimming.structure" = "Chapter Skeleton";
+"skimming.key_sentences" = "Key Sentences";
+"skimming.keywords" = "Keywords";
+"skimming.questions" = "Inspection Questions";
+"skimming.narrative" = "AI Skimming Narrative";
+"skimming.switch_to_full" = "Switch to full reading";
+"skimming.switch_now" = "Start full reading";
+"skimming.error.metadata_missing" = "Cannot find chapter metadata.";
+"skimming.error.metadata_corrupted" = "Chapter data is corrupted. Skimming mode cannot start.";
+"skimming.error.network" = "Network error prevented loading skimming content.";
+"skimming.error.parse" = "Unable to interpret AI response.";
+"skimming.fallback.structure_title" = "Chapter Overview";
+"skimming.fallback.goal" = "Focus on thesis and argument map";
+"skimming.fallback.key_sentence" = "AI couldn't extract highlights yet. Please retry.";
+"skimming.fallback.keyword" = "Structure";
+"skimming.fallback.question" = "What core question is this chapter answering?";
 "ai.summary.error.title" = "Error Generating Summary";
 "ai.summary.error.retry" = "Retry";
 "ai.summary.no_content" = "No content to display";

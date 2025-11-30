@@ -166,6 +166,9 @@
 "ai.summary.card.generate" = "タップして要約を生成";
 "ai.summary.start_reading" = "読み始める";
 
+// Skimming Mode
+"skimming.generate" = "この章の略読を生成";
+
 // Additional UI strings
 "Isla Reader" = "Isla Reader";
 "正在导入书籍..." = "本をインポート中...";
