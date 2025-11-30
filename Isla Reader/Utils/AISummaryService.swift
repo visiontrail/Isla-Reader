@@ -69,25 +69,21 @@ class AISummaryService: ObservableObject {
             let chapters = try parseBookContent(book)
             
             // 3. 生成全书摘要
-            await updateProgress(0.3)
+            await updateProgress(0.45)
             let bookSummary = try await generateBookSummary(book: book, chapters: chapters)
             
-            // 4. 生成章节摘要
-            await updateProgress(0.5)
-            let chapterMappings = try await generateChapterSummaries(chapters: chapters)
-            
-            // 5. 创建完整摘要对象
-            await updateProgress(0.8)
+            // 4. 创建完整摘要对象（略读/章节摘要改为按需生成，不在此阶段调用）
+            await updateProgress(0.7)
             let summary = BookSummary(
                 id: UUID(),
                 bookId: book.id,
                 summary: bookSummary.summary,
                 keyPoints: bookSummary.keyPoints,
-                chapterMappings: chapterMappings,
+                chapterMappings: [],
                 createdAt: Date()
             )
             
-            // 6. 缓存摘要
+            // 5. 缓存摘要
             await updateProgress(0.9)
             try cacheSummary(summary, for: book)
             
@@ -269,18 +265,21 @@ class AISummaryService: ObservableObject {
         await simulateStreamOutput(fullSummary, continuation: continuation)
         DebugLogger.success("AISummaryService: 流式输出完成")
         
-        // 缓存生成的摘要
+        // 解析与缓存生成的摘要（章节级摘要改为按需生成）
         let (summary, keyPoints) = parseSummaryResponse(fullSummary)
-        DebugLogger.info("AISummaryService: 开始生成章节摘要")
-        let chapterMappings = try await generateChapterSummaries(chapters: chapters)
-        DebugLogger.success("AISummaryService: 章节摘要生成完成，共 \(chapterMappings.count) 个章节")
+        await MainActor.run {
+            // 使用解析后的最终文本覆盖流式累积，避免尾部空白
+            currentSummary = summary
+            generationProgress = 1.0
+        }
+        DebugLogger.info("AISummaryService: 略读/章节摘要将在用户请求时生成，当前仅缓存总览摘要")
         
         let bookSummary = BookSummary(
             id: UUID(),
             bookId: book.id,
             summary: summary,
             keyPoints: keyPoints,
-            chapterMappings: chapterMappings,
+            chapterMappings: [],
             createdAt: Date()
         )
         
