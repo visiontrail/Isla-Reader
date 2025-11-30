@@ -119,11 +119,11 @@ class EPubParser {
             DebugLogger.info("EPubParser: 语言: \(language ?? "未知")")
             
             // 解析目录（TOC）
-            let tocEntries = parseTOC(tocId: opfInfo.tocId, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL)
+            let tocEntries = parseTOC(tocId: opfInfo.tocId, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL, coverId: opfInfo.coverId)
             DebugLogger.info("EPubParser: 从TOC解析了 \(tocEntries.count) 个标题")
             
             // 解析章节
-            let chapters = try parseChapters(spineItems: opfInfo.spineItems, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL, tocEntries: tocEntries)
+            let chapters = try parseChapters(spineItems: opfInfo.spineItems, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL, tocEntries: tocEntries, coverId: opfInfo.coverId)
             DebugLogger.success("EPubParser: 成功解析 \(chapters.count) 个章节")
             
             // 提取封面图片（如果存在）
@@ -341,6 +341,10 @@ class EPubParser {
             results?.forEach { result in
                 let itemString = nsString.substring(with: result.range)
                 if let idref = extractAttribute(from: itemString, attribute: "idref") {
+                    if let linear = extractAttribute(from: itemString, attribute: "linear"), linear.lowercased() == "no" {
+                        DebugLogger.info("EPubParser: 跳过non-linear的spine项: \(idref)")
+                        return
+                    }
                     info.spineItems.append(idref)
                 }
             }
@@ -372,10 +376,65 @@ class EPubParser {
         }
         return nil
     }
+
+    // MARK: - 非内容项过滤
+    
+    private static func isCoverLikeTitle(_ title: String) -> Bool {
+        let normalized = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let keywords = ["cover", "cover page", "front cover", "封面"]
+        return keywords.contains(normalized) || normalized.hasPrefix("cover ")
+    }
+    
+    private static func isCoverLikeHref(_ href: String) -> Bool {
+        let fileName = (href as NSString).lastPathComponent.lowercased()
+        let baseName = (fileName as NSString).deletingPathExtension
+        
+        if baseName == "cover"
+            || baseName == "coverpage"
+            || baseName == "cover-page"
+            || baseName.hasPrefix("coverpage")
+            || baseName == "frontcover"
+            || baseName.hasPrefix("frontcover") {
+            return true
+        }
+        
+        if baseName.hasPrefix("cover") {
+            let suffix = baseName.dropFirst("cover".count)
+            if suffix.isEmpty {
+                return true
+            }
+            if let first = suffix.first, first == "-" || first == "_" || first.isWholeNumber {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    private static func shouldIgnoreTOCEntry(title: String, href: String) -> Bool {
+        return isCoverLikeTitle(title) || isCoverLikeHref(href)
+    }
+    
+    private static func shouldSkipChapter(title: String?, href: String, idref: String, coverId: String?) -> Bool {
+        if let title = title, isCoverLikeTitle(title) {
+            return true
+        }
+        if isCoverLikeHref(href) {
+            return true
+        }
+        let lowerIdref = idref.lowercased()
+        if lowerIdref == "cover" || lowerIdref.hasPrefix("cover-") || lowerIdref.hasPrefix("cover_") {
+            return true
+        }
+        if let coverId = coverId?.lowercased(), coverId == lowerIdref {
+            return true
+        }
+        return false
+    }
     
     // MARK: - 目录解析
     
-    private static func parseTOC(tocId: String?, manifestMap: [String: String], baseURL: URL) -> [TOCEntry] {
+    private static func parseTOC(tocId: String?, manifestMap: [String: String], baseURL: URL, coverId: String?) -> [TOCEntry] {
         guard let tocId = tocId, let tocHref = manifestMap[tocId] else {
             DebugLogger.info("EPubParser: 未找到TOC文件引用")
             return []
@@ -390,15 +449,15 @@ class EPubParser {
         
         // 判断是NCX还是NAV格式
         if tocString.contains("<ncx") {
-            return parseNCX(tocString, baseURL: tocURL.deletingLastPathComponent())
+            return parseNCX(tocString, baseURL: tocURL.deletingLastPathComponent(), coverId: coverId)
         } else if tocString.contains("epub:type=\"toc\"") || tocString.contains("<nav") {
-            return parseNAV(tocString, baseURL: tocURL.deletingLastPathComponent())
+            return parseNAV(tocString, baseURL: tocURL.deletingLastPathComponent(), coverId: coverId)
         }
         
         return []
     }
     
-    private static func parseNCX(_ ncxString: String, baseURL: URL) -> [TOCEntry] {
+    private static func parseNCX(_ ncxString: String, baseURL: URL, coverId _: String?) -> [TOCEntry] {
         var entries: [TOCEntry] = []
         
         // 提取所有 navPoint 标签
@@ -410,7 +469,7 @@ class EPubParser {
         let nsString = ncxString as NSString
         let matches = regex.matches(in: ncxString, options: [], range: NSRange(location: 0, length: nsString.length))
         
-        for (index, match) in matches.enumerated() {
+        for match in matches {
             let navPointContent = nsString.substring(with: match.range)
             
             // 提取标题 (navLabel > text)
@@ -427,8 +486,14 @@ class EPubParser {
                         // 规范化 href（移除锚点）
                         let normalizedHref = href.components(separatedBy: "#").first ?? href
                         
-                        entries.append(TOCEntry(title: title, href: normalizedHref, order: index))
-                        DebugLogger.info("EPubParser: NCX条目[\(index + 1)] - \(title) -> \(normalizedHref)")
+                        if shouldIgnoreTOCEntry(title: title, href: normalizedHref) {
+                            DebugLogger.info("EPubParser: 跳过封面类NCX条目 - \(title) -> \(normalizedHref)")
+                            continue
+                        }
+                        
+                        let order = entries.count
+                        entries.append(TOCEntry(title: title, href: normalizedHref, order: order))
+                        DebugLogger.info("EPubParser: NCX条目[\(order + 1)] - \(title) -> \(normalizedHref)")
                     }
                 }
             }
@@ -437,7 +502,7 @@ class EPubParser {
         return entries
     }
     
-    private static func parseNAV(_ navString: String, baseURL: URL) -> [TOCEntry] {
+    private static func parseNAV(_ navString: String, baseURL: URL, coverId _: String?) -> [TOCEntry] {
         var entries: [TOCEntry] = []
         
         // 提取 TOC nav 部分
@@ -457,7 +522,7 @@ class EPubParser {
         let nsString = navContent as NSString
         let matches = regex.matches(in: navContent, options: [], range: NSRange(location: 0, length: nsString.length))
         
-        for (index, match) in matches.enumerated() {
+        for match in matches {
             let linkContent = nsString.substring(with: match.range)
             
             if let href = extractAttribute(from: linkContent, attribute: "href") {
@@ -471,8 +536,14 @@ class EPubParser {
                     // 规范化 href（移除锚点）
                     let normalizedHref = href.components(separatedBy: "#").first ?? href
                     
-                    entries.append(TOCEntry(title: title, href: normalizedHref, order: index))
-                    DebugLogger.info("EPubParser: NAV条目[\(index + 1)] - \(title) -> \(normalizedHref)")
+                    if shouldIgnoreTOCEntry(title: title, href: normalizedHref) {
+                        DebugLogger.info("EPubParser: 跳过封面类NAV条目 - \(title) -> \(normalizedHref)")
+                        continue
+                    }
+                    
+                    let order = entries.count
+                    entries.append(TOCEntry(title: title, href: normalizedHref, order: order))
+                    DebugLogger.info("EPubParser: NAV条目[\(order + 1)] - \(title) -> \(normalizedHref)")
                 }
             }
         }
@@ -482,7 +553,7 @@ class EPubParser {
     
     // MARK: - 章节解析
     
-    private static func parseChapters(spineItems: [String], manifestMap: [String: String], baseURL: URL, tocEntries: [TOCEntry]) throws -> [Chapter] {
+    private static func parseChapters(spineItems: [String], manifestMap: [String: String], baseURL: URL, tocEntries: [TOCEntry], coverId: String?) throws -> [Chapter] {
         DebugLogger.info("EPubParser: 开始解析章节")
         DebugLogger.info("EPubParser: Spine中有 \(spineItems.count) 个项目")
         DebugLogger.info("EPubParser: Manifest中有 \(manifestMap.count) 个项目")
@@ -508,34 +579,34 @@ class EPubParser {
                 continue
             }
             
+            let normalizedHref = decodedHref.components(separatedBy: "#").first ?? decodedHref
+            let fileName = (normalizedHref as NSString).lastPathComponent
+            
+            // 优先从 TOC 中找出标题，后续可根据 HTML 再做补充
+            var chapterTitle: String?
+            if let tocTitle = hrefToTitle[normalizedHref] {
+                chapterTitle = tocTitle
+            } else if let tocTitle = hrefToTitle[fileName] {
+                chapterTitle = tocTitle
+            } else {
+                for (tocHref, tocTitle) in hrefToTitle {
+                    if tocHref.hasSuffix(fileName) || tocHref.contains(fileName) {
+                        chapterTitle = tocTitle
+                        break
+                    }
+                }
+            }
+            
+            if shouldSkipChapter(title: chapterTitle, href: normalizedHref, idref: idref, coverId: coverId) {
+                DebugLogger.info("EPubParser: 跳过封面类章节 - \(chapterTitle ?? fileName)")
+                continue
+            }
+            
             let chapterURL = baseURL.appendingPathComponent(decodedHref)
             
             do {
                 let htmlContent = try String(contentsOf: chapterURL, encoding: .utf8)
                 let chapterContent = cleanHTML(htmlContent)
-                
-                // 尝试从TOC获取标题
-                var chapterTitle: String?
-                
-                // 规范化 href 用于查找
-                let normalizedHref = decodedHref.components(separatedBy: "#").first ?? decodedHref
-                let fileName = (normalizedHref as NSString).lastPathComponent
-                
-                // 先尝试完整路径匹配
-                if let tocTitle = hrefToTitle[normalizedHref] {
-                    chapterTitle = tocTitle
-                } else if let tocTitle = hrefToTitle[fileName] {
-                    // 尝试只用文件名匹配
-                    chapterTitle = tocTitle
-                } else {
-                    // 尝试从href中查找包含该文件名的条目
-                    for (tocHref, tocTitle) in hrefToTitle {
-                        if tocHref.hasSuffix(fileName) || tocHref.contains(fileName) {
-                            chapterTitle = tocTitle
-                            break
-                        }
-                    }
-                }
                 
                 // 如果TOC中没有找到，尝试从HTML提取
                 if chapterTitle == nil {
@@ -543,7 +614,12 @@ class EPubParser {
                 }
                 
                 // 如果还是没有，使用默认标题
-                let finalTitle = chapterTitle ?? "Chapter \(index + 1)"
+                let finalTitle = chapterTitle ?? "Chapter \(chapters.count + 1)"
+                
+                if shouldSkipChapter(title: finalTitle, href: normalizedHref, idref: idref, coverId: coverId) {
+                    DebugLogger.info("EPubParser: 解析后跳过封面类章节 - \(finalTitle)")
+                    continue
+                }
                 
                 // 清理HTML用于移动端显示，并嵌入图片
                 let cleanedHTML = cleanHTMLForMobileDisplay(htmlContent, baseURL: chapterURL.deletingLastPathComponent())
@@ -552,11 +628,11 @@ class EPubParser {
                     title: finalTitle,
                     content: chapterContent,
                     htmlContent: cleanedHTML,
-                    order: index
+                    order: chapters.count
                 )
                 
                 chapters.append(chapter)
-                DebugLogger.info("EPubParser: 解析章节[\(index + 1)] - \(finalTitle) (内容长度: \(chapterContent.count) 字符)")
+                DebugLogger.info("EPubParser: 解析章节[\(chapters.count)] - \(finalTitle) (内容长度: \(chapterContent.count) 字符)")
                 
             } catch {
                 DebugLogger.warning("EPubParser: 无法读取章节文件: \(chapterURL.path), 错误: \(error.localizedDescription)")
