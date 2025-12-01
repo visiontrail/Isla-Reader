@@ -39,6 +39,7 @@ extension Book {
     
     // Relationships
     @NSManaged public var readingProgress: ReadingProgress?
+    @NSManaged public var bookmarks: NSSet?
     @NSManaged public var highlights: NSSet?
     @NSManaged public var annotations: NSSet?
     @NSManaged public var libraryItem: LibraryItem?
@@ -59,6 +60,23 @@ extension Book {
     
     @objc(removeHighlights:)
     @NSManaged public func removeFromHighlights(_ values: NSSet)
+    
+}
+
+// MARK: Generated accessors for bookmarks
+extension Book {
+    
+    @objc(addBookmarksObject:)
+    @NSManaged public func addToBookmarks(_ value: Bookmark)
+    
+    @objc(removeBookmarksObject:)
+    @NSManaged public func removeFromBookmarks(_ value: Bookmark)
+    
+    @objc(addBookmarks:)
+    @NSManaged public func addToBookmarks(_ values: NSSet)
+    
+    @objc(removeBookmarks:)
+    @NSManaged public func removeFromBookmarks(_ values: NSSet)
     
 }
 
@@ -102,6 +120,11 @@ extension Book: Identifiable {
         formatter.allowedUnits = [.useMB, .useKB]
         formatter.countStyle = .file
         return formatter.string(fromByteCount: fileSize)
+    }
+    
+    var sortedBookmarks: [Bookmark] {
+        guard let bookmarks = bookmarks as? Set<Bookmark> else { return [] }
+        return bookmarks.sorted { $0.createdAt > $1.createdAt }
     }
     
 }

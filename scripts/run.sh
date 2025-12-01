@@ -23,6 +23,7 @@ BUNDLE_ID="LeoGuo.Isla-Reader-Local"
 BUILD_DIR="./build"
 CONFIGURATION="Debug"
 DEFAULT_SIMULATOR="iPhone 16"
+PRESERVE_SIM_DATA="${PRESERVE_SIM_DATA:-0}"
 
 # 获取脚本所在目录的父目录（项目根目录）
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -48,6 +49,11 @@ fi
 SIMULATOR_NAME="${1:-$DEFAULT_SIMULATOR}"
 
 echo -e "${YELLOW}📱 目标模拟器: ${NC}$SIMULATOR_NAME"
+if [ "$PRESERVE_SIM_DATA" = "1" ]; then
+    echo -e "${YELLOW}🔒 数据策略: 保留上次模拟器数据，跳过卸载${NC}"
+else
+    echo -e "${YELLOW}🗑️  数据策略: 卸载后全新安装（会清空模拟器数据）${NC}"
+fi
 echo ""
 
 # 查找模拟器 UDID
@@ -98,13 +104,14 @@ else
 fi
 echo ""
 
-# 卸载旧版本（如果存在）
-echo -e "${YELLOW}🗑️  卸载旧版本应用...${NC}"
-xcrun simctl uninstall "$SIMULATOR_UDID" "$BUNDLE_ID" 2>/dev/null || true
-echo ""
-
 # 安装应用
 echo -e "${YELLOW}📦 安装应用到模拟器...${NC}"
+if [ "$PRESERVE_SIM_DATA" = "1" ]; then
+    echo -e "${YELLOW}🔄 跳过卸载，尝试直接覆盖安装以保留数据${NC}"
+else
+    echo -e "${YELLOW}🗑️  卸载旧版本应用...${NC}"
+    xcrun simctl uninstall "$SIMULATOR_UDID" "$BUNDLE_ID" 2>/dev/null || true
+fi
 xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
 echo -e "${GREEN}✅ 应用安装成功${NC}"
 echo ""
@@ -119,4 +126,3 @@ echo ""
 # --console-pty 选项提供伪终端支持，确保实时输出
 echo -e "${YELLOW}🚀 启动应用并开始日志跟踪...${NC}"
 xcrun simctl launch --console-pty "$SIMULATOR_UDID" "$BUNDLE_ID"
-

@@ -27,6 +27,8 @@ struct LibraryView: View {
     @State private var showingFilterSheet = false
     @State private var bookToShowAISummary: Book? = nil
     @State private var bookForSkimming: Book? = nil
+    @State private var bookForBookmarks: Book? = nil
+    @State private var readerLaunchTarget: ReaderLaunchTarget? = nil
     
     private var filteredBooks: [LibraryItem] {
         var items = Array(libraryItems)
@@ -93,6 +95,9 @@ struct LibraryView: View {
                                 }, onSkim: {
                                     DebugLogger.info("LibraryView: 进入略读模式 - \(item.book.displayTitle)")
                                     bookForSkimming = item.book
+                                }, onShowBookmarks: {
+                                    DebugLogger.info("LibraryView: 查看书签 - \(item.book.displayTitle)")
+                                    bookForBookmarks = item.book
                                 })
                             }
                         }
@@ -175,6 +180,19 @@ struct LibraryView: View {
                     DebugLogger.info("LibraryView: 略读模式界面显示 - \(book.displayTitle)")
                 }
             }
+            .sheet(item: $bookForBookmarks) { book in
+                BookmarkListSheet(book: book) { location in
+                    readerLaunchTarget = ReaderLaunchTarget(book: book, location: location)
+                }
+                .environment(\.managedObjectContext, viewContext)
+            }
+            .fullScreenCover(item: $readerLaunchTarget) { target in
+                NavigationView {
+                    ReaderView(book: target.book, initialLocation: target.location)
+                        .navigationBarHidden(true)
+                }
+                .environment(\.managedObjectContext, viewContext)
+            }
             .onAppear {
                 DebugLogger.info("LibraryView: 视图出现，刷新数据")
                 refreshData()
@@ -195,6 +213,7 @@ struct BookCardView: View {
     let libraryItem: LibraryItem
     var onTap: (() -> Void)? = nil
     var onSkim: (() -> Void)? = nil
+    var onShowBookmarks: (() -> Void)? = nil
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     private var cardWidth: CGFloat {
@@ -264,7 +283,7 @@ struct BookCardView: View {
             Button(action: { onSkim?() }) {
                 Label(NSLocalizedString("略读模式", comment: ""), systemImage: "sparkles.rectangle.stack")
             }
-            BookContextMenu(libraryItem: libraryItem)
+            BookContextMenu(libraryItem: libraryItem, onShowBookmarks: onShowBookmarks)
         }
         .onAppear {
             // 调试：打印进度信息
@@ -361,10 +380,17 @@ struct ProgressBar: View {
 
 struct BookContextMenu: View {
     let libraryItem: LibraryItem
+    var onShowBookmarks: (() -> Void)? = nil
     
     var body: some View {
         Button(action: {}) {
             Label(NSLocalizedString("继续阅读", comment: ""), systemImage: "book.open")
+        }
+        
+        if let onShowBookmarks = onShowBookmarks {
+            Button(action: onShowBookmarks) {
+                Label(NSLocalizedString("bookmark.list.title", comment: ""), systemImage: "bookmark")
+            }
         }
         
         Button(action: {}) {
@@ -379,6 +405,135 @@ struct BookContextMenu: View {
         
         Button(role: .destructive, action: {}) {
             Label(NSLocalizedString("从书架移除", comment: ""), systemImage: "trash")
+        }
+    }
+}
+
+struct ReaderLaunchTarget: Identifiable {
+    let id = UUID()
+    let book: Book
+    let location: BookmarkLocation
+}
+
+struct BookmarkListSheet: View {
+    let book: Book
+    var onSelect: (BookmarkLocation) -> Void
+    
+    @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.dismiss) private var dismiss
+    @FetchRequest private var bookmarks: FetchedResults<Bookmark>
+    
+    init(book: Book, onSelect: @escaping (BookmarkLocation) -> Void) {
+        self.book = book
+        self.onSelect = onSelect
+        _bookmarks = FetchRequest(
+            sortDescriptors: [NSSortDescriptor(keyPath: \Bookmark.createdAt, ascending: false)],
+            predicate: NSPredicate(format: "book == %@", book)
+        )
+    }
+    
+    var body: some View {
+        NavigationView {
+            List {
+                if bookmarks.isEmpty {
+                    bookmarkEmptyState
+                } else {
+                    ForEach(bookmarks) { bookmark in
+                        Button(action: {
+                            onSelect(bookmark.location)
+                            dismiss()
+                        }) {
+                            bookmarkRow(for: bookmark)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .onDelete(perform: deleteBookmarks)
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle(NSLocalizedString("bookmark.list.title", comment: ""))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if !bookmarks.isEmpty {
+                        EditButton()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(NSLocalizedString("完成", comment: "")) {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private var bookmarkEmptyState: some View {
+        VStack(alignment: .center, spacing: 12) {
+            Image(systemName: "bookmark.slash")
+                .font(.system(size: 28, weight: .medium))
+                .foregroundColor(.secondary)
+            Text(NSLocalizedString("bookmark.list.empty", comment: ""))
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Text(book.displayTitle)
+                .font(.footnote)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.vertical, 24)
+    }
+    
+    private func bookmarkRow(for bookmark: Bookmark) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(bookmark.displayTitle)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+                Spacer(minLength: 12)
+                Text(bookmark.displayPage)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.primary.opacity(0.06))
+                    .cornerRadius(10)
+            }
+            
+            HStack(spacing: 12) {
+                Label(
+                    String(format: NSLocalizedString("bookmark.chapter_format", comment: ""), Int(bookmark.chapterIndex) + 1),
+                    systemImage: "text.book.closed"
+                )
+                .font(.caption)
+                .foregroundColor(.secondary)
+                
+                Label(
+                    String(format: NSLocalizedString("bookmark.page_format", comment: ""), Int(bookmark.pageIndex) + 1),
+                    systemImage: "rectangle.and.pencil.and.ellipsis"
+                )
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            
+            Text(bookmark.formattedDate)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 6)
+    }
+    
+    private func deleteBookmarks(at offsets: IndexSet) {
+        offsets.map { bookmarks[$0] }.forEach { bookmark in
+            viewContext.delete(bookmark)
+        }
+        
+        do {
+            try viewContext.save()
+            DebugLogger.info("BookmarkListSheet: 删除书签完成")
+        } catch {
+            DebugLogger.error("BookmarkListSheet: 删除书签失败", error: error)
         }
     }
 }

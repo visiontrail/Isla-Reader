@@ -10,10 +10,22 @@ import CoreData
 
 struct ReaderView: View {
     let book: Book
+    private let initialLocation: BookmarkLocation?
+    
+    @FetchRequest private var bookmarks: FetchedResults<Bookmark>
     @StateObject private var appSettings = AppSettings.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.managedObjectContext) private var viewContext
+    
+    init(book: Book, initialLocation: BookmarkLocation? = nil) {
+        self.book = book
+        self.initialLocation = initialLocation
+        _bookmarks = FetchRequest(
+            sortDescriptors: [NSSortDescriptor(keyPath: \Bookmark.createdAt, ascending: false)],
+            predicate: NSPredicate(format: "book == %@", book)
+        )
+    }
     
     @State private var chapters: [Chapter] = []
     @State private var tocItems: [TOCItem] = []
@@ -29,6 +41,7 @@ struct ReaderView: View {
     @State private var showingTextActions = false
     @State private var showingAISummary = false
     @State private var isFirstOpen = true
+    @State private var didApplyInitialLocation = false
     
     @State private var scrollOffset: CGFloat = 0
     @State private var lastTapTime: Date = Date()
@@ -442,7 +455,7 @@ struct ReaderView: View {
             
             // Action buttons
             HStack(spacing: 0) {
-                toolbarButton(icon: "bookmark", action: {})
+                toolbarButton(icon: currentBookmark == nil ? "bookmark" : "bookmark.fill", action: { toggleBookmark() }, isActive: currentBookmark != nil)
                 toolbarButton(icon: "highlighter", action: { showingTextActions = true })
                 toolbarButton(icon: "message.fill", action: { showingAIChat = true })
                 toolbarButton(icon: "square.and.arrow.up", action: {})
@@ -456,17 +469,65 @@ struct ReaderView: View {
         )
     }
     
-    private func toolbarButton(icon: String, action: @escaping () -> Void) -> some View {
+    private func toolbarButton(icon: String, action: @escaping () -> Void, isActive: Bool = false) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .medium))
-                .foregroundColor(.primary)
+                .foregroundColor(isActive ? .blue : .primary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(isActive ? Color.blue.opacity(0.12) : Color.clear)
+                )
         }
     }
     
     // MARK: - Helper Methods
+    
+    private var currentBookmark: Bookmark? {
+        bookmarks.first { bookmark in
+            Int(bookmark.chapterIndex) == currentChapterIndex &&
+            Int(bookmark.pageIndex) == safeChapterPageIndex(currentChapterIndex)
+        }
+    }
+    
+    private func toggleBookmark() {
+        guard !chapters.isEmpty, currentChapterIndex < chapters.count else { return }
+        if let existing = currentBookmark {
+            deleteBookmark(existing)
+        } else {
+            addBookmark()
+        }
+    }
+    
+    private func addBookmark() {
+        ensurePageArrays()
+        let bookmark = Bookmark(context: viewContext)
+        bookmark.id = UUID()
+        bookmark.createdAt = Date()
+        bookmark.chapterIndex = Int32(currentChapterIndex)
+        bookmark.pageIndex = Int32(safeChapterPageIndex(currentChapterIndex))
+        bookmark.chapterTitle = chapters[currentChapterIndex].title
+        bookmark.book = book
+        
+        do {
+            try viewContext.save()
+            DebugLogger.success("ReaderView: 已添加书签 - 章节 \(currentChapterIndex + 1)，页码 \(safeChapterPageIndex(currentChapterIndex) + 1)")
+        } catch {
+            DebugLogger.error("ReaderView: 添加书签失败", error: error)
+        }
+    }
+    
+    private func deleteBookmark(_ bookmark: Bookmark) {
+        viewContext.delete(bookmark)
+        do {
+            try viewContext.save()
+            DebugLogger.info("ReaderView: 已删除书签 - 章节 \(bookmark.chapterIndex + 1)，页码 \(bookmark.pageIndex + 1)")
+        } catch {
+            DebugLogger.error("ReaderView: 删除书签失败", error: error)
+        }
+    }
     
     private func handleTap() {
         let now = Date()
@@ -497,26 +558,8 @@ struct ReaderView: View {
                     self.chapters = metadata.chapters
                     self.tocItems = metadata.tocItems
                     
-                    // Restore reading progress
-                    if let progress = book.readingProgress {
-                        self.currentChapterIndex = min(Int(progress.currentPage), metadata.chapters.count - 1)
-                        
-                        // Restore the page within chapter from currentPosition JSON
-                        if let positionJSON = progress.currentPosition,
-                           let data = positionJSON.data(using: .utf8),
-                           let positionData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let savedChapterIndex = positionData["chapterIndex"] as? Int,
-                           let savedPageIndex = positionData["pageIndex"] as? Int {
-                            
-                            // Ensure arrays are initialized
-                            self.ensurePageArrays()
-                            
-                            // Only restore page if we're on the same chapter
-                            if savedChapterIndex == self.currentChapterIndex {
-                                self.setChapterPageIndex(savedChapterIndex, savedPageIndex)
-                                print("✅ Reading progress restored: Chapter \(savedChapterIndex), Page \(savedPageIndex)")
-                            }
-                        }
+                    if !applyInitialLocationIfAvailable() {
+                        restoreReadingProgress()
                     }
                     
                     self.isLoading = false
@@ -526,6 +569,40 @@ struct ReaderView: View {
                     self.loadError = error.localizedDescription
                     self.isLoading = false
                 }
+            }
+        }
+    }
+    
+    private func applyInitialLocationIfAvailable() -> Bool {
+        guard let location = initialLocation, !didApplyInitialLocation else { return false }
+        guard !chapters.isEmpty else { return false }
+        didApplyInitialLocation = true
+        
+        let targetChapter = min(max(location.chapterIndex, 0), chapters.count - 1)
+        ensurePageArrays()
+        currentChapterIndex = targetChapter
+        setChapterPageIndex(targetChapter, max(0, location.pageIndex))
+        DebugLogger.info("ReaderView: 应用书签定位到章节 \(targetChapter + 1)，页码 \(safeChapterPageIndex(targetChapter) + 1)")
+        return true
+    }
+    
+    private func restoreReadingProgress() {
+        guard let progress = book.readingProgress, !chapters.isEmpty else { return }
+        currentChapterIndex = min(Int(progress.currentPage), chapters.count - 1)
+        
+        if let positionJSON = progress.currentPosition,
+           let data = positionJSON.data(using: .utf8),
+           let positionData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let savedChapterIndex = positionData["chapterIndex"] as? Int,
+           let savedPageIndex = positionData["pageIndex"] as? Int {
+            
+            ensurePageArrays()
+            
+            if savedChapterIndex >= 0 && savedChapterIndex < chapters.count {
+                currentChapterIndex = savedChapterIndex
+                setChapterPageIndex(savedChapterIndex, savedPageIndex)
+            } else {
+                setChapterPageIndex(currentChapterIndex, savedPageIndex)
             }
         }
     }
@@ -635,6 +712,7 @@ struct ReaderView: View {
         ensurePageArrays()
         guard index >= 0 && index < chapterTotalPages.count else { return }
         chapterTotalPages[index] = max(1, value)
+        clampCurrentPage(index)
     }
     
     private func nextPageOrChapter() {
@@ -1485,5 +1563,17 @@ struct ActionButton: View {
 }
 
 #Preview {
-    ReaderView(book: Book())
+    let context = PersistenceController.preview.container.viewContext
+    let book = Book(context: context)
+    book.id = UUID()
+    book.title = "示例书籍"
+    book.filePath = "/dev/null"
+    book.fileFormat = "txt"
+    book.fileSize = 0
+    book.checksum = UUID().uuidString
+    book.totalPages = 1
+    book.createdAt = Date()
+    book.updatedAt = Date()
+    return ReaderView(book: book)
+        .environment(\.managedObjectContext, context)
 }

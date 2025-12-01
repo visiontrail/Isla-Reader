@@ -123,6 +123,10 @@
 "progress_completed_format" = "%.0f%% 完了";
 "daily_goal_minutes_format" = "毎日 %d 分";
 "第 %d 页" = "%d ページ";
+"bookmark.list.title" = "ブックマーク";
+"bookmark.list.empty" = "ブックマークがまだありません";
+"bookmark.chapter_format" = "第%d章";
+"bookmark.page_format" = "第%dページ";
 
 // AI Summary Prompts
 "ai.summary.book.prompt.title" = "次の本の読書ガイド要約を生成してください：";

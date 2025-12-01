@@ -123,6 +123,10 @@
 "progress_completed_format" = "%.0f%% 完成";
 "daily_goal_minutes_format" = "每日 %d 分钟";
 "第 %d 页" = "第 %d 页";
+"bookmark.list.title" = "书签";
+"bookmark.list.empty" = "暂无书签";
+"bookmark.chapter_format" = "第 %d 章";
+"bookmark.page_format" = "第 %d 页";
 
 // AI Summary Prompts
 "ai.summary.book.prompt.title" = "请为以下书籍生成一份导读摘要：";

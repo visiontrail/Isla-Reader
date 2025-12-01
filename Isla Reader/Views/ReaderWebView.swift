@@ -14,7 +14,8 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private var didApplyPagination = false
     weak var webView: WKWebView?
     weak var containerView: UIView?
-    private var isAnimatingCurl = false
+    private var isAnimatingSlide = false
+    private var pendingPageIndex: Int?
     private var isLoaded = false
     private var lastDisplayedPageIndex: Int = 0
     
@@ -70,11 +71,16 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         let js = "scrollToPage(\(page), false)"
         webView.evaluateJavaScript(js, completionHandler: nil)
         // Native fallback to ensure position updates even if JS scrolling is ignored
-        DispatchQueue.main.async {
+        let applyOffset = {
             let pageWidth = webView.scrollView.bounds.width
             guard pageWidth > 0 else { return }
             let targetX = CGFloat(page) * pageWidth
             webView.scrollView.setContentOffset(CGPoint(x: targetX, y: 0), animated: animated)
+        }
+        if Thread.isMainThread {
+            applyOffset()
+        } else {
+            DispatchQueue.main.async(execute: applyOffset)
         }
     }
 
@@ -83,85 +89,85 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     func animateToCurrentPageIfChanged(on webView: WKWebView) -> Bool {
         let newIndex = max(0, min(parent.currentPageIndex, max(parent.totalPages - 1, 0)))
         guard newIndex != lastDisplayedPageIndex else { return false }
-        scrollToCurrentPage(on: webView, animated: true)
-        lastDisplayedPageIndex = newIndex
+        
+        // If content is not ready yet, snap without animation to avoid blank states
+        guard isLoaded else {
+            lastDisplayedPageIndex = newIndex
+            scrollToCurrentPage(on: webView, animated: false)
+            return true
+        }
+        
+        // If an animation is in-flight, queue the latest target and exit
+        if isAnimatingSlide {
+            pendingPageIndex = newIndex
+            return true
+        }
+        
+        performSlideTransition(to: newIndex, on: webView)
         return true
     }
     
-    // MARK: - Page Curl
-    private enum CurlDirection {
-        case forward
-        case backward
+    // MARK: - Sliding page-turn animation
+    private func makeSnapshot(from webView: WKWebView, bounds: CGRect) -> UIView {
+        let snapshot = webView.snapshotView(afterScreenUpdates: true) ?? UIView(frame: bounds)
+        snapshot.frame = bounds
+        snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        snapshot.isUserInteractionEnabled = false
+        snapshot.backgroundColor = webView.backgroundColor
+        return snapshot
     }
     
-    func performPageCurlIfNeeded(for container: UIView, webView: WKWebView) {
-        guard isLoaded, !isAnimatingCurl else { return }
-        let newIndex = max(0, min(parent.currentPageIndex, max(parent.totalPages - 1, 0)))
-        let oldIndex = lastDisplayedPageIndex
-        guard newIndex != oldIndex else { return }
-        let direction: CurlDirection = newIndex > oldIndex ? .forward : .backward
-        performPageCurl(to: newIndex, direction: direction, container: container, webView: webView)
-    }
-    
-    private func performPageCurl(to newIndex: Int, direction: CurlDirection, container: UIView, webView: WKWebView) {
-        guard !isAnimatingCurl else { return }
-        isAnimatingCurl = true
-        
-        // Snapshots
-        let fromSnapshot = webView.snapshotView(afterScreenUpdates: true) ?? UIView(frame: webView.bounds)
-        fromSnapshot.frame = webView.bounds
-        fromSnapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        
-        // Move to destination page without animation to capture the snapshot
-        let setPageJS = "scrollToPage(\(newIndex), false)"
-        webView.evaluateJavaScript(setPageJS) { [weak self] _, _ in
-            guard let self = self else { return }
-            let toSnapshot = webView.snapshotView(afterScreenUpdates: true) ?? UIView(frame: webView.bounds)
-            toSnapshot.frame = webView.bounds
-            toSnapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            
-            // Prepare for transition
-            webView.isHidden = true
-            container.addSubview(fromSnapshot)
-            container.addSubview(toSnapshot)
-            toSnapshot.isHidden = true
-            
-            let options: UIView.AnimationOptions = direction == .forward ? [.transitionCurlUp, .showHideTransitionViews] : [.transitionCurlDown, .showHideTransitionViews]
-            UIView.transition(from: fromSnapshot, to: toSnapshot, duration: 0.45, options: options) { _ in
-                // Reveal real webView at new state
-                webView.isHidden = false
-                fromSnapshot.removeFromSuperview()
-                toSnapshot.removeFromSuperview()
-                self.lastDisplayedPageIndex = newIndex
-                self.isAnimatingCurl = false
-            }
+    private func performSlideTransition(to newIndex: Int, on webView: WKWebView) {
+        guard let container = containerView else {
+            scrollToCurrentPage(on: webView, animated: true)
+            lastDisplayedPageIndex = newIndex
+            return
         }
-    }
-    
-    // MARK: - Gestures
-    func attachSwipeGestures(to view: UIView) {
-        let left = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
-        left.direction = .left
-        let right = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
-        right.direction = .right
-        view.addGestureRecognizer(left)
-        view.addGestureRecognizer(right)
-    }
-    
-    @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
-        guard let webView = webView, isLoaded, !isAnimatingCurl else { return }
-        if gesture.direction == .left {
-            let target = min(parent.totalPages - 1, parent.currentPageIndex + 1)
-            guard target != parent.currentPageIndex else { return }
-            parent.currentPageIndex = target
-            scrollToCurrentPage(on: webView, animated: true)
-            lastDisplayedPageIndex = target
-        } else if gesture.direction == .right {
-            let target = max(0, parent.currentPageIndex - 1)
-            guard target != parent.currentPageIndex else { return }
-            parent.currentPageIndex = target
-            scrollToCurrentPage(on: webView, animated: true)
-            lastDisplayedPageIndex = target
+        
+        let bounds = container.bounds
+        guard bounds.width > 0 else {
+            scrollToCurrentPage(on: webView, animated: false)
+            lastDisplayedPageIndex = newIndex
+            return
+        }
+        
+        isAnimatingSlide = true
+        let oldIndex = lastDisplayedPageIndex
+        let isForward = newIndex >= oldIndex
+        
+        // Capture current page
+        let fromSnapshot = makeSnapshot(from: webView, bounds: bounds)
+        container.addSubview(fromSnapshot)
+        container.bringSubviewToFront(fromSnapshot)
+        
+        // Jump to the target page behind the snapshot so the swap is invisible
+        scrollToCurrentPage(on: webView, animated: false)
+        webView.layoutIfNeeded()
+        
+        // Capture destination page
+        let toSnapshot = makeSnapshot(from: webView, bounds: bounds)
+        toSnapshot.frame = bounds.offsetBy(dx: isForward ? bounds.width : -bounds.width, dy: 0)
+        container.addSubview(toSnapshot)
+        
+        webView.isHidden = true
+        
+        UIView.animate(withDuration: 0.32, delay: 0, options: [.curveEaseInOut, .allowUserInteraction]) {
+            fromSnapshot.frame = bounds.offsetBy(dx: isForward ? -bounds.width : bounds.width, dy: 0)
+            toSnapshot.frame = bounds
+        } completion: { _ in
+            webView.isHidden = false
+            fromSnapshot.removeFromSuperview()
+            toSnapshot.removeFromSuperview()
+            self.lastDisplayedPageIndex = newIndex
+            self.isAnimatingSlide = false
+            
+            if let pending = self.pendingPageIndex, pending != newIndex {
+                self.pendingPageIndex = nil
+                self.performSlideTransition(to: pending, on: webView)
+            } else {
+                self.pendingPageIndex = nil
+                self.scrollToCurrentPage(on: webView, animated: false)
+            }
         }
     }
 
@@ -174,6 +180,8 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     func prepareForNewLoad() {
         self.didApplyPagination = false
         self.isLoaded = false
+        self.isAnimatingSlide = false
+        self.pendingPageIndex = nil
     }
 }
 
@@ -711,4 +719,3 @@ struct ReaderWebView: UIViewRepresentable {
         """
     }
 }
-

@@ -123,6 +123,10 @@
 "progress_completed_format" = "%.0f%% Complete";
 "daily_goal_minutes_format" = "Daily %d minutes";
 "第 %d 页" = "Page %d";
+"bookmark.list.title" = "Bookmarks";
+"bookmark.list.empty" = "No bookmarks yet";
+"bookmark.chapter_format" = "Chapter %d";
+"bookmark.page_format" = "Page %d";
 
 // AI Summary Prompts
 "ai.summary.book.prompt.title" = "Please generate a reading guide summary for the following book:";

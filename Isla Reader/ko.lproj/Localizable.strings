@@ -123,6 +123,10 @@
 "progress_completed_format" = "%.0f%% 완료";
 "daily_goal_minutes_format" = "매일 %d분";
 "第 %d 页" = "%d페이지";
+"bookmark.list.title" = "북마크";
+"bookmark.list.empty" = "북마크가 없습니다";
+"bookmark.chapter_format" = "제 %d장";
+"bookmark.page_format" = "제 %d쪽";
 
 // AI Summary Prompts
 "ai.summary.book.prompt.title" = "다음 책에 대한 독서 가이드 요약을 생성해 주세요：";
