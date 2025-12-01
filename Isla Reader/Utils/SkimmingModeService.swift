@@ -118,11 +118,6 @@ final class SkimmingModeService {
     private let cacheLock = NSLock()
     private var cache: [String: SkimmingChapterSummary] = [:]
     
-    // Reuse the same DashScope configuration for consistency
-    private let apiEndpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    private let apiKey = "sk-700b5dceea294f099b30f097718b854d"
-    private let model = "qwen-plus"
-    
     private init() {}
     
     func chapters(from book: Book) throws -> [SkimmingChapterMetadata] {
@@ -298,12 +293,19 @@ final class SkimmingModeService {
     }
     
     private func callAIAPI(prompt: String) async throws -> String {
-        guard let url = URL(string: "\(apiEndpoint)/chat/completions") else {
+        let config: AIConfiguration
+        do {
+            config = try AIConfig.current()
+        } catch {
+            throw SkimmingModeError.apiError(error.localizedDescription)
+        }
+        
+        guard let url = URL(string: "\(config.endpoint)/chat/completions") else {
             throw SkimmingModeError.apiError("Invalid API endpoint")
         }
         
         let body: [String: Any] = [
-            "model": model,
+            "model": config.model,
             "messages": [["role": "user", "content": prompt]],
             "temperature": 0.4,
             "max_tokens": 1200
@@ -316,7 +318,7 @@ final class SkimmingModeService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.httpBody = jsonData
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 60
         

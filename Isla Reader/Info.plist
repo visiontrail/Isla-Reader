@@ -24,6 +24,12 @@
 		<string>ja</string>
 		<string>ko</string>
 	</array>
+	<key>AIAPIEndpoint</key>
+	<string>$(AI_API_ENDPOINT)</string>
+	<key>AIAPIKey</key>
+	<string>$(AI_API_KEY)</string>
+	<key>AIModel</key>
+	<string>$(AI_MODEL)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

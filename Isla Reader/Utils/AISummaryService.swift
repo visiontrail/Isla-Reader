@@ -32,11 +32,6 @@ class AISummaryService: ObservableObject {
     @Published var currentSummary: String = ""
     @Published var error: String?
     
-    // API配置 - 预留位置，后续可配置
-    private let apiEndpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    private let apiKey = "sk-700b5dceea294f099b30f097718b854d" // 预留位置
-    private let model = "qwen-plus"
-    
     private init() {}
     
     func generateSummary(for book: Book) async throws -> BookSummary {
@@ -427,21 +422,23 @@ class AISummaryService: ObservableObject {
     }
     
     private func callAIAPI(prompt: String) async throws -> String {
+        let config = try AIConfig.current()
+        
         DebugLogger.info("AISummaryService: ===== 开始调用AI API =====")
-        DebugLogger.info("AISummaryService: API端点 = \(apiEndpoint)")
-        DebugLogger.info("AISummaryService: 模型 = \(model)")
-        DebugLogger.info("AISummaryService: API Key前缀 = \(String(apiKey.prefix(10)))...")
+        DebugLogger.info("AISummaryService: API端点 = \(config.endpoint)")
+        DebugLogger.info("AISummaryService: 模型 = \(config.model)")
+        DebugLogger.info("AISummaryService: API Key前缀 = \(String(config.apiKey.prefix(10)))...")
         DebugLogger.info("AISummaryService: 提示词长度 = \(prompt.count) 字符")
         
         // Construct the API request URL
-        guard let url = URL(string: "\(apiEndpoint)/chat/completions") else {
+        guard let url = URL(string: "\(config.endpoint)/chat/completions") else {
             DebugLogger.error("AISummaryService: 无效的API端点URL")
             throw AISummaryError.apiError("Invalid API endpoint URL")
         }
         
         // Prepare the request body
         let requestBody: [String: Any] = [
-            "model": model,
+            "model": config.model,
             "messages": [
                 ["role": "user", "content": prompt]
             ],
@@ -459,7 +456,7 @@ class AISummaryService: ObservableObject {
         // Create the URL request
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = jsonData
         request.timeoutInterval = 60.0
@@ -504,6 +501,9 @@ class AISummaryService: ObservableObject {
             
             return content
             
+        } catch let error as AIConfigError {
+            DebugLogger.error("AISummaryService: 配置错误 - \(error.localizedDescription)")
+            throw AISummaryError.apiError(error.localizedDescription)
         } catch let error as AISummaryError {
             throw error
         } catch {

@@ -111,3 +111,6 @@ test.epub
 # Backup files
 *.bak
 *.backup
+
+## Local AI secrets
+Config/AISecrets.xcconfig
