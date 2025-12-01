@@ -16,6 +16,7 @@ struct ReaderView: View {
     @Environment(\.managedObjectContext) private var viewContext
     
     @State private var chapters: [Chapter] = []
+    @State private var tocItems: [TOCItem] = []
     @State private var currentChapterIndex = 0
     @State private var isLoading = true
     @State private var loadError: String?
@@ -65,7 +66,7 @@ struct ReaderView: View {
         .preferredColorScheme(appSettings.theme.colorScheme)
         .statusBar(hidden: !showingToolbar)
         .sheet(isPresented: $showingTableOfContents) {
-            TableOfContentsView(chapters: chapters, currentChapterIndex: $currentChapterIndex)
+            TableOfContentsView(tocItems: tocItems, chapters: chapters, currentChapterIndex: $currentChapterIndex)
         }
         .sheet(isPresented: $showingSettings) {
             ReaderSettingsView()
@@ -494,6 +495,7 @@ struct ReaderView: View {
                 
                 DispatchQueue.main.async {
                     self.chapters = metadata.chapters
+                    self.tocItems = metadata.tocItems
                     
                     // Restore reading progress
                     if let progress = book.readingProgress {
@@ -1021,24 +1023,44 @@ struct ReaderView: View {
 }
 
 struct TableOfContentsView: View {
+    let tocItems: [TOCItem]
     let chapters: [Chapter]
     @Binding var currentChapterIndex: Int
     @Environment(\.dismiss) private var dismiss
+    
+    private struct DisplayItem: Identifiable {
+        let id: Int
+        let title: String
+        let chapterIndex: Int
+        let level: Int
+    }
+    
+    private var displayItems: [DisplayItem] {
+        if !tocItems.isEmpty {
+            return tocItems.enumerated().map { index, item in
+                DisplayItem(id: index, title: item.title, chapterIndex: item.chapterIndex, level: item.level)
+            }
+        }
+        
+        return chapters.enumerated().map { index, chapter in
+            DisplayItem(id: index, title: chapter.title, chapterIndex: index, level: 0)
+        }
+    }
     
     var body: some View {
         NavigationView {
             ScrollViewReader { proxy in
                 List {
-                    ForEach(Array(chapters.enumerated()), id: \.element.order) { index, chapter in
+                    ForEach(displayItems) { item in
                         Button(action: {
-                            currentChapterIndex = index
+                            currentChapterIndex = item.chapterIndex
                             dismiss()
                         }) {
                             HStack(spacing: 12) {
                                 // Chapter number indicator
                                 ZStack {
                                     Circle()
-                                        .fill(index == currentChapterIndex ? 
+                                        .fill(item.chapterIndex == currentChapterIndex ?
                                               LinearGradient(gradient: Gradient(colors: [.blue, .blue.opacity(0.7)]), 
                                                            startPoint: .topLeading, 
                                                            endPoint: .bottomTrailing) :
@@ -1047,20 +1069,20 @@ struct TableOfContentsView: View {
                                                            endPoint: .bottomTrailing))
                                         .frame(width: 36, height: 36)
                                     
-                                    Text("\(index + 1)")
+                                    Text("\(item.id + 1)")
                                         .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                        .foregroundColor(index == currentChapterIndex ? .white : .secondary)
+                                        .foregroundColor(item.chapterIndex == currentChapterIndex ? .white : .secondary)
                                 }
                                 
                                 // Chapter title
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(chapter.title)
+                                    Text(item.title)
                                         .font(.system(size: 16, weight: .medium, design: .serif))
                                         .foregroundColor(.primary)
                                         .lineLimit(2)
                                         .multilineTextAlignment(.leading)
                                     
-                                    if index == currentChapterIndex {
+                                    if item.chapterIndex == currentChapterIndex {
                                         Text(NSLocalizedString("当前章节", comment: ""))
                                             .font(.system(size: 12, weight: .medium, design: .rounded))
                                             .foregroundColor(.blue)
@@ -1069,25 +1091,24 @@ struct TableOfContentsView: View {
                                 
                                 Spacer()
                                 
-                                if index == currentChapterIndex {
+                                if item.chapterIndex == currentChapterIndex {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.system(size: 20))
                                         .foregroundColor(.blue)
                                 }
                             }
                             .padding(.vertical, 8)
+                            .padding(.leading, CGFloat(item.level) * 16)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .id(index)
+                        .id(item.id)
                     }
                 }
                 .listStyle(.insetGrouped)
                 .onAppear {
                     // Scroll to current chapter
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation {
-                            proxy.scrollTo(currentChapterIndex, anchor: .center)
-                        }
+                        scrollToCurrent(in: proxy)
                     }
                 }
             }
@@ -1104,6 +1125,13 @@ struct TableOfContentsView: View {
                     }
                 }
             }
+        }
+    }
+    
+    private func scrollToCurrent(in proxy: ScrollViewProxy) {
+        guard let target = displayItems.first(where: { $0.chapterIndex == currentChapterIndex }) else { return }
+        withAnimation {
+            proxy.scrollTo(target.id, anchor: .center)
         }
     }
 }

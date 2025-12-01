@@ -126,6 +126,14 @@ final class SkimmingModeService {
     private init() {}
     
     func chapters(from book: Book) throws -> [SkimmingChapterMetadata] {
+        if let enriched = try? buildChaptersFromFile(book: book), !enriched.isEmpty {
+            return enriched
+        }
+        
+        return try decodeChaptersFromMetadata(book)
+    }
+    
+    private func decodeChaptersFromMetadata(_ book: Book) throws -> [SkimmingChapterMetadata] {
         guard let metadataString = book.metadata,
               let data = metadataString.data(using: .utf8) else {
             throw SkimmingModeError.metadataMissing
@@ -146,6 +154,50 @@ final class SkimmingModeService {
         }
         
         return chapters.sorted { $0.order < $1.order }
+    }
+    
+    private func buildChaptersFromFile(book: Book) throws -> [SkimmingChapterMetadata] {
+        let fileURL = URL(fileURLWithPath: book.filePath)
+        let metadata = try EPubParser.parseEPub(from: fileURL)
+        let parsedChapters = metadata.chapters
+        
+        guard !parsedChapters.isEmpty else {
+            throw SkimmingModeError.metadataMissing
+        }
+        
+        let tocItems = metadata.tocItems
+        guard !tocItems.isEmpty else {
+            return parsedChapters.map {
+                SkimmingChapterMetadata(title: $0.title, content: $0.content, order: $0.order)
+            }
+        }
+        
+        var skimmingChapters: [SkimmingChapterMetadata] = []
+        
+        for (index, item) in tocItems.enumerated() {
+            guard item.chapterIndex < parsedChapters.count else { continue }
+            
+            let startIndex = max(0, item.chapterIndex)
+            let nextSiblingChapterIndex = tocItems[(index + 1)...].first(where: { $0.level <= item.level })?.chapterIndex ?? parsedChapters.count
+            let endIndex = max(startIndex + 1, min(nextSiblingChapterIndex, parsedChapters.count))
+            
+            let combinedContent = parsedChapters[startIndex..<endIndex]
+                .map { $0.content }
+                .joined(separator: "\n\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            let safeContent = combinedContent.isEmpty ? parsedChapters[startIndex].content : combinedContent
+            
+            skimmingChapters.append(
+                SkimmingChapterMetadata(
+                    title: item.title,
+                    content: safeContent,
+                    order: index
+                )
+            )
+        }
+        
+        return skimmingChapters
     }
     
     func cachedSummary(for book: Book, chapter: SkimmingChapterMetadata) -> SkimmingChapterSummary? {
@@ -206,7 +258,7 @@ final class SkimmingModeService {
     }
     
     private func buildPrompt(book: Book, chapter: SkimmingChapterMetadata) -> String {
-        let chapterExcerpt = chapter.content.prefix(4000)
+        let chapterExcerpt = chapter.content
         let language = AppSettings.shared.language == .en ? "English" : "Simplified Chinese"
         
         return """

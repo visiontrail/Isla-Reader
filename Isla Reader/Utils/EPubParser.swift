@@ -14,6 +14,7 @@ struct EPubMetadata {
     let language: String?
     let coverImageData: Data?
     let chapters: [Chapter]
+    let tocItems: [TOCItem]
     let totalPages: Int
     let resourcesBaseURL: URL? // 资源文件的基础URL
 }
@@ -23,6 +24,13 @@ struct Chapter {
     let content: String
     let htmlContent: String // 保留原始HTML内容，已处理图片
     let order: Int
+}
+
+struct TOCItem {
+    let title: String
+    let href: String
+    let level: Int
+    let chapterIndex: Int
 }
 
 struct OPFInfo {
@@ -39,6 +47,7 @@ struct TOCEntry {
     let title: String
     let href: String
     let order: Int
+    let level: Int
 }
 
 class EPubParser {
@@ -120,11 +129,15 @@ class EPubParser {
             
             // 解析目录（TOC）
             let tocEntries = parseTOC(tocId: opfInfo.tocId, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL, coverId: opfInfo.coverId)
-            DebugLogger.info("EPubParser: 从TOC解析了 \(tocEntries.count) 个标题")
+            DebugLogger.info("EPubParser: 从TOC解析了 \(tocEntries.count) 个标题（含层级）")
             
             // 解析章节
-            let chapters = try parseChapters(spineItems: opfInfo.spineItems, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL, tocEntries: tocEntries, coverId: opfInfo.coverId)
+            let chapterResult = try parseChapters(spineItems: opfInfo.spineItems, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL, tocEntries: tocEntries, coverId: opfInfo.coverId)
+            let chapters = chapterResult.chapters
             DebugLogger.success("EPubParser: 成功解析 \(chapters.count) 个章节")
+            
+            // 将 TOC 映射到章节索引，保留层级
+            let tocItems = mapTOCEntriesToChapters(tocEntries, hrefToChapterIndex: chapterResult.hrefToChapterIndex)
             
             // 提取封面图片（如果存在）
             let coverImageData = extractCoverImage(coverId: opfInfo.coverId, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL)
@@ -135,6 +148,7 @@ class EPubParser {
                 language: language,
                 coverImageData: coverImageData,
                 chapters: chapters,
+                tocItems: tocItems,
                 totalPages: chapters.count * 10, // 粗略估计
                 resourcesBaseURL: nil // 图片已嵌入HTML，不需要baseURL
             )
@@ -431,6 +445,50 @@ class EPubParser {
         }
         return false
     }
+
+    private static func mapTOCEntriesToChapters(_ tocEntries: [TOCEntry], hrefToChapterIndex: [String: Int]) -> [TOCItem] {
+        var items: [TOCItem] = []
+        
+        for entry in tocEntries {
+            let normalizedHref = entry.href.components(separatedBy: "#").first ?? entry.href
+            let decodedHref = normalizedHref.removingPercentEncoding ?? normalizedHref
+            let fileName = (decodedHref as NSString).lastPathComponent
+            
+            var matchedIndex: Int?
+            
+            for candidate in [decodedHref, fileName] {
+                if let idx = hrefToChapterIndex[candidate] {
+                    matchedIndex = idx
+                    break
+                }
+            }
+            
+            if matchedIndex == nil {
+                for (href, idx) in hrefToChapterIndex {
+                    if href.hasSuffix(fileName) {
+                        matchedIndex = idx
+                        break
+                    }
+                }
+            }
+            
+            guard let chapterIndex = matchedIndex else {
+                DebugLogger.warning("EPubParser: TOC条目未匹配章节 - \(entry.title) -> \(decodedHref)")
+                continue
+            }
+            
+            items.append(
+                TOCItem(
+                    title: entry.title,
+                    href: decodedHref,
+                    level: max(entry.level, 0),
+                    chapterIndex: chapterIndex
+                )
+            )
+        }
+        
+        return items
+    }
     
     // MARK: - 目录解析
     
@@ -449,18 +507,26 @@ class EPubParser {
         
         // 判断是NCX还是NAV格式
         if tocString.contains("<ncx") {
-            return parseNCX(tocString, baseURL: tocURL.deletingLastPathComponent(), coverId: coverId)
+            return parseNCX(tocString, coverId: coverId)
         } else if tocString.contains("epub:type=\"toc\"") || tocString.contains("<nav") {
-            return parseNAV(tocString, baseURL: tocURL.deletingLastPathComponent(), coverId: coverId)
+            return parseNAV(tocString, coverId: coverId)
         }
         
         return []
     }
     
-    private static func parseNCX(_ ncxString: String, baseURL: URL, coverId _: String?) -> [TOCEntry] {
+    private static func parseNCX(_ ncxString: String, coverId: String?) -> [TOCEntry] {
+        if let data = ncxString.data(using: .utf8),
+           let parsed = parseNCXWithXMLParser(data: data, coverId: coverId),
+           !parsed.isEmpty {
+            return parsed
+        }
+        return parseNCXWithRegex(ncxString)
+    }
+    
+    private static func parseNCXWithRegex(_ ncxString: String) -> [TOCEntry] {
         var entries: [TOCEntry] = []
         
-        // 提取所有 navPoint 标签
         let navPointPattern = "<navPoint[^>]*>([\\s\\S]*?)</navPoint>"
         guard let regex = try? NSRegularExpression(pattern: navPointPattern, options: []) else {
             return []
@@ -472,28 +538,26 @@ class EPubParser {
         for match in matches {
             let navPointContent = nsString.substring(with: match.range)
             
-            // 提取标题 (navLabel > text)
             if let textRange = navPointContent.range(of: "<text>([^<]+)</text>", options: .regularExpression) {
                 var title = String(navPointContent[textRange])
                 title = title.replacingOccurrences(of: "<text>", with: "")
                 title = title.replacingOccurrences(of: "</text>", with: "")
                 title = title.trimmingCharacters(in: .whitespacesAndNewlines)
                 
-                // 提取 href (content src)
                 if let contentRange = navPointContent.range(of: "<content\\s+src=\"([^\"]+)\"", options: .regularExpression) {
                     let contentTag = String(navPointContent[contentRange])
                     if let href = extractAttribute(from: contentTag, attribute: "src") {
-                        // 规范化 href（移除锚点）
                         let normalizedHref = href.components(separatedBy: "#").first ?? href
+                        let decodedHref = normalizedHref.removingPercentEncoding ?? normalizedHref
                         
-                        if shouldIgnoreTOCEntry(title: title, href: normalizedHref) {
-                            DebugLogger.info("EPubParser: 跳过封面类NCX条目 - \(title) -> \(normalizedHref)")
+                        if shouldIgnoreTOCEntry(title: title, href: decodedHref) {
+                            DebugLogger.info("EPubParser: 跳过封面类NCX条目 - \(title) -> \(decodedHref)")
                             continue
                         }
                         
                         let order = entries.count
-                        entries.append(TOCEntry(title: title, href: normalizedHref, order: order))
-                        DebugLogger.info("EPubParser: NCX条目[\(order + 1)] - \(title) -> \(normalizedHref)")
+                        entries.append(TOCEntry(title: title, href: decodedHref, order: order, level: 0))
+                        DebugLogger.info("EPubParser: NCX条目[\(order + 1)] - \(title) -> \(decodedHref)")
                     }
                 }
             }
@@ -502,10 +566,18 @@ class EPubParser {
         return entries
     }
     
-    private static func parseNAV(_ navString: String, baseURL: URL, coverId _: String?) -> [TOCEntry] {
+    private static func parseNAV(_ navString: String, coverId: String?) -> [TOCEntry] {
+        if let data = navString.data(using: .utf8),
+           let parsed = parseNAVWithXMLParser(data: data, coverId: coverId),
+           !parsed.isEmpty {
+            return parsed
+        }
+        return parseNAVWithRegex(navString)
+    }
+    
+    private static func parseNAVWithRegex(_ navString: String) -> [TOCEntry] {
         var entries: [TOCEntry] = []
         
-        // 提取 TOC nav 部分
         guard let navRange = navString.range(of: "<nav[^>]*epub:type=\"toc\"[^>]*>([\\s\\S]*?)</nav>", options: .regularExpression) else {
             DebugLogger.warning("EPubParser: 未找到epub:type=\"toc\"的nav标签")
             return []
@@ -513,7 +585,6 @@ class EPubParser {
         
         let navContent = String(navString[navRange])
         
-        // 提取所有链接
         let linkPattern = "<a[^>]+href=\"([^\"]+)\"[^>]*>([^<]+)</a>"
         guard let regex = try? NSRegularExpression(pattern: linkPattern, options: []) else {
             return []
@@ -526,34 +597,219 @@ class EPubParser {
             let linkContent = nsString.substring(with: match.range)
             
             if let href = extractAttribute(from: linkContent, attribute: "href") {
-                // 提取链接文本
                 if let textRange = linkContent.range(of: ">([^<]+)<", options: .regularExpression) {
                     var title = String(linkContent[textRange])
                     title = title.replacingOccurrences(of: ">", with: "")
                     title = title.replacingOccurrences(of: "<", with: "")
                     title = title.trimmingCharacters(in: .whitespacesAndNewlines)
                     
-                    // 规范化 href（移除锚点）
                     let normalizedHref = href.components(separatedBy: "#").first ?? href
+                    let decodedHref = normalizedHref.removingPercentEncoding ?? normalizedHref
                     
-                    if shouldIgnoreTOCEntry(title: title, href: normalizedHref) {
-                        DebugLogger.info("EPubParser: 跳过封面类NAV条目 - \(title) -> \(normalizedHref)")
+                    if shouldIgnoreTOCEntry(title: title, href: decodedHref) {
+                        DebugLogger.info("EPubParser: 跳过封面类NAV条目 - \(title) -> \(decodedHref)")
                         continue
                     }
                     
                     let order = entries.count
-                    entries.append(TOCEntry(title: title, href: normalizedHref, order: order))
-                    DebugLogger.info("EPubParser: NAV条目[\(order + 1)] - \(title) -> \(normalizedHref)")
+                    entries.append(TOCEntry(title: title, href: decodedHref, order: order, level: 0))
+                    DebugLogger.info("EPubParser: NAV条目[\(order + 1)] - \(title) -> \(decodedHref)")
                 }
             }
         }
         
         return entries
     }
+
+    private static func parseNCXWithXMLParser(data: Data, coverId _: String?) -> [TOCEntry]? {
+        final class NCXParserDelegate: NSObject, XMLParserDelegate {
+            struct NavPointContext {
+                var level: Int
+                var startIndex: Int
+                var title: String?
+                var href: String?
+            }
+            
+            var entries: [TOCEntry] = []
+            private var stack: [NavPointContext] = []
+            private var currentText: String = ""
+            
+            func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
+                let name = elementName.lowercased()
+                
+                if name.hasSuffix("navpoint") {
+                    let level = (stack.last?.level ?? -1) + 1
+                    let context = NavPointContext(level: level, startIndex: entries.count, title: nil, href: nil)
+                    stack.append(context)
+                    currentText = ""
+                } else if name == "text" {
+                    currentText = ""
+                } else if name.hasSuffix("content") {
+                    if let src = attributeDict["src"] ?? attributeDict["href"] {
+                        if var last = stack.popLast() {
+                            last.href = src
+                            stack.append(last)
+                        }
+                    }
+                }
+            }
+            
+            func parser(_ parser: XMLParser, foundCharacters string: String) {
+                currentText += string
+            }
+            
+            func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
+                let name = elementName.lowercased()
+                
+                if name == "text" {
+                    let trimmed = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty, var last = stack.popLast() {
+                        last.title = trimmed
+                        stack.append(last)
+                    }
+                    currentText = ""
+                } else if name.hasSuffix("navpoint") {
+                    guard let context = stack.popLast() else { return }
+                    
+                    guard let rawTitle = context.title?.trimmingCharacters(in: .whitespacesAndNewlines),
+                          !rawTitle.isEmpty,
+                          let href = context.href else {
+                        currentText = ""
+                        return
+                    }
+                    
+                    let normalizedHref = href.components(separatedBy: "#").first ?? href
+                    let decodedHref = normalizedHref.removingPercentEncoding ?? normalizedHref
+                    
+                    if EPubParser.shouldIgnoreTOCEntry(title: rawTitle, href: decodedHref) {
+                        DebugLogger.info("EPubParser: 跳过封面类NCX条目(XML) - \(rawTitle) -> \(decodedHref)")
+                    } else {
+                        let entry = TOCEntry(title: rawTitle, href: decodedHref, order: context.startIndex, level: context.level)
+                        entries.insert(entry, at: context.startIndex)
+                        DebugLogger.info("EPubParser: NCX条目(XML)插入[\(context.startIndex + 1)] - \(rawTitle) -> \(decodedHref), level=\(context.level)")
+                    }
+                    
+                    currentText = ""
+                }
+            }
+        }
+        
+        let delegate = NCXParserDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        parser.shouldProcessNamespaces = false
+        parser.shouldResolveExternalEntities = false
+        
+        let success = parser.parse()
+        if !success {
+            DebugLogger.warning("EPubParser: XML解析NCX失败: \(parser.parserError?.localizedDescription ?? "未知错误")")
+        }
+        
+        let normalizedEntries = delegate.entries.enumerated().map { index, entry in
+            TOCEntry(title: entry.title, href: entry.href, order: index, level: entry.level)
+        }
+        
+        return normalizedEntries
+    }
+    
+    private static func parseNAVWithXMLParser(data: Data, coverId _: String?) -> [TOCEntry]? {
+        final class NAVParserDelegate: NSObject, XMLParserDelegate {
+            var entries: [TOCEntry] = []
+            private var insideTOCNav = false
+            private var navDepth = 0
+            private var listDepth = 0
+            private var currentHref: String?
+            private var currentText: String = ""
+            private var capturingLinkText = false
+            
+            func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
+                let name = elementName.lowercased()
+                
+                if name == "nav" {
+                    navDepth += 1
+                    if let epubType = attributeDict["epub:type"] ?? attributeDict["type"], epubType.contains("toc") {
+                        insideTOCNav = true
+                    }
+                }
+                
+                guard insideTOCNav else { return }
+                
+                if name == "ol" || name == "ul" {
+                    listDepth += 1
+                } else if name == "a" {
+                    currentHref = attributeDict["href"]
+                    currentText = ""
+                    capturingLinkText = true
+                }
+            }
+            
+            func parser(_ parser: XMLParser, foundCharacters string: String) {
+                guard capturingLinkText else { return }
+                currentText += string
+            }
+            
+            func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
+                let name = elementName.lowercased()
+                
+                if !insideTOCNav {
+                    if name == "nav" && navDepth > 0 {
+                        navDepth -= 1
+                    }
+                    return
+                }
+                
+                if name == "a" {
+                    capturingLinkText = false
+                    let title = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let href = currentHref
+                    currentText = ""
+                    currentHref = nil
+                    
+                    guard !title.isEmpty, let href = href else { return }
+                    
+                    let normalizedHref = href.components(separatedBy: "#").first ?? href
+                    let decodedHref = normalizedHref.removingPercentEncoding ?? normalizedHref
+                    if EPubParser.shouldIgnoreTOCEntry(title: title, href: decodedHref) {
+                        DebugLogger.info("EPubParser: 跳过封面类NAV条目(XML) - \(title) -> \(decodedHref)")
+                    } else {
+                        let level = max(listDepth - 1, 0)
+                        let order = entries.count
+                        entries.append(TOCEntry(title: title, href: decodedHref, order: order, level: level))
+                        DebugLogger.info("EPubParser: NAV条目(XML)[\(order + 1)] - \(title) -> \(decodedHref), level=\(level)")
+                    }
+                } else if name == "ol" || name == "ul" {
+                    listDepth = max(listDepth - 1, 0)
+                } else if name == "nav" {
+                    navDepth = max(navDepth - 1, 0)
+                    if navDepth == 0 {
+                        insideTOCNav = false
+                        listDepth = 0
+                    }
+                }
+            }
+        }
+        
+        let delegate = NAVParserDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        parser.shouldProcessNamespaces = false
+        parser.shouldResolveExternalEntities = false
+        
+        let success = parser.parse()
+        if !success {
+            DebugLogger.warning("EPubParser: XML解析NAV失败: \(parser.parserError?.localizedDescription ?? "未知错误")")
+        }
+        
+        let normalizedEntries = delegate.entries.enumerated().map { index, entry in
+            TOCEntry(title: entry.title, href: entry.href, order: index, level: entry.level)
+        }
+        
+        return normalizedEntries
+    }
     
     // MARK: - 章节解析
     
-    private static func parseChapters(spineItems: [String], manifestMap: [String: String], baseURL: URL, tocEntries: [TOCEntry], coverId: String?) throws -> [Chapter] {
+    private static func parseChapters(spineItems: [String], manifestMap: [String: String], baseURL: URL, tocEntries: [TOCEntry], coverId: String?) throws -> (chapters: [Chapter], hrefToChapterIndex: [String: Int]) {
         DebugLogger.info("EPubParser: 开始解析章节")
         DebugLogger.info("EPubParser: Spine中有 \(spineItems.count) 个项目")
         DebugLogger.info("EPubParser: Manifest中有 \(manifestMap.count) 个项目")
@@ -566,8 +822,9 @@ class EPubParser {
         }
         
         var chapters: [Chapter] = []
+        var hrefToChapterIndex: [String: Int] = [:]
         
-        for (index, idref) in spineItems.enumerated() {
+        for idref in spineItems {
             guard let href = manifestMap[idref] else {
                 DebugLogger.warning("EPubParser: 跳过无效的spine项目: \(idref)")
                 continue
@@ -624,11 +881,19 @@ class EPubParser {
                 // 清理HTML用于移动端显示，并嵌入图片
                 let cleanedHTML = cleanHTMLForMobileDisplay(htmlContent, baseURL: chapterURL.deletingLastPathComponent())
                 
+                let chapterIndex = chapters.count
+                if hrefToChapterIndex[normalizedHref] == nil {
+                    hrefToChapterIndex[normalizedHref] = chapterIndex
+                }
+                if hrefToChapterIndex[fileName] == nil {
+                    hrefToChapterIndex[fileName] = chapterIndex
+                }
+                
                 let chapter = Chapter(
                     title: finalTitle,
                     content: chapterContent,
                     htmlContent: cleanedHTML,
-                    order: chapters.count
+                    order: chapterIndex
                 )
                 
                 chapters.append(chapter)
@@ -639,7 +904,7 @@ class EPubParser {
             }
         }
         
-        return chapters
+        return (chapters, hrefToChapterIndex)
     }
     
     private static func extractChapterTitleFromHTML(_ htmlString: String) -> String? {
