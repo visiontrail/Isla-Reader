@@ -186,7 +186,33 @@
 "ai.summary.start_reading" = "読み始める";
 
 // Skimming Mode
+"略读模式" = "略読モード";
+"skimming.mode_badge" = "略読モード";
+"skimming.subtitle" = "AI略読、構造優先";
+"skimming.loading_chapters" = "略読体験を準備中...";
+"skimming.no_chapters" = "まだ略読できる章がありません";
+"skimming.retry" = "再試行";
 "skimming.generate" = "この章の略読を生成";
+"skimming.generating" = "AIがチャプターの骨組みを作成中...";
+"skimming.placeholder" = "まだ略読コンテンツがありません";
+"skimming.time_estimate" = "約%d分で略読";
+"skimming.goal" = "読書目標";
+"skimming.structure" = "章の骨格";
+"skimming.key_sentences" = "キーセンテンス";
+"skimming.keywords" = "キーワード";
+"skimming.questions" = "点検質問";
+"skimming.narrative" = "AI略読ナラティブ";
+"skimming.switch_to_full" = "続きから読む";
+"skimming.start_chapter_reading" = "この章を読む";
+"skimming.error.metadata_missing" = "章のメタデータが見つかりません。";
+"skimming.error.metadata_corrupted" = "章のデータが破損しています。略読モードを開始できません。";
+"skimming.error.network" = "ネットワークエラーにより略読コンテンツを読み込めませんでした。";
+"skimming.error.parse" = "AIの応答を解釈できません。";
+"skimming.fallback.structure_title" = "章の概要";
+"skimming.fallback.goal" = "論旨と論証マップに集中";
+"skimming.fallback.key_sentence" = "AIがまだキーセンテンスを抽出できませんでした。再試行してください。";
+"skimming.fallback.keyword" = "構造";
+"skimming.fallback.question" = "この章が答えようとしている核心的な質問は何か？";
 
 // Additional UI strings
 "Isla Reader" = "Isla Reader";

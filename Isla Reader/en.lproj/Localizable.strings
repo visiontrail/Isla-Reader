@@ -195,8 +195,8 @@
 "skimming.keywords" = "Keywords";
 "skimming.questions" = "Inspection Questions";
 "skimming.narrative" = "AI Skimming Narrative";
-"skimming.switch_to_full" = "Switch to full reading";
-"skimming.switch_now" = "Start full reading";
+"skimming.switch_to_full" = "Continue reading";
+"skimming.start_chapter_reading" = "Read this chapter";
 "skimming.error.metadata_missing" = "Cannot find chapter metadata.";
 "skimming.error.metadata_corrupted" = "Chapter data is corrupted. Skimming mode cannot start.";
 "skimming.error.network" = "Network error prevented loading skimming content.";

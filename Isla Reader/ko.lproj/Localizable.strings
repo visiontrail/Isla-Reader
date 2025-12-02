@@ -186,7 +186,33 @@
 "ai.summary.start_reading" = "읽기 시작";
 
 // Skimming Mode
+"略读模式" = "스키밍 모드";
+"skimming.mode_badge" = "스키밍 모드";
+"skimming.subtitle" = "AI 스키밍, 구조 먼저";
+"skimming.loading_chapters" = "스키밍 경험 준비 중...";
+"skimming.no_chapters" = "아직 스키밍 가능한 챕터가 없습니다";
+"skimming.retry" = "재시도";
 "skimming.generate" = "이 챕터 스키밍 요약 생성";
+"skimming.generating" = "AI가 챕터 뼈대를 만드는 중...";
+"skimming.placeholder" = "아직 스키밍 콘텐츠가 없습니다";
+"skimming.time_estimate" = "약 %d분 스키밍";
+"skimming.goal" = "읽기 목표";
+"skimming.structure" = "챕터 골격";
+"skimming.key_sentences" = "핵심 문장";
+"skimming.keywords" = "키워드";
+"skimming.questions" = "점검 질문";
+"skimming.narrative" = "AI 스키밍 내러티브";
+"skimming.switch_to_full" = "계속 읽기";
+"skimming.start_chapter_reading" = "이 챕터 읽기";
+"skimming.error.metadata_missing" = "챕터 메타데이터를 찾을 수 없습니다.";
+"skimming.error.metadata_corrupted" = "챕터 데이터가 손상되었습니다. 스키밍 모드를 시작할 수 없습니다.";
+"skimming.error.network" = "네트워크 오류로 스키밍 콘텐츠를 로드할 수 없습니다.";
+"skimming.error.parse" = "AI 응답을 해석할 수 없습니다.";
+"skimming.fallback.structure_title" = "챕터 개요";
+"skimming.fallback.goal" = "논지와 논증 맵에 집중";
+"skimming.fallback.key_sentence" = "AI가 아직 핵심 문장을 추출할 수 없습니다. 재시도해 주세요.";
+"skimming.fallback.keyword" = "구조";
+"skimming.fallback.question" = "이 챕터가 답하려는 핵심 질문은 무엇인가?";
 
 // Additional UI strings
 "Isla Reader" = "Isla Reader";

@@ -195,8 +195,8 @@
 "skimming.keywords" = "关键词";
 "skimming.questions" = "检视问题";
 "skimming.narrative" = "AI 略读讲解";
-"skimming.switch_to_full" = "转为正式阅读";
-"skimming.switch_now" = "开始正式阅读";
+"skimming.switch_to_full" = "继续阅读";
+"skimming.start_chapter_reading" = "阅读本章";
 "skimming.error.metadata_missing" = "无法找到书籍章节信息";
 "skimming.error.metadata_corrupted" = "章节数据损坏，无法开启略读模式";
 "skimming.error.network" = "网络连接异常，略读内容加载失败";

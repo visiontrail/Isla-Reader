@@ -20,7 +20,8 @@ struct SkimmingModeView: View {
     @State private var loadingChapterIndices: Set<Int> = []
     @State private var chapterErrors: [Int: String] = [:]
     @State private var showingTOC = false
-    @State private var navigateToReader = false
+    @State private var navigateToReaderAtCurrentChapter = false  // Start reading at current skimming chapter
+    @State private var navigateToReaderResumingProgress = false  // Resume last reading progress
     
     private let service = SkimmingModeService.shared
     
@@ -64,10 +65,32 @@ struct SkimmingModeView: View {
         .padding(.top, 12)
         .padding(.horizontal)
         .overlay(
-            NavigationLink(destination: ReaderView(book: book), isActive: $navigateToReader) {
-                EmptyView()
+            Group {
+                // Navigate to current skimming chapter (Start full reading)
+                NavigationLink(
+                    destination: ReaderView(
+                        book: book,
+                        initialLocation: BookmarkLocation(
+                            chapterIndex: currentChapterIndex,
+                            pageIndex: 0,
+                            chapterTitle: chapters.indices.contains(currentChapterIndex) ? chapters[currentChapterIndex].title : nil
+                        )
+                    ),
+                    isActive: $navigateToReaderAtCurrentChapter
+                ) {
+                    EmptyView()
+                }
+                .hidden()
+                
+                // Resume last reading progress (Switch to full reading)
+                NavigationLink(
+                    destination: ReaderView(book: book),
+                    isActive: $navigateToReaderResumingProgress
+                ) {
+                    EmptyView()
+                }
+                .hidden()
             }
-            .hidden()
         )
     }
     
@@ -136,7 +159,7 @@ struct SkimmingModeView: View {
                     isLoading: loadingChapterIndices.contains(index),
                     error: chapterErrors[index],
                     onRequestSummary: { requestSummary(for: index) },
-                    onSwitchToFullReading: { navigateToReader = true }
+                    onStartFullReading: { navigateToReaderAtCurrentChapter = true }
                 )
                 .padding(.vertical, 20)
                 .tag(index)
@@ -155,7 +178,7 @@ struct SkimmingModeView: View {
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.8))
                 Spacer()
-                Button(action: { navigateToReader = true }) {
+                Button(action: { navigateToReaderResumingProgress = true }) {
                     Label(NSLocalizedString("skimming.switch_to_full", comment: ""), systemImage: "book.closed")
                         .font(.caption)
                         .foregroundColor(.white)
@@ -278,7 +301,7 @@ private struct SkimmingChapterPage: View {
     let isLoading: Bool
     let error: String?
     let onRequestSummary: () -> Void
-    let onSwitchToFullReading: () -> Void
+    let onStartFullReading: () -> Void
     
     var body: some View {
         ScrollView {
@@ -342,10 +365,10 @@ private struct SkimmingChapterPage: View {
             SkimmingKeywordsSection(keywords: summary.keywords)
             SkimmingQuestionsSection(questions: summary.inspectionQuestions)
             SkimmingNarrativeSection(text: summary.aiNarrative)
-            Button(action: onSwitchToFullReading) {
+            Button(action: onStartFullReading) {
                 HStack {
                     Image(systemName: "arrow.right.circle.fill")
-                    Text(NSLocalizedString("skimming.switch_now", comment: ""))
+                    Text(NSLocalizedString("skimming.start_chapter_reading", comment: ""))
                 }
                 .font(.headline)
                 .foregroundColor(.white)
