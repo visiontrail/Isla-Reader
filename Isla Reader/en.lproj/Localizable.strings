@@ -85,6 +85,8 @@
 "book.info.location" = "File Location";
 "book.info.unknown" = "Unknown";
 "添加到收藏" = "Add to Favorites";
+"取消收藏" = "Remove from Favorites";
+"收藏" = "Favorites";
 "从书架移除" = "Remove from Library";
 "书架空空如也" = "Your library is empty";
 "导入您的第一本电子书开始阅读之旅" = "Import your first eBook to start reading";

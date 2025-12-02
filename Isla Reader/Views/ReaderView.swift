@@ -670,9 +670,26 @@ struct ReaderView: View {
                 book.totalPages = Int32(chapters.count)
             }
             
+            // Update reading status based on progress
+            if let libraryItem = book.libraryItem {
+                // Update lastAccessedAt
+                libraryItem.lastAccessedAt = Date()
+                
+                // If progress reaches 100%, mark as finished
+                if progress.progressPercentage >= 0.99 { // Use 0.99 to account for floating point precision
+                    if libraryItem.status != .finished {
+                        libraryItem.status = .finished
+                        DebugLogger.info("ReaderView: Book completed! Updated status to 'finished'")
+                    }
+                } else if libraryItem.status == .wantToRead || libraryItem.status == .paused {
+                    // If still reading (not finished), ensure status is "reading"
+                    libraryItem.status = .reading
+                }
+            }
+            
             do {
                 try viewContext.save()
-                print("✅ Reading progress saved: Chapter \(currentChapterIndex), Page \(safeChapterPageIndex(currentChapterIndex))")
+                print("✅ Reading progress saved: Chapter \(currentChapterIndex), Page \(safeChapterPageIndex(currentChapterIndex)), Progress: \(String(format: "%.1f%%", progress.progressPercentage * 100))")
             } catch {
                 print("❌ Failed to save reading progress: \(error)")
             }
@@ -765,6 +782,22 @@ struct ReaderView: View {
     private func startReadingSession() {
         readingStartTime = Date()
         isActivelyReading = true
+        
+        // Update reading status to "reading" when user starts reading
+        if let libraryItem = book.libraryItem {
+            // Only update from "want to read" or "paused" to "reading"
+            if libraryItem.status == .wantToRead || libraryItem.status == .paused {
+                libraryItem.status = .reading
+                libraryItem.lastAccessedAt = Date()
+                
+                do {
+                    try viewContext.save()
+                    DebugLogger.info("ReaderView: Updated status to 'reading'")
+                } catch {
+                    DebugLogger.error("ReaderView: Failed to update reading status: \(error)")
+                }
+            }
+        }
     }
     
     private func endReadingSession() {

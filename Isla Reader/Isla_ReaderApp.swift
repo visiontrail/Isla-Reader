@@ -11,6 +11,18 @@ import SwiftUI
 struct Isla_ReaderApp: App {
     let persistenceController = PersistenceController.shared
     @StateObject private var appSettings = AppSettings.shared
+    
+    init() {
+        // Update reading statuses on app launch
+        // Check for books that haven't been accessed in a week and mark them as paused
+        Task {
+            await MainActor.run {
+                ReadingStatusService.shared.updateAllReadingStatuses(
+                    in: PersistenceController.shared.container.viewContext
+                )
+            }
+        }
+    }
 
     var body: some Scene {
         WindowGroup {

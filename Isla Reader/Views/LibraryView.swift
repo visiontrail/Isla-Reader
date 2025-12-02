@@ -9,6 +9,35 @@ import SwiftUI
 import CoreData
 import UniformTypeIdentifiers
 
+// Filter type enum supporting both reading status and favorites
+enum LibraryFilterType: Equatable {
+    case all
+    case favorites
+    case status(ReadingStatus)
+    
+    var displayName: String {
+        switch self {
+        case .all:
+            return NSLocalizedString("全部", comment: "")
+        case .favorites:
+            return NSLocalizedString("收藏", comment: "")
+        case .status(let status):
+            return status.displayName
+        }
+    }
+    
+    var displayNameKey: LocalizedStringKey {
+        switch self {
+        case .all:
+            return LocalizedStringKey("全部")
+        case .favorites:
+            return LocalizedStringKey("收藏")
+        case .status(let status):
+            return status.displayNameKey
+        }
+    }
+}
+
 struct LibraryView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -22,7 +51,7 @@ struct LibraryView: View {
     @State private var refreshID = UUID()
     
     @State private var searchText = ""
-    @State private var selectedFilter: ReadingStatus? = nil
+    @State private var selectedFilter: LibraryFilterType = .all
     @State private var showingImportSheet = false
     @State private var showingFilterSheet = false
     @State private var bookToShowAISummary: Book? = nil
@@ -42,9 +71,14 @@ struct LibraryView: View {
             }
         }
         
-        // Apply status filter
-        if let selectedFilter = selectedFilter {
-            items = items.filter { $0.status == selectedFilter }
+        // Apply filter type
+        switch selectedFilter {
+        case .all:
+            break
+        case .favorites:
+            items = items.filter { $0.isFavorite }
+        case .status(let status):
+            items = items.filter { $0.status == status }
         }
         
         return items
@@ -73,7 +107,7 @@ struct LibraryView: View {
                     .cornerRadius(10)
                     
                     Button(action: { showingFilterSheet = true }) {
-                        Image(systemName: selectedFilter != nil ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                        Image(systemName: selectedFilter != .all ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                             .font(.title2)
                             .foregroundColor(.primary)
                     }
@@ -102,6 +136,8 @@ struct LibraryView: View {
                                 }, onShowInfo: {
                                     DebugLogger.info("LibraryView: 查看书籍信息 - \(item.book.displayTitle)")
                                     libraryItemForInfo = item
+                                }, onToggleFavorite: {
+                                    toggleFavorite(for: item)
                                 })
                             }
                         }
@@ -211,9 +247,27 @@ struct LibraryView: View {
     // 刷新数据的辅助方法
     private func refreshData() {
         DebugLogger.info("LibraryView: 执行数据刷新")
+        
+        // Update reading statuses (check for books that should be paused)
+        ReadingStatusService.shared.updateAllReadingStatuses(in: viewContext)
+        
         viewContext.refreshAllObjects()
         refreshID = UUID()
         DebugLogger.info("LibraryView: 数据刷新完成")
+    }
+    
+    // 切换收藏状态
+    private func toggleFavorite(for item: LibraryItem) {
+        let newValue = !item.isFavorite
+        item.isFavorite = newValue
+        
+        do {
+            try viewContext.save()
+            DebugLogger.info("LibraryView: 收藏状态切换成功 - \(item.book.displayTitle) -> \(newValue ? "已收藏" : "取消收藏")")
+            refreshID = UUID()
+        } catch {
+            DebugLogger.error("LibraryView: 收藏状态保存失败", error: error)
+        }
     }
 }
 
@@ -223,6 +277,7 @@ struct BookCardView: View {
     var onSkim: (() -> Void)? = nil
     var onShowBookmarks: (() -> Void)? = nil
     var onShowInfo: (() -> Void)? = nil
+    var onToggleFavorite: (() -> Void)? = nil
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     private var cardWidth: CGFloat {
@@ -267,7 +322,7 @@ struct BookCardView: View {
                 }
             }
             
-            // Progress Indicator and Status Badge
+            // Progress Indicator, Favorite Badge and Status Badge
             VStack {
                 HStack(spacing: 6) {
                     // Progress Indicator - show for all books with reading progress > 0
@@ -282,6 +337,13 @@ struct BookCardView: View {
                     StatusBadge(status: libraryItem.status)
                 }
                 Spacer()
+                HStack {
+                    // Favorite Badge - bottom left corner
+                    if libraryItem.isFavorite {
+                        FavoriteBadge()
+                    }
+                    Spacer()
+                }
             }
             .padding(8)
         }
@@ -292,7 +354,7 @@ struct BookCardView: View {
             Button(action: { onSkim?() }) {
                 Label(NSLocalizedString("略读模式", comment: ""), systemImage: "sparkles.rectangle.stack")
             }
-            BookContextMenu(libraryItem: libraryItem, onShowBookmarks: onShowBookmarks, onShowInfo: onShowInfo)
+            BookContextMenu(libraryItem: libraryItem, onShowBookmarks: onShowBookmarks, onShowInfo: onShowInfo, onToggleFavorite: onToggleFavorite)
         }
         .onAppear {
             // 调试：打印进度信息
@@ -302,6 +364,17 @@ struct BookCardView: View {
                 DebugLogger.info("BookCard[\(libraryItem.book.displayTitle)]: 没有进度数据")
             }
         }
+    }
+}
+
+struct FavoriteBadge: View {
+    var body: some View {
+        Image(systemName: "heart.fill")
+            .font(.system(size: 12))
+            .foregroundColor(.white)
+            .padding(6)
+            .background(Color.pink.opacity(0.9))
+            .clipShape(Circle())
     }
 }
 
@@ -343,6 +416,8 @@ struct ProgressIndicatorBadge: View {
             Text(progressText)
                 .font(.caption2)
                 .fontWeight(.medium)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -391,6 +466,7 @@ struct BookContextMenu: View {
     let libraryItem: LibraryItem
     var onShowBookmarks: (() -> Void)? = nil
     var onShowInfo: (() -> Void)? = nil
+    var onToggleFavorite: (() -> Void)? = nil
     
     var body: some View {
         Button(action: {}) {
@@ -407,8 +483,12 @@ struct BookContextMenu: View {
             Label(NSLocalizedString("书籍信息", comment: ""), systemImage: "info.circle")
         }
         
-        Button(action: {}) {
-            Label(NSLocalizedString("添加到收藏", comment: ""), systemImage: "heart")
+        Button(action: { onToggleFavorite?() }) {
+            if libraryItem.isFavorite {
+                Label(NSLocalizedString("取消收藏", comment: ""), systemImage: "heart.slash")
+            } else {
+                Label(NSLocalizedString("添加到收藏", comment: ""), systemImage: "heart")
+            }
         }
         
         Divider()
@@ -750,43 +830,22 @@ struct EmptyLibraryView: View {
 }
 
 struct FilterSheetView: View {
-    @Binding var selectedFilter: ReadingStatus?
+    @Binding var selectedFilter: LibraryFilterType
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationView {
             List {
+                // General section
+                Section {
+                    filterButton(for: .all)
+                    filterButton(for: .favorites)
+                }
+                
+                // Reading Status section
                 Section(NSLocalizedString("阅读状态", comment: "")) {
-                    Button(action: {
-                        selectedFilter = nil
-                        dismiss()
-                    }) {
-                        HStack {
-                            Text(NSLocalizedString("全部", comment: ""))
-                            Spacer()
-                            if selectedFilter == nil {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.accentColor)
-                            }
-                        }
-                    }
-                    .foregroundColor(.primary)
-                    
                     ForEach(ReadingStatus.allCases, id: \.rawValue) { status in
-                        Button(action: {
-                            selectedFilter = status
-                            dismiss()
-                        }) {
-                            HStack {
-                                Text(status.displayNameKey)
-                                Spacer()
-                                if selectedFilter == status {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.accentColor)
-                                }
-                            }
-                        }
-                        .foregroundColor(.primary)
+                        filterButton(for: .status(status))
                     }
                 }
             }
@@ -808,6 +867,30 @@ struct FilterSheetView: View {
                 #endif
             }
         }
+    }
+    
+    @ViewBuilder
+    private func filterButton(for filter: LibraryFilterType) -> some View {
+        Button(action: {
+            selectedFilter = filter
+            dismiss()
+        }) {
+            HStack {
+                // Icon for special filters
+                if case .favorites = filter {
+                    Image(systemName: "heart.fill")
+                        .foregroundColor(.pink)
+                }
+                
+                Text(filter.displayNameKey)
+                Spacer()
+                if selectedFilter == filter {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.accentColor)
+                }
+            }
+        }
+        .foregroundColor(.primary)
     }
 }
 
