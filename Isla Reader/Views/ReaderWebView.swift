@@ -708,14 +708,25 @@ struct ReaderWebView: UIViewRepresentable {
         
         window.addEventListener('scroll', function(){ updateEdgeOverlay(); }, { passive: true });
         
-        window.addEventListener('resize', function() {
-            // 在旋转或尺寸改变时保持页位置
+        // 使用轻量防抖避免图片等资源异步加载时频繁重排导致的闪动
+        var resizeTimer = null;
+        function handleResize() {
             const perPage = getPerPage();
             const currentScroll = getScrollLeft();
-            const currentPage = Math.round(currentScroll / perPage);
-            applyPagination();
-            setTimeout(function(){ scrollToPage(currentPage, false); }, 0);
-        });
+            const currentPage = Math.round(currentScroll / Math.max(perPage, 1));
+            
+            if (resizeTimer) {
+                clearTimeout(resizeTimer);
+            }
+            
+            resizeTimer = setTimeout(function() {
+                applyPagination();
+                scrollToPage(currentPage, false);
+                resizeTimer = null;
+            }, 120);
+        }
+        
+        window.addEventListener('resize', handleResize);
         """
     }
 }

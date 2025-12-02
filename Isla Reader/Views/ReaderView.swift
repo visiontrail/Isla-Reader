@@ -548,8 +548,17 @@ struct ReaderView: View {
         
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                // Get the book file path
-                let fileURL = URL(fileURLWithPath: book.filePath)
+                guard let resolution = BookFileLocator.resolveFileURL(from: book.filePath) else {
+                    DebugLogger.error("ReaderView: 无法找到书籍文件，存储路径: \(book.filePath)")
+                    DispatchQueue.main.async {
+                        self.loadError = NSLocalizedString("reader.error.file_missing", comment: "")
+                        self.isLoading = false
+                    }
+                    return
+                }
+                
+                let fileURL = resolution.url
+                let normalizedPath = resolution.preferredStoredPath
                 
                 // Parse EPUB
                 let metadata = try EPubParser.parseEPub(from: fileURL)
@@ -557,6 +566,16 @@ struct ReaderView: View {
                 DispatchQueue.main.async {
                     self.chapters = metadata.chapters
                     self.tocItems = metadata.tocItems
+                    
+                    if self.book.filePath != normalizedPath {
+                        self.book.filePath = normalizedPath
+                        do {
+                            try self.viewContext.save()
+                            DebugLogger.info("ReaderView: 已规范化书籍路径为 \(normalizedPath)")
+                        } catch {
+                            DebugLogger.error("ReaderView: 保存规范化书籍路径失败", error: error)
+                        }
+                    }
                     
                     if !applyInitialLocationIfAvailable() {
                         restoreReadingProgress()

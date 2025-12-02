@@ -73,8 +73,10 @@ class BookImportService: ObservableObject {
             // 5. 创建应用文档目录中的存储路径
             DebugLogger.info("BookImportService: 步骤5 - 创建存储路径")
             await updateProgress(0.6)
-            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            let booksDirectory = documentsPath.appendingPathComponent("Books")
+            guard let booksDirectory = BookFileLocator.booksDirectory() else {
+                DebugLogger.error("BookImportService: 无法解析书籍目录")
+                throw BookImportError.saveError("无法创建书籍目录")
+            }
             DebugLogger.info("BookImportService: 书籍目录: \(booksDirectory.path)")
             try FileManager.default.createDirectory(at: booksDirectory, withIntermediateDirectories: true)
             
@@ -83,6 +85,7 @@ class BookImportService: ObservableObject {
             DebugLogger.info("BookImportService: 目标文件路径: \(destinationURL.path)")
             try FileManager.default.copyItem(at: url, to: destinationURL)
             DebugLogger.success("BookImportService: 文件复制成功")
+            DebugLogger.info("BookImportService: 存储相对路径: \(bookFileName)")
             
             // 6. 创建Book实体
             DebugLogger.info("BookImportService: 步骤6 - 创建Book实体")
@@ -93,7 +96,7 @@ class BookImportService: ObservableObject {
             book.author = metadata.author
             book.language = metadata.language
             book.coverImageData = metadata.coverImageData
-            book.filePath = destinationURL.path
+            book.filePath = bookFileName
             book.fileFormat = "epub"
             book.fileSize = Int64(fileData.count)
             book.checksum = checksum

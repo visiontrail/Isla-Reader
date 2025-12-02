@@ -235,3 +235,4 @@
 "加载失败" = "Load Failed";
 "返回" = "Back";
 "当前章节" = "Current Chapter";
+"reader.error.file_missing" = "Book file is missing. Please re-import the book.";

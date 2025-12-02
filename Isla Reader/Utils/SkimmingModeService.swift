@@ -153,7 +153,12 @@ final class SkimmingModeService {
     }
     
     private func buildChaptersFromFile(book: Book) throws -> [SkimmingChapterMetadata] {
-        let fileURL = URL(fileURLWithPath: book.filePath)
+        guard let resolution = BookFileLocator.resolveFileURL(from: book.filePath) else {
+            DebugLogger.error("SkimmingModeService: 找不到书籍文件，路径: \(book.filePath)")
+            throw SkimmingModeError.metadataMissing
+        }
+        
+        let fileURL = resolution.url
         let metadata = try EPubParser.parseEPub(from: fileURL)
         let parsedChapters = metadata.chapters
         
