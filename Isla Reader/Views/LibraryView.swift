@@ -28,6 +28,7 @@ struct LibraryView: View {
     @State private var bookToShowAISummary: Book? = nil
     @State private var bookForSkimming: Book? = nil
     @State private var bookForBookmarks: Book? = nil
+    @State private var libraryItemForInfo: LibraryItem? = nil
     @State private var readerLaunchTarget: ReaderLaunchTarget? = nil
     
     private var filteredBooks: [LibraryItem] {
@@ -98,6 +99,9 @@ struct LibraryView: View {
                                 }, onShowBookmarks: {
                                     DebugLogger.info("LibraryView: 查看书签 - \(item.book.displayTitle)")
                                     bookForBookmarks = item.book
+                                }, onShowInfo: {
+                                    DebugLogger.info("LibraryView: 查看书籍信息 - \(item.book.displayTitle)")
+                                    libraryItemForInfo = item
                                 })
                             }
                         }
@@ -186,6 +190,10 @@ struct LibraryView: View {
                 }
                 .environment(\.managedObjectContext, viewContext)
             }
+            .sheet(item: $libraryItemForInfo) { libraryItem in
+                BookInfoSheet(libraryItem: libraryItem)
+                    .environment(\.managedObjectContext, viewContext)
+            }
             .fullScreenCover(item: $readerLaunchTarget) { target in
                 NavigationView {
                     ReaderView(book: target.book, initialLocation: target.location)
@@ -214,6 +222,7 @@ struct BookCardView: View {
     var onTap: (() -> Void)? = nil
     var onSkim: (() -> Void)? = nil
     var onShowBookmarks: (() -> Void)? = nil
+    var onShowInfo: (() -> Void)? = nil
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     private var cardWidth: CGFloat {
@@ -283,7 +292,7 @@ struct BookCardView: View {
             Button(action: { onSkim?() }) {
                 Label(NSLocalizedString("略读模式", comment: ""), systemImage: "sparkles.rectangle.stack")
             }
-            BookContextMenu(libraryItem: libraryItem, onShowBookmarks: onShowBookmarks)
+            BookContextMenu(libraryItem: libraryItem, onShowBookmarks: onShowBookmarks, onShowInfo: onShowInfo)
         }
         .onAppear {
             // 调试：打印进度信息
@@ -381,6 +390,7 @@ struct ProgressBar: View {
 struct BookContextMenu: View {
     let libraryItem: LibraryItem
     var onShowBookmarks: (() -> Void)? = nil
+    var onShowInfo: (() -> Void)? = nil
     
     var body: some View {
         Button(action: {}) {
@@ -393,7 +403,7 @@ struct BookContextMenu: View {
             }
         }
         
-        Button(action: {}) {
+        Button(action: { onShowInfo?() }) {
             Label(NSLocalizedString("书籍信息", comment: ""), systemImage: "info.circle")
         }
         
@@ -405,6 +415,166 @@ struct BookContextMenu: View {
         
         Button(role: .destructive, action: {}) {
             Label(NSLocalizedString("从书架移除", comment: ""), systemImage: "trash")
+        }
+    }
+}
+
+struct BookInfoSheet: View {
+    let libraryItem: LibraryItem
+    @Environment(\.dismiss) private var dismiss
+    
+    private var book: Book {
+        libraryItem.book
+    }
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    headerSection
+                    
+                    infoSection(title: NSLocalizedString("book.info.details", comment: "")) {
+                        BookInfoRow(label: NSLocalizedString("book.info.author", comment: ""), value: book.displayAuthor)
+                        BookInfoRow(label: NSLocalizedString("book.info.language", comment: ""), value: languageText)
+                        BookInfoRow(label: NSLocalizedString("book.info.status", comment: ""), value: libraryItem.status.displayName)
+                        BookInfoRow(label: NSLocalizedString("book.info.progress", comment: ""), value: progressText)
+                        BookInfoRow(label: NSLocalizedString("book.info.added", comment: ""), value: formattedDate(libraryItem.addedAt))
+                        BookInfoRow(label: NSLocalizedString("book.info.last_opened", comment: ""), value: formattedDate(libraryItem.lastAccessedAt))
+                        BookInfoRow(label: NSLocalizedString("book.info.rating", comment: ""), value: ratingText)
+                    }
+                    
+                    infoSection(title: NSLocalizedString("book.info.file", comment: "")) {
+                        BookInfoRow(label: NSLocalizedString("book.info.file_format", comment: ""), value: book.fileFormat.uppercased())
+                        BookInfoRow(label: NSLocalizedString("book.info.file_size", comment: ""), value: book.formattedFileSize)
+                        BookInfoRow(label: NSLocalizedString("book.info.pages", comment: ""), value: "\(book.totalPages)")
+                        BookInfoRow(label: NSLocalizedString("book.info.location", comment: ""), value: book.filePath)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle(NSLocalizedString("书籍信息", comment: ""))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(NSLocalizedString("完成", comment: "")) {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .onAppear {
+            DebugLogger.info("BookInfoSheet: 显示书籍信息 - \(book.displayTitle)")
+        }
+    }
+    
+    private var languageText: String {
+        if let language = book.language, !language.isEmpty {
+            let localizedName = Locale.current.localizedString(forLanguageCode: language)
+            return localizedName ?? language
+        }
+        return NSLocalizedString("book.info.unknown", comment: "")
+    }
+    
+    private var progressText: String {
+        if let progress = book.readingProgress {
+            return String(format: "%.0f%%", progress.progressPercentage * 100)
+        }
+        return NSLocalizedString("book.info.unknown", comment: "")
+    }
+    
+    private var ratingText: String {
+        if libraryItem.hasRating {
+            return libraryItem.ratingStars
+        }
+        return NSLocalizedString("book.info.rating.not_set", comment: "")
+    }
+    
+    private var headerSection: some View {
+        HStack(alignment: .top, spacing: 16) {
+            coverView
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text(book.displayTitle)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+                
+                Text(book.displayAuthor)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                
+                StatusBadge(status: libraryItem.status)
+            }
+            
+            Spacer()
+        }
+    }
+    
+    private var coverView: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.primary.opacity(0.08))
+                .frame(width: 90, height: 130)
+            
+            if let coverImage = book.coverImage {
+                coverImage
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 90, height: 130)
+                    .clipped()
+                    .cornerRadius(12)
+            } else {
+                Image(systemName: "book.closed")
+                    .font(.system(size: 30, weight: .regular))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func infoSection(title: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+            
+            VStack(spacing: 10) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(Color.primary.opacity(0.03))
+            .cornerRadius(12)
+        }
+    }
+    
+    private func formattedDate(_ date: Date?) -> String {
+        guard let date else { return NSLocalizedString("book.info.unknown", comment: "") }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+struct BookInfoRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .font(.footnote)
+                .foregroundColor(.secondary)
+            
+            Spacer(minLength: 12)
+            
+            Text(value)
+                .font(.footnote)
+                .foregroundColor(.primary)
+                .multilineTextAlignment(.trailing)
         }
     }
 }
