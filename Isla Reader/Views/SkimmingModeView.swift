@@ -207,12 +207,22 @@ struct SkimmingModeView: View {
                     self.chapters = metadata
                     self.isLoadingChapters = false
                     self.currentChapterIndex = 0
+                    // 从缓存中恢复已生成的摘要
+                    self.restoreCachedSummaries()
                 }
             } catch {
                 await MainActor.run {
                     self.isLoadingChapters = false
                     self.loadError = error.localizedDescription
                 }
+            }
+        }
+    }
+    
+    private func restoreCachedSummaries() {
+        for (index, chapter) in chapters.enumerated() {
+            if let cachedSummary = service.cachedSummary(for: book, chapter: chapter) {
+                chapterSummaries[index] = cachedSummary
             }
         }
     }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreData
 
 struct SkimmingChapterMetadata: Identifiable, Hashable {
     let title: String
@@ -197,12 +198,29 @@ final class SkimmingModeService {
     
     func cachedSummary(for book: Book, chapter: SkimmingChapterMetadata) -> SkimmingChapterSummary? {
         cacheLock.lock(); defer { cacheLock.unlock() }
-        return cache[cacheKey(for: book, chapter: chapter)]
+        
+        // 首先检查内存缓存
+        let key = cacheKey(for: book, chapter: chapter)
+        if let memoryCached = cache[key] {
+            return memoryCached
+        }
+        
+        // 如果内存中没有，从Core Data加载
+        if let persistedSummary = loadSummaryFromPersistence(for: book, chapter: chapter) {
+            cache[key] = persistedSummary // 同时放入内存缓存
+            return persistedSummary
+        }
+        
+        return nil
     }
     
     func store(summary: SkimmingChapterSummary, for book: Book, chapter: SkimmingChapterMetadata) {
         cacheLock.lock(); defer { cacheLock.unlock() }
-        cache[cacheKey(for: book, chapter: chapter)] = summary
+        let key = cacheKey(for: book, chapter: chapter)
+        cache[key] = summary
+        
+        // 持久化到Core Data
+        saveSummaryToPersistence(summary, for: book, chapter: chapter)
     }
     
     func generateSkimmingSummary(for book: Book, chapter: SkimmingChapterMetadata) async throws -> SkimmingChapterSummary {
@@ -348,5 +366,49 @@ final class SkimmingModeService {
     
     private func cacheKey(for book: Book, chapter: SkimmingChapterMetadata) -> String {
         "\(book.id.uuidString)-\(chapter.order)"
+    }
+    
+    // MARK: - Persistence Methods
+    
+    private func loadSummaryFromPersistence(for book: Book, chapter: SkimmingChapterMetadata) -> SkimmingChapterSummary? {
+        guard let summariesJSON = book.skimmingSummaries,
+              let data = summariesJSON.data(using: .utf8),
+              let summariesDict = try? JSONDecoder().decode([String: SkimmingChapterSummary].self, from: data) else {
+            return nil
+        }
+        
+        let key = cacheKey(for: book, chapter: chapter)
+        return summariesDict[key]
+    }
+    
+    private func saveSummaryToPersistence(_ summary: SkimmingChapterSummary, for book: Book, chapter: SkimmingChapterMetadata) {
+        let context = PersistenceController.shared.container.viewContext
+        
+        context.perform {
+            // 加载现有的摘要字典
+            var summariesDict: [String: SkimmingChapterSummary] = [:]
+            if let existingJSON = book.skimmingSummaries,
+               let data = existingJSON.data(using: .utf8),
+               let existing = try? JSONDecoder().decode([String: SkimmingChapterSummary].self, from: data) {
+                summariesDict = existing
+            }
+            
+            // 添加新的摘要
+            let key = self.cacheKey(for: book, chapter: chapter)
+            summariesDict[key] = summary
+            
+            // 序列化并保存
+            if let data = try? JSONEncoder().encode(summariesDict),
+               let jsonString = String(data: data, encoding: .utf8) {
+                book.skimmingSummaries = jsonString
+                
+                do {
+                    try context.save()
+                    DebugLogger.info("SkimmingModeService: 摘要已持久化 - \(chapter.title)")
+                } catch {
+                    DebugLogger.error("SkimmingModeService: 持久化失败 - \(error.localizedDescription)")
+                }
+            }
+        }
     }
 }

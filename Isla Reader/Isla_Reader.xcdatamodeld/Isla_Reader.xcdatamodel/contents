@@ -30,6 +30,7 @@
         <attribute name="aiSummary" optional="YES" attributeType="String"/>
         <attribute name="aiKeyPoints" optional="YES" attributeType="String"/>
         <attribute name="aiSummaryGeneratedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="skimmingSummaries" optional="YES" attributeType="String"/>
         <relationship name="readingProgress" destinationEntity="ReadingProgress" inverseName="book" inverseEntity="ReadingProgress" minCount="0" maxCount="1" deleteRule="Cascade" optional="YES" toMany="NO"/>
         <relationship name="bookmarks" destinationEntity="Bookmark" inverseName="book" inverseEntity="Bookmark" minCount="0" maxCount="0" deleteRule="Cascade" optional="YES" toMany="YES"/>
         <relationship name="highlights" destinationEntity="Highlight" inverseName="book" inverseEntity="Highlight" minCount="0" maxCount="0" deleteRule="Cascade" optional="YES" toMany="YES"/>

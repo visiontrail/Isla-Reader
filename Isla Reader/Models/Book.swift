@@ -36,6 +36,7 @@ extension Book {
     @NSManaged public var aiSummary: String?
     @NSManaged public var aiKeyPoints: String? // JSON string for key points array
     @NSManaged public var aiSummaryGeneratedAt: Date?
+    @NSManaged public var skimmingSummaries: String? // JSON string for skimming mode summaries
     
     // Relationships
     @NSManaged public var readingProgress: ReadingProgress?
