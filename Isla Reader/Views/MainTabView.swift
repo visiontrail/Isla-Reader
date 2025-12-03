@@ -41,9 +41,9 @@ struct MainTabView: View {
                             Text(NSLocalizedString("设置", comment: ""))
                         }
                 }
-                .accentColor(.primary)
             }
         }
+        .tint(.blue)
         .preferredColorScheme(appSettings.theme.colorScheme)
     }
 }

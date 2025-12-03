@@ -13,6 +13,8 @@ struct Isla_ReaderApp: App {
     @StateObject private var appSettings = AppSettings.shared
     
     init() {
+        NetworkPermissionWarmup.shared.triggerWarmupIfNeeded()
+        
         // Update reading statuses on app launch
         // Check for books that haven't been accessed in a week and mark them as paused
         Task {
