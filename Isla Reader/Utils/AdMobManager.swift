@@ -51,6 +51,7 @@ final class RewardedInterstitialAdManager: NSObject {
 
     private var rewardedAd: GADRewardedInterstitialAd?
     private var isLoading = false
+    private var pendingPresentation = false
 
     private override init() {
         super.init()
@@ -76,6 +77,12 @@ final class RewardedInterstitialAdManager: NSObject {
             self.rewardedAd = ad
             self.rewardedAd?.fullScreenContentDelegate = self
             DebugLogger.success("AdMob: Rewarded interstitial is ready")
+
+            if self.pendingPresentation {
+                Task { @MainActor in
+                    self.presentFromTopControllerIfAvailable()
+                }
+            }
         }
     }
 
@@ -85,17 +92,21 @@ final class RewardedInterstitialAdManager: NSObject {
             DebugLogger.warning("AdMob: Unable to find top view controller to present rewarded interstitial")
             return
         }
-        present(from: controller)
+        present(from: controller, allowPending: true)
     }
 
     @MainActor
-    private func present(from controller: UIViewController) {
+    private func present(from controller: UIViewController, allowPending: Bool = false) {
         guard let rewardedAd else {
             DebugLogger.warning("AdMob: Rewarded interstitial not ready, triggering reload")
+            if allowPending {
+                pendingPresentation = true
+            }
             loadAd()
             return
         }
 
+        pendingPresentation = false
         rewardedAd.present(fromRootViewController: controller) { [weak self] in
             DebugLogger.info("AdMob: User earned reward type=\(rewardedAd.adReward.type), amount=\(rewardedAd.adReward.amount)")
             self?.rewardedAd = nil

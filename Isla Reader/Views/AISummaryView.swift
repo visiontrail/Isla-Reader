@@ -12,7 +12,6 @@ struct AISummaryView: View {
     @StateObject private var summaryService = AISummaryService.shared
     @State private var showingSummary = false
     @State private var isFirstOpen = true
-    @State private var shouldShowBannerAd = false
     @Environment(\.managedObjectContext) private var viewContext
     
     var body: some View {
@@ -46,12 +45,10 @@ struct AISummaryView: View {
             // 摘要头部
             summaryHeader
             
-            if shouldShowBannerAd && summaryService.isGenerating {
-                BannerAdView(adUnitID: AdMobAdUnitIDs.fixedBanner)
-                    .frame(width: 320, height: 50)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-            }
+            BannerAdView(adUnitID: AdMobAdUnitIDs.fixedBanner)
+                .frame(width: 320, height: 50)
+                .padding(.horizontal)
+                .padding(.top, 8)
             
             // 摘要内容
             ScrollView {
@@ -314,7 +311,6 @@ struct AISummaryView: View {
         withAnimation(.easeInOut(duration: 0.3)) {
             DebugLogger.info("AISummaryView: 显示摘要容器")
             showingSummary = true
-            shouldShowBannerAd = true
         }
         
         Task {
