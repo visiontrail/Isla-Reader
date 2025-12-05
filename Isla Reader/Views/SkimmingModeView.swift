@@ -171,6 +171,8 @@ struct SkimmingModeView: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .onChange(of: currentChapterIndex) { newValue in
+            guard chapters.indices.contains(newValue) else { return }
+            service.storeLastVisitedChapterIndex(newValue, for: book)
             requestSummary(for: newValue)
         }
     }
@@ -213,6 +215,12 @@ struct SkimmingModeView: View {
         return CGFloat(currentChapterIndex + 1) / CGFloat(chapters.count)
     }
     
+    private func initialChapterIndex(for totalCount: Int) -> Int {
+        guard totalCount > 0 else { return 0 }
+        let storedIndex = service.lastVisitedChapterIndex(for: book) ?? 0
+        return min(max(storedIndex, 0), totalCount - 1)
+    }
+    
     private var emptyChaptersView: some View {
         VStack(spacing: 16) {
             Image(systemName: "doc.text.magnifyingglass")
@@ -231,11 +239,16 @@ struct SkimmingModeView: View {
             do {
                 let metadata = try service.chapters(from: book)
                 await MainActor.run {
+                    let previousIndex = self.currentChapterIndex
                     self.chapters = metadata
                     self.isLoadingChapters = false
-                    self.currentChapterIndex = 0
+                    let restoredIndex = self.initialChapterIndex(for: metadata.count)
+                    self.currentChapterIndex = restoredIndex
                     // 从缓存中恢复已生成的摘要
                     self.restoreCachedSummaries()
+                    if previousIndex == restoredIndex {
+                        self.requestSummary(for: restoredIndex)
+                    }
                 }
             } catch {
                 await MainActor.run {

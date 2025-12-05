@@ -118,6 +118,8 @@ final class SkimmingModeService {
     private let decoder = JSONDecoder()
     private let cacheLock = NSLock()
     private var cache: [String: SkimmingChapterSummary] = [:]
+    private let defaults = UserDefaults.standard
+    private let skimmingProgressKeyPrefix = "skimming_last_chapter_"
     
     private init() {}
     
@@ -226,6 +228,18 @@ final class SkimmingModeService {
         
         // 持久化到Core Data
         saveSummaryToPersistence(summary, for: book, chapter: chapter)
+    }
+    
+    func lastVisitedChapterIndex(for book: Book) -> Int? {
+        let key = skimmingProgressKey(for: book)
+        let index = defaults.object(forKey: key) as? Int
+        guard let index, index >= 0 else { return nil }
+        return index
+    }
+    
+    func storeLastVisitedChapterIndex(_ index: Int, for book: Book) {
+        guard index >= 0 else { return }
+        defaults.set(index, forKey: skimmingProgressKey(for: book))
     }
     
     func generateSkimmingSummary(for book: Book, chapter: SkimmingChapterMetadata) async throws -> SkimmingChapterSummary {
@@ -371,6 +385,10 @@ final class SkimmingModeService {
     
     private func cacheKey(for book: Book, chapter: SkimmingChapterMetadata) -> String {
         "\(book.id.uuidString)-\(chapter.order)"
+    }
+    
+    private func skimmingProgressKey(for book: Book) -> String {
+        "\(skimmingProgressKeyPrefix)\(book.id.uuidString)"
     }
     
     // MARK: - Persistence Methods
