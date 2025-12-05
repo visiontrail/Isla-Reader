@@ -6,11 +6,24 @@
 //
 
 import SwiftUI
+import UIKit
+import GoogleMobileAds
+
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        #if DEBUG
+        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = [GADSimulatorID]
+        #endif
+        GADMobileAds.sharedInstance().start(completionHandler: nil)
+        return true
+    }
+}
 
 @main
 struct Isla_ReaderApp: App {
     let persistenceController = PersistenceController.shared
     @StateObject private var appSettings = AppSettings.shared
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     init() {
         NetworkPermissionWarmup.shared.triggerWarmupIfNeeded()

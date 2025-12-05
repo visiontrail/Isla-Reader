@@ -22,6 +22,7 @@ struct SkimmingModeView: View {
     @State private var showingTOC = false
     @State private var navigateToReaderAtCurrentChapter = false  // Start reading at current skimming chapter
     @State private var navigateToReaderResumingProgress = false  // Resume last reading progress
+    @State private var skimmingAIRequestCount = 0
     
     private let service = SkimmingModeService.shared
     
@@ -40,7 +41,10 @@ struct SkimmingModeView: View {
             }
         }
         .preferredColorScheme(appSettings.theme.colorScheme)
-        .onAppear(perform: loadChapters)
+        .onAppear {
+            loadChapters()
+            RewardedInterstitialAdManager.shared.loadAd()
+        }
         .sheet(isPresented: $showingTOC) {
             SkimmingTableOfContentsView(
                 chapters: chapters,
@@ -265,6 +269,7 @@ struct SkimmingModeView: View {
                 await MainActor.run {
                     self.chapterSummaries[index] = summary
                     self.loadingChapterIndices.remove(index)
+                    incrementSkimmingUsageAndShowAdIfNeeded()
                 }
             } catch {
                 await MainActor.run {
@@ -292,6 +297,16 @@ struct SkimmingModeView: View {
             }
         }
         .padding()
+    }
+    
+    @MainActor
+    private func incrementSkimmingUsageAndShowAdIfNeeded() {
+        skimmingAIRequestCount += 1
+        DebugLogger.info("SkimmingModeView: 略读AI调用计数 = \(skimmingAIRequestCount)")
+        
+        guard skimmingAIRequestCount.isMultiple(of: 3) else { return }
+        DebugLogger.info("SkimmingModeView: 达到展示奖励插页式广告的阈值")
+        RewardedInterstitialAdManager.shared.presentFromTopControllerIfAvailable()
     }
 }
 
