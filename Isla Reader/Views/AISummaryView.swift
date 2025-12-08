@@ -45,10 +45,12 @@ struct AISummaryView: View {
             // 摘要头部
             summaryHeader
             
-            BannerAdView(adUnitID: AdMobAdUnitIDs.fixedBanner)
-                .frame(width: 320, height: 50)
-                .padding(.horizontal)
-                .padding(.top, 8)
+            if let bannerUnitID = AdMobAdUnitIDs.fixedBanner {
+                BannerAdView(adUnitID: bannerUnitID)
+                    .frame(width: 320, height: 50)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+            }
             
             // 摘要内容
             ScrollView {

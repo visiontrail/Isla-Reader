@@ -24,6 +24,8 @@
 		<string>ja</string>
 		<string>ko</string>
 	</array>
+	<key>CFBundleDisplayName</key>
+	<string>LanRead</string>
 	<key>AIAPIEndpoint</key>
 	<string>$(AI_API_ENDPOINT)</string>
 	<key>AIAPIKey</key>
@@ -32,6 +34,10 @@
 	<string>$(AI_MODEL)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-5587239366359667~6499097766</string>
+	<key>AdMobBannerAdUnitID</key>
+	<string>$(ADMOB_BANNER_AD_UNIT_ID)</string>
+	<key>AdMobRewardedInterstitialAdUnitID</key>
+	<string>$(ADMOB_REWARDED_INTERSTITIAL_AD_UNIT_ID)</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

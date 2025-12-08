@@ -78,7 +78,7 @@ struct SettingsView: View {
                 // About
                 Section(NSLocalizedString("关于", comment: "")) {
                     Button(action: { showingAbout = true }) {
-                        Label(NSLocalizedString("关于 Isla Reader", comment: ""), systemImage: "info.circle")
+                        Label(NSLocalizedString("app.about.title", comment: ""), systemImage: "info.circle")
                             .foregroundColor(.primary)
                     }
                     
@@ -469,7 +469,7 @@ struct AboutView: View {
                     )
                 
                 VStack(spacing: 8) {
-                    Text("Isla Reader")
+                    Text(NSLocalizedString("app.name", comment: "App name"))
                         .font(.title)
                         .fontWeight(.bold)
                     
@@ -485,7 +485,7 @@ struct AboutView: View {
                     .padding(.horizontal)
                 
                 VStack(spacing: 16) {
-                    Text("© 2025 Isla Reader")
+                    Text(NSLocalizedString("app.copyright", comment: "App copyright"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                     

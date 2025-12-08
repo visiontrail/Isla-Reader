@@ -11,8 +11,40 @@ import SwiftUI
 import UIKit
 
 enum AdMobAdUnitIDs {
-    static let fixedBanner = "ca-app-pub-3940256099942544/2934735716"
-    static let rewardedInterstitial = "ca-app-pub-3940256099942544/6978759866"
+    static var fixedBanner: String? {
+        resolvedID(for: "AdMobBannerAdUnitID")
+    }
+
+    static var rewardedInterstitial: String? {
+        resolvedID(for: "AdMobRewardedInterstitialAdUnitID")
+    }
+
+    private static func resolvedID(for infoPlistKey: String) -> String? {
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: infoPlistKey) as? String else {
+            DebugLogger.warning("AdMob: Info.plist 缺少键 \(infoPlistKey)，已跳过广告请求")
+            return nil
+        }
+
+        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if value.isEmpty {
+            DebugLogger.warning("AdMob: \(infoPlistKey) 为空，已跳过广告请求")
+            return nil
+        }
+
+        if value.hasPrefix("$(") {
+            DebugLogger.warning("AdMob: \(infoPlistKey) 未通过 xcconfig 替换，已跳过广告请求")
+            return nil
+        }
+
+        // Google 官方测试广告位 ID，发布不可使用
+        if value.contains("ca-app-pub-3940256099942544") {
+            DebugLogger.warning("AdMob: \(infoPlistKey) 为测试广告位 ID，发布版禁用广告请求")
+            return nil
+        }
+
+        return value
+    }
 }
 
 struct BannerAdView: UIViewRepresentable {
@@ -58,12 +90,18 @@ final class RewardedInterstitialAdManager: NSObject {
     }
 
     func loadAd() {
+        guard let adUnitID = AdMobAdUnitIDs.rewardedInterstitial else {
+            DebugLogger.warning("AdMob: 未配置奖励插屏广告位，跳过加载")
+            pendingPresentation = false
+            return
+        }
+
         guard !isLoading else { return }
         isLoading = true
         DebugLogger.info("AdMob: Start loading rewarded interstitial")
 
         GADRewardedInterstitialAd.load(
-            withAdUnitID: AdMobAdUnitIDs.rewardedInterstitial,
+            withAdUnitID: adUnitID,
             request: GADRequest()
         ) { [weak self] ad, error in
             guard let self else { return }

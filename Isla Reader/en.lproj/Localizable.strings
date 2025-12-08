@@ -12,7 +12,8 @@
 "数据管理" = "Data Management";
 "阅读提醒" = "Reading Reminder";
 "每日目标" = "Daily Goal";
-"关于 Isla Reader" = "About Isla Reader";
+"app.name" = "LanRead";
+"app.about.title" = "About LanRead";
 "版本" = "Version";
 "联系我们" = "Contact Us";
 "隐私政策" = "Privacy Policy";
@@ -217,7 +218,6 @@
 "ai.summary.start_reading" = "Start Reading";
 
 // Additional UI strings
-"Isla Reader" = "Isla Reader";
 "正在导入书籍..." = "Importing book...";
 "导入结果" = "Import Result";
 "确定" = "OK";
@@ -229,6 +229,7 @@
 "导出笔记和高亮" = "Export Notes & Highlights";
 "这是一段示例文本，用于预览当前的字体和排版设置效果。您可以调整上面的设置来获得最佳的阅读体验。" = "This is a sample text to preview current font and layout settings. You can adjust the settings above for the best reading experience.";
 "把每本书变成一位可对话的导师：获取、阅读、理解与交流，一站式完成。" = "Turn every book into a conversational tutor: acquire, read, understand, and communicate, all in one place.";
+"app.copyright" = "© 2025 LanRead";
 "用心打造的阅读体验" = "Reading experience crafted with care";
 "向 AI 提问关于这本书的任何问题" = "Ask AI any questions about this book";
 

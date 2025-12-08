@@ -12,7 +12,8 @@
 "数据管理" = "데이터 관리";
 "阅读提醒" = "읽기 알림";
 "每日目标" = "일일 목표";
-"关于 Isla Reader" = "Isla Reader 정보";
+"app.name" = "LanRead";
+"app.about.title" = "LanRead 정보";
 "版本" = "버전";
 "联系我们" = "문의하기";
 "隐私政策" = "개인정보 처리방침";
@@ -217,7 +218,7 @@
 "skimming.fallback.question" = "이 챕터가 답하려는 핵심 질문은 무엇인가?";
 
 // Additional UI strings
-"Isla Reader" = "Isla Reader";
+"app.copyright" = "© 2025 LanRead";
 "正在导入书籍..." = "책을 가져오는 중...";
 "导入结果" = "가져오기 결과";
 "确定" = "확인";

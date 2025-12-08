@@ -85,7 +85,7 @@ struct SidebarView: View {
                 Label(tab.titleKey, systemImage: tab.icon)
             }
         }
-        .navigationTitle(NSLocalizedString("Isla Reader", comment: ""))
+        .navigationTitle(NSLocalizedString("app.name", comment: "App name"))
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
         #endif
