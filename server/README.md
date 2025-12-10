@@ -20,7 +20,8 @@ pip install -e .
 2) 创建配置：
 ```bash
 cp .env.example .env
-# 填写 AI_KEY、CLIENT_ID、CLIENT_SECRET，并指向 TLS 证书路径
+# 填写 AI_KEY、CLIENT_ID、CLIENT_SECRET，并指向 TLS 证书路径。
+# 若需前端跨域，设置 ISLA_ALLOWED_ORIGINS 为逗号分隔值或 JSON 数组；留空/[] 则不启用 CORS。
 ```
 
 3) 生成本地证书（示例，生产请使用受信任证书）：

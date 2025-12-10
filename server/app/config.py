@@ -1,7 +1,26 @@
+import json
 from functools import lru_cache
 from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _lenient_json_loads(value: str):
+    if value is None:
+        return value
+    if isinstance(value, (list, dict)):
+        return value
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped == "":
+            return []
+        try:
+            return json.loads(stripped)
+        except json.JSONDecodeError:
+            if "," in stripped:
+                return [part.strip() for part in stripped.split(",") if part.strip()]
+            return [stripped]
+    return value
 
 
 class Settings(BaseSettings):
@@ -13,7 +32,7 @@ class Settings(BaseSettings):
     request_ttl_seconds: int = 300
     hsts_max_age: int = 63_072_000  # 2 years
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="ISLA_", case_sensitive=False)
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="ISLA_", case_sensitive=False, json_loads=_lenient_json_loads)
 
 
 @lru_cache
