@@ -25,10 +25,19 @@ cp .env.example .env
 
 3) 生成本地证书（示例，生产请使用受信任证书）：
 ```bash
-mkdir -p certs
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout certs/server.key -out certs/server.crt \
-  -subj "/CN=localhost"
+# 推荐：使用脚本生成，默认 CN=localhost，证书输出到 server/certs
+./scripts/generate-cert.sh
+# 或指定域名/有效期，并强制覆盖已有文件
+./scripts/generate-cert.sh --name example.com --days 365 --force
+
+# 手动 openssl 等价命令（供参考）
+# mkdir -p certs
+# openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#   -keyout certs/server.key -out certs/server.crt \
+#   -subj "/CN=localhost" \
+#   -addext "subjectAltName = DNS:localhost,IP:127.0.0.1" \
+#   -addext "keyUsage = critical, digitalSignature, keyEncipherment" \
+#   -addext "extendedKeyUsage = serverAuth"
 ```
 
 4) 启动服务（带 TLS）：
