@@ -112,5 +112,9 @@ test.epub
 *.bak
 *.backup
 
+# Python artifacts
+__pycache__/
+*.pyc
+
 ## Local AI secrets
 Config/AISecrets.xcconfig

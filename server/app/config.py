@@ -2,6 +2,7 @@ import json
 from functools import lru_cache
 from typing import List
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,7 +33,13 @@ class Settings(BaseSettings):
     request_ttl_seconds: int = 300
     hsts_max_age: int = 63_072_000  # 2 years
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="ISLA_", case_sensitive=False, json_loads=_lenient_json_loads)
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="ISLA_", case_sensitive=False)
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, value):
+        parsed = _lenient_json_loads(value)
+        return [] if parsed is None else parsed
 
 
 @lru_cache
