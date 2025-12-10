@@ -33,7 +33,7 @@ async def enforce_https(request: Request, call_next):
 
 
 def _configure_cors(app: FastAPI, settings: Settings) -> None:
-    origins = [origin for origin in settings.allowed_origins if origin.strip()]
+    origins = settings.get_allowed_origins()
     if not origins:
         return
 
