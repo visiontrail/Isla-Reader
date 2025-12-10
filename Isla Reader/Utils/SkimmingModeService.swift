@@ -332,7 +332,7 @@ final class SkimmingModeService {
     private func callAIAPI(prompt: String) async throws -> String {
         let config: AIConfiguration
         do {
-            config = try AIConfig.current()
+            config = try await AIConfig.current()
         } catch {
             throw SkimmingModeError.apiError(error.localizedDescription)
         }

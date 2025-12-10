@@ -159,14 +159,22 @@ open Isla\ Reader.xcodeproj
    - Select CloudKit container
    - Ensure "CloudKit" is enabled in Signing & Capabilities
 
-4. **Configure AI API**
-   - Open `Utils/AIService.swift`
-   - Add your OpenAI-compatible API endpoint and key
-   - (Placeholder for configuration—see code comments)
+4. **Configure AI & secure server**
+   - Copy `Config/AISecrets.xcconfig.example` to `Config/AISecrets.xcconfig`
+   - Set `AI_API_ENDPOINT` and `AI_MODEL`
+   - Choose one of:
+     - Local only: set `AI_API_KEY`
+     - Secure server: leave `AI_API_KEY` empty and set `SECURE_SERVER_BASE_URL`, `SECURE_SERVER_CLIENT_ID`, `SECURE_SERVER_CLIENT_SECRET`, `SECURE_SERVER_REQUIRE_TLS`
 
 5. **Build and Run**
    - Select target device or simulator
    - Press `Cmd + R` to build and run
+
+### Secure key exchange server
+
+- Backend lives in `server/` (FastAPI + HMAC + HTTPS). See `server/README.md` for full instructions.
+- Quick start: `cd server && python -m venv .venv && source .venv/bin/activate && pip install -e .`
+- Copy `.env.example` to `.env`, set `ISLA_API_KEY`, `ISLA_CLIENT_ID`, `ISLA_CLIENT_SECRET`, and run `uvicorn app.main:app --host 0.0.0.0 --port 8443 --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt`.
 
 ## Usage
 
@@ -402,4 +410,3 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
 **Status**: Active Development (MVP Phase)
 
 Made with ❤️ for readers who love to learn.
-

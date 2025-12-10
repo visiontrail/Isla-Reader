@@ -422,12 +422,12 @@ class AISummaryService: ObservableObject {
     }
     
     private func callAIAPI(prompt: String) async throws -> String {
-        let config = try AIConfig.current()
+        let config = try await AIConfig.current()
         
         DebugLogger.info("AISummaryService: ===== 开始调用AI API =====")
         DebugLogger.info("AISummaryService: API端点 = \(config.endpoint)")
         DebugLogger.info("AISummaryService: 模型 = \(config.model)")
-        DebugLogger.info("AISummaryService: API Key前缀 = \(String(config.apiKey.prefix(10)))...")
+        DebugLogger.info("AISummaryService: API Key 已加载")
         DebugLogger.info("AISummaryService: 提示词长度 = \(prompt.count) 字符")
         
         // Construct the API request URL

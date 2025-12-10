@@ -32,6 +32,14 @@
 	<string>$(AI_API_KEY)</string>
 	<key>AIModel</key>
 	<string>$(AI_MODEL)</string>
+	<key>SecureServerBaseURL</key>
+	<string>$(SECURE_SERVER_BASE_URL)</string>
+	<key>SecureServerClientID</key>
+	<string>$(SECURE_SERVER_CLIENT_ID)</string>
+	<key>SecureServerClientSecret</key>
+	<string>$(SECURE_SERVER_CLIENT_SECRET)</string>
+	<key>SecureServerRequireTLS</key>
+	<string>$(SECURE_SERVER_REQUIRE_TLS)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-5587239366359667~6499097766</string>
 	<key>AdMobBannerAdUnitID</key>
