@@ -8,6 +8,8 @@ common_name="localhost"
 days="${DAYS:-365}"
 force_overwrite=false
 ip_sans=()
+cert_uid="${CERT_UID:-1000}"
+cert_gid="${CERT_GID:-1000}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -93,6 +95,14 @@ openssl req -x509 -nodes -days "${days}" -newkey rsa:2048 \
   -addext "subjectAltName = ${san_value}" \
   -addext "keyUsage = critical, digitalSignature, keyEncipherment" \
   -addext "extendedKeyUsage = serverAuth"
+
+chmod 640 "${key_path}" "${cert_path}" || true
+
+if [[ "$(id -u)" -eq 0 ]]; then
+  chown "${cert_uid}:${cert_gid}" "${key_path}" "${cert_path}" || true
+else
+  echo "提示: 非 root 运行，若使用 Docker，请确保 TLS 文件可被容器用户 (默认 uid/gid=${cert_uid}:${cert_gid}) 读取。" >&2
+fi
 
 echo "证书已生成："
 echo "  私钥: ${key_path}"

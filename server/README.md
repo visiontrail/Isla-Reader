@@ -42,6 +42,13 @@ cp .env.example .env
 #   -addext "extendedKeyUsage = serverAuth"
 ```
 
+证书生成或拷贝后，容器会以非 root 用户 (默认 uid/gid=1000) 运行，请确保 TLS 文件可读：
+```bash
+sudo chown 1000:1000 certs/server.crt certs/server.key
+sudo chmod 640 certs/server.crt certs/server.key
+# 若需要自定义 UID/GID，可在运行脚本前设置 CERT_UID/CERT_GID 环境变量
+```
+
 4) 启动服务（带 TLS）：
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8443 \
