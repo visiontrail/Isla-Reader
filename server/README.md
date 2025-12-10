@@ -27,8 +27,10 @@ cp .env.example .env
 ```bash
 # 推荐：使用脚本生成，默认 CN=localhost，证书输出到 server/certs
 ./scripts/generate-cert.sh
-# 或指定域名/有效期，并强制覆盖已有文件
+# 指定域名/有效期，并强制覆盖已有文件
 ./scripts/generate-cert.sh --name example.com --days 365 --force
+# 仅有内网/云主机 IP 时，将 CN 设为该 IP（自动写入 SAN），可选额外 --ip 添加更多 IP
+./scripts/generate-cert.sh --name 172.16.9.224 --ip 172.16.9.224 --days 365 --force
 
 # 手动 openssl 等价命令（供参考）
 # mkdir -p certs
