@@ -14,11 +14,13 @@ IslaBooks is an intelligent e-book reading application for iOS and iPadOS that l
 ### Key Features
 
 - 📚 **Local Book Import**: Import ePub and plain text files from local storage or Files app
-- 🤖 **AI-Powered Summaries**: Instant chapter and book summaries upon opening
+- 🤖 **AI-Powered Summaries**: Instant book summaries upon opening
+- 🧭 **Skimming Mode**: Chapter skeleton summaries and fast navigation
 - 💬 **Conversational Reading Assistant**: Ask questions about selected text, chapters, or entire books
 - 🎯 **Comprehension Diagnostics**: Auto-generated quizzes to assess understanding
 - 🔖 **Advanced Reader**: Bookmarks, highlights, annotations, search, and customizable themes
 - ☁️ **iCloud Sync**: Seamless synchronization across devices via CloudKit
+- 🔗 **Notion Sync**: Export bookmarks and highlights to Notion
 - 🌙 **Reading Modes**: Night mode, adjustable fonts, line spacing, and layout settings
 - 🔒 **Privacy-First**: No registration required, local-first approach with optional cloud sync
 
@@ -62,13 +64,6 @@ IslaBooks reimagines the reading experience by combining traditional e-reading c
 - **Chapter-level questions**: Ask about themes, concepts, or arguments
 - **Book-level discussions**: Cross-reference ideas across chapters
 - **Citation support**: All answers include references to source material
-
-#### Context Construction (Non-RAG)
-The AI assistant builds context using:
-- Selected paragraph(s) + adjacent paragraphs (configurable N±1-2)
-- Chapter metadata (title, position, structure)
-- Book metadata (title, author, language, publication info)
-- No vector embeddings or RAG required—lightweight and efficient
 
 ### 3. Comprehension Tools
 
@@ -123,7 +118,7 @@ The AI assistant builds context using:
 
 ### AI Integration
 - **Model**: OpenAI-compatible API (configurable)
-- **Streaming**: Server-Sent Events for real-time responses
+- **Streaming**: Progressive UI updates (simulated streaming); SSE planned
 - **Context Management**: Rule-based paragraph extraction (no vector DB)
 - **Caching**: Aggressive summary and response caching
 
@@ -190,10 +185,9 @@ open Isla\ Reader.xcodeproj
    - View AI-generated summary on first page
    - Select any text to ask questions, translate, or get explanations
 
-3. **Ask Questions**
-   - Use sidebar chat for chapter/book-level questions
-   - Tap on citations to jump to source text
-   - Continue multi-turn conversations
+3. **Skimming mode**
+   - Long-press to show chapter summaries
+   - Swipe left/right to navigate chapters
 
 4. **Track Progress**
    - Bookmarks auto-save
@@ -215,53 +209,6 @@ Configure preset actions for text selection:
 - Export knowledge cards as CSV
 - Backup library to Files app
 
-## Data Model
-
-### Core Entities
-
-```swift
-// User settings (local only)
-User {
-    id: UUID
-    settings: UserSettings
-}
-
-// Book metadata
-Book {
-    id: UUID
-    title: String
-    authors: [String]
-    language: String
-    source: "local"
-    metadata: BookMetadata
-}
-
-// User's library
-LibraryItem {
-    userId: UUID
-    bookId: UUID
-    status: ReadingStatus // reading, completed, want_to_read
-    tags: [String]
-}
-
-// Reading progress
-ReadingProgress {
-    userId: UUID
-    bookId: UUID
-    location: LocationReference
-    updatedAt: Date
-}
-
-// Annotations
-Highlight {
-    id: UUID
-    userId: UUID
-    bookId: UUID
-    range: TextRange
-    color: Color
-    note: String?
-}
-```
 
 ## Roadmap
 
@@ -269,27 +216,21 @@ Highlight {
 - [x] Local file import (ePub, plain text)
 - [x] Basic ePub rendering engine
 - [x] Reader essentials (TOC, bookmarks, progress, themes)
-- [ ] AI book summaries with caching
-- [ ] Selection-based Q&A (translate, explain, summarize)
-- [ ] Minimal iCloud sync (progress only)
+- [x] AI book summaries with caching
+- [x] Skimming mode (chapter summaries with jump)
 
-### v0.2 (Planned)
-- [ ] Personalized book recommendations
-- [ ] Complete iCloud sync (bookmarks, highlights, notes)
-- [ ] Reading statistics dashboard
-- [ ] Enhanced AI context configuration
 
-### v0.3 (Future)
-- [ ] Comprehension quizzes and diagnostics
-- [ ] Learning path suggestions
-- [ ] Knowledge card system
-- [ ] Advanced statistics and insights
-
-### v1.0 (Release)
+### v0.2 (MVP Release)
 - [ ] Performance optimization
 - [ ] Stability improvements
 - [ ] Compliance and cost governance
 - [ ] App Store submission
+
+### v0.5 (Planned)
+- [ ] Selection-based Q&A (translate, explain, summarize)
+- [ ] Minimal iCloud sync (progress only)
+
+### v1.0 (Future)
 
 ## Development
 
@@ -304,23 +245,33 @@ Isla Reader/
 │   ├── Views/                     # SwiftUI views
 │   ├── Utils/                     # Utilities and services
 │   ├── Persistence.swift          # Core Data stack
+│   ├── Isla_Reader.xcdatamodeld/  # Core Data model
+│   ├── en.lproj/                  # English localization
+│   ├── zh-Hans.lproj/             # Simplified Chinese localization
+│   ├── ja.lproj/                  # Japanese localization
+│   ├── ko.lproj/                  # Korean localization
+│   ├── Info.plist                 # App configuration
+│   ├── Isla_Reader.entitlements   # App entitlements
+│   ├── docs/                      # App-specific docs
 │   └── Assets.xcassets/           # Images and colors
+├── Isla Reader.xcodeproj/         # Xcode project
 ├── Isla ReaderTests/              # Unit tests
 ├── Isla ReaderUITests/            # UI tests
-└── scripts/                       # Build and automation scripts
+├── scripts/                       # Build and automation scripts
+└── server/                        # Secure key exchange server (FastAPI)
 ```
 
 ### Building for Development
 
 ```bash
 # Run all tests
-xcodebuild test -scheme "Isla Reader" -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild test -project "Isla Reader.xcodeproj" -scheme "Isla Reader" -destination 'platform=iOS Simulator,name=iPhone 16'
 
 # Build for simulator
-xcodebuild build -scheme "Isla Reader" -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild build -project "Isla Reader.xcodeproj" -scheme "Isla Reader" -destination 'platform=iOS Simulator,name=iPhone 16'
 
 # Build for device
-xcodebuild build -scheme "Isla Reader" -destination 'generic/platform=iOS'
+xcodebuild build -project "Isla Reader.xcodeproj" -scheme "Isla Reader" -destination 'generic/platform=iOS'
 ```
 
 ### Testing
@@ -376,17 +327,11 @@ We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING
 ## Support
 
 ### Documentation
-- [Getting Started](Isla%20Reader/docs/getting-started.md)
-- [Development Setup Guide](Isla%20Reader/docs/development-setup-guide.md)
+- [Quick Start](scripts/QUICK_START.md)
 - [Requirements Specification](Isla%20Reader/docs/requirements.md)
-- [AI Summary Implementation](Isla%20Reader/docs/ai-summary-feature-implementation.md)
+- [Reading Interaction Design](Isla%20Reader/docs/reading_interaction_design.md)
+- [Prompt Strategy](Isla%20Reader/docs/prompt_strategy.md)
 
-### Issues
-Report bugs and request features via [GitHub Issues](https://github.com/yourusername/IslaBooks-ios/issues).
-
-### Contact
-- Email: support@islabooks.app
-- Website: https://islabooks.app
 
 ## License
 
@@ -401,12 +346,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
+Changelog will be published in Releases. For current progress, see Roadmap above.
 
 ---
 
 **Current Version**: v0.1.2  
-**Last Updated**: October 21, 2025  
+**Last Updated**: December 12, 2025  
 **Status**: Active Development (MVP Phase)
 
 Made with ❤️ for readers who love to learn.
