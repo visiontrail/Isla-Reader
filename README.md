@@ -350,7 +350,7 @@ Changelog will be published in Releases. For current progress, see Roadmap above
 
 ---
 
-**Current Version**: v0.1.2  
+**Current Version**: v1.0
 **Last Updated**: December 12, 2025  
 **Status**: Active Development (MVP Phase)
 

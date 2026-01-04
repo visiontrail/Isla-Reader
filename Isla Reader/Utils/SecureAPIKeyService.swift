@@ -56,6 +56,7 @@ final class SecureAPIKeyService {
 
     func fetchAPIKey() async throws -> String {
         let config = try SecureServerConfig.current()
+        DebugLogger.info("SecureAPIKeyService: 正在向 \(config.baseURL.absoluteString) 请求 API Key")
 
         if let cached = await cache.cached() {
             return cached

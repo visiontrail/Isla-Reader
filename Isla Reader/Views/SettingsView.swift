@@ -92,7 +92,7 @@ struct SettingsView: View {
                 
                 // Support
                 Section(NSLocalizedString("支持", comment: "")) {
-                    Link(destination: URL(string: "mailto:support@islareader.com")!) {
+                    Link(destination: URL(string: "mailto:guoliang88925@icloud.com")!) {
                         Label(NSLocalizedString("联系我们", comment: ""), systemImage: "envelope")
                     }
                     

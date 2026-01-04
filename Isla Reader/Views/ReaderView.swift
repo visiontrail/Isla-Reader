@@ -15,7 +15,6 @@ struct ReaderView: View {
     @FetchRequest private var bookmarks: FetchedResults<Bookmark>
     @StateObject private var appSettings = AppSettings.shared
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.managedObjectContext) private var viewContext
     
     init(book: Book, initialLocation: BookmarkLocation? = nil) {
@@ -35,7 +34,6 @@ struct ReaderView: View {
     
     @State private var showingToolbar = false
     @State private var showingTableOfContents = false
-    @State private var showingAIChat = false
     @State private var showingSettings = false
     @State private var selectedText = ""
     @State private var showingTextActions = false
@@ -83,11 +81,6 @@ struct ReaderView: View {
         }
         .sheet(isPresented: $showingSettings) {
             ReaderSettingsView()
-        }
-        .sheet(isPresented: $showingAIChat) {
-            if horizontalSizeClass == .compact {
-                AIChatView(book: book)
-            }
         }
         .sheet(isPresented: $showingTextActions) {
             TextActionsView(selectedText: selectedText)
@@ -457,7 +450,6 @@ struct ReaderView: View {
             HStack(spacing: 0) {
                 toolbarButton(icon: currentBookmark == nil ? "bookmark" : "bookmark.fill", action: { toggleBookmark() }, isActive: currentBookmark != nil)
                 toolbarButton(icon: "highlighter", action: { showingTextActions = true })
-                toolbarButton(icon: "message.fill", action: { showingAIChat = true })
                 toolbarButton(icon: "square.and.arrow.up", action: {})
             }
             .padding(.horizontal, 8)
@@ -695,26 +687,26 @@ struct ReaderView: View {
             }
         }
     }
-     
-     private func checkFirstTimeOpen() {
-         // 检查阅读进度，如果是新书或进度很少，则认为是首次打开
-         if let progress = book.readingProgress {
-             isFirstOpen = progress.progressPercentage < 0.05 // 小于5%认为是首次打开
-         } else {
-             isFirstOpen = true
-         }
-         
-         // 如果是首次打开，延迟显示AI摘要以获得更好的用户体验
-         if isFirstOpen {
-             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                 withAnimation(.easeInOut(duration: 0.5)) {
-                     showingAISummary = true
-                 }
-             }
-         } else {
-             showingAISummary = false
-         }
-     }
+    
+    private func checkFirstTimeOpen() {
+        // 检查阅读进度，如果是新书或进度很少，则认为是首次打开
+        if let progress = book.readingProgress {
+            isFirstOpen = progress.progressPercentage < 0.05 // 小于5%认为是首次打开
+        } else {
+            isFirstOpen = true
+        }
+        
+        // 如果是首次打开，延迟显示AI摘要以获得更好的用户体验
+        if isFirstOpen {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    showingAISummary = true
+                }
+            }
+        } else {
+            showingAISummary = false
+        }
+    }
 
     // MARK: - Pagination helpers
     private func ensurePageArrays() {
@@ -1345,195 +1337,6 @@ struct ReaderSettingsView: View {
                 #endif
             }
         }
-    }
-}
-
-struct AIChatSidebar: View {
-    let book: Book
-    @State private var messages: [ChatMessage] = []
-    @State private var inputText = ""
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text(NSLocalizedString("AI 阅读助手", comment: ""))
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-                
-                Button(action: {}) {
-                    Image(systemName: "questionmark.circle")
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding()
-            .background(.gray.opacity(0.1))
-            
-            // Messages
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    if messages.isEmpty {
-                        VStack(spacing: 16) {
-                            Image(systemName: "message.circle")
-                                .font(.system(size: 40))
-                                .foregroundColor(.secondary)
-                            
-                            Text(NSLocalizedString("向 AI 提问关于这本书的任何问题", comment: ""))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                            
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(NSLocalizedString("建议问题:", comment: ""))
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.secondary)
-                                
-                                SuggestedQuestionButton(question: NSLocalizedString("这章的主要内容是什么？", comment: ""))
-                                SuggestedQuestionButton(question: NSLocalizedString("解释一下这个概念", comment: ""))
-                                SuggestedQuestionButton(question: NSLocalizedString("总结一下要点", comment: ""))
-                            }
-                        }
-                        .padding()
-                    } else {
-                        ForEach(messages) { message in
-                            ChatMessageView(message: message)
-                        }
-                    }
-                }
-                .padding()
-            }
-            
-            // Input
-            HStack {
-                TextField(NSLocalizedString("向 AI 提问...", comment: ""), text: $inputText)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                
-                Button(action: sendMessage) {
-                    Image(systemName: "paperplane.fill")
-                        .foregroundColor(.blue)
-                }
-                .disabled(inputText.isEmpty)
-            }
-            .padding()
-        }
-        .background(.background)
-    }
-    
-    private func sendMessage() {
-        guard !inputText.isEmpty else { return }
-        
-        let userMessage = ChatMessage(content: inputText, isUser: true)
-        messages.append(userMessage)
-        
-        let question = inputText
-        inputText = ""
-        
-        // Simulate AI response
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            let aiResponse = ChatMessage(content: "这是一个关于 \"\(question)\" 的AI回答。在实际应用中，这里会显示真实的AI分析和回答。", isUser: false)
-            messages.append(aiResponse)
-        }
-    }
-}
-
-struct SuggestedQuestionButton: View {
-    let question: String
-    
-    var body: some View {
-        Button(action: {}) {
-            Text(question)
-                .font(.caption)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.gray.opacity(0.2))
-                .cornerRadius(12)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-struct AIChatView: View {
-    let book: Book
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            AIChatSidebar(book: book)
-                .navigationTitle(NSLocalizedString("AI 阅读助手", comment: ""))
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                #endif
-                .toolbar {
-                    #if os(iOS)
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(NSLocalizedString("完成", comment: "")) {
-                            dismiss()
-                        }
-                    }
-                    #else
-                    ToolbarItem(placement: .primaryAction) {
-                        Button(NSLocalizedString("完成", comment: "")) {
-                            dismiss()
-                        }
-                    }
-                    #endif
-                }
-        }
-    }
-}
-
-struct ChatMessage: Identifiable {
-    let id = UUID()
-    let content: String
-    let isUser: Bool
-    let timestamp = Date()
-}
-
-struct ChatMessageView: View {
-    let message: ChatMessage
-    
-    var body: some View {
-        HStack {
-            if message.isUser {
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(message.content)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(16)
-                    
-                    Text(formatTime(message.timestamp))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity * 0.8, alignment: .trailing)
-            } else {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(message.content)
-                        .padding()
-                        .background(.gray.opacity(0.2))
-                        .cornerRadius(16)
-                    
-                    Text(formatTime(message.timestamp))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity * 0.8, alignment: .leading)
-                
-                Spacer()
-            }
-        }
-    }
-    
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
     }
 }
 
