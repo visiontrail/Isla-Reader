@@ -129,15 +129,27 @@
 "highlight.action.insert_success" = "ノートに挿入しました";
 "highlight.action.delete_note_success" = "ノートを削除しました";
 "highlight.action.delete_highlight_success" = "ハイライトを削除しました";
+"highlight.list.title" = "ハイライトとノート";
+"highlight.list.empty" = "ハイライトやノートはまだありません";
+"highlight.list.unknown_chapter" = "不明な章";
 
 // SettingsView additional keys
 "数据导出" = "データエクスポート";
+"数据导入" = "データインポート";
 "存储管理" = "ストレージ管理";
 "缓存大小" = "キャッシュサイズ";
 "清理缓存" = "キャッシュをクリア";
+"cache.status.calculating" = "計算中...";
+"cache.status.clearing" = "キャッシュを削除中...";
+"cache.clear.success_message" = "キャッシュを %@ 解放しました";
+"缓存已清理" = "キャッシュを削除しました";
+"清理失败" = "削除に失敗しました";
 "危险操作" = "危険な操作";
 "清除所有数据" = "全データを削除";
 "确认清除" = "削除を確認";
+"data.clear.success_title" = "データを削除しました";
+"data.clear.failure_title" = "削除に失敗しました";
+"data.clear.success_message" = "合計 %1$d 冊の本を削除し、%2$@ の容量を解放しました。";
 "此操作将删除所有书籍、阅读进度、笔记和设置。此操作不可撤销。" = "すべての本、読書進捗、メモ、設定が削除されます。この操作は元に戻せません。";
 "导出数据" = "データをエクスポート";
 "选择要导出的数据类型" = "エクスポートするデータの種類を選択";
@@ -148,6 +160,16 @@
 "所有笔记、高亮和注释" = "すべてのメモ、ハイライト、注釈";
 "主题、字体等偏好设置" = "テーマやフォントなどの好み";
 "开始导出" = "エクスポート開始";
+"export.reading_data.description" = "読書進捗、ブックマーク、読書時間、棚のステータスをエクスポートします。";
+"export.notes.description" = "メモ、ハイライト、注釈をすべてエクスポートします（書籍ファイルは含みません）。";
+"export.notice.without_books" = "エクスポートには書籍ファイルが含まれません。復元前に、対象デバイスで書籍をインポートしてください。";
+"export.in_progress" = "エクスポートファイルを準備中...";
+"export.share_file" = "エクスポートファイルを共有";
+"导出失败" = "エクスポートに失敗しました";
+"导入阅读数据" = "読書データをインポート";
+"导入失败" = "インポートに失敗しました";
+"import.reading_data.in_progress" = "読書データをインポートしています...";
+"import.reading_data.result_format" = "%d 冊の本を一致させ、%d 件の進捗と %d 件のブックマークを更新しました。一致しなかった本は %d 冊です。";
 
 // Format keys used in code
 "progress_completed_format" = "%.0f%% 完了";

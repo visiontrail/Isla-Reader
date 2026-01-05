@@ -57,6 +57,7 @@ struct LibraryView: View {
     @State private var bookToShowAISummary: Book? = nil
     @State private var bookForSkimming: Book? = nil
     @State private var bookForBookmarks: Book? = nil
+    @State private var bookForHighlights: Book? = nil
     @State private var libraryItemForInfo: LibraryItem? = nil
     @State private var readerLaunchTarget: ReaderLaunchTarget? = nil
     
@@ -133,6 +134,9 @@ struct LibraryView: View {
                                 }, onShowBookmarks: {
                                     DebugLogger.info("LibraryView: 查看书签 - \(item.book.displayTitle)")
                                     bookForBookmarks = item.book
+                                }, onShowHighlights: {
+                                    DebugLogger.info("LibraryView: 查看高亮与笔记 - \(item.book.displayTitle)")
+                                    bookForHighlights = item.book
                                 }, onShowInfo: {
                                     DebugLogger.info("LibraryView: 查看书籍信息 - \(item.book.displayTitle)")
                                     libraryItemForInfo = item
@@ -226,6 +230,10 @@ struct LibraryView: View {
                 }
                 .environment(\.managedObjectContext, viewContext)
             }
+            .sheet(item: $bookForHighlights) { book in
+                HighlightListSheet(book: book)
+                    .environment(\.managedObjectContext, viewContext)
+            }
             .sheet(item: $libraryItemForInfo) { libraryItem in
                 BookInfoSheet(libraryItem: libraryItem)
                     .environment(\.managedObjectContext, viewContext)
@@ -276,6 +284,7 @@ struct BookCardView: View {
     var onTap: (() -> Void)? = nil
     var onSkim: (() -> Void)? = nil
     var onShowBookmarks: (() -> Void)? = nil
+    var onShowHighlights: (() -> Void)? = nil
     var onShowInfo: (() -> Void)? = nil
     var onToggleFavorite: (() -> Void)? = nil
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -354,7 +363,13 @@ struct BookCardView: View {
             Button(action: { onSkim?() }) {
                 Label(NSLocalizedString("略读模式", comment: ""), systemImage: "sparkles.rectangle.stack")
             }
-            BookContextMenu(libraryItem: libraryItem, onShowBookmarks: onShowBookmarks, onShowInfo: onShowInfo, onToggleFavorite: onToggleFavorite)
+            BookContextMenu(
+                libraryItem: libraryItem,
+                onShowBookmarks: onShowBookmarks,
+                onShowHighlights: onShowHighlights,
+                onShowInfo: onShowInfo,
+                onToggleFavorite: onToggleFavorite
+            )
         }
         .onAppear {
             // 调试：打印进度信息
@@ -465,6 +480,7 @@ struct ProgressBar: View {
 struct BookContextMenu: View {
     let libraryItem: LibraryItem
     var onShowBookmarks: (() -> Void)? = nil
+    var onShowHighlights: (() -> Void)? = nil
     var onShowInfo: (() -> Void)? = nil
     var onToggleFavorite: (() -> Void)? = nil
     
@@ -476,6 +492,12 @@ struct BookContextMenu: View {
         if let onShowBookmarks = onShowBookmarks {
             Button(action: onShowBookmarks) {
                 Label(NSLocalizedString("bookmark.list.title", comment: ""), systemImage: "bookmark")
+            }
+        }
+        
+        if let onShowHighlights = onShowHighlights {
+            Button(action: onShowHighlights) {
+                Label(NSLocalizedString("highlight.list.title", comment: ""), systemImage: "highlighter")
             }
         }
         
@@ -785,6 +807,125 @@ struct BookmarkListSheet: View {
         } catch {
             DebugLogger.error("BookmarkListSheet: 删除书签失败", error: error)
         }
+    }
+}
+
+struct HighlightListSheet: View {
+    let book: Book
+    
+    @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.dismiss) private var dismiss
+    @FetchRequest private var highlights: FetchedResults<Highlight>
+    
+    init(book: Book) {
+        self.book = book
+        _highlights = FetchRequest(
+            sortDescriptors: [NSSortDescriptor(keyPath: \Highlight.updatedAt, ascending: false)],
+            predicate: NSPredicate(format: "book == %@", book)
+        )
+    }
+    
+    var body: some View {
+        NavigationView {
+            List {
+                if highlights.isEmpty {
+                    highlightEmptyState
+                } else {
+                    ForEach(highlights) { highlight in
+                        highlightRow(for: highlight)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle(NSLocalizedString("highlight.list.title", comment: ""))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(NSLocalizedString("完成", comment: "")) {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .onAppear {
+            DebugLogger.info("HighlightListSheet: 显示书籍高亮/笔记列表 - \(book.displayTitle)")
+            viewContext.refreshAllObjects()
+        }
+    }
+    
+    private var highlightEmptyState: some View {
+        VStack(alignment: .center, spacing: 12) {
+            Image(systemName: "highlighter")
+                .font(.system(size: 28, weight: .medium))
+                .foregroundColor(.secondary)
+            Text(NSLocalizedString("highlight.list.empty", comment: ""))
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Text(book.displayTitle)
+                .font(.footnote)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.vertical, 24)
+    }
+    
+    private func highlightRow(for highlight: Highlight) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(highlight.highlightColor)
+                    .frame(width: 10, height: 10)
+                Text(chapterLabel(for: highlight))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                Spacer(minLength: 12)
+                Text(highlight.formattedDate)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Text(highlight.displayText)
+                .font(.body)
+                .foregroundColor(.primary)
+            
+            if let noteText = noteText(for: highlight) {
+                Label(noteText, systemImage: "note.text")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+            } else {
+                Label(NSLocalizedString("highlight.action.no_note", comment: ""), systemImage: "note.text")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+            }
+            
+            HStack(spacing: 12) {
+                Label(chapterLabel(for: highlight), systemImage: "text.book.closed")
+                Label(pageLabel(for: highlight), systemImage: "rectangle.and.pencil.and.ellipsis")
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private func chapterLabel(for highlight: Highlight) -> String {
+        if let chapter = highlight.chapter?.trimmingCharacters(in: .whitespacesAndNewlines), !chapter.isEmpty {
+            return chapter
+        }
+        return NSLocalizedString("highlight.list.unknown_chapter", comment: "")
+    }
+    
+    private func pageLabel(for highlight: Highlight) -> String {
+        let pageIndex = Int(highlight.pageNumber)
+        return String(format: NSLocalizedString("bookmark.page_format", comment: ""), max(pageIndex, 0) + 1)
+    }
+    
+    private func noteText(for highlight: Highlight) -> String? {
+        guard let note = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty else {
+            return nil
+        }
+        return note
     }
 }
 

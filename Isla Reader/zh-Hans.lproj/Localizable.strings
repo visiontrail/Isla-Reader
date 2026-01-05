@@ -129,15 +129,27 @@
 "highlight.action.insert_success" = "已插入到笔记";
 "highlight.action.delete_note_success" = "已删除笔记";
 "highlight.action.delete_highlight_success" = "已删除高亮";
+"highlight.list.title" = "高亮与笔记";
+"highlight.list.empty" = "暂无高亮或笔记";
+"highlight.list.unknown_chapter" = "未知章节";
 
 // SettingsView additional keys
 "数据导出" = "数据导出";
+"数据导入" = "数据导入";
 "存储管理" = "存储管理";
 "缓存大小" = "缓存大小";
 "清理缓存" = "清理缓存";
+"cache.status.calculating" = "计算中...";
+"cache.status.clearing" = "正在清理...";
+"cache.clear.success_message" = "已释放 %@ 缓存";
+"缓存已清理" = "缓存已清理";
+"清理失败" = "清理失败";
 "危险操作" = "危险操作";
 "清除所有数据" = "清除所有数据";
 "确认清除" = "确认清除";
+"data.clear.success_title" = "数据已清除";
+"data.clear.failure_title" = "清除失败";
+"data.clear.success_message" = "已清除 %1$d 本书，释放 %2$@ 存储空间。";
 "此操作将删除所有书籍、阅读进度、笔记和设置。此操作不可撤销。" = "此操作将删除所有书籍、阅读进度、笔记和设置。此操作不可撤销。";
 "导出数据" = "导出数据";
 "选择要导出的数据类型" = "选择要导出的数据类型";
@@ -148,6 +160,16 @@
 "所有笔记、高亮和注释" = "所有笔记、高亮和注释";
 "主题、字体等偏好设置" = "主题、字体等偏好设置";
 "开始导出" = "开始导出";
+"export.reading_data.description" = "导出阅读进度、书签、阅读时长和书架状态。";
+"export.notes.description" = "导出所有笔记、高亮和批注（不包含书籍文件）。";
+"export.notice.without_books" = "导出的数据不包含书籍文件，请在目标设备先导入书籍后再恢复进度或笔记。";
+"export.in_progress" = "正在准备导出文件...";
+"export.share_file" = "分享导出文件";
+"导出失败" = "导出失败";
+"导入阅读数据" = "导入阅读数据";
+"导入失败" = "导入失败";
+"import.reading_data.in_progress" = "正在导入阅读数据...";
+"import.reading_data.result_format" = "成功匹配 %d 本书，更新 %d 条进度和 %d 个书签。未匹配的书籍：%d 本。";
 
 // Format keys used in code
 "progress_completed_format" = "%.0f%% 完成";

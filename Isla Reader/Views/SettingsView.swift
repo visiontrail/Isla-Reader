@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @StateObject private var appSettings = AppSettings.shared
@@ -117,6 +118,37 @@ struct SettingsView: View {
             }
         }
     }
+}
+
+enum ExportCategory: String, Identifiable {
+    case readingData
+    case notesAndHighlights
+    
+    var id: String { rawValue }
+    
+    var title: String {
+        switch self {
+        case .readingData:
+            return NSLocalizedString("导出阅读数据", comment: "")
+        case .notesAndHighlights:
+            return NSLocalizedString("导出笔记和高亮", comment: "")
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .readingData:
+            return NSLocalizedString("export.reading_data.description", comment: "")
+        case .notesAndHighlights:
+            return NSLocalizedString("export.notes.description", comment: "")
+        }
+    }
+}
+
+private struct DataAlert: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
 }
 
 struct ReadingSettingsView: View {
@@ -290,21 +322,53 @@ struct ThemeSettingsView: View {
 
 struct DataManagementView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var viewContext
     @State private var showingClearDataAlert = false
-    @State private var showingExportSheet = false
+    @State private var exportMode: ExportCategory?
+    @State private var alertItem: DataAlert?
+    @State private var showingImportPicker = false
+    @State private var isImporting = false
+    @State private var importSummary: String?
+    @State private var cacheUsage: CacheUsage?
+    @State private var isCalculatingCache = false
+    @State private var isClearingCache = false
+    @State private var isClearingAllData = false
     
     var body: some View {
         NavigationView {
             List {
                 Section(NSLocalizedString("数据导出", comment: "")) {
-                    Button(action: { showingExportSheet = true }) {
+                    Button(action: { exportMode = .readingData }) {
                         Label(NSLocalizedString("导出阅读数据", comment: ""), systemImage: "square.and.arrow.up")
                             .foregroundColor(.blue)
                     }
                     
-                    Button(action: {}) {
+                    Button(action: { exportMode = .notesAndHighlights }) {
                         Label(NSLocalizedString("导出笔记和高亮", comment: ""), systemImage: "note.text")
                             .foregroundColor(.blue)
+                    }
+                    
+                    Text(NSLocalizedString("export.notice.without_books", comment: ""))
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                
+                Section(NSLocalizedString("数据导入", comment: "")) {
+                    Button(action: { showingImportPicker = true }) {
+                        Label(NSLocalizedString("导入阅读数据", comment: ""), systemImage: "square.and.arrow.down")
+                            .foregroundColor(.blue)
+                    }
+                    .disabled(isImporting)
+                    
+                    if let importSummary {
+                        Text(importSummary)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    if isImporting {
+                        ProgressView(NSLocalizedString("import.reading_data.in_progress", comment: ""))
                     }
                 }
                 
@@ -312,21 +376,43 @@ struct DataManagementView: View {
                     HStack {
                         Label(NSLocalizedString("缓存大小", comment: ""), systemImage: "internaldrive")
                         Spacer()
-                        Text("128 MB")
-                            .foregroundColor(.secondary)
+                        if isClearingCache {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text(NSLocalizedString("cache.status.clearing", comment: ""))
+                                    .foregroundColor(.secondary)
+                            }
+                        } else {
+                            Text(cacheStatusText)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     
-                    Button(action: {}) {
-                        Label(NSLocalizedString("清理缓存", comment: ""), systemImage: "trash")
-                            .foregroundColor(.orange)
+                    Button(action: clearCache) {
+                        HStack {
+                            Label(NSLocalizedString("清理缓存", comment: ""), systemImage: "trash")
+                                .foregroundColor(.orange)
+                            if isClearingCache {
+                                Spacer()
+                                ProgressView()
+                            }
+                        }
                     }
+                    .disabled(isClearingCache || isCalculatingCache)
                 }
                 
                 Section(NSLocalizedString("危险操作", comment: "")) {
                     Button(action: { showingClearDataAlert = true }) {
-                        Label(NSLocalizedString("清除所有数据", comment: ""), systemImage: "exclamationmark.triangle")
-                            .foregroundColor(.red)
+                        HStack {
+                            Label(NSLocalizedString("清除所有数据", comment: ""), systemImage: "exclamationmark.triangle")
+                                .foregroundColor(.red)
+                            if isClearingAllData {
+                                Spacer()
+                                ProgressView()
+                            }
+                        }
                     }
+                    .disabled(isClearingAllData || isClearingCache || isCalculatingCache || isImporting)
                 }
             }
             .navigationTitle(NSLocalizedString("数据管理", comment: ""))
@@ -348,23 +434,196 @@ struct DataManagementView: View {
                 }
                 #endif
             }
-            .alert(NSLocalizedString("清除所有数据", comment: ""), isPresented: $showingClearDataAlert) {
-                Button(NSLocalizedString("取消", comment: ""), role: .cancel) { }
+            .confirmationDialog(NSLocalizedString("清除所有数据", comment: ""), isPresented: $showingClearDataAlert, titleVisibility: .visible) {
                 Button(NSLocalizedString("确认清除", comment: ""), role: .destructive) {
-                    // Clear all data
+                    performClearAllData()
                 }
+                Button(NSLocalizedString("取消", comment: ""), role: .cancel) { }
             } message: {
                 Text(NSLocalizedString("此操作将删除所有书籍、阅读进度、笔记和设置。此操作不可撤销。", comment: ""))
             }
-            .sheet(isPresented: $showingExportSheet) {
-                ExportDataView()
+            .sheet(item: $exportMode) { mode in
+                ExportDataView(mode: mode)
+            }
+            .alert(item: $alertItem) { alert in
+                Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    dismissButton: .default(Text(NSLocalizedString("确定", comment: "")))
+                )
+            }
+            .fileImporter(isPresented: $showingImportPicker, allowedContentTypes: [.json]) { result in
+                switch result {
+                case .success(let url):
+                    handleImport(url)
+                case .failure(let error):
+                    alertItem = DataAlert(
+                        title: NSLocalizedString("导入失败", comment: ""),
+                        message: error.localizedDescription
+                    )
+                }
+            }
+            .task {
+                refreshCacheUsage()
             }
         }
+    }
+    
+    private func handleImport(_ url: URL) {
+        isImporting = true
+        importSummary = nil
+        
+        Task {
+            var needsStopAccessing = false
+            #if os(iOS)
+            needsStopAccessing = url.startAccessingSecurityScopedResource()
+            #endif
+            defer {
+                #if os(iOS)
+                if needsStopAccessing {
+                    url.stopAccessingSecurityScopedResource()
+                }
+                #endif
+            }
+            
+            do {
+                let result = try await DataBackupService.shared.importReadingData(from: url, context: viewContext)
+                let summary = String(
+                    format: NSLocalizedString("import.reading_data.result_format", comment: ""),
+                    result.matchedBooks,
+                    result.updatedProgress,
+                    result.updatedBookmarks,
+                    result.skippedBooks
+                )
+                
+                await MainActor.run {
+                    importSummary = summary
+                    alertItem = DataAlert(
+                        title: NSLocalizedString("导入结果", comment: ""),
+                        message: summary
+                    )
+                    isImporting = false
+                }
+            } catch {
+                await MainActor.run {
+                    alertItem = DataAlert(
+                        title: NSLocalizedString("导入失败", comment: ""),
+                        message: error.localizedDescription
+                    )
+                    isImporting = false
+                }
+            }
+        }
+    }
+    
+    private func refreshCacheUsage() {
+        isCalculatingCache = true
+        
+        Task {
+            let usage = await CacheCleanupService.shared.currentUsage(context: viewContext)
+            await MainActor.run {
+                cacheUsage = usage
+                isCalculatingCache = false
+            }
+        }
+    }
+    
+    private func clearCache() {
+        guard !isClearingCache else { return }
+        isClearingCache = true
+        let previousBytes = cacheUsage?.totalBytes ?? 0
+        
+        Task {
+            do {
+                let usage = try await CacheCleanupService.shared.clearCaches(context: viewContext)
+                let freedBytes = max(0, previousBytes - usage.totalBytes)
+                let message = String(
+                    format: NSLocalizedString("cache.clear.success_message", comment: ""),
+                    CacheCleanupService.formattedSize(from: freedBytes)
+                )
+                
+                await MainActor.run {
+                    cacheUsage = usage
+                    alertItem = DataAlert(
+                        title: NSLocalizedString("缓存已清理", comment: ""),
+                        message: message
+                    )
+                    isClearingCache = false
+                    isCalculatingCache = false
+                }
+            } catch {
+                await MainActor.run {
+                    alertItem = DataAlert(
+                        title: NSLocalizedString("清理失败", comment: ""),
+                        message: error.localizedDescription
+                    )
+                    isClearingCache = false
+                    isCalculatingCache = false
+                }
+            }
+        }
+    }
+    
+    private func performClearAllData() {
+        guard !isClearingAllData else { return }
+        isClearingAllData = true
+        showingClearDataAlert = false
+        
+        Task {
+            do {
+                let result = try await DataResetService.shared.wipeAllData(context: viewContext)
+                let message = String(
+                    format: NSLocalizedString("data.clear.success_message", comment: ""),
+                    result.removedBookCount,
+                    result.formattedFreedSize
+                )
+                
+                await MainActor.run {
+                    cacheUsage = CacheUsage(cacheDirectoryBytes: 0, aiSummaryBytes: 0, skimmingSummaryBytes: 0)
+                    alertItem = DataAlert(
+                        title: NSLocalizedString("data.clear.success_title", comment: ""),
+                        message: message
+                    )
+                    importSummary = nil
+                    isCalculatingCache = false
+                    isClearingAllData = false
+                }
+            } catch {
+                await MainActor.run {
+                    alertItem = DataAlert(
+                        title: NSLocalizedString("data.clear.failure_title", comment: ""),
+                        message: error.localizedDescription
+                    )
+                    isCalculatingCache = false
+                    isClearingAllData = false
+                }
+            }
+        }
+    }
+    
+    private var cacheStatusText: String {
+        if isClearingCache {
+            return NSLocalizedString("cache.status.clearing", comment: "")
+        }
+        if isCalculatingCache {
+            return NSLocalizedString("cache.status.calculating", comment: "")
+        }
+        if let usage = cacheUsage {
+            return CacheCleanupService.formattedSize(from: usage.totalBytes)
+        }
+        return "--"
     }
 }
 
 struct ExportDataView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var viewContext
+    
+    let mode: ExportCategory
+    
+    @State private var isExporting = false
+    @State private var exportURL: URL?
+    @State private var exportAlert: DataAlert?
     
     var body: some View {
         NavigationView {
@@ -376,22 +635,41 @@ struct ExportDataView: View {
                     .foregroundColor(.blue)
                 
                 VStack(spacing: 8) {
-                    Text(NSLocalizedString("导出数据", comment: ""))
+                    Text(mode.title)
                         .font(.title)
                         .fontWeight(.bold)
                     
-                    Text(NSLocalizedString("选择要导出的数据类型", comment: ""))
+                    Text(mode.description)
                         .font(.body)
                         .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
                 }
                 
-                VStack(spacing: 12) {
-                    ExportOptionRow(title: NSLocalizedString("阅读进度", comment: ""), description: NSLocalizedString("书籍阅读进度和统计", comment: ""), isSelected: true)
-                    ExportOptionRow(title: NSLocalizedString("笔记和高亮", comment: ""), description: NSLocalizedString("所有笔记、高亮和注释", comment: ""), isSelected: true)
-                    ExportOptionRow(title: NSLocalizedString("应用设置", comment: ""), description: NSLocalizedString("主题、字体等偏好设置", comment: ""), isSelected: false)
+                Text(NSLocalizedString("export.notice.without_books", comment: ""))
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                
+                if isExporting {
+                    ProgressView(NSLocalizedString("export.in_progress", comment: ""))
                 }
                 
-                Button(action: {}) {
+                if let exportURL {
+                    VStack(spacing: 8) {
+                        ShareLink(item: exportURL) {
+                            Label(NSLocalizedString("export.share_file", comment: ""), systemImage: "square.and.arrow.up")
+                                .font(.headline)
+                        }
+                        .frame(maxWidth: .infinity)
+                        
+                        Text(exportURL.lastPathComponent)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                
+                Button(action: startExport) {
                     Text(NSLocalizedString("开始导出", comment: ""))
                         .font(.headline)
                         .foregroundColor(.white)
@@ -400,11 +678,12 @@ struct ExportDataView: View {
                         .background(Color.blue)
                         .cornerRadius(12)
                 }
+                .disabled(isExporting)
                 
                 Spacer()
             }
             .padding()
-            .navigationTitle(NSLocalizedString("导出数据", comment: ""))
+            .navigationTitle(mode.title)
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -415,34 +694,44 @@ struct ExportDataView: View {
                     }
                 }
             }
+            .alert(item: $exportAlert) { alert in
+                Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    dismissButton: .default(Text(NSLocalizedString("确定", comment: "")))
+                )
+            }
         }
     }
-}
-
-struct ExportOptionRow: View {
-    let title: String
-    let description: String
-    @State var isSelected: Bool
     
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.body)
-                    .fontWeight(.medium)
+    private func startExport() {
+        isExporting = true
+        exportURL = nil
+        
+        Task {
+            do {
+                let url: URL
+                switch mode {
+                case .readingData:
+                    url = try await DataBackupService.shared.exportReadingData(context: viewContext)
+                case .notesAndHighlights:
+                    url = try await DataBackupService.shared.exportNotesAndHighlights(context: viewContext)
+                }
                 
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                await MainActor.run {
+                    exportURL = url
+                }
+            } catch {
+                await MainActor.run {
+                    let message = error.localizedDescription
+                    exportAlert = DataAlert(title: NSLocalizedString("导出失败", comment: ""), message: message)
+                }
             }
             
-            Spacer()
-            
-            Toggle("", isOn: $isSelected)
+            await MainActor.run {
+                isExporting = false
+            }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
     }
 }
 

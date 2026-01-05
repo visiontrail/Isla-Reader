@@ -242,6 +242,26 @@ final class SkimmingModeService {
         defaults.set(index, forKey: skimmingProgressKey(for: book))
     }
     
+    func clearInMemoryCache() {
+        cacheLock.lock()
+        cache.removeAll()
+        cacheLock.unlock()
+    }
+    
+    func clearStoredProgress(for bookIds: [UUID]) {
+        guard !bookIds.isEmpty else { return }
+        for id in bookIds {
+            let key = skimmingProgressKey(for: id)
+            defaults.removeObject(forKey: key)
+        }
+    }
+    
+    func clearAllStoredProgress() {
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(skimmingProgressKeyPrefix) {
+            defaults.removeObject(forKey: key)
+        }
+    }
+    
     func generateSkimmingSummary(for book: Book, chapter: SkimmingChapterMetadata) async throws -> SkimmingChapterSummary {
         if let cached = cachedSummary(for: book, chapter: chapter) {
             return cached
@@ -388,7 +408,11 @@ final class SkimmingModeService {
     }
     
     private func skimmingProgressKey(for book: Book) -> String {
-        "\(skimmingProgressKeyPrefix)\(book.id.uuidString)"
+        skimmingProgressKey(for: book.id)
+    }
+    
+    private func skimmingProgressKey(for bookId: UUID) -> String {
+        "\(skimmingProgressKeyPrefix)\(bookId.uuidString)"
     }
     
     // MARK: - Persistence Methods

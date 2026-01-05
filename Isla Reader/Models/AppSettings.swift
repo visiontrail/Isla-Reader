@@ -137,6 +137,17 @@ public enum AppLanguage: String, CaseIterable {
 
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
+    static let persistedKeys = [
+        "app_language",
+        "app_theme",
+        "reading_font_size",
+        "reading_font",
+        "line_spacing",
+        "page_margins",
+        "auto_sync_enabled",
+        "reading_reminder_enabled",
+        "daily_reading_goal"
+    ]
     
     @Published var language: AppLanguage {
         didSet {
@@ -204,5 +215,23 @@ class AppSettings: ObservableObject {
         self.isAutoSyncEnabled = UserDefaults.standard.object(forKey: "auto_sync_enabled") as? Bool ?? true
         self.isReadingReminderEnabled = UserDefaults.standard.object(forKey: "reading_reminder_enabled") as? Bool ?? false
         self.dailyReadingGoal = UserDefaults.standard.object(forKey: "daily_reading_goal") as? Int ?? 30
+    }
+    
+    @MainActor
+    func resetToDefaults() {
+        let defaults = UserDefaults.standard
+        for key in AppSettings.persistedKeys {
+            defaults.removeObject(forKey: key)
+        }
+        
+        language = .en
+        theme = .system
+        readingFontSize = .medium
+        readingFont = .system
+        lineSpacing = 1.2
+        pageMargins = 20.0
+        isAutoSyncEnabled = true
+        isReadingReminderEnabled = false
+        dailyReadingGoal = 30
     }
 }

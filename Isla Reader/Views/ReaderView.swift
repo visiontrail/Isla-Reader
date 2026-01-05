@@ -74,6 +74,7 @@ struct ReaderView: View {
     @State private var isAnimatingPageTurn: Bool = false
     @State private var pendingTapWorkItem: DispatchWorkItem?
     @State private var lastNavigationTapTime: Date?
+    @State private var lastWebContentTapTime: Date?
     private let swipePagingEnabled = false
 
     private enum AIAction {
@@ -623,6 +624,7 @@ struct ReaderView: View {
     }
 
     private func handleHighlightTap(_ info: HighlightTapInfo) {
+        suppressNavigationForWebContentTap()
         guard let target = highlights.first(where: { $0.id == info.id }) else {
             DebugLogger.error("ReaderView: 未找到点击的高亮，id=\(info.id)")
             return
@@ -1535,6 +1537,9 @@ struct ReaderView: View {
     
     // MARK: - 滑动手势处理
     private func handleNavigationTap(at location: CGPoint, geometry: GeometryProxy) {
+        if shouldIgnoreNavigationTap() {
+            return
+        }
         let doubleTapInterval: TimeInterval = 0.3
         let now = Date()
         if let lastTap = lastNavigationTapTime, now.timeIntervalSince(lastTap) < doubleTapInterval {
@@ -1548,6 +1553,9 @@ struct ReaderView: View {
         pendingTapWorkItem?.cancel()
         let width = max(geometry.size.width, 1)
         let workItem = DispatchWorkItem {
+            if shouldIgnoreNavigationTap() {
+                return
+            }
             guard selectedTextInfo == nil else { return }
             guard !isAnimatingPageTurn else { return }
             let normalizedX = location.x / width
@@ -1563,6 +1571,23 @@ struct ReaderView: View {
         }
         pendingTapWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + doubleTapInterval, execute: workItem)
+    }
+
+    private func suppressNavigationForWebContentTap() {
+        lastWebContentTapTime = Date()
+        pendingTapWorkItem?.cancel()
+        pendingTapWorkItem = nil
+        lastNavigationTapTime = nil
+    }
+
+    private func shouldIgnoreNavigationTap() -> Bool {
+        if showingHighlightActions {
+            return true
+        }
+        if let lastWebTap = lastWebContentTapTime, Date().timeIntervalSince(lastWebTap) < 0.5 {
+            return true
+        }
+        return false
     }
     
     private func handleDragChanged(_ value: DragGesture.Value, geometry: GeometryProxy) {

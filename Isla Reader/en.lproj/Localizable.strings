@@ -129,15 +129,27 @@
 "highlight.action.insert_success" = "Added to note";
 "highlight.action.delete_note_success" = "Note deleted";
 "highlight.action.delete_highlight_success" = "Highlight deleted";
+"highlight.list.title" = "Highlights & Notes";
+"highlight.list.empty" = "No highlights or notes yet";
+"highlight.list.unknown_chapter" = "Unknown chapter";
 
 // SettingsView additional keys
 "数据导出" = "Data Export";
+"数据导入" = "Data Import";
 "存储管理" = "Storage Management";
 "缓存大小" = "Cache Size";
 "清理缓存" = "Clear Cache";
+"cache.status.calculating" = "Calculating...";
+"cache.status.clearing" = "Clearing...";
+"cache.clear.success_message" = "Freed %@ of cache";
+"缓存已清理" = "Cache cleared";
+"清理失败" = "Clear failed";
 "危险操作" = "Danger Zone";
 "清除所有数据" = "Clear All Data";
 "确认清除" = "Confirm Clear";
+"data.clear.success_title" = "Data cleared";
+"data.clear.failure_title" = "Clear failed";
+"data.clear.success_message" = "Cleared %1$d books and freed %2$@ of storage.";
 "此操作将删除所有书籍、阅读进度、笔记和设置。此操作不可撤销。" = "This will delete all books, reading progress, notes, and settings. This action cannot be undone.";
 "导出数据" = "Export Data";
 "选择要导出的数据类型" = "Select data types to export";
@@ -148,6 +160,16 @@
 "所有笔记、高亮和注释" = "All notes, highlights, and annotations";
 "主题、字体等偏好设置" = "Preferences like theme and fonts";
 "开始导出" = "Start Export";
+"export.reading_data.description" = "Export reading progress, bookmarks, reading time, and shelf status.";
+"export.notes.description" = "Export all notes, highlights, and annotations (without the original book files).";
+"export.notice.without_books" = "Export does not include book files. Please import the books on the target device before restoring progress or notes.";
+"export.in_progress" = "Preparing export...";
+"export.share_file" = "Share exported file";
+"导出失败" = "Export Failed";
+"导入阅读数据" = "Import Reading Data";
+"导入失败" = "Import Failed";
+"import.reading_data.in_progress" = "Importing reading data...";
+"import.reading_data.result_format" = "Matched %d books, updated %d progress entries and %d bookmarks. Skipped %d books without matches.";
 
 // Format keys used in code
 "progress_completed_format" = "%.0f%% Complete";
