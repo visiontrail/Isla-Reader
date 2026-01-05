@@ -29,6 +29,18 @@ struct SettingsView: View {
                         }
                         .pickerStyle(.menu)
                     }
+                    
+                    HStack {
+                        Label("", systemImage: "character.bubble")
+                        Text(NSLocalizedString("翻译目标语言", comment: ""))
+                        Spacer()
+                        Picker("", selection: $appSettings.translationLanguage) {
+                            ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
+                                Text(lang.displayName).tag(lang)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
                 }
                 
                 // Reading Settings

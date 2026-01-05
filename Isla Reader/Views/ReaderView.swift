@@ -694,7 +694,7 @@ struct ReaderView: View {
                 let result: String
                 switch action {
                 case .translate:
-                    result = try await ReadingAIService.shared.translate(text: text, targetLanguage: appSettings.language)
+                    result = try await ReadingAIService.shared.translate(text: text, targetLanguage: appSettings.translationLanguage)
                 case .explain:
                     result = try await ReadingAIService.shared.explain(text: text, locale: appSettings.language)
                 }

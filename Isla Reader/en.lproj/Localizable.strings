@@ -45,6 +45,7 @@
 "等宽字体" = "Monospace";
 
 "语言" = "Language";
+"翻译目标语言" = "Translation target language";
 
 // Reading status
 "想读" = "Want to Read";

@@ -139,6 +139,7 @@ class AppSettings: ObservableObject {
     static let shared = AppSettings()
     static let persistedKeys = [
         "app_language",
+        "translation_language",
         "app_theme",
         "reading_font_size",
         "reading_font",
@@ -152,6 +153,12 @@ class AppSettings: ObservableObject {
     @Published var language: AppLanguage {
         didSet {
             UserDefaults.standard.set(language.rawValue, forKey: "app_language")
+        }
+    }
+    
+    @Published var translationLanguage: AppLanguage {
+        didSet {
+            UserDefaults.standard.set(translationLanguage.rawValue, forKey: "translation_language")
         }
     }
     
@@ -206,7 +213,11 @@ class AppSettings: ObservableObject {
     }
     
     private init() {
-        self.language = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language") ?? "") ?? .en
+        let storedLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language") ?? "") ?? .en
+        let storedTranslationLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "translation_language") ?? "")
+        
+        self.language = storedLanguage
+        self.translationLanguage = storedTranslationLanguage ?? storedLanguage
         self.theme = AppTheme(rawValue: UserDefaults.standard.string(forKey: "app_theme") ?? "") ?? .system
         self.readingFontSize = ReadingFontSize(rawValue: UserDefaults.standard.string(forKey: "reading_font_size") ?? "") ?? .medium
         self.readingFont = ReadingFont(rawValue: UserDefaults.standard.string(forKey: "reading_font") ?? "") ?? .system
@@ -225,6 +236,7 @@ class AppSettings: ObservableObject {
         }
         
         language = .en
+        translationLanguage = language
         theme = .system
         readingFontSize = .medium
         readingFont = .system
