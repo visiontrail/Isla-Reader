@@ -8,6 +8,35 @@
 import SwiftUI
 import WebKit
 
+struct SelectedTextInfo: Equatable {
+    let text: String
+    let startOffset: Int
+    let endOffset: Int
+    let rect: CGRect
+    let pageIndex: Int
+}
+
+struct HighlightTapInfo: Equatable {
+    let id: UUID
+    let text: String
+}
+
+struct ReaderHighlight: Identifiable, Equatable {
+    let id: UUID
+    let startOffset: Int
+    let endOffset: Int
+    let colorHex: String
+}
+
+struct ReaderSelectionAction: Identifiable, Equatable {
+    enum ActionType: Equatable {
+        case highlight(colorHex: String)
+    }
+
+    let id = UUID()
+    let type: ActionType
+}
+
 // MARK: - WebView Coordinator
 class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, UIScrollViewDelegate {
     var parent: ReaderWebView
@@ -18,6 +47,8 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private var pendingPageIndex: Int?
     private var isLoaded = false
     private var lastDisplayedPageIndex: Int = 0
+    private var pendingHighlights: [ReaderHighlight] = []
+    private var isTouchingContent = false
     
     init(_ parent: ReaderWebView) {
         self.parent = parent
@@ -29,13 +60,64 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         lastDisplayedPageIndex = parent.currentPageIndex
         scrollToCurrentPage(on: webView, animated: false)
         parent.onLoadFinished?()
+        applyHighlightsIfReady(on: webView)
     }
     
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         if message.name == "toggleToolbar" {
             parent.onToolbarToggle?()
-        } else if message.name == "textSelection", let text = message.body as? String {
-            parent.onTextSelected?(text)
+        } else if message.name == "interaction" {
+            if let dict = message.body as? [String: Any],
+               let active = dict["active"] as? Bool {
+                handleInteractionChange(isActive: active)
+            } else if let active = message.body as? Bool {
+                handleInteractionChange(isActive: active)
+            }
+        } else if message.name == "textSelection" {
+            if let dict = message.body as? [String: Any],
+               let text = dict["text"] as? String {
+                let start = dict["start"] as? Int ?? 0
+                let end = dict["end"] as? Int ?? start
+                let pageIndex = dict["pageIndex"] as? Int ?? 0
+                let rect: CGRect
+                if let rectDict = dict["rect"] as? [String: Double] {
+                    let x = rectDict["x"] ?? 0
+                    let y = rectDict["y"] ?? 0
+                    let width = rectDict["width"] ?? 0
+                    let height = rectDict["height"] ?? 0
+                    rect = CGRect(x: x, y: y, width: width, height: height)
+                } else {
+                    rect = .zero
+                }
+                parent.onTextSelection?(
+                    SelectedTextInfo(
+                        text: text,
+                        startOffset: start,
+                        endOffset: end,
+                        rect: rect,
+                        pageIndex: pageIndex
+                    )
+                )
+            } else if let text = message.body as? String {
+                parent.onTextSelection?(
+                    SelectedTextInfo(
+                        text: text,
+                        startOffset: 0,
+                        endOffset: 0,
+                        rect: .zero,
+                        pageIndex: 0
+                    )
+                )
+            }
+        } else if message.name == "highlightTap" {
+            if let dict = message.body as? [String: Any],
+               let idString = dict["id"] as? String,
+               let uuid = UUID(uuidString: idString) {
+                let text = (dict["text"] as? String) ?? ""
+                parent.onHighlightTap?(
+                    HighlightTapInfo(id: uuid, text: text.trimmingCharacters(in: .whitespacesAndNewlines))
+                )
+            }
         } else if message.name == "pageMetrics" {
             if let dict = message.body as? [String: Any] {
                 if let type = dict["type"] as? String, type == "pageCount", let value = dict["value"] as? Int {
@@ -53,6 +135,15 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
         // Scrolling is disabled; no-op
+    }
+    
+    private func handleInteractionChange(isActive: Bool) {
+        guard isTouchingContent != isActive else { return }
+        isTouchingContent = isActive
+        parent.onInteractionChange?(isActive)
+        if !isActive, let webView {
+            scrollToCurrentPage(on: webView, animated: false)
+        }
     }
     
     private func applyPagination(on webView: WKWebView) {
@@ -87,6 +178,9 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     // Animate to the latest SwiftUI-bound page if it differs from what is currently displayed
     @discardableResult
     func animateToCurrentPageIfChanged(on webView: WKWebView) -> Bool {
+        if isTouchingContent {
+            return true
+        }
         let newIndex = max(0, min(parent.currentPageIndex, max(parent.totalPages - 1, 0)))
         guard newIndex != lastDisplayedPageIndex else { return false }
         
@@ -182,6 +276,50 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         self.isLoaded = false
         self.isAnimatingSlide = false
         self.pendingPageIndex = nil
+        if isTouchingContent {
+            isTouchingContent = false
+            parent.onInteractionChange?(false)
+        }
+    }
+
+    func updateHighlights(_ highlights: [ReaderHighlight]) {
+        pendingHighlights = highlights
+        applyHighlightsIfReady(on: webView)
+    }
+
+    func performSelectionAction(_ action: ReaderSelectionAction, on webView: WKWebView) {
+        switch action.type {
+        case .highlight(let colorHex):
+            let safeColor = colorHex.replacingOccurrences(of: "'", with: "\\'")
+            let js = "applyHighlightForSelection('\(safeColor)')"
+            webView.evaluateJavaScript(js) { _, error in
+                if let error {
+                    DebugLogger.error("ReaderWebView: 高亮失败 - \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    private func applyHighlightsIfReady(on webView: WKWebView?) {
+        guard let webView, isLoaded else { return }
+        guard let data = try? JSONSerialization.data(withJSONObject: pendingHighlights.map { highlight in
+            [
+                "id": highlight.id.uuidString,
+                "start": highlight.startOffset,
+                "end": highlight.endOffset,
+                "colorHex": highlight.colorHex
+            ]
+        }, options: []) else {
+            return
+        }
+
+        guard let jsonString = String(data: data, encoding: .utf8) else { return }
+        let js = "applyNativeHighlights(\(jsonString))"
+        webView.evaluateJavaScript(js) { _, error in
+            if let error {
+                DebugLogger.error("ReaderWebView: 同步高亮失败 - \(error.localizedDescription)")
+            }
+        }
     }
 }
 
@@ -192,10 +330,14 @@ struct ReaderWebView: UIViewRepresentable {
     let isDarkMode: Bool
     @Binding var currentPageIndex: Int
     @Binding var totalPages: Int
+    @Binding var selectionAction: ReaderSelectionAction?
+    var highlights: [ReaderHighlight]
     
     var onToolbarToggle: (() -> Void)?
-    var onTextSelected: ((String) -> Void)?
+    var onTextSelection: ((SelectedTextInfo) -> Void)?
+    var onHighlightTap: ((HighlightTapInfo) -> Void)?
     var onLoadFinished: (() -> Void)?
+    var onInteractionChange: ((Bool) -> Void)?
     
     func makeCoordinator() -> WebViewCoordinator {
         WebViewCoordinator(self)
@@ -210,7 +352,9 @@ struct ReaderWebView: UIViewRepresentable {
         // 添加消息处理器
         userContentController.add(context.coordinator, name: "toggleToolbar")
         userContentController.add(context.coordinator, name: "textSelection")
+        userContentController.add(context.coordinator, name: "highlightTap")
         userContentController.add(context.coordinator, name: "pageMetrics")
+        userContentController.add(context.coordinator, name: "interaction")
         
         // 添加JavaScript代码
         let script = WKUserScript(source: getJavaScriptCode(), injectionTime: .atDocumentEnd, forMainFrameOnly: true)
@@ -245,9 +389,8 @@ struct ReaderWebView: UIViewRepresentable {
         webView.scrollView.bounces = false
         webView.scrollView.isDirectionalLockEnabled = true
         webView.scrollView.delegate = context.coordinator
-        // 允许编程式滚动，但禁用用户滑动手势
-        webView.scrollView.isScrollEnabled = true
-        webView.scrollView.panGestureRecognizer.isEnabled = false
+        // 仅允许编程式滚动，完全禁用用户滑动翻页
+        webView.scrollView.isScrollEnabled = false
         webView.scrollView.pinchGestureRecognizer?.isEnabled = false
         
         webView.translatesAutoresizingMaskIntoConstraints = false
@@ -271,6 +414,7 @@ struct ReaderWebView: UIViewRepresentable {
         guard let webView = context.coordinator.webView else { return }
         // Sync latest SwiftUI state to coordinator
         context.coordinator.updateParent(self)
+        context.coordinator.updateHighlights(highlights)
         // Compute a signature that represents the visual content (chapter html + typography settings + theme)
         let signature = "sig::\(htmlContent.hashValue):\(appSettings.readingFontSize.fontSize):\(appSettings.lineSpacing):\(isDarkMode ? "dark" : "light"):\(Int(appSettings.pageMargins))"
         if container.accessibilityHint != signature {
@@ -283,6 +427,13 @@ struct ReaderWebView: UIViewRepresentable {
             let animated = context.coordinator.animateToCurrentPageIfChanged(on: webView)
             if !animated {
                 context.coordinator.scrollToCurrentPage(on: webView, animated: false)
+            }
+        }
+
+        if let action = selectionAction {
+            context.coordinator.performSelectionAction(action, on: webView)
+            DispatchQueue.main.async {
+                self.selectionAction = nil
             }
         }
     }
@@ -554,6 +705,12 @@ struct ReaderWebView: UIViewRepresentable {
             background-color: \(isDarkMode ? "#4a6fa5" : "#b3d4fc");
             color: \(isDarkMode ? "#fff" : "#000");
         }
+
+        mark.reader-highlight {
+            background-color: \(isDarkMode ? "#3d2e12" : "#fff4b3");
+            border-radius: 3px;
+            padding: 0 2px;
+        }
         
         /* iframe 优化 */
         iframe {
@@ -584,38 +741,82 @@ struct ReaderWebView: UIViewRepresentable {
     
     private func getJavaScriptCode() -> String {
         return """
-        // 点击处理
-        var lastTapTime = 0;
-        document.addEventListener('click', function(e) {
-            const now = Date.now();
-            if (now - lastTapTime < 300) {
-                // 双击
-                return;
-            }
-            lastTapTime = now;
-            
-            // 检查是否点击了链接
-            if (e.target.tagName === 'A') {
-                e.preventDefault();
-                return;
-            }
-            
-            // 单击切换工具栏
-            window.webkit.messageHandlers.toggleToolbar.postMessage('toggle');
-        });
+        function normalizeColor(colorHex) {
+            if (!colorHex) return '#ffe38f';
+            if (colorHex.startsWith('#')) { return colorHex; }
+            return '#' + colorHex;
+        }
         
-        // 文本选择处理
-        document.addEventListener('selectionchange', function() {
+        var lastInteractionState = false;
+        function notifyInteraction(active) {
+            if (lastInteractionState === active) { return; }
+            lastInteractionState = active;
+            try { window.webkit.messageHandlers.interaction.postMessage({ active: !!active }); } catch (e) {}
+        }
+
+        function measureOffset(container, offset) {
+            try {
+                const preRange = document.createRange();
+                preRange.selectNodeContents(document.body);
+                preRange.setEnd(container, offset);
+                const text = preRange.cloneContents().textContent || '';
+                return text.length;
+            } catch (e) {
+                return 0;
+            }
+        }
+
+        function serializeSelection() {
             const selection = window.getSelection();
-            if (selection && selection.toString().length > 0) {
-                window.webkit.messageHandlers.textSelection.postMessage(selection.toString());
+            if (!selection || selection.rangeCount === 0) {
+                return null;
             }
-        });
-        
-        // 禁用长按菜单（可选）
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-        });
+
+            const text = selection.toString();
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const start = measureOffset(range.startContainer, range.startOffset);
+            const end = measureOffset(range.endContainer, range.endOffset);
+            const safeStart = Math.min(start, end);
+            const safeEnd = Math.max(start, end);
+            const pageIndex = Math.max(0, Math.round(getScrollLeft() / getPerPage()));
+
+            return {
+                text: text,
+                start: safeStart,
+                end: safeEnd,
+                pageIndex: pageIndex,
+                rect: {
+                    x: rect.x,
+                    y: rect.y,
+                    width: rect.width,
+                    height: rect.height
+                }
+            };
+        }
+
+        function notifySelectionChange() {
+            const payload = serializeSelection();
+            try {
+                if (payload) {
+                    window.webkit.messageHandlers.textSelection.postMessage(payload);
+                } else {
+                    window.webkit.messageHandlers.textSelection.postMessage({
+                        text: "",
+                        start: 0,
+                        end: 0,
+                        pageIndex: 0,
+                        rect: { x: 0, y: 0, width: 0, height: 0 }
+                    });
+                }
+            } catch (e) {}
+        }
+
+        // 文本选择处理
+        document.addEventListener('selectionchange', notifySelectionChange);
+        document.addEventListener('touchstart', function(){ notifyInteraction(true); }, { passive: true });
+        document.addEventListener('touchend', function(){ notifyInteraction(false); }, { passive: true });
+        document.addEventListener('touchcancel', function(){ notifyInteraction(false); }, { passive: true });
         
         // 防止双击缩放
         var lastTouchEnd = 0;
@@ -727,6 +928,132 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         window.addEventListener('resize', handleResize);
+
+        // 高亮：选区内包裹 mark
+        function applyHighlightForSelection(colorHex) {
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0 || !selection.toString()) {
+                return false;
+            }
+            const range = selection.getRangeAt(0);
+            const wrapper = document.createElement('mark');
+            wrapper.className = 'reader-highlight';
+            wrapper.style.backgroundColor = normalizeColor(colorHex);
+
+            try {
+                const extracted = range.extractContents();
+                wrapper.appendChild(extracted);
+                range.insertNode(wrapper);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } catch (e) {
+                console.error('applyHighlightForSelection error', e);
+                return false;
+            }
+            return true;
+        }
+
+        function clearExistingHighlights() {
+            const marks = document.querySelectorAll('mark.reader-highlight');
+            marks.forEach(mark => {
+                const parent = mark.parentNode;
+                while (mark.firstChild) {
+                    parent.insertBefore(mark.firstChild, mark);
+                }
+                parent.removeChild(mark);
+                if (parent.normalize) {
+                    parent.normalize();
+                }
+            });
+        }
+
+        function highlightByOffsets(start, end, colorHex, highlightId) {
+            if (typeof start !== 'number' || typeof end !== 'number' || start >= end) { return; }
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+            let current = 0;
+            let rangeStartNode = null;
+            let rangeStartOffset = 0;
+            let rangeEndNode = null;
+            let rangeEndOffset = 0;
+            let node;
+
+            while ((node = walker.nextNode())) {
+                const textLength = (node.textContent || '').length;
+                const nodeStart = current;
+                const nodeEnd = current + textLength;
+
+                if (!rangeStartNode && start >= nodeStart && start <= nodeEnd) {
+                    rangeStartNode = node;
+                    rangeStartOffset = start - nodeStart;
+                }
+
+                if (!rangeEndNode && end >= nodeStart && end <= nodeEnd) {
+                    rangeEndNode = node;
+                    rangeEndOffset = end - nodeStart;
+                    break;
+                }
+
+                current = nodeEnd;
+            }
+
+            if (!rangeStartNode || !rangeEndNode) { return; }
+
+            const range = document.createRange();
+            range.setStart(rangeStartNode, rangeStartOffset);
+            range.setEnd(rangeEndNode, rangeEndOffset);
+
+            const wrapper = document.createElement('mark');
+            wrapper.className = 'reader-highlight';
+            if (highlightId) {
+                wrapper.dataset.highlightId = highlightId;
+            }
+            wrapper.style.backgroundColor = normalizeColor(colorHex);
+
+            wrapper.appendChild(range.extractContents());
+            range.insertNode(wrapper);
+            range.detach();
+        }
+
+        function applyNativeHighlights(items) {
+            clearExistingHighlights();
+            if (!items || !Array.isArray(items)) { return; }
+            items.forEach(item => {
+                highlightByOffsets(item.start, item.end, item.colorHex || '#ffe38f', item.id || '');
+            });
+        }
+
+        var highlightTapBound = false;
+        function bindHighlightTapHandler() {
+            if (highlightTapBound) { return; }
+            document.addEventListener('click', function(event) {
+                var node = event.target;
+                var targetHighlight = null;
+                while (node) {
+                    if (node.classList && node.classList.contains('reader-highlight')) {
+                        targetHighlight = node;
+                        break;
+                    }
+                    node = node.parentElement;
+                }
+                if (!targetHighlight) { return; }
+                var highlightId = (targetHighlight.dataset && targetHighlight.dataset.highlightId) ? targetHighlight.dataset.highlightId : '';
+                if (!highlightId) { return; }
+                var text = targetHighlight.textContent || '';
+                try { 
+                    window.webkit.messageHandlers.highlightTap.postMessage({ id: highlightId, text: text });
+                    if (event && event.preventDefault) { event.preventDefault(); }
+                    if (window.getSelection) {
+                        var selection = window.getSelection();
+                        if (selection && selection.removeAllRanges) {
+                            selection.removeAllRanges();
+                        }
+                    }
+                } catch (e) {}
+            }, true);
+            highlightTapBound = true;
+        }
+
+        bindHighlightTapHandler();
         """
     }
 }

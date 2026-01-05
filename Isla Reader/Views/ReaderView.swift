@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CoreData
+import UIKit
 
 struct ReaderView: View {
     let book: Book
@@ -17,11 +18,16 @@ struct ReaderView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     
+    @FetchRequest private var highlights: FetchedResults<Highlight>
     init(book: Book, initialLocation: BookmarkLocation? = nil) {
         self.book = book
         self.initialLocation = initialLocation
         _bookmarks = FetchRequest(
             sortDescriptors: [NSSortDescriptor(keyPath: \Bookmark.createdAt, ascending: false)],
+            predicate: NSPredicate(format: "book == %@", book)
+        )
+        _highlights = FetchRequest(
+            sortDescriptors: [NSSortDescriptor(keyPath: \Highlight.createdAt, ascending: false)],
             predicate: NSPredicate(format: "book == %@", book)
         )
     }
@@ -35,8 +41,25 @@ struct ReaderView: View {
     @State private var showingToolbar = false
     @State private var showingTableOfContents = false
     @State private var showingSettings = false
-    @State private var selectedText = ""
-    @State private var showingTextActions = false
+    @State private var selectedTextInfo: SelectedTextInfo?
+    @State private var selectionAction: ReaderSelectionAction?
+    @State private var isInteractingWithWebContent = false
+    @State private var showingNoteEditor = false
+    @State private var noteDraft = ""
+    @State private var showingAIResponse = false
+    @State private var aiResponseTitle = ""
+    @State private var aiResponseContent = ""
+    @State private var aiActionInFlight: AIAction?
+    @State private var aiInsertionTarget: AIInsertionTarget?
+    @State private var isLoadingAIResponse = false
+    @State private var aiErrorMessage: String?
+    @State private var activeHighlight: Highlight?
+    @State private var activeHighlightText: String = ""
+    @State private var showingHighlightActions = false
+    @State private var pendingDeleteHighlight: Highlight?
+    @State private var deletingNoteOnly = false
+    @State private var showingDeleteConfirmation = false
+    @State private var hintMessage: String?
     @State private var showingAISummary = false
     @State private var isFirstOpen = true
     @State private var didApplyInitialLocation = false
@@ -49,6 +72,19 @@ struct ReaderView: View {
     @State private var isDragging: Bool = false
     @State private var dragStartLocation: CGPoint = .zero
     @State private var isAnimatingPageTurn: Bool = false
+    @State private var pendingTapWorkItem: DispatchWorkItem?
+    @State private var lastNavigationTapTime: Date?
+    private let swipePagingEnabled = false
+
+    private enum AIAction {
+        case translate
+        case explain
+    }
+
+    private enum AIInsertionTarget {
+        case selection
+        case highlight(Highlight)
+    }
     
     // Pagination states per chapter
     @State private var chapterPageIndices: [Int] = []
@@ -82,8 +118,21 @@ struct ReaderView: View {
         .sheet(isPresented: $showingSettings) {
             ReaderSettingsView()
         }
-        .sheet(isPresented: $showingTextActions) {
-            TextActionsView(selectedText: selectedText)
+        .sheet(isPresented: $showingNoteEditor) {
+            noteEditorSheet
+        }
+        .sheet(isPresented: $showingAIResponse) {
+            aiResponseSheet
+        }
+        .sheet(isPresented: $showingHighlightActions) {
+            highlightActionSheet
+        }
+        .overlay(alignment: .top) {
+            if let hintMessage {
+                hintBanner(hintMessage)
+                    .padding(.top, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
         .onAppear {
             loadBookContent()
@@ -94,6 +143,7 @@ struct ReaderView: View {
             // Save reading progress when view disappears (e.g., user navigates back)
             saveReadingProgress()
             endReadingSession()
+            pendingTapWorkItem?.cancel()
         }
         .onChange(of: scenePhase) { newPhase in
             handleScenePhaseChange(newPhase)
@@ -101,6 +151,23 @@ struct ReaderView: View {
         .onChange(of: currentChapterIndex) { _ in
             // Save progress when chapter changes
             saveReadingProgress()
+            selectedTextInfo = nil
+        }
+        .confirmationDialog(
+            deletingNoteOnly ? NSLocalizedString("highlight.action.delete_note_confirm", comment: "") : NSLocalizedString("highlight.action.delete_highlight_confirm", comment: ""),
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(
+                deletingNoteOnly ? NSLocalizedString("highlight.action.delete_note", comment: "") : NSLocalizedString("highlight.action.delete_highlight", comment: ""),
+                role: .destructive
+            ) {
+                handleHighlightDeletion()
+            }
+            Button(NSLocalizedString("取消", comment: ""), role: .cancel) {
+                pendingDeleteHighlight = nil
+                deletingNoteOnly = false
+            }
         }
     }
     
@@ -220,15 +287,55 @@ struct ReaderView: View {
                     get: { safeChapterTotalPages(index) },
                     set: { newValue in setChapterTotalPages(index, newValue) }
                 ),
+                selectionAction: $selectionAction,
+                highlights: highlightsForChapter(index),
                 onToolbarToggle: {
                     handleTap()
                 },
-                onTextSelected: { text in
-                    selectedText = text
-                    showingTextActions = true
+                onTextSelection: { info in
+                    let trimmed = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmed.isEmpty {
+                        selectedTextInfo = nil
+                    } else {
+                        pendingTapWorkItem?.cancel()
+                        let updatedInfo = SelectedTextInfo(
+                            text: trimmed,
+                            startOffset: info.startOffset,
+                            endOffset: info.endOffset,
+                            rect: info.rect,
+                            pageIndex: info.pageIndex
+                        )
+                        selectedTextInfo = updatedInfo
+                        let feedback = UISelectionFeedbackGenerator()
+                        feedback.selectionChanged()
+                    }
+                },
+                onHighlightTap: { info in
+                    handleHighlightTap(info)
+                },
+                onLoadFinished: nil,
+                onInteractionChange: { isActive in
+                    isInteractingWithWebContent = isActive
                 }
             )
             .frame(width: geometry.size.width, height: webViewHeight)
+            .offset(x: dragOffset)
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                    .onChanged { value in
+                        guard selectedTextInfo == nil else { return }
+                        handleDragChanged(value, geometry: geometry)
+                    }
+                    .onEnded { value in
+                        if isDragging {
+                            handleDragEnded(value, geometry: geometry)
+                        } else if selectedTextInfo == nil {
+                            handleNavigationTap(at: value.startLocation, geometry: geometry)
+                        }
+                        isDragging = false
+                    }
+            )
             .onChange(of: appSettings.pageMargins) { _ in
                 // 版心变化后，保持页码在合法范围
                 clampCurrentPage(index)
@@ -250,52 +357,6 @@ struct ReaderView: View {
                     Spacer()
                 }
             }
-            
-            // Tap zones: left/right for prev/next page
-            HStack(spacing: 0) {
-                Rectangle()
-                    .fill(Color.clear)
-                    .contentShape(Rectangle())
-                    .frame(width: geometry.size.width * 0.28)
-                    .onTapGesture { 
-                        if !isDragging && !isAnimatingPageTurn {
-                            previousPageOrChapter() 
-                        }
-                    }
-                
-                // Center tap zone to toggle toolbar/menu
-                Rectangle()
-                    .fill(Color.clear)
-                    .contentShape(Rectangle())
-                    .onTapGesture { 
-                        if !isDragging && !isAnimatingPageTurn {
-                            handleTap() 
-                        }
-                    }
-                
-                Rectangle()
-                    .fill(Color.clear)
-                    .contentShape(Rectangle())
-                    .frame(width: geometry.size.width * 0.28)
-                    .onTapGesture { 
-                        if !isDragging && !isAnimatingPageTurn {
-                            nextPageOrChapter() 
-                        }
-                    }
-            }
-            .frame(width: geometry.size.width, height: geometry.size.height)
-            .contentShape(Rectangle())
-            .offset(x: dragOffset)
-            .gesture(
-                DragGesture(minimumDistance: 10, coordinateSpace: .local)
-                    .onChanged { value in
-                        handleDragChanged(value, geometry: geometry)
-                    }
-                    .onEnded { value in
-                        handleDragEnded(value, geometry: geometry)
-                    }
-            )
-            
             // 滑动视觉反馈
             if isDragging {
                 slideVisualFeedback(geometry: geometry)
@@ -322,6 +383,10 @@ struct ReaderView: View {
                     .frame(height: pageIndicatorHeight) // 使用预留的高度
                 }
                 .transition(.opacity)
+            }
+
+            if let info = selectedTextInfo {
+                selectionToolbar(for: info, in: geometry)
             }
         }
         .ignoresSafeArea(edges: .bottom)
@@ -449,7 +514,7 @@ struct ReaderView: View {
             // Action buttons
             HStack(spacing: 0) {
                 toolbarButton(icon: currentBookmark == nil ? "bookmark" : "bookmark.fill", action: { toggleBookmark() }, isActive: currentBookmark != nil)
-                toolbarButton(icon: "highlighter", action: { showingTextActions = true })
+                toolbarButton(icon: "highlighter", action: { handleQuickHighlight() })
                 toolbarButton(icon: "square.and.arrow.up", action: {})
             }
             .padding(.horizontal, 8)
@@ -473,6 +538,598 @@ struct ReaderView: View {
                         .fill(isActive ? Color.blue.opacity(0.12) : Color.clear)
                 )
         }
+    }
+
+    // MARK: - Selection & Notes
+
+    private func selectionToolbar(for info: SelectedTextInfo, in geometry: GeometryProxy) -> some View {
+        let safeTop = geometry.safeAreaInsets.top + 12
+        let fallbackRect = CGRect(x: geometry.size.width / 2, y: geometry.size.height * 0.25, width: 0, height: 0)
+        let rect = info.rect == .zero ? fallbackRect : info.rect
+        let toolbarHeight: CGFloat = 64
+        let horizontalPadding = min(120, geometry.size.width / 2)
+        let clampedX = min(max(rect.midX, horizontalPadding), geometry.size.width - horizontalPadding)
+        let preferredY = rect.minY - toolbarHeight / 2
+        let clampedY = min(max(preferredY, safeTop), geometry.size.height - toolbarHeight - 16)
+
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                selectionActionButton(
+                    title: NSLocalizedString("高亮标记", comment: ""),
+                    systemImage: "highlighter",
+                    tint: .yellow.opacity(0.9),
+                    action: { commitHighlight(note: nil) }
+                )
+
+                selectionActionButton(
+                    title: NSLocalizedString("添加笔记", comment: ""),
+                    systemImage: "note.text",
+                    tint: .blue.opacity(0.9),
+                    action: { prepareNoteEditor() }
+                )
+
+                selectionActionButton(
+                    title: NSLocalizedString("复制", comment: ""),
+                    systemImage: "doc.on.doc",
+                    tint: .secondary,
+                    action: { handleCopySelectedText() }
+                )
+
+                selectionActionButton(
+                    title: NSLocalizedString("翻译", comment: ""),
+                    systemImage: "globe",
+                    tint: .green,
+                    action: { startAIRequest(.translate) }
+                )
+
+                selectionActionButton(
+                    title: NSLocalizedString("AI 解释", comment: ""),
+                    systemImage: "brain.head.profile",
+                    tint: .purple,
+                    action: { startAIRequest(.explain) }
+                )
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+        }
+        .frame(maxWidth: min(geometry.size.width - 32, geometry.size.width))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 8)
+        .position(x: clampedX, y: clampedY)
+        .animation(.spring(response: 0.32, dampingFraction: 0.85), value: selectedTextInfo)
+    }
+
+    private func selectionActionButton(title: String, systemImage: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(tint)
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.primary.opacity(0.05))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func handleHighlightTap(_ info: HighlightTapInfo) {
+        guard let target = highlights.first(where: { $0.id == info.id }) else {
+            DebugLogger.error("ReaderView: 未找到点击的高亮，id=\(info.id)")
+            return
+        }
+        activeHighlight = target
+        let tappedText = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let storedText = target.selectedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        activeHighlightText = tappedText.isEmpty ? storedText : tappedText
+        showingHighlightActions = true
+        selectedTextInfo = nil
+    }
+
+    private func prepareNoteEditor() {
+        guard selectedTextInfo != nil else {
+            showHint(NSLocalizedString("请先长按选择文字", comment: ""))
+            return
+        }
+        noteDraft = ""
+        showingNoteEditor = true
+    }
+
+    private func handleQuickHighlight() {
+        guard selectedTextInfo != nil else {
+            showHint(NSLocalizedString("长按文字后再高亮", comment: ""))
+            return
+        }
+        commitHighlight(note: nil)
+    }
+
+    private func handleCopySelectedText() {
+        guard let info = selectedTextInfo else {
+            showHint(NSLocalizedString("请选择要复制的内容", comment: ""))
+            return
+        }
+        UIPasteboard.general.string = info.text
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.success)
+        showHint(NSLocalizedString("已复制到剪贴板", comment: ""))
+    }
+
+    private func startAIRequest(_ action: AIAction, sourceText: String? = nil, targetHighlight: Highlight? = nil) {
+        var resolvedText = sourceText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if resolvedText.isEmpty, let info = selectedTextInfo?.text.trimmingCharacters(in: .whitespacesAndNewlines), !info.isEmpty {
+            resolvedText = info
+        }
+        if resolvedText.isEmpty, let highlight = targetHighlight?.selectedText.trimmingCharacters(in: .whitespacesAndNewlines), !highlight.isEmpty {
+            resolvedText = highlight
+        }
+
+        guard !resolvedText.isEmpty else {
+            showHint(NSLocalizedString("请选择文字后使用 AI", comment: ""))
+            return
+        }
+        guard !isLoadingAIResponse else { return }
+
+        aiActionInFlight = action
+        aiInsertionTarget = targetHighlight != nil ? .highlight(targetHighlight!) : (selectedTextInfo != nil ? .selection : nil)
+        aiResponseTitle = action == .translate ? NSLocalizedString("翻译", comment: "") : NSLocalizedString("AI 解释", comment: "")
+        aiResponseContent = ""
+        aiErrorMessage = nil
+        showingAIResponse = true
+        isLoadingAIResponse = true
+
+        let text = resolvedText
+        Task {
+            do {
+                let result: String
+                switch action {
+                case .translate:
+                    result = try await ReadingAIService.shared.translate(text: text, targetLanguage: appSettings.language)
+                case .explain:
+                    result = try await ReadingAIService.shared.explain(text: text, locale: appSettings.language)
+                }
+
+                await MainActor.run {
+                    aiResponseContent = result.trimmingCharacters(in: .whitespacesAndNewlines)
+                    isLoadingAIResponse = false
+                }
+            } catch {
+                DebugLogger.error("ReaderView: AI 请求失败", error: error)
+                await MainActor.run {
+                    aiErrorMessage = error.localizedDescription
+                    isLoadingAIResponse = false
+                }
+            }
+        }
+    }
+
+    private var canInsertAIContent: Bool {
+        guard aiErrorMessage == nil else { return false }
+        guard !isLoadingAIResponse else { return false }
+        return aiInsertionTarget != nil && !aiResponseContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func insertAIContentIntoNote() {
+        let content = aiResponseContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty else { return }
+        guard let target = aiInsertionTarget else { return }
+
+        switch target {
+        case .highlight(let highlight):
+            let existing = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if existing.isEmpty {
+                highlight.note = content
+            } else {
+                highlight.note = existing + "\n\n" + content
+            }
+            highlight.updatedAt = Date()
+
+            do {
+                try viewContext.save()
+                showHint(NSLocalizedString("highlight.action.insert_success", comment: ""))
+            } catch {
+                DebugLogger.error("ReaderView: 保存AI笔记失败", error: error)
+                showHint(NSLocalizedString("保存高亮失败", comment: ""))
+            }
+        case .selection:
+            commitHighlight(note: content)
+        }
+
+        aiInsertionTarget = nil
+        showingAIResponse = false
+        aiActionInFlight = nil
+    }
+
+    private func showHint(_ message: String) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            hintMessage = message
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                hintMessage = nil
+            }
+        }
+    }
+
+    private func commitHighlight(note: String?) {
+        guard let info = selectedTextInfo else {
+            showHint(NSLocalizedString("请先长按选择文字", comment: ""))
+            return
+        }
+
+        let trimmed = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let start = min(info.startOffset, info.endOffset)
+        let end = max(info.startOffset, info.endOffset)
+        guard start < end else { return }
+
+        guard let startPosition = encodeAnchor(
+            chapterIndex: currentChapterIndex,
+            pageIndex: info.pageIndex,
+            offset: start
+        ), let endPosition = encodeAnchor(
+            chapterIndex: currentChapterIndex,
+            pageIndex: info.pageIndex,
+            offset: end
+        ) else {
+            showHint(NSLocalizedString("标记失败，请重试", comment: ""))
+            return
+        }
+
+        let highlight = Highlight(context: viewContext)
+        highlight.id = UUID()
+        highlight.selectedText = trimmed
+        highlight.startPosition = startPosition
+        highlight.endPosition = endPosition
+        if currentChapterIndex < chapters.count {
+            highlight.chapter = chapters[currentChapterIndex].title
+        }
+        highlight.pageNumber = Int32(max(0, info.pageIndex))
+        let colorHex = Color.yellow.hexString
+        highlight.colorHex = colorHex
+        let trimmedNote = note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !trimmedNote.isEmpty {
+            highlight.note = trimmedNote
+        }
+        highlight.createdAt = Date()
+        highlight.updatedAt = Date()
+        highlight.book = book
+
+        do {
+            try viewContext.save()
+            selectionAction = ReaderSelectionAction(type: .highlight(colorHex: colorHex))
+            let feedback = UINotificationFeedbackGenerator()
+            feedback.notificationOccurred(.success)
+            showHint(trimmedNote.isEmpty ? NSLocalizedString("已高亮所选内容", comment: "") : NSLocalizedString("已添加带笔记的高亮", comment: ""))
+            selectedTextInfo = nil
+        } catch {
+            DebugLogger.error("ReaderView: 保存高亮失败", error: error)
+            showHint(NSLocalizedString("保存高亮失败", comment: ""))
+        }
+    }
+
+    private func highlightsForChapter(_ chapterIndex: Int) -> [ReaderHighlight] {
+        highlights.compactMap { highlight in
+            guard let start = decodeAnchor(from: highlight.startPosition),
+                  let end = decodeAnchor(from: highlight.endPosition),
+                  start.chapterIndex == chapterIndex,
+                  end.chapterIndex == chapterIndex else {
+                return nil
+            }
+
+            return ReaderHighlight(
+                id: highlight.id,
+                startOffset: start.offset,
+                endOffset: end.offset,
+                colorHex: highlight.colorHex
+            )
+        }
+    }
+
+    private func encodeAnchor(chapterIndex: Int, pageIndex: Int, offset: Int) -> String? {
+        let anchor = SelectionAnchor(chapterIndex: chapterIndex, pageIndex: pageIndex, offset: offset)
+        guard let data = try? JSONEncoder().encode(anchor) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private func decodeAnchor(from string: String?) -> SelectionAnchor? {
+        guard let string,
+              let data = string.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(SelectionAnchor.self, from: data)
+    }
+
+    private var noteEditorSheet: some View {
+        NavigationView {
+            VStack(alignment: .leading, spacing: 16) {
+                if let text = selectedTextInfo?.text {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(NSLocalizedString("选中文本", comment: ""))
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                        Text(text)
+                            .font(.system(size: 15, design: .serif))
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.primary.opacity(0.05))
+                            .cornerRadius(10)
+                    }
+                }
+
+                TextEditor(text: $noteDraft)
+                    .frame(minHeight: 180)
+                    .padding(8)
+                    .background(Color.primary.opacity(0.05))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.primary.opacity(0.08))
+                    )
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle(NSLocalizedString("添加笔记", comment: ""))
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(NSLocalizedString("取消", comment: "")) {
+                        showingNoteEditor = false
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(NSLocalizedString("保存", comment: "")) {
+                        commitHighlight(note: noteDraft)
+                        showingNoteEditor = false
+                    }
+                    .disabled(noteDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+
+    private var highlightActionSheet: some View {
+        NavigationView {
+            VStack(alignment: .leading, spacing: 16) {
+                if let highlight = activeHighlight {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(NSLocalizedString("highlight.action.content", comment: ""))
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                        Text(activeHighlightText.isEmpty ? highlight.selectedText : activeHighlightText)
+                            .font(.system(size: 16, design: .serif))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .background(Color.primary.opacity(0.05))
+                            .cornerRadius(12)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(NSLocalizedString("highlight.action.note", comment: ""))
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                        if let note = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
+                            ScrollView {
+                                Text(note)
+                                    .font(.system(size: 15, design: .serif))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(12)
+                            }
+                            .background(Color.primary.opacity(0.05))
+                            .cornerRadius(12)
+                        } else {
+                            Text(NSLocalizedString("highlight.action.no_note", comment: ""))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                                .background(Color.primary.opacity(0.04))
+                                .cornerRadius(12)
+                        }
+                    }
+
+                    VStack(spacing: 12) {
+                        Button {
+                            showingHighlightActions = false
+                            startAIRequest(.translate, sourceText: highlight.selectedText, targetHighlight: highlight)
+                        } label: {
+                            Label(NSLocalizedString("翻译", comment: ""), systemImage: "globe")
+                                .font(.system(size: 15, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            showingHighlightActions = false
+                            startAIRequest(.explain, sourceText: highlight.selectedText, targetHighlight: highlight)
+                        } label: {
+                            Label(NSLocalizedString("AI 解释", comment: ""), systemImage: "brain.head.profile")
+                                .font(.system(size: 15, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        if let note = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
+                            Button(role: .destructive) {
+                                requestHighlightDeletion(highlight, noteOnly: true)
+                            } label: {
+                                Label(NSLocalizedString("highlight.action.delete_note", comment: ""), systemImage: "trash")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        Button(role: .destructive) {
+                            requestHighlightDeletion(highlight, noteOnly: false)
+                        } label: {
+                            Label(NSLocalizedString("highlight.action.delete_highlight", comment: ""), systemImage: "trash.slash")
+                                .font(.system(size: 15, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                } else {
+                    Text(NSLocalizedString("暂无内容", comment: ""))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 40)
+                }
+
+                Spacer()
+                adBannerSection
+            }
+            .padding()
+            .navigationTitle(NSLocalizedString("highlight.action.title", comment: ""))
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(NSLocalizedString("关闭", comment: "")) {
+                        showingHighlightActions = false
+                        activeHighlight = nil
+                    }
+                }
+            }
+        }
+    }
+
+    private var aiResponseSheet: some View {
+        NavigationView {
+            VStack(spacing: 16) {
+                if isLoadingAIResponse {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                        Text(NSLocalizedString("AI 正在生成...", comment: ""))
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                } else if let error = aiErrorMessage {
+                    Text(error)
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .center)
+                } else {
+                    ScrollView {
+                        Text(aiResponseContent.isEmpty ? NSLocalizedString("暂无内容", comment: "") : aiResponseContent)
+                            .font(.system(size: 16, design: .serif))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 4)
+                    }
+                }
+
+                if canInsertAIContent {
+                    Button(action: { insertAIContentIntoNote() }) {
+                        Label(NSLocalizedString("highlight.action.insert_ai", comment: ""), systemImage: "note.text.badge.plus")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+
+                Spacer()
+
+                adBannerSection
+            }
+            .padding()
+            .navigationTitle(aiResponseTitle)
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(NSLocalizedString("关闭", comment: "")) {
+                        showingAIResponse = false
+                        aiInsertionTarget = nil
+                        aiActionInFlight = nil
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            aiInsertionTarget = nil
+        }
+    }
+
+    private func requestHighlightDeletion(_ highlight: Highlight, noteOnly: Bool) {
+        pendingDeleteHighlight = highlight
+        deletingNoteOnly = noteOnly
+        showingDeleteConfirmation = true
+    }
+
+    private func handleHighlightDeletion() {
+        guard let highlight = pendingDeleteHighlight else { return }
+
+        if deletingNoteOnly {
+            highlight.note = nil
+            highlight.updatedAt = Date()
+        } else {
+            viewContext.delete(highlight)
+        }
+
+        do {
+            try viewContext.save()
+            if deletingNoteOnly {
+                showHint(NSLocalizedString("highlight.action.delete_note_success", comment: ""))
+            } else {
+                showHint(NSLocalizedString("highlight.action.delete_highlight_success", comment: ""))
+                activeHighlight = nil
+                showingHighlightActions = false
+            }
+        } catch {
+            DebugLogger.error("ReaderView: 删除高亮/笔记失败", error: error)
+            showHint(NSLocalizedString("保存高亮失败", comment: ""))
+        }
+
+        pendingDeleteHighlight = nil
+        deletingNoteOnly = false
+    }
+
+    private var adBannerSection: some View {
+        Group {
+            if let adUnit = AdMobAdUnitIDs.fixedBanner {
+                BannerAdView(adUnitID: adUnit)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 60)
+            } else {
+                Text(NSLocalizedString("广告位未配置", comment: ""))
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.primary.opacity(0.05))
+                    .cornerRadius(12)
+            }
+        }
+    }
+
+    private func hintBanner(_ message: String) -> some View {
+        Text(message)
+            .font(.system(size: 14, weight: .semibold, design: .rounded))
+            .foregroundColor(.primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial)
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 6)
+            .padding(.horizontal, 20)
     }
     
     // MARK: - Helper Methods
@@ -877,10 +1534,43 @@ struct ReaderView: View {
     }
     
     // MARK: - 滑动手势处理
+    private func handleNavigationTap(at location: CGPoint, geometry: GeometryProxy) {
+        let doubleTapInterval: TimeInterval = 0.3
+        let now = Date()
+        if let lastTap = lastNavigationTapTime, now.timeIntervalSince(lastTap) < doubleTapInterval {
+            pendingTapWorkItem?.cancel()
+            pendingTapWorkItem = nil
+            lastNavigationTapTime = nil
+            return
+        }
+        
+        lastNavigationTapTime = now
+        pendingTapWorkItem?.cancel()
+        let width = max(geometry.size.width, 1)
+        let workItem = DispatchWorkItem {
+            guard selectedTextInfo == nil else { return }
+            guard !isAnimatingPageTurn else { return }
+            let normalizedX = location.x / width
+            let edgeWidth: CGFloat = 0.28
+            
+            if normalizedX < edgeWidth {
+                previousPageOrChapter()
+            } else if normalizedX > (1 - edgeWidth) {
+                nextPageOrChapter()
+            } else {
+                handleTap()
+            }
+        }
+        pendingTapWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + doubleTapInterval, execute: workItem)
+    }
     
     private func handleDragChanged(_ value: DragGesture.Value, geometry: GeometryProxy) {
+        guard swipePagingEnabled else { return }
+        guard !isInteractingWithWebContent else { return }
         // 防止在动画过程中处理新的拖拽
         guard !isAnimatingPageTurn else { return }
+        pendingTapWorkItem?.cancel()
         
         let translation = value.translation
         let startLocation = value.startLocation
@@ -937,6 +1627,22 @@ struct ReaderView: View {
     }
     
     private func handleDragEnded(_ value: DragGesture.Value, geometry: GeometryProxy) {
+        if !swipePagingEnabled {
+            defer { isDragging = false }
+            guard selectedTextInfo == nil else { return }
+            let tapThreshold: CGFloat = 12
+            if abs(value.translation.width) < tapThreshold && abs(value.translation.height) < tapThreshold {
+                handleNavigationTap(at: value.startLocation, geometry: geometry)
+            }
+            dragOffset = 0
+            return
+        }
+        
+        guard !isInteractingWithWebContent else {
+            dragOffset = 0
+            isDragging = false
+            return
+        }
         guard isDragging else { return }
         
         let translation = value.translation
@@ -954,10 +1660,10 @@ struct ReaderView: View {
         if shouldTurnPage && abs(translation.width) > abs(translation.height) {
             if translation.width > 0 && canNavigateToPreviousPage() {
                 // 向右滑动，翻到上一页
-                performPageTurn(direction: .previous, geometry: geometry)
+                performPageTurn(direction: .previous)
             } else if translation.width < 0 && canNavigateToNextPage() {
                 // 向左滑动，翻到下一页
-                performPageTurn(direction: .next, geometry: geometry)
+                performPageTurn(direction: .next)
             } else {
                 // 无法翻页，回弹
                 animateBackToOriginalPosition()
@@ -970,7 +1676,7 @@ struct ReaderView: View {
         isDragging = false
     }
     
-    private func performPageTurn(direction: PageTurnDirection, geometry: GeometryProxy) {
+    private func performPageTurn(direction: PageTurnDirection) {
         guard !isAnimatingPageTurn else { return }
         
         isAnimatingPageTurn = true
@@ -979,25 +1685,23 @@ struct ReaderView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
         
-        // 立即执行翻页逻辑
+        // 先把内容归位，再交由 ReaderWebView 的滑动转场负责文字切换（与点击翻页一致）
+        if dragOffset != 0 {
+            withAnimation(.spring(response: 0.24, dampingFraction: 0.9, blendDuration: 0)) {
+                dragOffset = 0
+            }
+        }
+        
+        // 触发与点击相同的翻页逻辑
         switch direction {
         case .next:
             nextPageOrChapter()
         case .previous:
             previousPageOrChapter()
         }
-        
-        // 计算最终偏移位置
-        let finalOffset: CGFloat = direction == .next ? -geometry.size.width : geometry.size.width
-        
-        // 执行翻页动画
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0)) {
-            dragOffset = finalOffset
-        }
-        
-        // 动画完成后重置状态
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            self.dragOffset = 0
+
+        // ReaderWebView 会完成文字转场，这里只负责状态解锁
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             self.isAnimatingPageTurn = false
         }
     }
@@ -1142,6 +1846,12 @@ struct ReaderView: View {
             }
         }
     }
+}
+
+private struct SelectionAnchor: Codable {
+    let chapterIndex: Int
+    let pageIndex: Int
+    let offset: Int
 }
 
 struct TableOfContentsView: View {
@@ -1337,83 +2047,6 @@ struct ReaderSettingsView: View {
                 #endif
             }
         }
-    }
-}
-
-struct TextActionsView: View {
-    let selectedText: String
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 24) {
-                Text(NSLocalizedString("选中文本", comment: ""))
-                    .font(.headline)
-                    .padding()
-                    .background(.gray.opacity(0.1))
-                    .cornerRadius(8)
-                
-                VStack(spacing: 16) {
-                    ActionButton(title: NSLocalizedString("高亮标记", comment: ""), icon: "highlighter", color: .yellow) {}
-                    ActionButton(title: NSLocalizedString("添加笔记", comment: ""), icon: "note.text", color: .blue) {}
-                    ActionButton(title: NSLocalizedString("翻译", comment: ""), icon: "globe", color: .green) {}
-                    ActionButton(title: NSLocalizedString("AI 解释", comment: ""), icon: "brain.head.profile", color: .purple) {}
-                    ActionButton(title: NSLocalizedString("复制", comment: ""), icon: "doc.on.doc", color: .gray) {}
-                }
-                
-                Spacer()
-            }
-            .padding()
-            .navigationTitle(NSLocalizedString("文本操作", comment: ""))
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                #if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(NSLocalizedString("完成", comment: "")) {
-                        dismiss()
-                    }
-                }
-                #else
-                ToolbarItem(placement: .primaryAction) {
-                    Button(NSLocalizedString("完成", comment: "")) {
-                        dismiss()
-                    }
-                }
-                #endif
-            }
-        }
-    }
-}
-
-struct ActionButton: View {
-    let title: String
-    let icon: String
-    let color: Color
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(color)
-                    .frame(width: 24)
-                
-                Text(title)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding()
-            .background(.gray.opacity(0.1))
-            .cornerRadius(12)
-        }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 

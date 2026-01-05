@@ -117,6 +117,18 @@
 "AI 解释" = "AI 설명";
 "复制" = "복사";
 "文本操作" = "텍스트 작업";
+"highlight.action.title" = "하이라이트 상세";
+"highlight.action.content" = "하이라이트 내용";
+"highlight.action.note" = "메모";
+"highlight.action.no_note" = "메모가 없습니다";
+"highlight.action.delete_note" = "메모 삭제";
+"highlight.action.delete_highlight" = "하이라이트 삭제";
+"highlight.action.delete_note_confirm" = "이 메모를 삭제하시겠습니까?";
+"highlight.action.delete_highlight_confirm" = "이 하이라이트를 삭제하시겠습니까?";
+"highlight.action.insert_ai" = "메모에 추가";
+"highlight.action.insert_success" = "메모에 추가됨";
+"highlight.action.delete_note_success" = "메모가 삭제되었습니다";
+"highlight.action.delete_highlight_success" = "하이라이트가 삭제되었습니다";
 
 // SettingsView additional keys
 "数据导出" = "데이터 내보내기";
@@ -239,3 +251,18 @@
 "返回" = "뒤로";
 "当前章节" = "현재 장";
 "reader.error.file_missing" = "도서 파일을 찾을 수 없습니다. 다시 가져와 주세요.";
+"请先长按选择文字" = "먼저 길게 눌러 텍스트를 선택하세요.";
+"长按文字后再高亮" = "텍스트를 길게 눌러 선택한 후 하이라이트하세요.";
+"请选择要复制的内容" = "복사할 텍스트를 선택하세요.";
+"已复制到剪贴板" = "클립보드에 복사했어요.";
+"请选择文字后使用 AI" = "AI 사용 전에 텍스트를 선택하세요.";
+"标记失败，请重试" = "하이라이트에 실패했습니다. 다시 시도해주세요.";
+"已高亮所选内容" = "선택한 내용을 하이라이트했습니다.";
+"已添加带笔记的高亮" = "메모가 포함된 하이라이트를 추가했습니다.";
+"保存高亮失败" = "하이라이트 저장에 실패했습니다.";
+"广告位未配置" = "광고 슬롯이 설정되지 않았습니다.";
+"AI 正在生成..." = "AI가 생성 중...";
+"暂无内容" = "표시할 내용이 없습니다.";
+"ai.error.endpoint" = "AI 엔드포인트가 올바르지 않습니다.";
+"ai.error.network" = "AI 서비스 연결에 실패했습니다.";
+"ai.error.parse" = "AI 응답을 해석할 수 없습니다.";

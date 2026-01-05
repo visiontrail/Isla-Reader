@@ -117,6 +117,18 @@
 "AI 解释" = "AI 解释";
 "复制" = "复制";
 "文本操作" = "文本操作";
+"highlight.action.title" = "高亮详情";
+"highlight.action.content" = "高亮内容";
+"highlight.action.note" = "笔记";
+"highlight.action.no_note" = "暂无笔记";
+"highlight.action.delete_note" = "删除笔记";
+"highlight.action.delete_highlight" = "删除高亮";
+"highlight.action.delete_note_confirm" = "确定删除这条笔记？";
+"highlight.action.delete_highlight_confirm" = "确定删除此高亮？";
+"highlight.action.insert_ai" = "插入到笔记";
+"highlight.action.insert_success" = "已插入到笔记";
+"highlight.action.delete_note_success" = "已删除笔记";
+"highlight.action.delete_highlight_success" = "已删除高亮";
 
 // SettingsView additional keys
 "数据导出" = "数据导出";
@@ -239,3 +251,18 @@
 "返回" = "返回";
 "当前章节" = "当前章节";
 "reader.error.file_missing" = "书籍文件不存在，请重新导入。";
+"请先长按选择文字" = "请先长按选择文字";
+"长按文字后再高亮" = "长按文字后再高亮";
+"请选择要复制的内容" = "请选择要复制的内容";
+"已复制到剪贴板" = "已复制到剪贴板";
+"请选择文字后使用 AI" = "请选择文字后使用 AI";
+"标记失败，请重试" = "标记失败，请重试";
+"已高亮所选内容" = "已高亮所选内容";
+"已添加带笔记的高亮" = "已添加带笔记的高亮";
+"保存高亮失败" = "保存高亮失败";
+"广告位未配置" = "广告位未配置";
+"AI 正在生成..." = "AI 正在生成...";
+"暂无内容" = "暂无内容";
+"ai.error.endpoint" = "AI 接口地址无效。";
+"ai.error.network" = "网络异常，无法连接到 AI 服务。";
+"ai.error.parse" = "无法解析 AI 返回内容。";

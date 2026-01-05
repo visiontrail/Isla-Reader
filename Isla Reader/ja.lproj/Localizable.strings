@@ -117,6 +117,18 @@
 "AI 解释" = "AI 解説";
 "复制" = "コピー";
 "文本操作" = "テキスト操作";
+"highlight.action.title" = "ハイライト詳細";
+"highlight.action.content" = "ハイライト内容";
+"highlight.action.note" = "ノート";
+"highlight.action.no_note" = "ノートはありません";
+"highlight.action.delete_note" = "ノートを削除";
+"highlight.action.delete_highlight" = "ハイライトを削除";
+"highlight.action.delete_note_confirm" = "このノートを削除しますか？";
+"highlight.action.delete_highlight_confirm" = "このハイライトを削除しますか？";
+"highlight.action.insert_ai" = "ノートに挿入";
+"highlight.action.insert_success" = "ノートに挿入しました";
+"highlight.action.delete_note_success" = "ノートを削除しました";
+"highlight.action.delete_highlight_success" = "ハイライトを削除しました";
 
 // SettingsView additional keys
 "数据导出" = "データエクスポート";
@@ -239,3 +251,18 @@
 "返回" = "戻る";
 "当前章节" = "現在の章";
 "reader.error.file_missing" = "書籍ファイルが見つかりません。再インポートしてください。";
+"请先长按选择文字" = "先にテキストを長押しして選択してください。";
+"长按文字后再高亮" = "長押しで選択してからハイライトしてください。";
+"请选择要复制的内容" = "コピーするテキストを選択してください。";
+"已复制到剪贴板" = "クリップボードにコピーしました。";
+"请选择文字后使用 AI" = "AI を使う前にテキストを選択してください。";
+"标记失败，请重试" = "ハイライトに失敗しました。もう一度お試しください。";
+"已高亮所选内容" = "選択範囲をハイライトしました。";
+"已添加带笔记的高亮" = "メモ付きのハイライトを追加しました。";
+"保存高亮失败" = "ハイライトの保存に失敗しました。";
+"广告位未配置" = "広告枠が設定されていません。";
+"AI 正在生成..." = "AI が生成中です...";
+"暂无内容" = "表示できる内容がありません。";
+"ai.error.endpoint" = "AI エンドポイントが無効です。";
+"ai.error.network" = "AI サービスへの接続に失敗しました。";
+"ai.error.parse" = "AI レスポンスを解析できませんでした。";
