@@ -118,3 +118,4 @@ __pycache__/
 
 ## Local AI secrets
 Config/AISecrets.xcconfig
+.claude/settings.json

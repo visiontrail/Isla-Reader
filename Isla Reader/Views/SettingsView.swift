@@ -12,6 +12,7 @@ struct SettingsView: View {
     @StateObject private var appSettings = AppSettings.shared
     @State private var showingAbout = false
     @State private var showingDataManagement = false
+    @State private var reminderAlert: DataAlert?
     
     var body: some View {
         NavigationView {
@@ -127,6 +128,70 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingDataManagement) {
                 DataManagementView()
+            }
+            .alert(item: $reminderAlert) { alert in
+                Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    dismissButton: .default(Text(NSLocalizedString("完成", comment: "")))
+                )
+            }
+            .onAppear {
+                Task {
+                    let hasPermission = await ReadingReminderService.shared.refreshReminderIfNeeded(
+                        isEnabled: appSettings.isReadingReminderEnabled,
+                        goalMinutes: appSettings.dailyReadingGoal
+                    )
+                    
+                    if !hasPermission && appSettings.isReadingReminderEnabled {
+                        await MainActor.run {
+                            appSettings.isReadingReminderEnabled = false
+                            reminderAlert = DataAlert(
+                                title: NSLocalizedString("阅读提醒", comment: ""),
+                                message: NSLocalizedString("reading_reminder.permission_denied", comment: "")
+                            )
+                        }
+                    }
+                }
+            }
+            .onChange(of: appSettings.isReadingReminderEnabled) { isEnabled in
+                Task {
+                    if isEnabled {
+                        let granted = await ReadingReminderService.shared.enableDailyReminder(
+                            goalMinutes: appSettings.dailyReadingGoal
+                        )
+                        
+                        if !granted {
+                            await MainActor.run {
+                                appSettings.isReadingReminderEnabled = false
+                                reminderAlert = DataAlert(
+                                    title: NSLocalizedString("阅读提醒", comment: ""),
+                                    message: NSLocalizedString("reading_reminder.permission_denied", comment: "")
+                                )
+                            }
+                        }
+                    } else {
+                        ReadingReminderService.shared.cancelReminder()
+                    }
+                }
+            }
+            .onChange(of: appSettings.dailyReadingGoal) { newGoal in
+                Task {
+                    let hasPermission = await ReadingReminderService.shared.refreshReminderIfNeeded(
+                        isEnabled: appSettings.isReadingReminderEnabled,
+                        goalMinutes: newGoal
+                    )
+                    
+                    if !hasPermission && appSettings.isReadingReminderEnabled {
+                        await MainActor.run {
+                            appSettings.isReadingReminderEnabled = false
+                            reminderAlert = DataAlert(
+                                title: NSLocalizedString("阅读提醒", comment: ""),
+                                message: NSLocalizedString("reading_reminder.permission_denied", comment: "")
+                            )
+                        }
+                    }
+                }
             }
         }
     }
