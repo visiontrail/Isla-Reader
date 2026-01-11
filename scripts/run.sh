@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ################################################################################
-# Isla Reader - 运行脚本
+# LanRead - 运行脚本
 # 用途：启动 iOS 模拟器并运行应用，同时输出控制台日志
 # 使用方法：./scripts/run.sh [simulator_name]
 # 示例：./scripts/run.sh "iPhone 15 Pro"
@@ -18,7 +18,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # 项目配置
-PROJECT_NAME="Isla Reader"
+PROJECT_NAME="LanRead"
 BUNDLE_ID="LeoGuo.Isla-Reader-Local"
 BUILD_DIR="./build"
 CONFIGURATION="Debug"
@@ -33,7 +33,7 @@ PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
 cd "$PROJECT_DIR"
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  🚀 Isla Reader 运行脚本${NC}"
+echo -e "${BLUE}  🚀 LanRead 运行脚本${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 

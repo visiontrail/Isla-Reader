@@ -1,6 +1,6 @@
 //
 //  Bookmark.swift
-//  Isla Reader
+//  LanRead
 //
 //  Created by AI Assistant on 2026/1/14.
 //

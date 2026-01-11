@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ################################################################################
-# Isla Reader - 脚本测试工具
+# LanRead - 脚本测试工具
 # 用途：验证所有脚本是否正常工作
 ################################################################################
 
@@ -138,7 +138,7 @@ if [ -d "build" ]; then
     echo -e "${GREEN}  ✅ build 目录存在 (大小: $BUILD_SIZE)${NC}"
     ((TESTS_PASSED++))
     
-    APP_PATH="build/Build/Products/Debug-iphonesimulator/Isla Reader.app"
+    APP_PATH="build/Build/Products/Debug-iphonesimulator/LanRead.app"
     if [ -d "$APP_PATH" ]; then
         echo -e "${GREEN}  ✅ 已编译的应用存在${NC}"
         ((TESTS_PASSED++))

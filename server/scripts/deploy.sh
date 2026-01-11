@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build and run the Isla Reader server container on a clean host.
+# Build and run the LanRead server container on a clean host.
 # Usage: ./server/scripts/deploy.sh
 
 set -euo pipefail
@@ -7,8 +7,8 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 
-IMAGE_NAME="${IMAGE_NAME:-isla-reader-server}"
-CONTAINER_NAME="${CONTAINER_NAME:-isla-reader-server}"
+IMAGE_NAME="${IMAGE_NAME:-lanread-server}"
+CONTAINER_NAME="${CONTAINER_NAME:-lanread-server}"
 HOST_PORT="${HOST_PORT:-8443}"
 CERT_DIR="${CERT_DIR:-${repo_root}/certs}"
 ENV_FILE="${ENV_FILE:-${repo_root}/.env}"

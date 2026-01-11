@@ -1,6 +1,6 @@
 //
 //  SkimmingModeService.swift
-//  Isla Reader
+//  LanRead
 //
 //  Created by AI Assistant on 2025/1/22.
 //
@@ -340,7 +340,7 @@ final class SkimmingModeService {
         - structure entries should surface chapter spine: opening hook, argumentative peaks, closing signal.
         - keySentences must be original sentences extracted or paraphrased from the chapter to illustrate turning points.
         - aiNarrative must stay concise (<220 words) but vivid, referencing keywords inline.
-        - Align tone with Isla Reader docs/reading_interaction_design.md guidance on "略读模式".
+        - Align tone with LanRead docs/reading_interaction_design.md guidance on "略读模式".
         - Respect How to Read a Book inspectional reading mindset: emphasize skeleton first, questions second, details last.
         
         CHAPTER CONTENT START

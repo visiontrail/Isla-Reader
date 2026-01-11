@@ -31,7 +31,7 @@
 
 **编译成功后的应用位置：**
 ```
-./build/Build/Products/Debug-iphonesimulator/Isla Reader.app
+./build/Build/Products/Debug-iphonesimulator/LanRead.app
 ```
 
 ---

@@ -101,8 +101,8 @@ logger.error("❌ 错误: \(error)")
 📋 应用控制台日志输出（按 Ctrl+C 退出）:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-2025-10-21 14:30:21.123 Isla Reader[1234] 📚 加载书籍: Example Book
-2025-10-21 14:30:21.456 Isla Reader[1234] ✅ 加载完成
+2025-10-21 14:30:21.123 LanRead[1234] 📚 加载书籍: Example Book
+2025-10-21 14:30:21.456 LanRead[1234] ✅ 加载完成
 ```
 
 ---
@@ -309,7 +309,7 @@ xcrun simctl spawn "$UDID" log stream \
 ```bash
 xcodebuild build \
     -project "Isla Reader.xcodeproj" \
-    -scheme "Isla Reader" \
+    -scheme "LanRead" \
     -configuration Debug \
     -destination 'platform=iOS Simulator,name=iPhone 15' \
     -derivedDataPath "./build"

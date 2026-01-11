@@ -1,6 +1,6 @@
 //
 //  ReadingStatusService.swift
-//  Isla Reader
+//  LanRead
 //
 //  Created by AI Assistant on 2025/12/2.
 //

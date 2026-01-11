@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ################################################################################
-# Isla Reader - 编译脚本
+# LanRead - 编译脚本
 # 用途：清理并编译 iOS 项目
 # 使用方法：./scripts/build.sh [clean|debug|release]
 ################################################################################
@@ -16,9 +16,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 项目配置
-PROJECT_NAME="Isla Reader"
+PROJECT_NAME="LanRead"
 PROJECT_FILE="Isla Reader.xcodeproj"
-SCHEME="Isla Reader"
+SCHEME="LanRead"
 BUILD_DIR="./build"
 CONFIGURATION="Debug"  # 默认为 Debug
 
@@ -30,7 +30,7 @@ PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
 cd "$PROJECT_DIR"
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  🚀 Isla Reader 编译脚本${NC}"
+echo -e "${BLUE}  🚀 LanRead 编译脚本${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 

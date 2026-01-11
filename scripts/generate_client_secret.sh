@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate a strong random client secret for Isla Reader secure server HMAC signing.
+# Generate a strong random client secret for LanRead secure server HMAC signing.
 # Usage: ./scripts/generate_client_secret.sh
 
 set -euo pipefail

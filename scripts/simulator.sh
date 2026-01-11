@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ################################################################################
-# Isla Reader - 模拟器管理脚本
+# LanRead - 模拟器管理脚本
 # 用途：管理 iOS 模拟器（列出、启动、停止、重置）
 # 使用方法：./scripts/simulator.sh [list|start|stop|reset|logs]
 ################################################################################
@@ -17,7 +17,7 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
-PROJECT_NAME="Isla Reader"
+PROJECT_NAME="LanRead"
 BUNDLE_ID="LeoGuo.Isla-Reader-Local"
 
 # 显示帮助信息

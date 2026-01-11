@@ -1,6 +1,6 @@
 //
 //  ReaderWebView.swift
-//  Isla Reader
+//  LanRead
 //
 //  Created by AI Assistant on 2025/10/27.
 //

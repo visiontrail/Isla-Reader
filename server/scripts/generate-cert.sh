@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate a self-signed TLS certificate for the Isla Reader server.
+# Generate a self-signed TLS certificate for the LanRead server.
 # Usage: ./server/scripts/generate-cert.sh [-n CN|--name CN] [--ip IPv4] [-d DAYS|--days DAYS] [--force]
 
 set -euo pipefail

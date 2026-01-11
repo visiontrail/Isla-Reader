@@ -1,6 +1,6 @@
 //
 //  MainTabView.swift
-//  Isla Reader
+//  LanRead
 //
 //  Created by 郭亮 on 2025/9/10.
 //

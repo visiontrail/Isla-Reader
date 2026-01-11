@@ -1,12 +1,12 @@
 //
 //  Isla_ReaderTests.swift
-//  Isla ReaderTests
+//  LanReadTests
 //
 //  Created by 郭亮 on 2025/9/10.
 //
 
 import Testing
-@testable import Isla_Reader
+@testable import LanRead
 
 struct Isla_ReaderTests {
 

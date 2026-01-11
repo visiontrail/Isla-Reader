@@ -1,6 +1,6 @@
 //
 //  UTTypeExtensions.swift
-//  Isla Reader
+//  LanRead
 //
 //  Created by AI Assistant on 2025/1/20.
 //

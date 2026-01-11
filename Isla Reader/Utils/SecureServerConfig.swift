@@ -1,6 +1,6 @@
 //
 //  SecureServerConfig.swift
-//  Isla Reader
+//  LanRead
 //
 
 import Foundation

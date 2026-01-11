@@ -7,7 +7,7 @@ The SwiftUI app lives in `Isla Reader/`, with `Views/` for UI entry points, `Mod
 - `./scripts/dev.sh "iPhone 16"` — one-step debug build plus simulator run.
 - `./scripts/build.sh [clean|debug|release]` — wraps `xcodebuild`, writing artifacts to `build/` and `build.log`.
 - `./scripts/run.sh "iPhone 16"` — boots the target simulator, installs the `.app`, and tails console logs.
-- `xcodebuild test -project "Isla Reader.xcodeproj" -scheme "Isla Reader" -destination 'platform=iOS Simulator,name=iPhone 16'` — CI-friendly unit/UI test run.
+- `xcodebuild test -project "Isla Reader.xcodeproj" -scheme "LanRead" -destination 'platform=iOS Simulator,name=iPhone 16'` — CI-friendly unit/UI test run.
 - `./scripts/test-localization.sh` and `./scripts/test-epub-parser.sh` — quick regression checks for prompt localization and EPUB ingestion.
 
 ## Coding Style & Naming Conventions

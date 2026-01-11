@@ -1,6 +1,6 @@
 //
 //  AIConfig.swift
-//  Isla Reader
+//  LanRead
 //
 
 import Foundation

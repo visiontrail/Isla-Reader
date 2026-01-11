@@ -16,21 +16,21 @@
 			containerPortal = CA285BA72E714BCF008BE112 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = CA285BAE2E714BCF008BE112;
-			remoteInfo = "Isla Reader";
+			remoteInfo = "LanRead";
 		};
 		CA285BCE2E714BD2008BE112 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CA285BA72E714BCF008BE112 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = CA285BAE2E714BCF008BE112;
-			remoteInfo = "Isla Reader";
+			remoteInfo = "LanRead";
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		CA285BAF2E714BCF008BE112 /* Isla Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Isla Reader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		CA285BC32E714BD2008BE112 /* Isla ReaderTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Isla ReaderTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		CA285BCD2E714BD2008BE112 /* Isla ReaderUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Isla ReaderUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA285BAF2E714BCF008BE112 /* LanRead.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "LanRead.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA285BC32E714BD2008BE112 /* LanReadTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "LanReadTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA285BCD2E714BD2008BE112 /* LanReadUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "LanReadUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CACEA1002F1A000100000001 /* AISecrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AISecrets.xcconfig; sourceTree = "<group>"; };
 		CACEA1012F1A000100000002 /* AISecrets.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AISecrets.xcconfig.example; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -106,9 +106,9 @@
 		CA285BB02E714BCF008BE112 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				CA285BAF2E714BCF008BE112 /* Isla Reader.app */,
-				CA285BC32E714BD2008BE112 /* Isla ReaderTests.xctest */,
-				CA285BCD2E714BD2008BE112 /* Isla ReaderUITests.xctest */,
+				CA285BAF2E714BCF008BE112 /* LanRead.app */,
+				CA285BC32E714BD2008BE112 /* LanReadTests.xctest */,
+				CA285BCD2E714BD2008BE112 /* LanReadUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -125,9 +125,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		CA285BAE2E714BCF008BE112 /* Isla Reader */ = {
+		CA285BAE2E714BCF008BE112 /* LanRead */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CA285BD62E714BD2008BE112 /* Build configuration list for PBXNativeTarget "Isla Reader" */;
+			buildConfigurationList = CA285BD62E714BD2008BE112 /* Build configuration list for PBXNativeTarget "LanRead" */;
 			buildPhases = (
 				CA285BAB2E714BCF008BE112 /* Sources */,
 				CA285BAC2E714BCF008BE112 /* Frameworks */,
@@ -140,17 +140,17 @@
 			fileSystemSynchronizedGroups = (
 				CA285BB12E714BCF008BE112 /* Isla Reader */,
 			);
-			name = "Isla Reader";
+			name = "LanRead";
 			packageProductDependencies = (
 				B5C272E22F7F7E8C00F7B830 /* GoogleMobileAds */,
 			);
-			productName = "Isla Reader";
-			productReference = CA285BAF2E714BCF008BE112 /* Isla Reader.app */;
+			productName = "LanRead";
+			productReference = CA285BAF2E714BCF008BE112 /* LanRead.app */;
 			productType = "com.apple.product-type.application";
 		};
-		CA285BC22E714BD2008BE112 /* Isla ReaderTests */ = {
+		CA285BC22E714BD2008BE112 /* LanReadTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CA285BDB2E714BD2008BE112 /* Build configuration list for PBXNativeTarget "Isla ReaderTests" */;
+			buildConfigurationList = CA285BDB2E714BD2008BE112 /* Build configuration list for PBXNativeTarget "LanReadTests" */;
 			buildPhases = (
 				CA285BBF2E714BD2008BE112 /* Sources */,
 				CA285BC02E714BD2008BE112 /* Frameworks */,
@@ -164,16 +164,16 @@
 			fileSystemSynchronizedGroups = (
 				CA285BC62E714BD2008BE112 /* Isla ReaderTests */,
 			);
-			name = "Isla ReaderTests";
+			name = "LanReadTests";
 			packageProductDependencies = (
 			);
-			productName = "Isla ReaderTests";
-			productReference = CA285BC32E714BD2008BE112 /* Isla ReaderTests.xctest */;
+			productName = "LanReadTests";
+			productReference = CA285BC32E714BD2008BE112 /* LanReadTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		CA285BCC2E714BD2008BE112 /* Isla ReaderUITests */ = {
+		CA285BCC2E714BD2008BE112 /* LanReadUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CA285BDE2E714BD2008BE112 /* Build configuration list for PBXNativeTarget "Isla ReaderUITests" */;
+			buildConfigurationList = CA285BDE2E714BD2008BE112 /* Build configuration list for PBXNativeTarget "LanReadUITests" */;
 			buildPhases = (
 				CA285BC92E714BD2008BE112 /* Sources */,
 				CA285BCA2E714BD2008BE112 /* Frameworks */,
@@ -187,11 +187,11 @@
 			fileSystemSynchronizedGroups = (
 				CA285BD02E714BD2008BE112 /* Isla ReaderUITests */,
 			);
-			name = "Isla ReaderUITests";
+			name = "LanReadUITests";
 			packageProductDependencies = (
 			);
-			productName = "Isla ReaderUITests";
-			productReference = CA285BCD2E714BD2008BE112 /* Isla ReaderUITests.xctest */;
+			productName = "LanReadUITests";
+			productReference = CA285BCD2E714BD2008BE112 /* LanReadUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -217,7 +217,7 @@
 					};
 				};
 			};
-			buildConfigurationList = CA285BAA2E714BCF008BE112 /* Build configuration list for PBXProject "Isla Reader" */;
+			buildConfigurationList = CA285BAA2E714BCF008BE112 /* Build configuration list for PBXProject "LanRead" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -237,9 +237,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				CA285BAE2E714BCF008BE112 /* Isla Reader */,
-				CA285BC22E714BD2008BE112 /* Isla ReaderTests */,
-				CA285BCC2E714BD2008BE112 /* Isla ReaderUITests */,
+				CA285BAE2E714BCF008BE112 /* LanRead */,
+				CA285BC22E714BD2008BE112 /* LanReadTests */,
+				CA285BCC2E714BD2008BE112 /* LanReadUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -512,7 +512,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Isla Reader.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Isla Reader";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LanRead.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LanRead";
 			};
 			name = Debug;
 		};
@@ -531,7 +531,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Isla Reader.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Isla Reader";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LanRead.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LanRead";
 			};
 			name = Release;
 		};
@@ -548,7 +548,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "Isla Reader";
+				TEST_TARGET_NAME = "LanRead";
 			};
 			name = Debug;
 		};
@@ -565,14 +565,14 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "Isla Reader";
+				TEST_TARGET_NAME = "LanRead";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CA285BAA2E714BCF008BE112 /* Build configuration list for PBXProject "Isla Reader" */ = {
+		CA285BAA2E714BCF008BE112 /* Build configuration list for PBXProject "LanRead" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA285BD92E714BD2008BE112 /* Debug */,
@@ -581,7 +581,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CA285BD62E714BD2008BE112 /* Build configuration list for PBXNativeTarget "Isla Reader" */ = {
+		CA285BD62E714BD2008BE112 /* Build configuration list for PBXNativeTarget "LanRead" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA285BD72E714BD2008BE112 /* Debug */,
@@ -590,7 +590,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CA285BDB2E714BD2008BE112 /* Build configuration list for PBXNativeTarget "Isla ReaderTests" */ = {
+		CA285BDB2E714BD2008BE112 /* Build configuration list for PBXNativeTarget "LanReadTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA285BDC2E714BD2008BE112 /* Debug */,
@@ -599,7 +599,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CA285BDE2E714BD2008BE112 /* Build configuration list for PBXNativeTarget "Isla ReaderUITests" */ = {
+		CA285BDE2E714BD2008BE112 /* Build configuration list for PBXNativeTarget "LanReadUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA285BDF2E714BD2008BE112 /* Debug */,

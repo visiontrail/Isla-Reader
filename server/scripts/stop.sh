@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop the Isla Reader server container. Optional --remove to delete it.
+# Stop the LanRead server container. Optional --remove to delete it.
 # Usage: ./server/scripts/stop.sh [--remove|-r]
 
 set -euo pipefail
@@ -12,7 +12,7 @@ for arg in "$@"; do
   esac
 done
 
-CONTAINER_NAME="${CONTAINER_NAME:-isla-reader-server}"
+CONTAINER_NAME="${CONTAINER_NAME:-lanread-server}"
 
 echo "Stopping container ${CONTAINER_NAME}..."
 docker stop "${CONTAINER_NAME}" 2>/dev/null || {

@@ -6,9 +6,9 @@ from .config import Settings, get_settings
 from .routers import key
 
 app = FastAPI(
-    title="Isla Reader Server",
+    title="LanRead Server",
     version="0.1.0",
-    description="Secure backend for Isla Reader API key delivery and future user services.",
+    description="Secure backend for LanRead API key delivery and future user services.",
 )
 
 

@@ -1,4 +1,4 @@
-# Isla Reader Server
+# LanRead Server
 
 基于 FastAPI 的轻量级服务，用于安全地向 iOS 客户端分发大模型 API Key，并为后续用户注册、登录和阅读数据同步留出扩展空间。
 

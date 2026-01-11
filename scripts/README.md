@@ -1,6 +1,6 @@
-# 📜 Isla Reader 命令行脚本使用指南
+# 📜 LanRead 命令行脚本使用指南
 
-本目录包含用于编译、运行和开发 Isla Reader iOS 应用的自动化脚本。
+本目录包含用于编译、运行和开发 LanRead iOS 应用的自动化脚本。
 
 ## 📋 脚本列表
 
@@ -31,7 +31,7 @@
 
 **输出文件位置：**
 ```
-./build/Build/Products/Debug-iphonesimulator/Isla Reader.app
+./build/Build/Products/Debug-iphonesimulator/LanRead.app
 ```
 
 ---
@@ -384,7 +384,7 @@ if ./scripts/build.sh release; then
     
     # 运行测试
     xcodebuild test -project "Isla Reader.xcodeproj" \
-        -scheme "Isla Reader" \
+        -scheme "LanRead" \
         -destination 'platform=iOS Simulator,name=iPhone 16'
 else
     echo "❌ 编译失败"

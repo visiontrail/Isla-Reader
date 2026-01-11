@@ -1,1 +1,1 @@
-# Router package for Isla Reader server
+# Router package for LanRead server

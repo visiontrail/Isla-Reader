@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild and restart the Isla Reader server container with the latest code.
+# Rebuild and restart the LanRead server container with the latest code.
 # Usage: ./server/scripts/restart.sh
 
 set -euo pipefail

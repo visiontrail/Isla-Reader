@@ -1,1 +1,1 @@
-# Isla Reader server package
+# LanRead server package

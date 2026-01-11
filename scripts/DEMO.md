@@ -54,9 +54,9 @@ cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios
 📋 应用控制台日志输出（按 Ctrl+C 退出）:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-2025-10-21 14:30:21.123 Isla Reader[1234:567890] 📚 应用启动
-2025-10-21 14:30:21.456 Isla Reader[1234:567890] 🔧 初始化数据库
-2025-10-21 14:30:21.789 Isla Reader[1234:567890] ✅ 准备就绪
+2025-10-21 14:30:21.123 LanRead[1234:567890] 📚 应用启动
+2025-10-21 14:30:21.456 LanRead[1234:567890] 🔧 初始化数据库
+2025-10-21 14:30:21.789 LanRead[1234:567890] ✅ 准备就绪
 ```
 
 按 `Ctrl+C` 可以停止日志监控（应用继续运行）。
@@ -70,7 +70,7 @@ cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios
 ```bash
 # 1. 在 Cursor 中修改代码
 # 比如在 ContentView.swift 中添加：
-# print("🎉 Hello from Isla Reader!")
+# print("🎉 Hello from LanRead!")
 
 # 2. 保存文件（Cmd+S）
 
@@ -78,7 +78,7 @@ cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios
 ./scripts/dev.sh
 
 # 4. 在终端中会看到你的 print 输出：
-# 🎉 Hello from Isla Reader!
+# 🎉 Hello from LanRead!
 ```
 
 ---

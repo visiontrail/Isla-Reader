@@ -268,13 +268,13 @@ Isla Reader/
 
 ```bash
 # 运行全部测试
-xcodebuild test -project "Isla Reader.xcodeproj" -scheme "Isla Reader" -destination 'platform=iOS Simulator,name=iPhone 16'
+xcodebuild test -project "Isla Reader.xcodeproj" -scheme "LanRead" -destination 'platform=iOS Simulator,name=iPhone 16'
 
 # 构建模拟器版本
-xcodebuild build -project "Isla Reader.xcodeproj" -scheme "Isla Reader" -destination 'platform=iOS Simulator,name=iPhone 16'
+xcodebuild build -project "Isla Reader.xcodeproj" -scheme "LanRead" -destination 'platform=iOS Simulator,name=iPhone 16'
 
 # 构建设备版本
-xcodebuild build -project "Isla Reader.xcodeproj" -scheme "Isla Reader" -destination 'generic/platform=iOS'
+xcodebuild build -project "Isla Reader.xcodeproj" -scheme "LanRead" -destination 'generic/platform=iOS'
 ```
 
 ### 测试

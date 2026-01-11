@@ -1,6 +1,6 @@
 //
 //  ReadingReminderService.swift
-//  Isla Reader
+//  LanRead
 //
 //  Created by Assistant on 2025/2/14.
 //

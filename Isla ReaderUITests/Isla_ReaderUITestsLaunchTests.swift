@@ -1,6 +1,6 @@
 //
 //  Isla_ReaderUITestsLaunchTests.swift
-//  Isla ReaderUITests
+//  LanReadUITests
 //
 //  Created by 郭亮 on 2025/9/10.
 //

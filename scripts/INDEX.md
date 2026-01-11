@@ -54,8 +54,8 @@ cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios
 📋 应用控制台日志输出（按 Ctrl+C 退出）:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-2025-10-21 14:30:21.123 Isla Reader[1234] 📚 你的日志输出
-2025-10-21 14:30:21.456 Isla Reader[1234] ✅ 这里会显示所有 print()
+2025-10-21 14:30:21.123 LanRead[1234] 📚 你的日志输出
+2025-10-21 14:30:21.456 LanRead[1234] ✅ 这里会显示所有 print()
 ```
 
 ---
@@ -174,7 +174,7 @@ print("📚 你的调试信息")
 - 显示编译进度和耗时
 - 生成编译日志（build.log）
 
-**输出：** `./build/Build/Products/Debug-iphonesimulator/Isla Reader.app`
+**输出：** `./build/Build/Products/Debug-iphonesimulator/LanRead.app`
 
 ---
 
