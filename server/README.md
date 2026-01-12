@@ -76,6 +76,7 @@ curl -k -X POST https://localhost:8443/v1/keys/ai \
 ## 端点
 
 - `GET /health` — 健康检查。
+- `GET /privacy` — 静态隐私政策页面（客户端/审核可直接访问）。
 - `POST /v1/keys/ai` — 返回 AI API Key。请求体需签名，响应默认带 `Cache-Control: no-store`。
     - 签名计算：`HMAC_SHA256(client_id + "." + nonce + "." + timestamp, client_secret)`，并使用十六进制字符串传输。
 
