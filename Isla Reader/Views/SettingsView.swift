@@ -113,10 +113,6 @@ struct SettingsView: View {
                     Link(destination: URL(string: "https://isla-reader.top/privacy")!) {
                         Label(NSLocalizedString("隐私政策", comment: ""), systemImage: "hand.raised")
                     }
-                    
-                    Link(destination: URL(string: "https://islareader.com/terms")!) {
-                        Label(NSLocalizedString("服务条款", comment: ""), systemImage: "doc.text")
-                    }
                 }
             }
             .navigationTitle(NSLocalizedString("设置", comment: ""))
