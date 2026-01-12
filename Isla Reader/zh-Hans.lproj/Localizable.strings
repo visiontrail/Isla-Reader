@@ -293,3 +293,4 @@
 "ai.error.endpoint" = "AI 接口地址无效。";
 "ai.error.network" = "网络异常，无法连接到 AI 服务。";
 "ai.error.parse" = "无法解析 AI 返回内容。";
+"ai.disclaimer" = "AI 可能生成错误信息";

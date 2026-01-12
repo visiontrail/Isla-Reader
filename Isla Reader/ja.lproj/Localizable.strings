@@ -293,3 +293,4 @@
 "ai.error.endpoint" = "AI エンドポイントが無効です。";
 "ai.error.network" = "AI サービスへの接続に失敗しました。";
 "ai.error.parse" = "AI レスポンスを解析できませんでした。";
+"ai.disclaimer" = "AI は誤った情報を生成する可能性があります";

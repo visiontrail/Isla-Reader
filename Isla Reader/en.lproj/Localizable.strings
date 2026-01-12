@@ -293,3 +293,4 @@
 "ai.error.endpoint" = "AI endpoint is invalid.";
 "ai.error.network" = "Network error when contacting AI.";
 "ai.error.parse" = "Unable to parse AI response.";
+"ai.disclaimer" = "AI may generate incorrect information";

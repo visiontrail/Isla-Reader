@@ -293,3 +293,4 @@
 "ai.error.endpoint" = "AI 엔드포인트가 올바르지 않습니다.";
 "ai.error.network" = "AI 서비스 연결에 실패했습니다.";
 "ai.error.parse" = "AI 응답을 해석할 수 없습니다.";
+"ai.disclaimer" = "AI가 잘못된 정보를 생성할 수 있습니다";

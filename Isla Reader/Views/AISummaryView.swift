@@ -182,6 +182,16 @@ struct AISummaryView: View {
                         .foregroundColor(.secondary)
                 }
             }
+            
+            // AI 免责声明（底部）
+            HStack {
+                Image(systemName: "info.circle")
+                    .font(.caption2)
+                Text(NSLocalizedString("ai.disclaimer", comment: "AI disclaimer"))
+                    .font(.caption2)
+                Spacer()
+            }
+            .foregroundColor(.secondary)
         }
     }
     
@@ -234,10 +244,21 @@ struct AISummaryView: View {
                 }
             }
             
-            // 生成时间
-            if let generatedAt = book.aiSummaryGeneratedAt {
-                HStack {
-                    Spacer()
+            // 生成时间和免责声明
+            HStack {
+                // AI 免责声明
+                HStack(spacing: 4) {
+                    Image(systemName: "info.circle")
+                        .font(.caption2)
+                    Text(NSLocalizedString("ai.disclaimer", comment: "AI disclaimer"))
+                        .font(.caption2)
+                }
+                .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                // 生成时间
+                if let generatedAt = book.aiSummaryGeneratedAt {
                     Text("\(NSLocalizedString("ai.summary.generated_at", comment: "Generated on")) \(formatDate(generatedAt))")
                         .font(.caption2)
                         .foregroundColor(.secondary)

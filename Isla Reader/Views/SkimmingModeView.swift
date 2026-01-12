@@ -366,6 +366,16 @@ private struct SkimmingChapterPage: View {
                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
             Text(NSLocalizedString("skimming.generating", comment: ""))
                 .foregroundColor(.white.opacity(0.8))
+            
+            // AI 免责声明（底部）
+            HStack {
+                Image(systemName: "info.circle")
+                    .font(.caption2)
+                Text(NSLocalizedString("ai.disclaimer", comment: "AI disclaimer"))
+                    .font(.caption2)
+                Spacer()
+            }
+            .foregroundColor(.white.opacity(0.6))
         }
         .frame(maxWidth: .infinity)
     }
@@ -404,6 +414,17 @@ private struct SkimmingChapterPage: View {
                 .frame(maxWidth: .infinity)
                 .background(.blue.opacity(0.8))
                 .cornerRadius(16)
+            }
+            
+            // AI 免责声明
+            HStack {
+                Image(systemName: "info.circle")
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.6))
+                Text(NSLocalizedString("ai.disclaimer", comment: "AI disclaimer"))
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.6))
+                Spacer()
             }
         }
     }
