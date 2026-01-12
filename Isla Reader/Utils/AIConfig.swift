@@ -34,6 +34,9 @@ enum AIConfig {
         do {
             let serverConfig = try await SecureAPIKeyService.shared.fetchAIConfiguration()
             DebugLogger.success("AIConfig: 已通过安全服务器获取 AI 配置")
+            DebugLogger.info("AIConfig: 服务器端点 = \(serverConfig.endpoint)")
+            DebugLogger.info("AIConfig: 服务器模型 = \(serverConfig.model)")
+            DebugLogger.info("AIConfig: 服务器 API Key = \(maskedKey(serverConfig.apiKey))")
             return AIConfiguration(endpoint: serverConfig.endpoint, apiKey: serverConfig.apiKey, model: serverConfig.model)
         } catch let error as SecureServerConfigError {
             DebugLogger.info("AIConfig: 安全服务器未配置或配置无效，将尝试使用本地配置。原因：\(error.localizedDescription)")
@@ -68,6 +71,13 @@ enum AIConfig {
         }
 
         return AIConfiguration(endpoint: endpoint, apiKey: apiKey, model: model)
+    }
+    
+    private static func maskedKey(_ key: String) -> String {
+        guard key.count > 8 else { return String(repeating: "*", count: key.count) }
+        let prefix = key.prefix(4)
+        let suffix = key.suffix(4)
+        return "\(prefix)****\(suffix)"
     }
     
     private static func trimmedValue(for infoPlistKey: String) -> String {
