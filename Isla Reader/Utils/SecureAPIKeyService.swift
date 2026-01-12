@@ -6,16 +6,22 @@
 import CryptoKit
 import Foundation
 
-private actor SecureAPIKeyCache {
-    private var apiKey: String?
+private actor SecureAIConfigCache {
+    private var config: SecureAIConfiguration?
 
-    func cached() -> String? {
-        apiKey
+    func cached() -> SecureAIConfiguration? {
+        config
     }
 
-    func store(_ key: String) {
-        apiKey = key
+    func store(_ config: SecureAIConfiguration) {
+        self.config = config
     }
+}
+
+struct SecureAIConfiguration {
+    let apiKey: String
+    let endpoint: String
+    let model: String
 }
 
 enum SecureAPIKeyError: LocalizedError {
@@ -48,15 +54,15 @@ final class SecureAPIKeyService {
     static let shared = SecureAPIKeyService()
 
     private let session: URLSession
-    private let cache = SecureAPIKeyCache()
+    private let cache = SecureAIConfigCache()
 
     init(session: URLSession = .shared) {
         self.session = session
     }
 
-    func fetchAPIKey() async throws -> String {
+    func fetchAIConfiguration() async throws -> SecureAIConfiguration {
         let config = try SecureServerConfig.current()
-        DebugLogger.info("SecureAPIKeyService: 正在向 \(config.baseURL.absoluteString) 请求 API Key")
+        DebugLogger.info("SecureAPIKeyService: 正在向 \(config.baseURL.absoluteString) 请求 AI 配置")
 
         if let cached = await cache.cached() {
             return cached
@@ -106,14 +112,24 @@ final class SecureAPIKeyService {
                 throw SecureAPIKeyError.decodingFailed
             }
 
-            await cache.store(responsePayload.apiKey)
-            DebugLogger.success("SecureAPIKeyService: 成功获取 API Key")
-            return responsePayload.apiKey
+            let aiConfig = SecureAIConfiguration(
+                apiKey: responsePayload.apiKey,
+                endpoint: responsePayload.apiEndpoint,
+                model: responsePayload.model
+            )
+
+            await cache.store(aiConfig)
+            DebugLogger.success("SecureAPIKeyService: 成功获取 AI 配置")
+            return aiConfig
         } catch let error as SecureAPIKeyError {
             throw error
         } catch {
             throw SecureAPIKeyError.transport(error.localizedDescription)
         }
+    }
+
+    func fetchAPIKey() async throws -> String {
+        try await fetchAIConfiguration().apiKey
     }
 
     private func sign(clientId: String, clientSecret: String, nonce: String, timestamp: Int) throws -> String {
@@ -166,6 +182,8 @@ private struct KeyRequestPayload: Encodable {
 
 private struct KeyResponsePayload: Decodable {
     let apiKey: String
+    let apiEndpoint: String
+    let model: String
     let expiresIn: Int
     let issuedAt: Date
     let nonce: String

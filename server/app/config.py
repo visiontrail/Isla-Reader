@@ -32,6 +32,8 @@ def _parse_origins(value: Any) -> List[str]:
 
 class Settings(BaseSettings):
     api_key: str
+    api_endpoint: str
+    ai_model: str
     client_id: str
     client_secret: str
     # Use str type to prevent pydantic-settings from attempting JSON parsing before validator

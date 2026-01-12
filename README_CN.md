@@ -156,10 +156,8 @@ open Isla\ Reader.xcodeproj
 
 4. 配置 AI 与安全服务器
    - 将 `Config/AISecrets.xcconfig.example` 复制为 `Config/AISecrets.xcconfig`
-   - 设置 `AI_API_ENDPOINT` 与 `AI_MODEL`
-   - 二选一：
-     - 本地直连：设置 `AI_API_KEY`
-     - 安全服务器：留空 `AI_API_KEY`，并设置 `SECURE_SERVER_BASE_URL`、`SECURE_SERVER_CLIENT_ID`、`SECURE_SERVER_CLIENT_SECRET`、`SECURE_SERVER_REQUIRE_TLS`
+   - 推荐：配置安全服务器，让后端下发 `api_endpoint` / `model` / `api_key`，客户端填好 `SECURE_SERVER_BASE_URL`、`SECURE_SERVER_CLIENT_ID`、`SECURE_SERVER_CLIENT_SECRET`、`SECURE_SERVER_REQUIRE_TLS`（可将 `AI_API_ENDPOINT`、`AI_MODEL` 留空）。
+   - 可选备用（离线/本地调试）：手动设置 `AI_API_ENDPOINT`、`AI_MODEL` 和 `AI_API_KEY`
 
 5. 构建与运行
    - 选择目标设备或模拟器
@@ -169,7 +167,7 @@ open Isla\ Reader.xcodeproj
 
 - 后端位于 `server/`（FastAPI + HMAC + HTTPS），详细见 `server/README.md`
 - 快速启动：`cd server && python -m venv .venv && source .venv/bin/activate && pip install -e .`
-- 复制 `.env.example` 为 `.env`，设置 `ISLA_API_KEY`、`ISLA_CLIENT_ID`、`ISLA_CLIENT_SECRET`，然后运行：
+- 复制 `.env.example` 为 `.env`，设置 `ISLA_API_ENDPOINT`、`ISLA_AI_MODEL`、`ISLA_API_KEY`、`ISLA_CLIENT_ID`、`ISLA_CLIENT_SECRET`，然后运行：
   `uvicorn app.main:app --host 0.0.0.0 --port 8443 --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt`
 
 ## 使用

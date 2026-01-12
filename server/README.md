@@ -27,7 +27,7 @@ pip install -e .
 
 ```bash
 cp .env.example .env
-# 填写 AI_KEY、CLIENT_ID、CLIENT_SECRET，并指向 TLS 证书路径。
+# 填写 ISLA_API_KEY、ISLA_API_ENDPOINT、ISLA_AI_MODEL、ISLA_CLIENT_ID、ISLA_CLIENT_SECRET，并指向 TLS 证书路径。
 # 若需前端跨域，设置 ISLA_ALLOWED_ORIGINS 为逗号分隔值或 JSON 数组；留空/[] 则不启用 CORS。
 
 ```
@@ -77,7 +77,7 @@ curl -k -X POST https://localhost:8443/v1/keys/ai \
 
 - `GET /health` — 健康检查。
 - `GET /privacy` — 静态隐私政策页面（客户端/审核可直接访问）。
-- `POST /v1/keys/ai` — 返回 AI API Key。请求体需签名，响应默认带 `Cache-Control: no-store`。
+- `POST /v1/keys/ai` — 返回 AI API Key 以及可远程调配的 `api_endpoint`、`model`。请求体需签名，响应默认带 `Cache-Control: no-store`。
     - 签名计算：`HMAC_SHA256(client_id + "." + nonce + "." + timestamp, client_secret)`，并使用十六进制字符串传输。
 
 > 说明：若访问 / 返回 404 属于正常现象（API-only 服务不一定提供根路径页面）。建议用 /health 做可用性检查。
@@ -128,7 +128,7 @@ source .venv/bin/activate
 
 ```
 
-1. 确认 `.env` 已在 `server/` 目录且变量齐全（例如 `AI_KEY/CLIENT_ID/CLIENT_SECRET` 等）。
+1. 确认 `.env` 已在 `server/` 目录且变量齐全（例如 `ISLA_API_ENDPOINT/ISLA_AI_MODEL/ISLA_API_KEY/ISLA_CLIENT_ID/ISLA_CLIENT_SECRET` 等）。
 
 > systemd 模式下建议用 EnvironmentFile 显式加载 .env（见下文）。
 > 

@@ -24,13 +24,25 @@ enum AIConfigError: LocalizedError {
         case .serverConfig(let reason):
             return "AI 安全服务器配置错误：\(reason)"
         case .serverRequestFailed(let reason):
-            return "无法通过安全服务器获取 API Key：\(reason)"
+            return "无法通过安全服务器获取 AI 配置：\(reason)"
         }
     }
 }
 
 enum AIConfig {
     static func current() async throws -> AIConfiguration {
+        do {
+            let serverConfig = try await SecureAPIKeyService.shared.fetchAIConfiguration()
+            DebugLogger.success("AIConfig: 已通过安全服务器获取 AI 配置")
+            return AIConfiguration(endpoint: serverConfig.endpoint, apiKey: serverConfig.apiKey, model: serverConfig.model)
+        } catch let error as SecureServerConfigError {
+            DebugLogger.info("AIConfig: 安全服务器未配置或配置无效，将尝试使用本地配置。原因：\(error.localizedDescription)")
+        } catch let error as SecureAPIKeyError {
+            DebugLogger.warning("AIConfig: 无法通过安全服务器获取 AI 配置，将尝试使用本地配置。原因：\(error.localizedDescription)")
+        } catch {
+            DebugLogger.warning("AIConfig: 安全服务器请求失败，将尝试使用本地配置。原因：\(error.localizedDescription)")
+        }
+
         let endpoint = trimmedValue(for: "AIAPIEndpoint")
         var apiKey = trimmedValue(for: "AIAPIKey")
         let model = trimmedValue(for: "AIModel")
@@ -46,25 +58,16 @@ enum AIConfig {
         
         if !missingKeys.isEmpty {
             let joinedKeys = missingKeys.joined(separator: ", ")
-            DebugLogger.error("AIConfig: 配置缺失 \(joinedKeys)")
+            DebugLogger.error("AIConfig: 配置缺失 \(joinedKeys) 且未能从安全服务器获取 AI 配置")
             throw AIConfigError.missing(keys: missingKeys)
         }
 
-        if !apiKey.isEmpty {
-            return AIConfiguration(endpoint: endpoint, apiKey: apiKey, model: model)
+        if apiKey.isEmpty {
+            DebugLogger.error("AIConfig: 本地 API Key 为空且未能从安全服务器获取 AI 配置")
+            throw AIConfigError.serverRequestFailed("安全服务器不可用且 AIAPIKey 未配置")
         }
 
-        DebugLogger.info("AIConfig: 未检测到本地 API Key，尝试通过安全服务器获取")
-
-        do {
-            let serverKey = try await SecureAPIKeyService.shared.fetchAPIKey()
-            DebugLogger.success("AIConfig: 已通过安全服务器获取 API Key")
-            return AIConfiguration(endpoint: endpoint, apiKey: serverKey, model: model)
-        } catch let error as SecureServerConfigError {
-            throw AIConfigError.serverConfig(error.localizedDescription)
-        } catch let error as SecureAPIKeyError {
-            throw AIConfigError.serverRequestFailed(error.localizedDescription)
-        }
+        return AIConfiguration(endpoint: endpoint, apiKey: apiKey, model: model)
     }
     
     private static func trimmedValue(for infoPlistKey: String) -> String {

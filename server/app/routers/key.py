@@ -18,6 +18,8 @@ class KeyRequest(BaseModel):
 
 class KeyResponse(BaseModel):
     api_key: str
+    api_endpoint: str
+    model: str
     expires_in: int
     issued_at: datetime
     nonce: str
@@ -41,6 +43,8 @@ async def issue_ai_key(payload: KeyRequest, settings: Settings = Depends(get_set
     issued_at = datetime.now(timezone.utc)
     return KeyResponse(
         api_key=settings.api_key,
+        api_endpoint=settings.api_endpoint,
+        model=settings.ai_model,
         expires_in=settings.request_ttl_seconds,
         issued_at=issued_at,
         nonce=payload.nonce,
