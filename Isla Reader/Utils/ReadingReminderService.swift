@@ -62,10 +62,7 @@ final class ReadingReminderService {
     }
     
     private func requestAuthorization() async -> Bool {
-        var options: UNAuthorizationOptions = [.alert, .sound, .badge]
-        if #available(iOS 15.0, *) {
-            options.insert(.timeSensitive)
-        }
+        let options: UNAuthorizationOptions = [.alert, .sound, .badge]
         
         return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
             notificationCenter.requestAuthorization(options: options) { granted, error in

@@ -20,37 +20,54 @@ struct SkimmingModeView: View {
     @State private var loadingChapterIndices: Set<Int> = []
     @State private var chapterErrors: [Int: String] = [:]
     @State private var showingTOC = false
-    @State private var navigateToReaderAtCurrentChapter = false  // Start reading at current skimming chapter
-    @State private var navigateToReaderResumingProgress = false  // Resume last reading progress
+    @State private var navigationPath = NavigationPath()
     @State private var skimmingAIRequestCount = 0
     
     private let service = SkimmingModeService.shared
     
+    private enum NavigationTarget: Hashable {
+        case startFromChapter(BookmarkLocation)
+        case resume
+    }
+    
     var body: some View {
-        ZStack {
-            backgroundView
-                .ignoresSafeArea()
-            
-            if isLoadingChapters {
-                ProgressView(NSLocalizedString("skimming.loading_chapters", comment: ""))
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-            } else if let loadError {
-                errorView(loadError, retry: loadChapters)
-            } else {
-                contentView
+        NavigationStack(path: $navigationPath) {
+            ZStack {
+                backgroundView
+                    .ignoresSafeArea()
+                
+                if isLoadingChapters {
+                    ProgressView(NSLocalizedString("skimming.loading_chapters", comment: ""))
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                } else if let loadError {
+                    errorView(loadError, retry: loadChapters)
+                } else {
+                    contentView
+                }
             }
-        }
-        .preferredColorScheme(appSettings.theme.colorScheme)
-        .onAppear {
-            loadChapters()
-            RewardedInterstitialAdManager.shared.loadAd()
-        }
-        .sheet(isPresented: $showingTOC) {
-            SkimmingTableOfContentsView(
-                chapters: chapters,
-                currentChapterIndex: $currentChapterIndex,
-                summaries: chapterSummaries
-            )
+            .preferredColorScheme(appSettings.theme.colorScheme)
+            .onAppear {
+                loadChapters()
+                RewardedInterstitialAdManager.shared.loadAd()
+            }
+            .sheet(isPresented: $showingTOC) {
+                SkimmingTableOfContentsView(
+                    chapters: chapters,
+                    currentChapterIndex: $currentChapterIndex,
+                    summaries: chapterSummaries
+                )
+            }
+            .navigationBarHidden(true)
+            .navigationDestination(for: NavigationTarget.self) { destination in
+                switch destination {
+                case .startFromChapter(let location):
+                    ReaderView(book: book, initialLocation: location)
+                        .navigationBarHidden(true)
+                case .resume:
+                    ReaderView(book: book)
+                        .navigationBarHidden(true)
+                }
+            }
         }
     }
     
@@ -68,34 +85,6 @@ struct SkimmingModeView: View {
         }
         .padding(.top, 12)
         .padding(.horizontal)
-        .overlay(
-            Group {
-                // Navigate to current skimming chapter (Start full reading)
-                NavigationLink(
-                    destination: ReaderView(
-                        book: book,
-                        initialLocation: BookmarkLocation(
-                            chapterIndex: currentChapterIndex,
-                            pageIndex: 0,
-                            chapterTitle: chapters.indices.contains(currentChapterIndex) ? chapters[currentChapterIndex].title : nil
-                        )
-                    ),
-                    isActive: $navigateToReaderAtCurrentChapter
-                ) {
-                    EmptyView()
-                }
-                .hidden()
-                
-                // Resume last reading progress (Switch to full reading)
-                NavigationLink(
-                    destination: ReaderView(book: book),
-                    isActive: $navigateToReaderResumingProgress
-                ) {
-                    EmptyView()
-                }
-                .hidden()
-            }
-        )
     }
     
     private var backgroundView: some View {
@@ -163,7 +152,7 @@ struct SkimmingModeView: View {
                     isLoading: loadingChapterIndices.contains(index),
                     error: chapterErrors[index],
                     onRequestSummary: { requestSummary(for: index) },
-                    onStartFullReading: { navigateToReaderAtCurrentChapter = true }
+                    onStartFullReading: { openReader(at: index) }
                 )
                 .padding(.vertical, 20)
                 .tag(index)
@@ -184,7 +173,7 @@ struct SkimmingModeView: View {
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.8))
                 Spacer()
-                Button(action: { navigateToReaderResumingProgress = true }) {
+                Button(action: resumeFullReading) {
                     Label(NSLocalizedString("skimming.switch_to_full", comment: ""), systemImage: "book.closed")
                         .font(.caption)
                         .foregroundColor(.white)
@@ -213,6 +202,21 @@ struct SkimmingModeView: View {
     private var progressRatio: CGFloat {
         guard !chapters.isEmpty else { return 0 }
         return CGFloat(currentChapterIndex + 1) / CGFloat(chapters.count)
+    }
+    
+    private func openReader(at index: Int) {
+        guard chapters.indices.contains(index) else { return }
+        let chapter = chapters[index]
+        let location = BookmarkLocation(
+            chapterIndex: index,
+            pageIndex: 0,
+            chapterTitle: chapter.title
+        )
+        navigationPath.append(NavigationTarget.startFromChapter(location))
+    }
+    
+    private func resumeFullReading() {
+        navigationPath.append(NavigationTarget.resume)
     }
     
     private func initialChapterIndex(for totalCount: Int) -> Int {

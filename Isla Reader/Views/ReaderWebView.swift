@@ -468,7 +468,6 @@ struct ReaderWebView: UIViewRepresentable {
         let textColor = isDarkMode ? "rgba(255, 255, 255, 0.87)" : "rgba(0, 0, 0, 0.87)"
         let linkColor = isDarkMode ? "#64b5f6" : "#1976d2"
         let pageMargin = Int(appSettings.pageMargins)
-        let columnGap = pageMargin * 2
         
         return """
         /* 基础样式 - 移动端优化 */

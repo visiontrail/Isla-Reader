@@ -41,7 +41,7 @@ final class DataResetService {
         let bookFiles = try removeAllBookFiles()
         let deletedObjects = try await deleteAllEntities(context: context)
         let cacheUsage = try await cacheCleanupService.clearCaches(context: context)
-        let freedCacheBytes = max<Int64>(0, initialCacheUsage.totalBytes - cacheUsage.totalBytes)
+        let freedCacheBytes = max(Int64(0), initialCacheUsage.totalBytes - cacheUsage.totalBytes)
         
         clearUserDefaults(bookIds: bookIds)
         await resetSettings()
