@@ -16,32 +16,32 @@
 			containerPortal = CA285BA72E714BCF008BE112 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = CA285BAE2E714BCF008BE112;
-			remoteInfo = "LanRead";
+			remoteInfo = LanRead;
 		};
 		CA285BCE2E714BD2008BE112 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CA285BA72E714BCF008BE112 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = CA285BAE2E714BCF008BE112;
-			remoteInfo = "LanRead";
+			remoteInfo = LanRead;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		CA285BAF2E714BCF008BE112 /* LanRead.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "LanRead.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		CA285BC32E714BD2008BE112 /* LanReadTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "LanReadTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		CA285BCD2E714BD2008BE112 /* LanReadUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "LanReadUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA285BAF2E714BCF008BE112 /* LanRead.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LanRead.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA285BC32E714BD2008BE112 /* LanReadTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LanReadTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA285BCD2E714BD2008BE112 /* LanReadUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LanReadUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CACEA1002F1A000100000001 /* AISecrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AISecrets.xcconfig; sourceTree = "<group>"; };
 		CACEA1012F1A000100000002 /* AISecrets.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AISecrets.xcconfig.example; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		CA285BD52E714BD2008BE112 /* Exceptions for "Isla Reader" folder in "Isla Reader" target */ = {
+		CA285BD52E714BD2008BE112 /* Exceptions for "Isla Reader" folder in "LanRead" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = CA285BAE2E714BCF008BE112 /* Isla Reader */;
+			target = CA285BAE2E714BCF008BE112 /* LanRead */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -49,7 +49,7 @@
 		CA285BB12E714BCF008BE112 /* Isla Reader */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				CA285BD52E714BD2008BE112 /* Exceptions for "Isla Reader" folder in "Isla Reader" target */,
+				CA285BD52E714BD2008BE112 /* Exceptions for "Isla Reader" folder in "LanRead" target */,
 			);
 			path = "Isla Reader";
 			sourceTree = "<group>";
@@ -140,11 +140,11 @@
 			fileSystemSynchronizedGroups = (
 				CA285BB12E714BCF008BE112 /* Isla Reader */,
 			);
-			name = "LanRead";
+			name = LanRead;
 			packageProductDependencies = (
 				B5C272E22F7F7E8C00F7B830 /* GoogleMobileAds */,
 			);
-			productName = "LanRead";
+			productName = LanRead;
 			productReference = CA285BAF2E714BCF008BE112 /* LanRead.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -164,10 +164,10 @@
 			fileSystemSynchronizedGroups = (
 				CA285BC62E714BD2008BE112 /* Isla ReaderTests */,
 			);
-			name = "LanReadTests";
+			name = LanReadTests;
 			packageProductDependencies = (
 			);
-			productName = "LanReadTests";
+			productName = LanReadTests;
 			productReference = CA285BC32E714BD2008BE112 /* LanReadTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
@@ -187,10 +187,10 @@
 			fileSystemSynchronizedGroups = (
 				CA285BD02E714BD2008BE112 /* Isla ReaderUITests */,
 			);
-			name = "LanReadUITests";
+			name = LanReadUITests;
 			packageProductDependencies = (
 			);
-			productName = "LanReadUITests";
+			productName = LanReadUITests;
 			productReference = CA285BCD2E714BD2008BE112 /* LanReadUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
@@ -217,7 +217,7 @@
 					};
 				};
 			};
-			buildConfigurationList = CA285BAA2E714BCF008BE112 /* Build configuration list for PBXProject "LanRead" */;
+			buildConfigurationList = CA285BAA2E714BCF008BE112 /* Build configuration list for PBXProject "Isla Reader" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -295,12 +295,12 @@
 /* Begin PBXTargetDependency section */
 		CA285BC52E714BD2008BE112 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = CA285BAE2E714BCF008BE112 /* Isla Reader */;
+			target = CA285BAE2E714BCF008BE112 /* LanRead */;
 			targetProxy = CA285BC42E714BD2008BE112 /* PBXContainerItemProxy */;
 		};
 		CA285BCF2E714BD2008BE112 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = CA285BAE2E714BCF008BE112 /* Isla Reader */;
+			target = CA285BAE2E714BCF008BE112 /* LanRead */;
 			targetProxy = CA285BCE2E714BD2008BE112 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -548,7 +548,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "LanRead";
+				TEST_TARGET_NAME = LanRead;
 			};
 			name = Debug;
 		};
@@ -565,14 +565,14 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "LanRead";
+				TEST_TARGET_NAME = LanRead;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CA285BAA2E714BCF008BE112 /* Build configuration list for PBXProject "LanRead" */ = {
+		CA285BAA2E714BCF008BE112 /* Build configuration list for PBXProject "Isla Reader" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA285BD92E714BD2008BE112 /* Debug */,
