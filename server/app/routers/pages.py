@@ -8,7 +8,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Isla Reader Privacy Policy</title>
+  <title>LanRead Privacy Policy</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -97,10 +97,10 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 <body>
   <div class="page">
     <header>
-      <p class="eyebrow">Isla Reader</p>
+      <p class="eyebrow">LanRead</p>
       <h1>Privacy Policy</h1>
       <p class="updated">Updated: 2025-02-20</p>
-      <p class="updated">This policy applies to the Isla Reader iOS app and its companion backend (isla-reader.top).</p>
+      <p class="updated">This policy applies to the LanRead iOS app and its companion backend (isla-reader.top).</p>
     </header>
 
     <section>
