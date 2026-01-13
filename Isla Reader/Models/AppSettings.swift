@@ -58,13 +58,13 @@ public enum ReadingFontSize: String, CaseIterable {
     var fontSize: CGFloat {
         switch self {
         case .small:
-            return 14
-        case .medium:
             return 16
+        case .medium:
+            return 19
         case .large:
-            return 18
+            return 22
         case .extraLarge:
-            return 20
+            return 26
         }
     }
 }
