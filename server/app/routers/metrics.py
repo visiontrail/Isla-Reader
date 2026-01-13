@@ -668,6 +668,46 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .replace(/>/g, '&gt;');
     }
 
+    function simplifyError(reason) {
+      if (!reason) return 'Unknown error';
+      const trimmed = String(reason).trim();
+      const tryExtractFromObject = (value) => {
+        if (!value || typeof value !== 'object') return null;
+        if (value.error && typeof value.error.message === 'string') return value.error.message;
+        if (typeof value.message === 'string') return value.message;
+        return null;
+      };
+
+      // Try full JSON parse
+      try {
+        const parsed = JSON.parse(trimmed);
+        const message = tryExtractFromObject(parsed);
+        if (message) return message;
+      } catch (_) {
+        // fall through
+      }
+
+      // Try parsing JSON inside the string (e.g., suffix after colon)
+      const braceIndex = trimmed.indexOf('{');
+      if (braceIndex >= 0) {
+        const jsonPart = trimmed.slice(braceIndex);
+        try {
+          const parsed = JSON.parse(jsonPart);
+          const message = tryExtractFromObject(parsed);
+          if (message) return message;
+        } catch (_) {
+          // fall through
+        }
+      }
+
+      const match = trimmed.match(/"message"\\s*:\\s*"([^"]+)"/);
+      if (match && match[1]) {
+        return match[1];
+      }
+
+      return trimmed;
+    }
+
     function setTotals(totals) {
       document.getElementById('total-calls').textContent = formatNumber(totals.count);
       document.getElementById('last-24h').textContent = formatNumber(totals.last24h);
@@ -740,7 +780,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const tr = document.createElement('tr');
         const date = new Date(row.timestamp);
         const ok = row.statusCode >= 200 && row.statusCode < 300;
-        const errorText = ok ? '-' : escapeText(row.errorReason || 'Unknown error');
+        const errorText = ok ? '-' : escapeText(simplifyError(row.errorReason));
         tr.innerHTML = `
           <td>${date.toLocaleString()}</td>
           <td>${escapeText(row.interface)}</td>
