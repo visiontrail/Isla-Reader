@@ -380,7 +380,7 @@ struct AISummaryView: View {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.locale = .autoupdatingCurrent
         return formatter.string(from: date)
     }
 }
