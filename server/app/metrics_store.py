@@ -110,8 +110,12 @@ class MetricsStore:
         now = datetime.now(timezone.utc)
         last_24h_cutoff = now - timedelta(hours=24)
         recent_cutoff = now - timedelta(days=7)
+        rps_window = timedelta(minutes=5)
+        rps_cutoff = now - rps_window
         last_24h = [e for e in events if e.timestamp >= last_24h_cutoff]
         recent_events = [e for e in events if e.timestamp >= recent_cutoff]
+        rps_events = [e for e in events if e.timestamp >= rps_cutoff]
+        rps = len(rps_events) / rps_window.total_seconds() if rps_events else 0.0
 
         interface_stats: Dict[str, Dict[str, object]] = {}
         for e in events:
@@ -200,6 +204,7 @@ class MetricsStore:
                 "totalTokens": total_tokens,
                 "totalBytes": total_bytes,
                 "last24h": len(last_24h),
+                "rps": round(rps, 3),
             },
             interfaces=interfaces,
             sources=sources,
@@ -210,6 +215,7 @@ class MetricsStore:
                 "maxRetained": self.max_events,
                 "recentRangeHours": 24 * 7,
                 "recentCount": len(recent_events),
+                "rpsWindowSeconds": int(rps_window.total_seconds()),
             },
         )
 

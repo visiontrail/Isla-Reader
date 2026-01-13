@@ -492,6 +492,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div class="metric-sub">Retries captured in payload</div>
         </div>
         <div class="glass card">
+          <h3>RPS / QPS</h3>
+          <div class="metric-value" id="rps">-</div>
+          <div class="metric-sub">Avg over last <span id="rps-window">-</span> min</div>
+        </div>
+        <div class="glass card">
           <h3>Avg Latency</h3>
           <div class="metric-value" id="avg-latency">-</div>
           <div class="metric-sub">ms per call</div>
@@ -708,11 +713,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       return trimmed;
     }
 
-    function setTotals(totals) {
+    function setTotals(totals, meta = {}) {
       document.getElementById('total-calls').textContent = formatNumber(totals.count);
       document.getElementById('last-24h').textContent = formatNumber(totals.last24h);
       const success = (totals.successRate * 100).toFixed(1) + '%';
       document.getElementById('success-rate').textContent = success;
+      const rpsWindowSeconds = Number(meta.rpsWindowSeconds || 300);
+      const rpsWindowMinutes = Math.max(1, Math.round(rpsWindowSeconds / 60));
+      const rpsValue = Number(totals.rps || 0);
+      document.getElementById('rps').textContent = rpsValue >= 1 ? rpsValue.toFixed(2) : rpsValue.toFixed(3);
+      document.getElementById('rps-window').textContent = rpsWindowMinutes;
       document.getElementById('avg-latency').textContent = (totals.avgLatencyMs || 0).toFixed(1) + ' ms';
       document.getElementById('tokens').textContent = formatNumber(totals.totalTokens || 0) + ' tok';
       document.getElementById('bytes').textContent = formatNumber(totals.totalBytes || 0) + ' bytes';
@@ -802,7 +812,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         return;
       }
       const data = await res.json();
-      setTotals(data.totals || {});
+      setTotals(data.totals || {}, data.meta || {});
       renderInterfaces(data.interfaces || []);
       renderSources(data.sources || []);
       renderTimeline(data.timeline || []);

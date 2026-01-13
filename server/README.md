@@ -413,6 +413,19 @@ cd server
 
 ---
 
+## 维护脚本
+
+- `clear-metrics.sh`：清空统计数据文件（默认读取 `.env` 的 `ISLA_METRICS_DATA_FILE`，相对路径按 `app/` 目录解析）。若服务正在运行，执行后请重启以清除内存缓存。
+
+示例：
+
+```bash
+cd server
+./scripts/clear-metrics.sh
+```
+
+---
+
 ## 后续扩展
 
 - 在 `app/routers/` 添加用户注册/登录、阅读数据同步等路由。
