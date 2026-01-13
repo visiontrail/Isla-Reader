@@ -17,6 +17,7 @@ struct ReaderView: View {
     @StateObject private var appSettings = AppSettings.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.colorScheme) private var systemColorScheme
     
     @FetchRequest private var highlights: FetchedResults<Highlight>
     init(book: Book, initialLocation: BookmarkLocation? = nil) {
@@ -76,6 +77,10 @@ struct ReaderView: View {
     @State private var lastNavigationTapTime: Date?
     @State private var lastWebContentTapTime: Date?
     private let swipePagingEnabled = false
+    
+    private var effectiveColorScheme: ColorScheme {
+        appSettings.theme.colorScheme ?? systemColorScheme
+    }
 
     private enum AIAction {
         case translate
@@ -176,7 +181,7 @@ struct ReaderView: View {
     
     private var backgroundView: some View {
         Group {
-            if appSettings.theme == .dark {
+            if effectiveColorScheme == .dark {
                 // Deep, rich dark theme with subtle gradient
                 LinearGradient(
                     gradient: Gradient(colors: [
@@ -279,7 +284,7 @@ struct ReaderView: View {
             ReaderWebView(
                 htmlContent: chapter.htmlContent,
                 appSettings: appSettings,
-                isDarkMode: appSettings.theme == .dark,
+                isDarkMode: effectiveColorScheme == .dark,
                 currentPageIndex: Binding(
                     get: { safeChapterPageIndex(index) },
                     set: { newValue in setChapterPageIndex(index, newValue) }
