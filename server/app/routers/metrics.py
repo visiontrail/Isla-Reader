@@ -167,12 +167,13 @@ async def me(user: str = Depends(require_dashboard_user)) -> dict:
 
 @router.get("/admin/metrics/data")
 async def metrics_data(
+    granularity: str = "day",
     user: str = Depends(require_dashboard_user),
     settings: Settings = Depends(get_settings),
 ) -> JSONResponse:
     store = _store(settings)
-    overview = store.overview()
-    logger.debug("Dashboard metrics data requested by %s", user)
+    overview = store.overview(granularity=granularity)
+    logger.debug("Dashboard metrics data requested by %s (granularity=%s)", user, granularity)
     return JSONResponse(overview.model_dump())
 
 
@@ -445,6 +446,26 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
     .hidden { display: none; }
     .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip-button {
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      transition: all 0.18s ease;
+    }
+    .chip-button:hover {
+      background: rgba(255,255,255,0.12);
+    }
+    .chip-button.active {
+      background: linear-gradient(120deg, #8ef6ff, #7ec3ff);
+      color: #0b1021;
+      box-shadow: var(--shadow);
+      border-color: transparent;
+    }
   </style>
 </head>
 <body>
@@ -480,11 +501,20 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     </section>
 
     <section id="dashboard" class="hidden">
+      <div class="section-title">
+        <h2>Aggregation</h2>
+        <div class="chips" id="granularity-selector">
+          <button type="button" class="chip-button active" data-granularity="day">Daily</button>
+          <button type="button" class="chip-button" data-granularity="week">Weekly</button>
+          <button type="button" class="chip-button" data-granularity="month">Monthly</button>
+        </div>
+      </div>
+
       <div class="grid">
         <div class="glass card">
           <h3>Total Calls</h3>
           <div class="metric-value" id="total-calls">-</div>
-          <div class="metric-sub">Last 24h: <span id="last-24h">-</span></div>
+          <div class="metric-sub">Range: <span id="range-label">Past 24h</span></div>
         </div>
         <div class="glass card">
           <h3>Success Rate</h3>
@@ -548,8 +578,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
 
       <div class="section-title">
-        <h2>Last 24h</h2>
-        <div class="pill">Capacity pulse</div>
+        <h2>Activity</h2>
+        <div class="pill" id="timeline-range">Past 24h · Hourly buckets</div>
       </div>
       <div class="glass card">
         <div class="timeline" id="timeline"></div>
@@ -596,6 +626,28 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const loginError = document.getElementById('login-error');
     const sessionIndicator = document.getElementById('session-indicator');
     const exportButton = document.getElementById('export-button');
+    const granularityButtons = document.querySelectorAll('[data-granularity]');
+    const timelineRange = document.getElementById('timeline-range');
+    const rangeLabel = document.getElementById('range-label');
+    let currentGranularity = 'day';
+
+    function syncGranularityUI(granularity) {
+      if (granularity) {
+        currentGranularity = granularity;
+      }
+      granularityButtons.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.granularity === currentGranularity);
+      });
+    }
+
+    granularityButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const next = btn.dataset.granularity || 'day';
+        if (next === currentGranularity) return;
+        syncGranularityUI(next);
+        loadData();
+      });
+    });
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -713,9 +765,26 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       return trimmed;
     }
 
+    function applyMeta(meta = {}) {
+      const windowLabel = meta.windowLabel || 'Past 24 hours';
+      const bucketHint = meta.timelineLabel || (meta.timelineBucket === 'day' ? 'Daily buckets' : 'Hourly buckets');
+      if (rangeLabel) {
+        rangeLabel.textContent = windowLabel;
+      }
+      if (timelineRange) {
+        timelineRange.textContent = `${windowLabel} · ${bucketHint}`;
+      }
+      if (meta.granularity) {
+        syncGranularityUI(meta.granularity);
+      } else {
+        syncGranularityUI(currentGranularity);
+      }
+    }
+
     function setTotals(totals, meta = {}) {
-      document.getElementById('total-calls').textContent = formatNumber(totals.count);
-      document.getElementById('last-24h').textContent = formatNumber(totals.last24h);
+      applyMeta(meta);
+      const totalCount = totals.windowCount ?? totals.count;
+      document.getElementById('total-calls').textContent = formatNumber(totalCount);
       const success = (totals.successRate * 100).toFixed(1) + '%';
       document.getElementById('success-rate').textContent = success;
       const rpsWindowSeconds = Number(meta.rpsWindowSeconds || 300);
@@ -804,7 +873,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     async function loadData() {
-      const res = await fetch('/admin/metrics/data', { credentials: 'include' });
+      const res = await fetch(`/admin/metrics/data?granularity=${encodeURIComponent(currentGranularity)}`, { credentials: 'include' });
       if (!res.ok) {
         sessionIndicator.textContent = 'Auth required';
         dashboard.classList.add('hidden');

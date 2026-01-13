@@ -3,10 +3,48 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, cast
 
 from pydantic import BaseModel, Field
 from .logging_utils import get_logger
+
+
+DEFAULT_GRANULARITY = "day"
+GRANULARITY_CONFIG: Dict[str, Dict[str, object]] = {
+    "day": {
+        "window": timedelta(days=1),
+        "bucket": "hour",
+        "label": "Past 24 hours",
+        "timeline_label": "Hourly buckets",
+    },
+    "week": {
+        "window": timedelta(days=7),
+        "bucket": "day",
+        "label": "Past 7 days",
+        "timeline_label": "Daily buckets (7d)",
+    },
+    "month": {
+        "window": timedelta(days=30),
+        "bucket": "day",
+        "label": "Past 30 days",
+        "timeline_label": "Daily buckets (30d)",
+    },
+}
+
+
+def _resolve_granularity(name: Optional[str]) -> Tuple[str, Dict[str, object]]:
+    key = (name or "").lower()
+    if key not in GRANULARITY_CONFIG:
+        key = DEFAULT_GRANULARITY
+    return key, GRANULARITY_CONFIG[key]
+
+
+def _bucket_start(ts: datetime, bucket: str) -> datetime:
+    ts_utc = ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+    ts_utc = ts_utc.astimezone(timezone.utc)
+    if bucket == "hour":
+        return ts_utc.replace(minute=0, second=0, microsecond=0)
+    return ts_utc.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 class MetricEvent(BaseModel):
@@ -99,26 +137,33 @@ class MetricsStore:
     def list_since(self, since: datetime) -> List[MetricEvent]:
         return [event for event in self._events if event.timestamp >= since]
 
-    def overview(self) -> MetricsOverview:
+    def overview(self, granularity: str = DEFAULT_GRANULARITY) -> MetricsOverview:
         events = list(self._events)
-        total = len(events)
-        successes = sum(1 for e in events if 200 <= e.status_code < 300)
-        avg_latency = sum(e.latency_ms for e in events) / total if total else 0.0
-        total_tokens = sum(e.tokens or 0 for e in events)
-        total_bytes = sum(e.request_bytes for e in events)
+        granularity_key, granularity_config = _resolve_granularity(granularity)
+        window = cast(timedelta, granularity_config["window"])
+        bucket = str(granularity_config["bucket"])
+        window_label = granularity_config.get("label", "")
+        timeline_label = granularity_config.get("timeline_label", "")
 
         now = datetime.now(timezone.utc)
-        last_24h_cutoff = now - timedelta(hours=24)
+        window_start = now - window
         recent_cutoff = now - timedelta(days=7)
         rps_window = timedelta(minutes=5)
         rps_cutoff = now - rps_window
-        last_24h = [e for e in events if e.timestamp >= last_24h_cutoff]
+
+        window_events = [e for e in events if e.timestamp >= window_start]
         recent_events = [e for e in events if e.timestamp >= recent_cutoff]
-        rps_events = [e for e in events if e.timestamp >= rps_cutoff]
+        rps_events = [e for e in window_events if e.timestamp >= rps_cutoff]
+
+        total = len(window_events)
+        successes = sum(1 for e in window_events if 200 <= e.status_code < 300)
+        avg_latency = sum(e.latency_ms for e in window_events) / total if total else 0.0
+        total_tokens = sum(e.tokens or 0 for e in window_events)
+        total_bytes = sum(e.request_bytes for e in window_events)
         rps = len(rps_events) / rps_window.total_seconds() if rps_events else 0.0
 
         interface_stats: Dict[str, Dict[str, object]] = {}
-        for e in events:
+        for e in window_events:
             stats = interface_stats.setdefault(
                 e.interface,
                 {
@@ -154,7 +199,7 @@ class MetricsStore:
             )
 
         source_stats: Dict[str, Dict[str, object]] = {}
-        for e in events:
+        for e in window_events:
             stats = source_stats.setdefault(
                 e.source,
                 {
@@ -181,9 +226,9 @@ class MetricsStore:
             )
 
         timeline_buckets: Dict[str, Dict[str, int]] = {}
-        for e in last_24h:
-            bucket = e.timestamp.replace(minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
-            key = bucket.isoformat()
+        for e in window_events:
+            bucket_start = _bucket_start(e.timestamp, bucket)
+            key = bucket_start.isoformat()
             entry = timeline_buckets.setdefault(key, {"count": 0, "failures": 0})
             entry["count"] += 1
             if not (200 <= e.status_code < 300):
@@ -203,8 +248,8 @@ class MetricsStore:
                 "avgLatencyMs": round(avg_latency, 2),
                 "totalTokens": total_tokens,
                 "totalBytes": total_bytes,
-                "last24h": len(last_24h),
                 "rps": round(rps, 3),
+                "windowCount": total,
             },
             interfaces=interfaces,
             sources=sources,
@@ -216,6 +261,12 @@ class MetricsStore:
                 "recentRangeHours": 24 * 7,
                 "recentCount": len(recent_events),
                 "rpsWindowSeconds": int(rps_window.total_seconds()),
+                "granularity": granularity_key,
+                "windowLabel": window_label,
+                "windowHours": int(window.total_seconds() // 3600),
+                "timelineBucket": bucket,
+                "timelineLabel": timeline_label,
+                "availableGranularities": list(GRANULARITY_CONFIG.keys()),
             },
         )
 
