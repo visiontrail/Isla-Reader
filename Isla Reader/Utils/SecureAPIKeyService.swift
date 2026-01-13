@@ -98,6 +98,20 @@ final class SecureAPIKeyService {
         let startTime = Date()
         let requestBytes = body.count
         var statusCode = 0
+        var errorReason: String?
+
+        defer {
+            UsageMetricsReporter.shared.record(
+                interface: "/v1/keys/ai",
+                statusCode: statusCode,
+                latencyMs: Date().timeIntervalSince(startTime) * 1000,
+                requestBytes: requestBytes,
+                tokens: nil,
+                retryCount: 0,
+                source: .secureConfig,
+                errorReason: errorReason
+            )
+        }
 
         do {
             let (data, response) = try await session.data(for: request)
@@ -108,6 +122,7 @@ final class SecureAPIKeyService {
 
             guard (200...299).contains(httpResponse.statusCode) else {
                 let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+                errorReason = message
                 throw SecureAPIKeyError.server(message: "HTTP \(httpResponse.statusCode): \(message)")
             }
 
@@ -125,38 +140,14 @@ final class SecureAPIKeyService {
 
             await cache.store(aiConfig)
             DebugLogger.success("SecureAPIKeyService: 成功获取 AI 配置")
-            UsageMetricsReporter.shared.record(
-                interface: "/v1/keys/ai",
-                statusCode: statusCode,
-                latencyMs: Date().timeIntervalSince(startTime) * 1000,
-                requestBytes: requestBytes,
-                tokens: nil,
-                retryCount: 0,
-                source: .secureConfig
-            )
             return aiConfig
         } catch let error as SecureAPIKeyError {
-            UsageMetricsReporter.shared.record(
-                interface: "/v1/keys/ai",
-                statusCode: statusCode,
-                latencyMs: Date().timeIntervalSince(startTime) * 1000,
-                requestBytes: requestBytes,
-                tokens: nil,
-                retryCount: 0,
-                source: .secureConfig
-            )
+            errorReason = error.localizedDescription
             throw error
         } catch {
-            UsageMetricsReporter.shared.record(
-                interface: "/v1/keys/ai",
-                statusCode: statusCode,
-                latencyMs: Date().timeIntervalSince(startTime) * 1000,
-                requestBytes: requestBytes,
-                tokens: nil,
-                retryCount: 0,
-                source: .secureConfig
-            )
-            throw SecureAPIKeyError.transport(error.localizedDescription)
+            let message = error.localizedDescription
+            errorReason = message
+            throw SecureAPIKeyError.transport(message)
         }
     }
 

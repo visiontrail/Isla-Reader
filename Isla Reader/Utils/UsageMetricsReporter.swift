@@ -24,6 +24,7 @@ private struct APIMetricPayload: Encodable {
     let retryCount: Int
     let source: String
     let requestId: String?
+    let errorReason: String?
     let timestamp: Date
 
     enum CodingKeys: String, CodingKey {
@@ -35,6 +36,7 @@ private struct APIMetricPayload: Encodable {
         case retryCount = "retry_count"
         case source
         case requestId = "request_id"
+        case errorReason = "error_reason"
         case timestamp
     }
 }
@@ -67,7 +69,8 @@ final class UsageMetricsReporter {
         tokens: Int? = nil,
         retryCount: Int = 0,
         source: UsageMetricsSource,
-        requestId: String? = nil
+        requestId: String? = nil,
+        errorReason: String? = nil
     ) {
         queue.async { [weak self] in
             self?._record(
@@ -78,7 +81,8 @@ final class UsageMetricsReporter {
                 tokens: tokens,
                 retryCount: retryCount,
                 source: source.rawValue,
-                requestId: requestId
+                requestId: requestId,
+                errorReason: errorReason
             )
         }
     }
@@ -91,7 +95,8 @@ final class UsageMetricsReporter {
         tokens: Int?,
         retryCount: Int,
         source: String,
-        requestId: String?
+        requestId: String?,
+        errorReason: String?
     ) {
         guard let config = try? SecureServerConfig.current() else {
             DebugLogger.warning("UsageMetricsReporter: 未配置安全服务器，跳过指标上报")
@@ -100,6 +105,13 @@ final class UsageMetricsReporter {
         guard let url = URL(string: "/v1/metrics", relativeTo: config.baseURL) else {
             DebugLogger.warning("UsageMetricsReporter: 无效的指标上报地址")
             return
+        }
+
+        let normalizedErrorReason: String?
+        if let reason = errorReason?.trimmingCharacters(in: .whitespacesAndNewlines), !reason.isEmpty {
+            normalizedErrorReason = String(reason.prefix(500))
+        } else {
+            normalizedErrorReason = nil
         }
 
         let payload = APIMetricPayload(
@@ -111,6 +123,7 @@ final class UsageMetricsReporter {
             retryCount: retryCount,
             source: source,
             requestId: requestId,
+            errorReason: normalizedErrorReason,
             timestamp: Date()
         )
 

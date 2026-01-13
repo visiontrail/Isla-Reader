@@ -98,6 +98,7 @@ final class ReadingAIService {
         let requestBytes = jsonData.count
         var statusCode = 0
         var tokensUsed: Int?
+        var errorReason: String?
         defer {
             let latencyMs = Date().timeIntervalSince(startTime) * 1000
             UsageMetricsReporter.shared.record(
@@ -107,7 +108,8 @@ final class ReadingAIService {
                 requestBytes: requestBytes,
                 tokens: tokensUsed,
                 retryCount: 0,
-                source: source
+                source: source,
+                errorReason: errorReason
             )
         }
 
@@ -125,6 +127,7 @@ final class ReadingAIService {
             guard httpResponse.statusCode == 200 else {
                 let message = String(data: data, encoding: .utf8) ?? "Unknown error"
                 DebugLogger.error("ReadingAIService: AI接口返回错误 \(httpResponse.statusCode) - \(message)")
+                errorReason = message
                 throw ReadingAIError.api(message)
             }
 
@@ -143,9 +146,11 @@ final class ReadingAIService {
             DebugLogger.success("ReadingAIService: 收到AI响应")
             return content
         } catch let error as ReadingAIError {
+            errorReason = error.localizedDescription
             throw error
         } catch {
             DebugLogger.error("ReadingAIService: 网络或解析异常 - \(error.localizedDescription)")
+            errorReason = error.localizedDescription
             throw ReadingAIError.network
         }
     }

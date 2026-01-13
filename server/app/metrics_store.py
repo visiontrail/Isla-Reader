@@ -18,6 +18,7 @@ class MetricEvent(BaseModel):
     retry_count: int = 0
     source: str
     request_id: Optional[str] = None
+    error_reason: Optional[str] = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_public_dict(self) -> Dict[str, object]:
@@ -31,6 +32,7 @@ class MetricEvent(BaseModel):
             "retryCount": self.retry_count,
             "source": self.source,
             "requestId": self.request_id,
+            "errorReason": self.error_reason,
         }
 
 
@@ -94,6 +96,9 @@ class MetricsStore:
     def list_recent(self, limit: int = 30) -> List[MetricEvent]:
         return list(self._events[-limit:])
 
+    def list_since(self, since: datetime) -> List[MetricEvent]:
+        return [event for event in self._events if event.timestamp >= since]
+
     def overview(self) -> MetricsOverview:
         events = list(self._events)
         total = len(events)
@@ -104,7 +109,9 @@ class MetricsStore:
 
         now = datetime.now(timezone.utc)
         last_24h_cutoff = now - timedelta(hours=24)
+        recent_cutoff = now - timedelta(days=7)
         last_24h = [e for e in events if e.timestamp >= last_24h_cutoff]
+        recent_events = [e for e in events if e.timestamp >= recent_cutoff]
 
         interface_stats: Dict[str, Dict[str, object]] = {}
         for e in events:
@@ -183,7 +190,7 @@ class MetricsStore:
             for key, value in sorted(timeline_buckets.items())
         ]
 
-        recent = [event.to_public_dict() for event in reversed(events[-30:])]
+        recent = [event.to_public_dict() for event in reversed(recent_events)]
 
         return MetricsOverview(
             totals={
@@ -198,7 +205,12 @@ class MetricsStore:
             sources=sources,
             timeline=timeline,
             recent=recent,
-            meta={"retained": len(events), "maxRetained": self.max_events},
+            meta={
+                "retained": len(events),
+                "maxRetained": self.max_events,
+                "recentRangeHours": 24 * 7,
+                "recentCount": len(recent_events),
+            },
         )
 
 

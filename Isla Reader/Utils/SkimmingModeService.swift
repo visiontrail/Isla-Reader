@@ -383,6 +383,7 @@ final class SkimmingModeService {
         let requestBytes = jsonData.count
         var statusCode = 0
         var tokensUsed: Int?
+        var errorReason: String?
         defer {
             let latency = Date().timeIntervalSince(startTime) * 1000
             UsageMetricsReporter.shared.record(
@@ -392,7 +393,8 @@ final class SkimmingModeService {
                 requestBytes: requestBytes,
                 tokens: tokensUsed,
                 retryCount: 0,
-                source: .skimming
+                source: .skimming,
+                errorReason: errorReason
             )
         }
         
@@ -404,6 +406,7 @@ final class SkimmingModeService {
             statusCode = httpResponse.statusCode
             guard httpResponse.statusCode == 200 else {
                 let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+                errorReason = message
                 throw SkimmingModeError.apiError("HTTP \(httpResponse.statusCode): \(message)")
             }
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -418,8 +421,10 @@ final class SkimmingModeService {
             }
             return content
         } catch let error as SkimmingModeError {
+            errorReason = error.localizedDescription
             throw error
         } catch {
+            errorReason = error.localizedDescription
             throw SkimmingModeError.networkError
         }
     }

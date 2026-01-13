@@ -1,10 +1,12 @@
+import csv
 import hashlib
 import hmac
-from datetime import datetime, timezone
+import io
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..config import Settings, get_settings
@@ -24,6 +26,7 @@ class MetricIngestPayload(BaseModel):
     retry_count: int = 0
     source: str
     request_id: Optional[str] = None
+    error_reason: Optional[str] = Field(default=None, max_length=500)
     timestamp: Optional[datetime] = Field(default=None)
 
 
@@ -111,6 +114,7 @@ async def ingest_metrics(
         retry_count=payload.retry_count,
         source=payload.source,
         request_id=payload.request_id,
+        error_reason=payload.error_reason,
         timestamp=ts,
     )
     try:
@@ -178,9 +182,61 @@ async def metrics_events(
     settings: Settings = Depends(get_settings),
 ) -> dict:
     store = _store(settings)
-    events = [event.to_public_dict() for event in reversed(store.list_recent(limit=50))]
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    events = [event.to_public_dict() for event in reversed(store.list_since(cutoff))]
     logger.debug("Dashboard metrics events requested by %s (count=%s)", user, len(events))
     return {"events": events}
+
+
+@router.get("/admin/metrics/export")
+async def metrics_export(
+    user: str = Depends(require_dashboard_user),
+    settings: Settings = Depends(get_settings),
+) -> StreamingResponse:
+    store = _store(settings)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    events = store.list_since(cutoff)
+    logger.info("Dashboard metrics export requested by %s (count=%s)", user, len(events))
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        [
+            "timestamp",
+            "interface",
+            "status_code",
+            "latency_ms",
+            "request_bytes",
+            "tokens",
+            "retry_count",
+            "source",
+            "request_id",
+            "error_reason",
+        ]
+    )
+    for event in events:
+        writer.writerow(
+            [
+                event.timestamp.isoformat(),
+                event.interface,
+                event.status_code,
+                round(event.latency_ms, 2),
+                event.request_bytes,
+                event.tokens or "",
+                event.retry_count,
+                event.source,
+                event.request_id or "",
+                (event.error_reason or "").replace("\n", " "),
+            ]
+        )
+
+    filename = f"metrics-last-7d-{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
+    buffer.seek(0)
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 DASHBOARD_HTML = """<!DOCTYPE html>
@@ -369,6 +425,24 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       font-weight: 700;
       width: 100%;
     }
+    .btn {
+      width: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: linear-gradient(120deg, #8ef6ff, #7ec3ff);
+      color: #0b1021;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .btn.ghost {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border-color: var(--border);
+      box-shadow: none;
+    }
     .hidden { display: none; }
     .chips { display: flex; gap: 8px; flex-wrap: wrap; }
   </style>
@@ -478,7 +552,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       <div class="section-title">
         <h2>Recent Calls</h2>
-        <div class="pill">Latest 30</div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <div class="pill">Past 7 days</div>
+          <button type="button" class="btn ghost" id="export-button">Export CSV</button>
+        </div>
       </div>
       <div class="glass card" style="overflow-x:auto;">
         <table id="recent-table">
@@ -489,7 +566,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
               <th>Status</th>
               <th>Latency</th>
               <th>Source</th>
-              <th>Retries</th>
+              <th>Error</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -513,6 +590,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const dashboard = document.getElementById('dashboard');
     const loginError = document.getElementById('login-error');
     const sessionIndicator = document.getElementById('session-indicator');
+    const exportButton = document.getElementById('export-button');
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -553,8 +631,41 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
     }
 
+    if (exportButton) {
+      exportButton.addEventListener('click', exportMetrics);
+    }
+
+    async function exportMetrics() {
+      const res = await fetch('/admin/metrics/export', { credentials: 'include' });
+      if (!res.ok) {
+        alert('导出失败，请检查登录状态后重试');
+        if (res.status === 401) {
+          sessionIndicator.textContent = 'Auth required';
+          dashboard.classList.add('hidden');
+          loginSection.classList.remove('hidden');
+        }
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `metrics-last-7d-${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    }
+
     function formatNumber(value) {
       return Number(value || 0).toLocaleString();
+    }
+
+    function escapeText(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
     }
 
     function setTotals(totals) {
@@ -628,13 +739,15 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       rows.forEach((row) => {
         const tr = document.createElement('tr');
         const date = new Date(row.timestamp);
+        const ok = row.statusCode >= 200 && row.statusCode < 300;
+        const errorText = ok ? '-' : escapeText(row.errorReason || 'Unknown error');
         tr.innerHTML = `
           <td>${date.toLocaleString()}</td>
-          <td>${row.interface}</td>
-          <td><span class="status-${row.statusCode >=200 && row.statusCode < 300 ? 'ok' : 'bad'}">${row.statusCode}</span></td>
+          <td>${escapeText(row.interface)}</td>
+          <td><span class="status-${ok ? 'ok' : 'bad'}">${row.statusCode}</span></td>
           <td>${(row.latencyMs || 0).toFixed(1)} ms</td>
-          <td>${row.source}</td>
-          <td>${row.retryCount}</td>
+          <td>${escapeText(row.source)}</td>
+          <td>${errorText}</td>
         `;
         tbody.appendChild(tr);
       });

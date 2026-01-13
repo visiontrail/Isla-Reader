@@ -79,7 +79,7 @@ curl -k -X POST https://localhost:8443/v1/keys/ai \
 - `GET /privacy` — 静态隐私政策页面（客户端/审核可直接访问）。
 - `POST /v1/keys/ai` — 返回 AI API Key 以及可远程调配的 `api_endpoint`、`model`。请求体需签名，响应默认带 `Cache-Control: no-store`。
     - 签名计算：`HMAC_SHA256(client_id + "." + nonce + "." + timestamp, client_secret)`，并使用十六进制字符串传输。
-- `POST /v1/metrics` — 采集客户端上报的 AI/API 调用指标，需携带 `X-Metrics-Key`（默认与 `client_secret` 相同，可单独配置 `ISLA_METRICS_INGEST_TOKEN`）。
+- `POST /v1/metrics` — 采集客户端上报的 AI/API 调用指标，需携带 `X-Metrics-Key`（默认与 `client_secret` 相同，可单独配置 `ISLA_METRICS_INGEST_TOKEN`）。请确保与 iOS 构建时的 `SECURE_SERVER_METRICS_TOKEN` 一致，否则会被 401 拒绝。
 - `GET /admin/metrics` — 登录后查看实时统计面板（`ISLA_DASHBOARD_USERNAME`/`ISLA_DASHBOARD_PASSWORD`），数据持久化在 `ISLA_METRICS_DATA_FILE`（默认 `data/metrics.jsonl`，保留数量由 `ISLA_METRICS_MAX_EVENTS` 控制）。
 
 > 说明：若访问 / 返回 404 属于正常现象（API-only 服务不一定提供根路径页面）。建议用 /health 做可用性检查。

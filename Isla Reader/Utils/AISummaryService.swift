@@ -465,6 +465,7 @@ class AISummaryService: ObservableObject {
         let requestBytes = jsonData.count
         var statusCode = 0
         var tokensUsed: Int?
+        var errorReason: String?
         defer {
             let latency = Date().timeIntervalSince(startTime) * 1000
             UsageMetricsReporter.shared.record(
@@ -474,7 +475,8 @@ class AISummaryService: ObservableObject {
                 requestBytes: requestBytes,
                 tokens: tokensUsed,
                 retryCount: 0,
-                source: source
+                source: source,
+                errorReason: errorReason
             )
         }
         
@@ -495,6 +497,7 @@ class AISummaryService: ObservableObject {
             guard httpResponse.statusCode == 200 else {
                 let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
                 DebugLogger.error("AISummaryService: API返回错误 - \(errorMessage)")
+                errorReason = errorMessage
                 throw AISummaryError.apiError("API returned status code \(httpResponse.statusCode): \(errorMessage)")
             }
             
@@ -525,11 +528,14 @@ class AISummaryService: ObservableObject {
             
         } catch let error as AIConfigError {
             DebugLogger.error("AISummaryService: 配置错误 - \(error.localizedDescription)")
+            errorReason = error.localizedDescription
             throw AISummaryError.apiError(error.localizedDescription)
         } catch let error as AISummaryError {
+            errorReason = error.localizedDescription
             throw error
         } catch {
             DebugLogger.error("AISummaryService: 网络请求失败 - \(error.localizedDescription)")
+            errorReason = error.localizedDescription
             throw AISummaryError.networkError
         }
     }
