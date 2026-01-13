@@ -41,7 +41,7 @@ final class ReadingAIService {
         \(text)
         """
 
-        return try await callAI(with: prompt, temperature: 0.35, maxTokens: 480)
+        return try await callAI(with: prompt, temperature: 0.35, maxTokens: 480, source: .inlineTranslation)
     }
 
     func explain(text: String, locale: AppLanguage) async throws -> String {
@@ -53,12 +53,12 @@ final class ReadingAIService {
         \(text)
         """
 
-        return try await callAI(with: prompt, temperature: 0.5, maxTokens: 520)
+        return try await callAI(with: prompt, temperature: 0.5, maxTokens: 520, source: .inlineExplain)
     }
 
     // MARK: - Private
 
-    private func callAI(with prompt: String, temperature: Double, maxTokens: Int) async throws -> String {
+    private func callAI(with prompt: String, temperature: Double, maxTokens: Int, source: UsageMetricsSource) async throws -> String {
         let config: AIConfiguration
         do {
             config = try await AIConfig.current()
@@ -94,6 +94,23 @@ final class ReadingAIService {
         request.httpBody = jsonData
         request.timeoutInterval = 45.0
 
+        let startTime = Date()
+        let requestBytes = jsonData.count
+        var statusCode = 0
+        var tokensUsed: Int?
+        defer {
+            let latencyMs = Date().timeIntervalSince(startTime) * 1000
+            UsageMetricsReporter.shared.record(
+                interface: "/chat/completions",
+                statusCode: statusCode,
+                latencyMs: latencyMs,
+                requestBytes: requestBytes,
+                tokens: tokensUsed,
+                retryCount: 0,
+                source: source
+            )
+        }
+
         DebugLogger.info("ReadingAIService: 发送AI请求 model=\(config.model)")
 
         do {
@@ -103,6 +120,7 @@ final class ReadingAIService {
                 DebugLogger.error("ReadingAIService: 响应类型无效")
                 throw ReadingAIError.network
             }
+            statusCode = httpResponse.statusCode
 
             guard httpResponse.statusCode == 200 else {
                 let message = String(data: data, encoding: .utf8) ?? "Unknown error"
@@ -117,6 +135,9 @@ final class ReadingAIService {
                   let content = message["content"] as? String else {
                 DebugLogger.error("ReadingAIService: 解析AI响应失败")
                 throw ReadingAIError.parse
+            }
+            if let usage = jsonResponse["usage"] as? [String: Any] {
+                tokensUsed = usage["total_tokens"] as? Int ?? usage["completion_tokens"] as? Int
             }
 
             DebugLogger.success("ReadingAIService: 收到AI响应")

@@ -378,12 +378,30 @@ final class SkimmingModeService {
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 60
+
+        let startTime = Date()
+        let requestBytes = jsonData.count
+        var statusCode = 0
+        var tokensUsed: Int?
+        defer {
+            let latency = Date().timeIntervalSince(startTime) * 1000
+            UsageMetricsReporter.shared.record(
+                interface: "/chat/completions",
+                statusCode: statusCode,
+                latencyMs: latency,
+                requestBytes: requestBytes,
+                tokens: tokensUsed,
+                retryCount: 0,
+                source: .skimming
+            )
+        }
         
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw SkimmingModeError.networkError
             }
+            statusCode = httpResponse.statusCode
             guard httpResponse.statusCode == 200 else {
                 let message = String(data: data, encoding: .utf8) ?? "Unknown error"
                 throw SkimmingModeError.apiError("HTTP \(httpResponse.statusCode): \(message)")
@@ -394,6 +412,9 @@ final class SkimmingModeService {
                   let message = first["message"] as? [String: Any],
                   let content = message["content"] as? String else {
                 throw SkimmingModeError.parseError
+            }
+            if let usage = json["usage"] as? [String: Any] {
+                tokensUsed = usage["total_tokens"] as? Int ?? usage["completion_tokens"] as? Int
             }
             return content
         } catch let error as SkimmingModeError {

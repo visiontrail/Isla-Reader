@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import Settings, get_settings
-from .routers import key, pages
+from .routers import key, metrics, pages
 
 app = FastAPI(
     title="LanRead Server",
@@ -61,4 +61,5 @@ async def health(settings: Settings = Depends(get_settings)) -> dict:
 
 
 app.include_router(key.router)
+app.include_router(metrics.router)
 app.include_router(pages.router)

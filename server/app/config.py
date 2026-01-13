@@ -1,6 +1,6 @@
 import json
 from functools import lru_cache
-from typing import Any, List
+from typing import Any, List, Optional
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     ai_model: str
     client_id: str
     client_secret: str
+    metrics_ingest_token: Optional[str] = None
+    metrics_data_file: str = "data/metrics.jsonl"
+    metrics_max_events: int = 5000
+    dashboard_username: str = "admin"
+    dashboard_password: str = "lanread"
+    dashboard_session_secret: Optional[str] = None
+    dashboard_session_ttl_seconds: int = 86_400  # 24h
     # Use str type to prevent pydantic-settings from attempting JSON parsing before validator
     allowed_origins: str = ""
     require_https: bool = True
@@ -55,6 +62,13 @@ class Settings(BaseSettings):
     def get_allowed_origins(self) -> List[str]:
         """Get parsed allowed origins list."""
         return _parse_origins(self.allowed_origins)
+
+    def resolved_metrics_token(self) -> str:
+        """Use dedicated metrics token when provided; fall back to client_secret."""
+        return self.metrics_ingest_token or self.client_secret
+
+    def resolved_dashboard_secret(self) -> str:
+        return self.dashboard_session_secret or self.client_secret
 
 
 @lru_cache

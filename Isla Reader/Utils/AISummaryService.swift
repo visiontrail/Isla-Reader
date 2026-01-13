@@ -205,7 +205,7 @@ class AISummaryService: ObservableObject {
         DebugLogger.info("AISummaryService: 已构建提示词")
         
         // 调用AI API（这里使用模拟实现）
-        let response = try await callAIAPI(prompt: prompt)
+        let response = try await callAIAPI(prompt: prompt, source: .startReading)
         DebugLogger.success("AISummaryService: AI API调用成功")
         
         // 解析响应
@@ -226,7 +226,7 @@ class AISummaryService: ObservableObject {
             DebugLogger.info("AISummaryService: 处理章节 [\(index+1)/\(chapters.count)] - \(chapter.title)")
             
             let prompt = buildChapterSummaryPrompt(chapter: chapter)
-            let response = try await callAIAPI(prompt: prompt)
+            let response = try await callAIAPI(prompt: prompt, source: .chapterSummary)
             let (summary, keyPoints) = parseSummaryResponse(response)
             
             let mapping = ChapterMapping(
@@ -253,7 +253,7 @@ class AISummaryService: ObservableObject {
         DebugLogger.info("AISummaryService: 流式生成提示词已构建")
         
         // 模拟流式API调用
-        let fullSummary = try await callAIAPI(prompt: prompt)
+        let fullSummary = try await callAIAPI(prompt: prompt, source: .startReading)
         DebugLogger.success("AISummaryService: 流式API调用完成")
         DebugLogger.info("AISummaryService: 完整摘要长度 = \(fullSummary.count)")
         
@@ -421,7 +421,7 @@ class AISummaryService: ObservableObject {
         return prompt
     }
     
-    private func callAIAPI(prompt: String) async throws -> String {
+    private func callAIAPI(prompt: String, source: UsageMetricsSource) async throws -> String {
         let config = try await AIConfig.current()
         
         DebugLogger.info("AISummaryService: ===== 开始调用AI API =====")
@@ -460,6 +460,23 @@ class AISummaryService: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = jsonData
         request.timeoutInterval = 60.0
+
+        let startTime = Date()
+        let requestBytes = jsonData.count
+        var statusCode = 0
+        var tokensUsed: Int?
+        defer {
+            let latency = Date().timeIntervalSince(startTime) * 1000
+            UsageMetricsReporter.shared.record(
+                interface: "/chat/completions",
+                statusCode: statusCode,
+                latencyMs: latency,
+                requestBytes: requestBytes,
+                tokens: tokensUsed,
+                retryCount: 0,
+                source: source
+            )
+        }
         
         DebugLogger.info("AISummaryService: 发送API请求...")
         
@@ -473,6 +490,7 @@ class AISummaryService: ObservableObject {
             }
             
             DebugLogger.info("AISummaryService: HTTP状态码 = \(httpResponse.statusCode)")
+            statusCode = httpResponse.statusCode
             
             guard httpResponse.statusCode == 200 else {
                 let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
@@ -490,6 +508,10 @@ class AISummaryService: ObservableObject {
                 let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode"
                 DebugLogger.error("AISummaryService: 原始响应 = \(responseString)")
                 throw AISummaryError.parseError
+            }
+            
+            if let usage = jsonResponse["usage"] as? [String: Any] {
+                tokensUsed = usage["total_tokens"] as? Int ?? usage["completion_tokens"] as? Int
             }
             
             DebugLogger.success("AISummaryService: API请求成功")

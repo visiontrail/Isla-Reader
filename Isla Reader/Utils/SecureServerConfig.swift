@@ -10,6 +10,7 @@ struct SecureServerConfiguration {
     let clientId: String
     let clientSecret: String
     let requireTLS: Bool
+    let metricsIngestToken: String?
 }
 
 enum SecureServerConfigError: LocalizedError {
@@ -36,6 +37,7 @@ enum SecureServerConfig {
         let clientId = trimmedValue(for: "SecureServerClientID")
         let clientSecret = trimmedValue(for: "SecureServerClientSecret")
         let requireTLSSource = trimmedValue(for: "SecureServerRequireTLS")
+        let metricsToken = trimmedValue(for: "SecureServerMetricsToken")
 
         var missing: [String] = []
         if baseURLString.isEmpty { missing.append("SecureServerBaseURL") }
@@ -62,7 +64,8 @@ enum SecureServerConfig {
             baseURL: baseURL,
             clientId: clientId,
             clientSecret: clientSecret,
-            requireTLS: requireTLS
+            requireTLS: requireTLS,
+            metricsIngestToken: metricsToken.isEmpty ? nil : metricsToken
         )
     }
 

@@ -40,6 +40,8 @@
 	<string>$(SECURE_SERVER_CLIENT_SECRET)</string>
 	<key>SecureServerRequireTLS</key>
 	<string>$(SECURE_SERVER_REQUIRE_TLS)</string>
+	<key>SecureServerMetricsToken</key>
+	<string>$(SECURE_SERVER_METRICS_TOKEN)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-5587239366359667~6499097766</string>
 	<key>AdMobBannerAdUnitID</key>
