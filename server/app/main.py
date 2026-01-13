@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import Settings, get_settings
+from .logging_utils import configure_logging, get_logger
 from .routers import key, metrics, pages
 
 app = FastAPI(
@@ -10,6 +11,7 @@ app = FastAPI(
     version="0.1.0",
     description="Secure backend for LanRead API key delivery and future user services.",
 )
+logger = get_logger(__name__)
 
 
 def _is_https(request: Request) -> bool:
@@ -49,7 +51,14 @@ def _configure_cors(app: FastAPI, settings: Settings) -> None:
 @app.on_event("startup")
 async def startup_event():
     settings = get_settings()
+    configure_logging(settings)
     _configure_cors(app, settings)
+    logger.info(
+        "Startup complete (require_https=%s, metrics_file=%s, log_file=%s)",
+        settings.require_https,
+        settings.metrics_data_file,
+        settings.log_file,
+    )
 
 
 @app.get("/health")

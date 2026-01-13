@@ -8,9 +8,11 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from ..config import Settings, get_settings
+from ..logging_utils import get_logger
 from ..metrics_store import MetricEvent, MetricsStore, get_metrics_store
 
 router = APIRouter(tags=["metrics"])
+logger = get_logger("metrics")
 
 
 class MetricIngestPayload(BaseModel):
@@ -33,7 +35,13 @@ class LoginRequest(BaseModel):
 def _require_metrics_token(request: Request, settings: Settings) -> None:
     token = request.headers.get("x-metrics-key")
     expected = settings.resolved_metrics_token()
-    if not expected or token != expected:
+    if not expected:
+        logger.warning("Metrics ingest rejected: metrics ingest token is not configured")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid metrics token")
+
+    if token != expected:
+        client_host = request.client.host if request.client else "unknown"
+        logger.warning("Metrics ingest rejected from %s: invalid token", client_host)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid metrics token")
 
 
@@ -105,13 +113,33 @@ async def ingest_metrics(
         request_id=payload.request_id,
         timestamp=ts,
     )
-    store.add(event)
+    try:
+        store.add(event)
+    except Exception as exc:
+        logger.error("Failed to persist metrics to %s: %s", store.path, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to persist metrics",
+        ) from exc
+
+    logger.info(
+        "Metrics ingested interface=%s status=%s source=%s latency=%.2fms bytes=%s tokens=%s request_id=%s file=%s",
+        event.interface,
+        event.status_code,
+        event.source,
+        event.latency_ms,
+        event.request_bytes,
+        event.tokens,
+        event.request_id,
+        store.path,
+    )
     return {"status": "queued"}
 
 
 @router.post("/admin/metrics/login", summary="Login for metrics dashboard")
 async def login(request: LoginRequest, response: Response, settings: Settings = Depends(get_settings)) -> dict:
     if request.username != settings.dashboard_username or request.password != settings.dashboard_password:
+        logger.warning("Metrics dashboard login failed for user=%s", request.username)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     token = _make_session_token(request.username, settings)
@@ -124,6 +152,7 @@ async def login(request: LoginRequest, response: Response, settings: Settings = 
         max_age=settings.dashboard_session_ttl_seconds,
         path="/",
     )
+    logger.info("Metrics dashboard login success for user=%s", request.username)
     return {"ok": True}
 
 
@@ -139,6 +168,7 @@ async def metrics_data(
 ) -> JSONResponse:
     store = _store(settings)
     overview = store.overview()
+    logger.debug("Dashboard metrics data requested by %s", user)
     return JSONResponse(overview.model_dump())
 
 
@@ -149,6 +179,7 @@ async def metrics_events(
 ) -> dict:
     store = _store(settings)
     events = [event.to_public_dict() for event in reversed(store.list_recent(limit=50))]
+    logger.debug("Dashboard metrics events requested by %s (count=%s)", user, len(events))
     return {"events": events}
 
 

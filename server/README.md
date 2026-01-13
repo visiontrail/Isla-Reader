@@ -85,6 +85,12 @@ curl -k -X POST https://localhost:8443/v1/keys/ai \
 > 说明：若访问 / 返回 404 属于正常现象（API-only 服务不一定提供根路径页面）。建议用 /health 做可用性检查。
 > 
 
+## 日志与监控
+
+- 应用日志默认写入 `app/logs/server.log`（由 `ISLA_LOG_FILE` 控制，使用相对路径时以 `app/` 目录为基准），同时也会输出到 stdout，并按 `ISLA_LOG_MAX_BYTES`/`ISLA_LOG_BACKUP_COUNT` 进行轮转。
+- 日志等级由 `ISLA_LOG_LEVEL` 控制，可设置为 `INFO` 或 `DEBUG` 以便排查。
+- 指标事件写入 `ISLA_METRICS_DATA_FILE`，默认路径为 `app/data/metrics.jsonl`，文件不存在会自动创建；收到上报后可在日志中搜索 `Metrics ingested` 以确认写入成功。
+
 ---
 
 ## 安全建议

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
+from .logging_utils import get_logger
 
 
 class MetricEvent(BaseModel):
@@ -47,10 +48,12 @@ class MetricsStore:
         self.path = path
         self.max_events = max_events
         self._events: List[MetricEvent] = []
+        self._logger = get_logger("metrics_store")
         self._load()
 
     def _load(self) -> None:
         if not self.path.exists():
+            self._logger.info("Metrics file not found at %s; starting with empty store", self.path)
             return
 
         try:
@@ -60,20 +63,33 @@ class MetricsStore:
                     continue
                 event = MetricEvent.model_validate_json(line)
                 self._events.append(event)
-        except Exception:
+            self._logger.info("Loaded %s retained metrics events from %s", len(self._events), self.path)
+        except Exception as exc:
             # Corrupted metric data should not prevent the service from starting.
+            self._logger.error("Failed to load metrics from %s: %s", self.path, exc)
             self._events = []
 
     def _persist(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        content = "\n".join(event.model_dump_json() for event in self._events)
-        self.path.write_text(content, encoding="utf-8")
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            content = "\n".join(event.model_dump_json() for event in self._events)
+            self.path.write_text(content, encoding="utf-8")
+        except Exception as exc:
+            self._logger.error("Failed to persist metrics to %s: %s", self.path, exc)
+            raise
 
     def add(self, event: MetricEvent) -> None:
         self._events.append(event)
         if len(self._events) > self.max_events:
             self._events = self._events[-self.max_events :]
         self._persist()
+        self._logger.debug(
+            "Added metric event interface=%s status=%s source=%s total=%s",
+            event.interface,
+            event.status_code,
+            event.source,
+            len(self._events),
+        )
 
     def list_recent(self, limit: int = 30) -> List[MetricEvent]:
         return list(self._events[-limit:])

@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     metrics_ingest_token: Optional[str] = None
     metrics_data_file: str = "data/metrics.jsonl"
     metrics_max_events: int = 5000
+    log_file: str = "logs/server.log"
+    log_level: str = "INFO"
+    log_max_bytes: int = 1_000_000
+    log_backup_count: int = 5
     dashboard_username: str = "admin"
     dashboard_password: str = "lanread"
     dashboard_session_secret: Optional[str] = None
@@ -58,6 +62,13 @@ class Settings(BaseSettings):
         if value is None:
             return ""
         return str(value)
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def normalize_log_level(cls, value) -> str:
+        if value is None:
+            return "INFO"
+        return str(value).upper()
 
     def get_allowed_origins(self) -> List[str]:
         """Get parsed allowed origins list."""
