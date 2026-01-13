@@ -448,6 +448,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .chips { display: flex; gap: 8px; flex-wrap: wrap; }
     .chip-button {
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       padding: 8px 12px;
       border-radius: 999px;
       border: 1px solid var(--border);
@@ -455,6 +458,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       color: var(--text);
       font-weight: 600;
       letter-spacing: 0.01em;
+      width: auto;
+      flex-shrink: 0;
       transition: all 0.18s ease;
     }
     .chip-button:hover {
