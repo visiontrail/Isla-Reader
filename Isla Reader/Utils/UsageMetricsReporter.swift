@@ -12,6 +12,7 @@ enum UsageMetricsSource: String {
     case inlineExplain = "inline_explain"
     case skimming = "skimming"
     case secureConfig = "secure_config"
+    case ads = "ads"
     case other = "other"
 }
 

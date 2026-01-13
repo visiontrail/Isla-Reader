@@ -270,6 +270,68 @@ class MetricsStore:
             },
         )
 
+    def ad_load_summary(self, window_hours: int = 24 * 7) -> Dict[str, object]:
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(hours=window_hours)
+        events = [event for event in self._events if event.source == "ads" and event.timestamp >= cutoff]
+
+        placements: Dict[str, Dict[str, object]] = {}
+        for event in events:
+            stats = placements.setdefault(
+                event.interface,
+                {"success": 0, "failure": 0, "failureReasons": {}},
+            )
+            success = 200 <= event.status_code < 300
+            if success:
+                stats["success"] = stats.get("success", 0) + 1
+            else:
+                stats["failure"] = stats.get("failure", 0) + 1
+                reason = (event.error_reason or "unknown").strip() or "unknown"
+                failure_reasons: Dict[str, int] = stats["failureReasons"]  # type: ignore[assignment]
+                failure_reasons[reason] = failure_reasons.get(reason, 0) + 1
+
+        total_success = sum(stats.get("success", 0) for stats in placements.values())
+        total_failure = sum(stats.get("failure", 0) for stats in placements.values())
+
+        recent_failures = [
+            {
+                "timestamp": event.timestamp.isoformat(),
+                "placement": event.interface,
+                "statusCode": event.status_code,
+                "reason": event.error_reason,
+            }
+            for event in reversed(events)
+            if not (200 <= event.status_code < 300)
+        ][:50]
+
+        placement_list = [
+            {
+                "placement": name,
+                "success": stats.get("success", 0),
+                "failure": stats.get("failure", 0),
+                "successRate": (
+                    stats["success"] / (stats["success"] + stats["failure"])
+                    if (stats.get("success", 0) + stats.get("failure", 0))
+                    else 0.0
+                ),
+                "failureReasons": stats.get("failureReasons", {}),
+            }
+            for name, stats in placements.items()
+        ]
+
+        return {
+            "totals": {
+                "success": total_success,
+                "failure": total_failure,
+                "successRate": (total_success / (total_success + total_failure)) if (total_success + total_failure) else 0.0,
+            },
+            "placements": placement_list,
+            "recentFailures": recent_failures,
+            "windowHours": window_hours,
+            "eventCount": len(events),
+            "retained": len(self._events),
+        }
+
 
 @lru_cache
 def get_metrics_store(path: str, max_events: int) -> MetricsStore:

@@ -817,18 +817,12 @@ struct AboutView: View {
                 Spacer()
                 
                 // App Icon
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(LinearGradient(
-                        gradient: Gradient(colors: [.blue, .purple]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ))
+                Image("LanReadIcon")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
                     .frame(width: 100, height: 100)
-                    .overlay(
-                        Image(systemName: "book.closed")
-                            .font(.system(size: 50))
-                            .foregroundColor(.white)
-                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .shadow(radius: 6)
                 
                 VStack(spacing: 8) {
                     Text(NSLocalizedString("app.name", comment: "App name"))

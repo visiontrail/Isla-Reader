@@ -189,6 +189,23 @@ async def metrics_events(
     return {"events": events}
 
 
+@router.get("/admin/metrics/ads")
+async def ad_metrics_overview(
+    window_hours: int = 24 * 7,
+    user: str = Depends(require_dashboard_user),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    store = _store(settings)
+    summary = store.ad_load_summary(window_hours=window_hours)
+    logger.debug(
+        "Dashboard ad metrics requested by %s (window_hours=%s, events=%s)",
+        user,
+        window_hours,
+        summary.get("eventCount", 0),
+    )
+    return summary
+
+
 @router.get("/admin/metrics/export")
 async def metrics_export(
     user: str = Depends(require_dashboard_user),

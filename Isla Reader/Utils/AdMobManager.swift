@@ -10,6 +10,53 @@ import GoogleMobileAds
 import SwiftUI
 import UIKit
 
+private enum AdLoadPlacement: String {
+    case banner = "admob_banner_load"
+    case rewardedInterstitial = "admob_rewarded_interstitial_load"
+}
+
+private enum AdLoadMetricsRecorder {
+    static func record(
+        _ placement: AdLoadPlacement,
+        statusCode: Int,
+        error: Error? = nil,
+        responseId: String? = nil
+    ) {
+        let reason: String?
+        if let error {
+            reason = summarize(error)
+        } else {
+            reason = nil
+        }
+
+        UsageMetricsReporter.shared.record(
+            interface: placement.rawValue,
+            statusCode: statusCode,
+            latencyMs: 0,
+            requestBytes: 0,
+            tokens: nil,
+            retryCount: 0,
+            source: .ads,
+            requestId: responseId,
+            errorReason: reason
+        )
+    }
+
+    private static func summarize(_ error: Error) -> String {
+        let nsError = error as NSError
+        var parts: [String] = []
+        if !nsError.domain.isEmpty {
+            parts.append(nsError.domain)
+        }
+        parts.append("code=\(nsError.code)")
+        let message = nsError.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !message.isEmpty {
+            parts.append(message)
+        }
+        return parts.joined(separator: " | ")
+    }
+}
+
 enum AdMobAdUnitIDs {
     static var fixedBanner: String? {
         resolvedID(for: "AdMobBannerAdUnitID")
@@ -70,10 +117,13 @@ struct BannerAdView: UIViewRepresentable {
     final class Coordinator: NSObject, GADBannerViewDelegate {
         func bannerViewDidReceiveAd(_ bannerView: GADBannerView) {
             DebugLogger.success("AdMob: Banner ad loaded")
+            AdLoadMetricsRecorder.record(.banner, statusCode: 200)
         }
 
         func bannerView(_ bannerView: GADBannerView, didFailToReceiveAdWithError error: any Error) {
             DebugLogger.error("AdMob: Banner failed to load - \(error.localizedDescription)")
+            let errorCode = (error as NSError).code
+            AdLoadMetricsRecorder.record(.banner, statusCode: errorCode, error: error)
         }
     }
 }
@@ -109,12 +159,15 @@ final class RewardedInterstitialAdManager: NSObject {
             if let error {
                 DebugLogger.error("AdMob: Failed to load rewarded interstitial - \(error.localizedDescription)")
                 self.rewardedAd = nil
+                let errorCode = (error as NSError).code
+                AdLoadMetricsRecorder.record(.rewardedInterstitial, statusCode: errorCode, error: error)
                 return
             }
 
             self.rewardedAd = ad
             self.rewardedAd?.fullScreenContentDelegate = self
             DebugLogger.success("AdMob: Rewarded interstitial is ready")
+            AdLoadMetricsRecorder.record(.rewardedInterstitial, statusCode: 200)
 
             if self.pendingPresentation {
                 Task { @MainActor in
