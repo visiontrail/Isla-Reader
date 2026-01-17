@@ -10,6 +10,99 @@ import GoogleMobileAds
 import SwiftUI
 import UIKit
 
+private enum AdMobDiagnostics {
+    static func log(responseInfo: GADResponseInfo?, context: String) {
+        guard let responseInfo else {
+            DebugLogger.info("AdMob: \(context) responseInfo=nil")
+            return
+        }
+
+        var summary: [String] = []
+        summary.append("responseId=\(responseInfo.responseIdentifier ?? "nil")")
+        if let loaded = responseInfo.loadedAdNetworkResponseInfo {
+            summary.append("loadedAdapter=\(loaded.adNetworkClassName)")
+            let latencyMs = Int(loaded.latency * 1000)
+            summary.append("latencyMs=\(latencyMs)")
+            if let adSource = loaded.adSourceName {
+                summary.append("adSourceName=\(adSource)")
+            }
+            if let adSourceId = loaded.adSourceID {
+                summary.append("adSourceID=\(adSourceId)")
+            }
+        }
+        DebugLogger.info("AdMob: \(context) summary \(summary.joined(separator: ", "))")
+
+        DebugLogger.info("AdMob: \(context) raw responseInfo=\(prettify(responseInfo.dictionaryRepresentation))")
+
+        let extras = responseInfo.extrasDictionary
+        if !extras.isEmpty {
+            DebugLogger.info("AdMob: \(context) extras=\(prettify(extras))")
+        }
+
+        let networkInfos = responseInfo.adNetworkInfoArray.map { info in
+            info.dictionaryRepresentation
+        }
+        if !networkInfos.isEmpty {
+            DebugLogger.info("AdMob: \(context) adNetworkInfoArray=\(prettify(networkInfos))")
+        }
+    }
+
+    static func log(error: NSError, context: String) {
+        var parts: [String] = []
+        parts.append("domain=\(error.domain)")
+        parts.append("code=\(error.code)")
+        let message = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !message.isEmpty {
+            parts.append("message=\(message)")
+        }
+        if let reason = error.localizedFailureReason, !reason.isEmpty {
+            parts.append("reason=\(reason)")
+        }
+        if let suggestion = error.localizedRecoverySuggestion, !suggestion.isEmpty {
+            parts.append("suggestion=\(suggestion)")
+        }
+
+        DebugLogger.error("AdMob: \(context) \(parts.joined(separator: ", "))")
+
+        if !error.userInfo.isEmpty {
+            DebugLogger.info("AdMob: \(context) error.userInfo=\(prettify(error.userInfo))")
+        }
+    }
+
+    private static func prettify(_ object: Any) -> String {
+        let normalized = normalize(object)
+        guard JSONSerialization.isValidJSONObject(normalized),
+              let data = try? JSONSerialization.data(withJSONObject: normalized, options: [.prettyPrinted, .sortedKeys]),
+              let json = String(data: data, encoding: .utf8) else {
+            return String(describing: object)
+        }
+        return json
+    }
+
+    private static func normalize(_ object: Any) -> Any {
+        if let dictionary = object as? [AnyHashable: Any] {
+            var result: [String: Any] = [:]
+            for (key, value) in dictionary {
+                result[String(describing: key)] = normalize(value)
+            }
+            return result
+        }
+
+        if let array = object as? [Any] {
+            return array.map { normalize($0) }
+        }
+
+        switch object {
+        case let number as NSNumber:
+            return number
+        case let string as String:
+            return string
+        default:
+            return String(describing: object)
+        }
+    }
+}
+
 private enum AdLoadPlacement: String {
     case banner = "admob_banner_load"
     case rewardedInterstitial = "admob_rewarded_interstitial_load"
@@ -117,13 +210,21 @@ struct BannerAdView: UIViewRepresentable {
     final class Coordinator: NSObject, GADBannerViewDelegate {
         func bannerViewDidReceiveAd(_ bannerView: GADBannerView) {
             DebugLogger.success("AdMob: Banner ad loaded")
-            AdLoadMetricsRecorder.record(.banner, statusCode: 200)
+            let responseInfo = bannerView.responseInfo
+            AdMobDiagnostics.log(responseInfo: responseInfo, context: "Banner load success")
+            AdLoadMetricsRecorder.record(.banner, statusCode: 200, responseId: responseInfo?.responseIdentifier)
         }
 
         func bannerView(_ bannerView: GADBannerView, didFailToReceiveAdWithError error: any Error) {
-            DebugLogger.error("AdMob: Banner failed to load - \(error.localizedDescription)")
-            let errorCode = (error as NSError).code
-            AdLoadMetricsRecorder.record(.banner, statusCode: errorCode, error: error)
+            let nsError = error as NSError
+            DebugLogger.error("AdMob: Banner failed to load - adUnitID=\(bannerView.adUnitID ?? "nil") adSize=\(bannerView.adSize.size), message=\(nsError.localizedDescription)")
+
+            AdMobDiagnostics.log(error: nsError, context: "Banner load failure")
+
+            let responseInfo = (nsError.userInfo[GADErrorUserInfoKeyResponseInfo] as? GADResponseInfo) ?? bannerView.responseInfo
+            AdMobDiagnostics.log(responseInfo: responseInfo, context: "Banner load failure")
+
+            AdLoadMetricsRecorder.record(.banner, statusCode: nsError.code, error: nsError, responseId: responseInfo?.responseIdentifier)
         }
     }
 }
