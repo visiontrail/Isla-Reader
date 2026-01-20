@@ -92,7 +92,7 @@ struct LibraryView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Search and Filter Bar
                 HStack {
@@ -188,7 +188,7 @@ struct LibraryView: View {
                 FilterSheetView(selectedFilter: $selectedFilter)
             }
             .fullScreenCover(item: $bookToShowAISummary) { book in
-                NavigationView {
+                NavigationStack {
                     AISummaryView(book: book)
                         .navigationTitle(book.displayTitle)
                         #if os(iOS)
@@ -216,7 +216,7 @@ struct LibraryView: View {
                 }
             }
             .fullScreenCover(item: $bookForSkimming) { book in
-                NavigationView {
+                NavigationStack {
                     SkimmingModeView(book: book)
                         .navigationBarHidden(true)
                 }
@@ -239,7 +239,7 @@ struct LibraryView: View {
                     .environment(\.managedObjectContext, viewContext)
             }
             .fullScreenCover(item: $readerLaunchTarget) { target in
-                NavigationView {
+                NavigationStack {
                     ReaderView(book: target.book, initialLocation: target.location)
                         .navigationBarHidden(true)
                 }
@@ -530,7 +530,7 @@ struct BookInfoSheet: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     headerSection
@@ -705,7 +705,7 @@ struct BookmarkListSheet: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 if bookmarks.isEmpty {
                     bookmarkEmptyState
@@ -826,7 +826,7 @@ struct HighlightListSheet: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 if highlights.isEmpty {
                     highlightEmptyState
@@ -975,7 +975,7 @@ struct FilterSheetView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 // General section
                 Section {
@@ -1048,7 +1048,7 @@ struct ImportBookView: View {
     @State private var importedBook: Book?
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 32) {
                 Spacer()
                 

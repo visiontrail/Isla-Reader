@@ -855,7 +855,7 @@ struct ReaderView: View {
     }
 
     private var noteEditorSheet: some View {
-        NavigationView {
+        NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
                 if let text = selectedTextInfo?.text {
                     VStack(alignment: .leading, spacing: 6) {
@@ -907,7 +907,7 @@ struct ReaderView: View {
     }
 
     private var highlightActionSheet: some View {
-        NavigationView {
+        NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
                 if let highlight = activeHighlight {
                     VStack(alignment: .leading, spacing: 8) {
@@ -1015,7 +1015,7 @@ struct ReaderView: View {
     }
 
     private var aiResponseSheet: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 16) {
                 if isLoadingAIResponse {
                     VStack(spacing: 12) {
@@ -1910,7 +1910,7 @@ struct TableOfContentsView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollViewReader { proxy in
                 List {
                     ForEach(displayItems) { item in
@@ -2003,7 +2003,7 @@ struct ReaderSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section(NSLocalizedString("字体设置", comment: "")) {
                     HStack {

@@ -127,10 +127,9 @@ struct AdaptiveNavigationView<Content: View>: View {
                 content
             }
         } else {
-            NavigationView {
+            NavigationStack {
                 content
             }
-            .navigationViewStyle(StackNavigationViewStyle())
         }
     }
 }

@@ -15,7 +15,7 @@ struct SettingsView: View {
     @State private var reminderAlert: DataAlert?
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 // Language
                 Section(NSLocalizedString("语言", comment: "")) {
@@ -408,7 +408,7 @@ struct DataManagementView: View {
     @State private var isClearingAllData = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section(NSLocalizedString("数据导出", comment: "")) {
                     Button(action: { exportMode = .readingData }) {
@@ -699,7 +699,7 @@ struct ExportDataView: View {
     @State private var exportAlert: DataAlert?
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 24) {
                 Spacer()
                 
@@ -812,7 +812,7 @@ struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 32) {
                 Spacer()
                 

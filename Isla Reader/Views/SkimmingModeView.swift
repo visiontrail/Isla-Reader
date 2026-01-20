@@ -622,7 +622,7 @@ private struct SkimmingTableOfContentsView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 ForEach(chapters.indices, id: \.self) { index in
                     Button(action: {
