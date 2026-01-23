@@ -76,7 +76,8 @@ struct ReaderView: View {
     @State private var pendingTapWorkItem: DispatchWorkItem?
     @State private var lastNavigationTapTime: Date?
     @State private var lastWebContentTapTime: Date?
-    private let swipePagingEnabled = false
+    private let swipePagingEnabled = true
+    private let tapNavigationEdgeRatio: CGFloat = 0.24
     
     private var effectiveColorScheme: ColorScheme {
         appSettings.theme.colorScheme ?? systemColorScheme
@@ -1407,30 +1408,68 @@ struct ReaderView: View {
         clampCurrentPage(index)
     }
     
-    private func nextPageOrChapter() {
-        ensurePageArrays()
-        let total = safeChapterTotalPages(currentChapterIndex)
-        let page = safeChapterPageIndex(currentChapterIndex)
-        if page < total - 1 {
-            setChapterPageIndex(currentChapterIndex, page + 1)
-        } else if currentChapterIndex < chapters.count - 1 {
-            currentChapterIndex += 1
-            setChapterPageIndex(currentChapterIndex, 0)
-        }
-        saveReadingProgress()
+    @discardableResult
+    private func nextPageOrChapter(source: PageTurnSource) -> Bool {
+        turnPage(.next, source: source)
     }
     
-    private func previousPageOrChapter() {
+    @discardableResult
+    private func previousPageOrChapter(source: PageTurnSource) -> Bool {
+        turnPage(.previous, source: source)
+    }
+    
+    @discardableResult
+    private func turnPage(_ direction: PageTurnDirection, source: PageTurnSource) -> Bool {
         ensurePageArrays()
-        let page = safeChapterPageIndex(currentChapterIndex)
-        if page > 0 {
-            setChapterPageIndex(currentChapterIndex, page - 1)
-        } else if currentChapterIndex > 0 {
-            currentChapterIndex -= 1
-            let lastPage = safeChapterTotalPages(currentChapterIndex) - 1
-            setChapterPageIndex(currentChapterIndex, max(0, lastPage))
+        var didMove = false
+        
+        switch direction {
+        case .next:
+            let total = safeChapterTotalPages(currentChapterIndex)
+            let page = safeChapterPageIndex(currentChapterIndex)
+            if page < total - 1 {
+                setChapterPageIndex(currentChapterIndex, page + 1)
+                didMove = true
+            } else if currentChapterIndex < chapters.count - 1 {
+                currentChapterIndex += 1
+                setChapterPageIndex(currentChapterIndex, 0)
+                didMove = true
+            }
+        case .previous:
+            let page = safeChapterPageIndex(currentChapterIndex)
+            if page > 0 {
+                setChapterPageIndex(currentChapterIndex, page - 1)
+                didMove = true
+            } else if currentChapterIndex > 0 {
+                currentChapterIndex -= 1
+                let lastPage = safeChapterTotalPages(currentChapterIndex) - 1
+                setChapterPageIndex(currentChapterIndex, max(0, lastPage))
+                didMove = true
+            }
         }
+        
+        guard didMove else {
+            provideBoundaryFeedback(for: direction)
+            return false
+        }
+        
         saveReadingProgress()
+        selectedTextInfo = nil
+        provideTurnHaptic(for: source)
+        return true
+    }
+
+    private func provideTurnHaptic(for source: PageTurnSource) {
+        // 只在翻页时提供轻微的触觉反馈，保持简洁
+        let feedback = UIImpactFeedbackGenerator(style: .light)
+        feedback.impactOccurred(intensity: 0.5)
+    }
+
+    private func provideBoundaryFeedback(for direction: PageTurnDirection) {
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.warning)
+        let key = direction == .next ? "reader.page_turn.reached_end" : "reader.page_turn.reached_start"
+        showHint(NSLocalizedString(key, comment: ""))
     }
     
     // MARK: - Reading Time Tracking
@@ -1545,7 +1584,8 @@ struct ReaderView: View {
         if shouldIgnoreNavigationTap() {
             return
         }
-        let doubleTapInterval: TimeInterval = 0.3
+        // 减少双击检测延迟以提升响应速度
+        let doubleTapInterval: TimeInterval = 0.18
         let now = Date()
         if let lastTap = lastNavigationTapTime, now.timeIntervalSince(lastTap) < doubleTapInterval {
             pendingTapWorkItem?.cancel()
@@ -1553,7 +1593,7 @@ struct ReaderView: View {
             lastNavigationTapTime = nil
             return
         }
-        
+
         lastNavigationTapTime = now
         pendingTapWorkItem?.cancel()
         let width = max(geometry.size.width, 1)
@@ -1564,12 +1604,11 @@ struct ReaderView: View {
             guard selectedTextInfo == nil else { return }
             guard !isAnimatingPageTurn else { return }
             let normalizedX = location.x / width
-            let edgeWidth: CGFloat = 0.28
-            
-            if normalizedX < edgeWidth {
-                previousPageOrChapter()
-            } else if normalizedX > (1 - edgeWidth) {
-                nextPageOrChapter()
+
+            if normalizedX < tapNavigationEdgeRatio {
+                _ = previousPageOrChapter(source: .tap)
+            } else if normalizedX > (1 - tapNavigationEdgeRatio) {
+                _ = nextPageOrChapter(source: .tap)
             } else {
                 handleTap()
             }
@@ -1601,92 +1640,86 @@ struct ReaderView: View {
         // 防止在动画过程中处理新的拖拽
         guard !isAnimatingPageTurn else { return }
         pendingTapWorkItem?.cancel()
-        
+
         let translation = value.translation
         let startLocation = value.startLocation
-        
+
         // 检查是否是水平滑动（水平移动距离大于垂直移动距离）
         if abs(translation.width) > abs(translation.height) && abs(translation.width) > 10 {
             if !isDragging {
                 isDragging = true
                 dragStartLocation = startLocation
-                // 轻微触觉反馈表示开始滑动
-                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                impactFeedback.impactOccurred()
-                
+
                 // 隐藏工具栏以获得更好的滑动体验
                 if showingToolbar {
-                    withAnimation(.easeOut(duration: 0.2)) {
+                    withAnimation(.easeOut(duration: 0.15)) {
                         showingToolbar = false
                     }
                 }
             }
-            
-            // 计算拖拽偏移，添加阻尼效果
-            let maxOffset = geometry.size.width * 0.3 // 最大偏移为屏幕宽度的30%
-            let dampingFactor: CGFloat = 0.6
+
+            // 计算拖拽偏移，添加阻尼效果 - 简化计算以提升性能
+            let maxOffset = geometry.size.width * 0.2
+            let dampingFactor: CGFloat = 0.5
             let rawOffset = translation.width * dampingFactor
-            
+
             // 检查是否可以翻页
             let canGoNext = canNavigateToNextPage()
             let canGoPrevious = canNavigateToPreviousPage()
-            
+
             if rawOffset > 0 && !canGoPrevious {
-                // 向右滑动但无法向前翻页，减少阻力
-                dragOffset = min(rawOffset * 0.3, maxOffset * 0.3)
+                // 向右滑动但无法向前翻页，增加阻力
+                dragOffset = min(rawOffset * 0.25, maxOffset * 0.25)
             } else if rawOffset < 0 && !canGoNext {
-                // 向左滑动但无法向后翻页，减少阻力
-                dragOffset = max(rawOffset * 0.3, -maxOffset * 0.3)
+                // 向左滑动但无法向后翻页，增加阻力
+                dragOffset = max(rawOffset * 0.25, -maxOffset * 0.25)
             } else {
                 // 正常滑动
                 dragOffset = max(-maxOffset, min(maxOffset, rawOffset))
-            }
-            
-            // 当达到翻页阈值时提供触觉反馈
-            let threshold = geometry.size.width * 0.25
-            if abs(dragOffset) > threshold * 0.8 && abs(translation.width) > threshold * 0.8 {
-                // 只在第一次达到阈值时触发反馈
-                let currentTime = Date().timeIntervalSince1970
-                if currentTime - lastTapTime.timeIntervalSince1970 > 0.3 {
-                    let selectionFeedback = UISelectionFeedbackGenerator()
-                    selectionFeedback.selectionChanged()
-                    lastTapTime = Date()
-                }
             }
         }
     }
     
     private func handleDragEnded(_ value: DragGesture.Value, geometry: GeometryProxy) {
-        if !swipePagingEnabled {
-            defer { isDragging = false }
-            guard selectedTextInfo == nil else { return }
-            let tapThreshold: CGFloat = 12
-            if abs(value.translation.width) < tapThreshold && abs(value.translation.height) < tapThreshold {
-                handleNavigationTap(at: value.startLocation, geometry: geometry)
-            }
+        let tapThreshold: CGFloat = 10
+        let isTapLike = abs(value.translation.width) < tapThreshold && abs(value.translation.height) < tapThreshold
+
+        if isTapLike {
+            isDragging = false
             dragOffset = 0
+            guard selectedTextInfo == nil else { return }
+            handleNavigationTap(at: value.startLocation, geometry: geometry)
             return
         }
-        
+
+        if !swipePagingEnabled {
+            dragOffset = 0
+            isDragging = false
+            return
+        }
+
         guard !isInteractingWithWebContent else {
             dragOffset = 0
             isDragging = false
             return
         }
-        guard isDragging else { return }
-        
+        guard isDragging else {
+            dragOffset = 0
+            return
+        }
+
         let translation = value.translation
         let velocity = CGPoint(
             x: value.predictedEndTranslation.width - value.translation.width,
             y: value.predictedEndTranslation.height - value.translation.height
         )
-        
-        // 判断翻页阈值
-        let threshold = geometry.size.width * 0.25 // 25%的屏幕宽度
-        let velocityThreshold: CGFloat = 300 // 速度阈值
-        
+
+        // 判断翻页阈值 - 降低阈值以获得更灵敏的响应
+        let threshold = geometry.size.width * 0.15
+        let velocityThreshold: CGFloat = 200
+
         let shouldTurnPage = abs(translation.width) > threshold || abs(velocity.x) > velocityThreshold
-        
+
         if shouldTurnPage && abs(translation.width) > abs(translation.height) {
             if translation.width > 0 && canNavigateToPreviousPage() {
                 // 向右滑动，翻到上一页
@@ -1702,42 +1735,41 @@ struct ReaderView: View {
             // 滑动距离不够，回弹
             animateBackToOriginalPosition()
         }
-        
+
         isDragging = false
     }
     
     private func performPageTurn(direction: PageTurnDirection) {
         guard !isAnimatingPageTurn else { return }
-        
-        isAnimatingPageTurn = true
-        
-        // 成功翻页的触觉反馈
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
-        
-        // 先把内容归位，再交由 ReaderWebView 的滑动转场负责文字切换（与点击翻页一致）
-        if dragOffset != 0 {
-            withAnimation(.spring(response: 0.24, dampingFraction: 0.9, blendDuration: 0)) {
-                dragOffset = 0
-            }
-        }
-        
-        // 触发与点击相同的翻页逻辑
+
+        let didTurn: Bool
         switch direction {
         case .next:
-            nextPageOrChapter()
+            didTurn = nextPageOrChapter(source: .swipe)
         case .previous:
-            previousPageOrChapter()
+            didTurn = previousPageOrChapter(source: .swipe)
         }
 
-        // ReaderWebView 会完成文字转场，这里只负责状态解锁
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        guard didTurn else {
+            animateBackToOriginalPosition()
+            return
+        }
+
+        isAnimatingPageTurn = true
+
+        // 使用更快速的弹簧动画归位
+        withAnimation(.spring(response: 0.2, dampingFraction: 0.85, blendDuration: 0)) {
+            dragOffset = 0
+        }
+
+        // 缩短动画锁定时间
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             self.isAnimatingPageTurn = false
         }
     }
     
     private func animateBackToOriginalPosition() {
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
             dragOffset = 0
         }
     }
@@ -1754,6 +1786,11 @@ struct ReaderView: View {
         let page = safeChapterPageIndex(currentChapterIndex)
         return page > 0 || currentChapterIndex > 0
     }
+
+    private enum PageTurnSource {
+        case tap
+        case swipe
+    }
     
     private enum PageTurnDirection {
         case next
@@ -1761,118 +1798,43 @@ struct ReaderView: View {
     }
     
     // MARK: - 滑动视觉反馈
-    
+
     private func slideVisualFeedback(geometry: GeometryProxy) -> some View {
-        ZStack {
-            // 滑动方向指示器
-            if abs(dragOffset) > 20 {
-                VStack {
-                    Spacer()
-                    
-                    HStack {
-                        if dragOffset > 0 {
-                            // 向右滑动 - 上一页指示器
-                            slideIndicator(
-                                direction: .previous,
-                                progress: min(abs(dragOffset) / (geometry.size.width * 0.25), 1.0),
-                                canNavigate: canNavigateToPreviousPage()
-                            )
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .leading).combined(with: .opacity),
-                                removal: .opacity
-                            ))
-                            
-                            Spacer()
-                        } else {
-                            // 向左滑动 - 下一页指示器
-                            Spacer()
-                            
-                            slideIndicator(
-                                direction: .next,
-                                progress: min(abs(dragOffset) / (geometry.size.width * 0.25), 1.0),
-                                canNavigate: canNavigateToNextPage()
-                            )
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .trailing).combined(with: .opacity),
-                                removal: .opacity
-                            ))
-                        }
-                    }
-                    .padding(.horizontal, 40)
-                    
-                    Spacer()
-                }
-            }
-            
-            // 边缘发光效果
-            if abs(dragOffset) > 10 {
-                edgeGlowEffect(geometry: geometry)
-            }
-        }
-        .allowsHitTesting(false)
+        // 简化的视觉反馈：只保留边缘发光效果，提升性能
+        edgeGlowEffect(geometry: geometry)
+            .allowsHitTesting(false)
     }
-    
-    private func slideIndicator(direction: PageTurnDirection, progress: CGFloat, canNavigate: Bool) -> some View {
-        VStack(spacing: 8) {
-            // 箭头图标
-            Image(systemName: direction == .next ? "chevron.right" : "chevron.left")
-                .font(.system(size: 24, weight: .medium))
-                .foregroundColor(canNavigate ? .primary : .secondary)
-                .scaleEffect(0.8 + progress * 0.4)
-                .opacity(0.6 + progress * 0.4)
-            
-            // 进度指示器
-            RoundedRectangle(cornerRadius: 2)
-                .fill(canNavigate ? Color.blue : Color.secondary)
-                .frame(width: 40, height: 4)
-                .scaleEffect(x: progress, y: 1.0, anchor: .center)
-                .opacity(0.7)
-            
-            // 提示文本
-            Text(direction == .next ? "下一页" : "上一页")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundColor(canNavigate ? .primary : .secondary)
-                .opacity(progress > 0.5 ? 0.8 : 0.0)
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .opacity(0.8 + progress * 0.2)
-        )
-        .scaleEffect(0.9 + progress * 0.1)
-    }
-    
+
     private func edgeGlowEffect(geometry: GeometryProxy) -> some View {
-        HStack {
+        HStack(spacing: 0) {
             if dragOffset > 0 {
                 // 左边缘发光
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        canNavigateToPreviousPage() ? Color.blue.opacity(0.3) : Color.red.opacity(0.2),
+                        canNavigateToPreviousPage() ? Color.blue.opacity(0.2) : Color.gray.opacity(0.15),
                         Color.clear
                     ]),
                     startPoint: .leading,
                     endPoint: .trailing
                 )
-                .frame(width: 8)
-                .opacity(min(abs(dragOffset) / CGFloat(100), 1.0))
-                
+                .frame(width: 6)
+                .opacity(min(abs(dragOffset) / 80.0, 1.0))
+
                 Spacer()
             } else {
                 Spacer()
-                
+
                 // 右边缘发光
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color.clear,
-                        canNavigateToNextPage() ? Color.blue.opacity(0.3) : Color.red.opacity(0.2)
+                        canNavigateToNextPage() ? Color.blue.opacity(0.2) : Color.gray.opacity(0.15)
                     ]),
                     startPoint: .leading,
                     endPoint: .trailing
                 )
-                .frame(width: 8)
-                .opacity(min(abs(dragOffset) / CGFloat(100), 1.0))
+                .frame(width: 6)
+                .opacity(min(abs(dragOffset) / 80.0, 1.0))
             }
         }
     }

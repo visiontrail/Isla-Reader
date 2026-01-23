@@ -137,6 +137,8 @@
 "highlight.list.title" = "Highlights & Notes";
 "highlight.list.empty" = "No highlights or notes yet";
 "highlight.list.unknown_chapter" = "Unknown chapter";
+"reader.page_turn.reached_start" = "You're at the beginning of this chapter";
+"reader.page_turn.reached_end" = "You've reached the end of this chapter";
 
 // SettingsView additional keys
 "数据导出" = "Data Export";

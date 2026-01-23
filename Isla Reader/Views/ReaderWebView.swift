@@ -201,68 +201,50 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         return true
     }
     
-    // MARK: - Sliding page-turn animation
-    private func makeSnapshot(from webView: WKWebView, bounds: CGRect) -> UIView {
-        let snapshot = webView.snapshotView(afterScreenUpdates: true) ?? UIView(frame: bounds)
-        snapshot.frame = bounds
-        snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        snapshot.isUserInteractionEnabled = false
-        snapshot.backgroundColor = webView.backgroundColor
-        return snapshot
-    }
-    
+    // MARK: - Lightweight page-turn animation
     private func performSlideTransition(to newIndex: Int, on webView: WKWebView) {
         guard let container = containerView else {
             scrollToCurrentPage(on: webView, animated: true)
             lastDisplayedPageIndex = newIndex
             return
         }
-        
+
         let bounds = container.bounds
         guard bounds.width > 0 else {
             scrollToCurrentPage(on: webView, animated: false)
             lastDisplayedPageIndex = newIndex
             return
         }
-        
+
         isAnimatingSlide = true
-        let oldIndex = lastDisplayedPageIndex
-        let isForward = newIndex >= oldIndex
-        
-        // Capture current page
-        let fromSnapshot = makeSnapshot(from: webView, bounds: bounds)
-        container.addSubview(fromSnapshot)
-        container.bringSubviewToFront(fromSnapshot)
-        
-        // Jump to the target page behind the snapshot so the swap is invisible
-        scrollToCurrentPage(on: webView, animated: false)
-        webView.layoutIfNeeded()
-        
-        // Capture destination page
-        let toSnapshot = makeSnapshot(from: webView, bounds: bounds)
-        toSnapshot.frame = bounds.offsetBy(dx: isForward ? bounds.width : -bounds.width, dy: 0)
-        container.addSubview(toSnapshot)
-        
-        webView.isHidden = true
-        
-        UIView.animate(withDuration: 0.32, delay: 0, options: [.curveEaseInOut, .allowUserInteraction]) {
-            fromSnapshot.frame = bounds.offsetBy(dx: isForward ? -bounds.width : bounds.width, dy: 0)
-            toSnapshot.frame = bounds
-        } completion: { _ in
-            webView.isHidden = false
-            fromSnapshot.removeFromSuperview()
-            toSnapshot.removeFromSuperview()
+
+        // 使用轻量级的动画：直接通过 scrollView 的原生动画
+        let pageWidth = bounds.width
+        let targetOffset = CGFloat(newIndex) * pageWidth
+
+        // 使用 CATransaction 实现更流畅的动画
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.25)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+        CATransaction.setCompletionBlock { [weak self] in
+            guard let self = self else { return }
             self.lastDisplayedPageIndex = newIndex
             self.isAnimatingSlide = false
-            
+
             if let pending = self.pendingPageIndex, pending != newIndex {
                 self.pendingPageIndex = nil
                 self.performSlideTransition(to: pending, on: webView)
             } else {
                 self.pendingPageIndex = nil
+                // 确保最终位置准确
                 self.scrollToCurrentPage(on: webView, animated: false)
             }
         }
+
+        // 直接设置 scrollView 的 contentOffset
+        webView.scrollView.setContentOffset(CGPoint(x: targetOffset, y: 0), animated: true)
+
+        CATransaction.commit()
     }
 
     // Sync latest SwiftUI state to coordinator

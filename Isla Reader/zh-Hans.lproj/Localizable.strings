@@ -137,6 +137,8 @@
 "highlight.list.title" = "高亮与笔记";
 "highlight.list.empty" = "暂无高亮或笔记";
 "highlight.list.unknown_chapter" = "未知章节";
+"reader.page_turn.reached_start" = "已经是本章第一页";
+"reader.page_turn.reached_end" = "已经是本章最后一页";
 
 // SettingsView additional keys
 "数据导出" = "数据导出";

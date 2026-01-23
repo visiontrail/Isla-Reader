@@ -137,6 +137,8 @@
 "highlight.list.title" = "ハイライトとノート";
 "highlight.list.empty" = "ハイライトやノートはまだありません";
 "highlight.list.unknown_chapter" = "不明な章";
+"reader.page_turn.reached_start" = "この章の先頭です";
+"reader.page_turn.reached_end" = "この章の末尾です";
 
 // SettingsView additional keys
 "数据导出" = "データエクスポート";

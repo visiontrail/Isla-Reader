@@ -137,6 +137,8 @@
 "highlight.list.title" = "하이라이트와 노트";
 "highlight.list.empty" = "하이라이트나 노트가 없습니다";
 "highlight.list.unknown_chapter" = "알 수 없는 챕터";
+"reader.page_turn.reached_start" = "이 장의 첫 페이지입니다";
+"reader.page_turn.reached_end" = "이 장의 마지막 페이지입니다";
 
 // SettingsView additional keys
 "数据导出" = "데이터 내보내기";

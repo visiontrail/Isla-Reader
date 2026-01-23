@@ -1,4 +1,4 @@
-7//
+//
 //  AdMobManager.swift
 //  LanRead
 //
