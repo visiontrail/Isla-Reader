@@ -10,8 +10,10 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @StateObject private var appSettings = AppSettings.shared
+    @StateObject private var notionAuth = NotionAuthService.shared
     @State private var showingAbout = false
     @State private var showingDataManagement = false
+    @State private var showingNotionAuth = false
     @State private var reminderAlert: DataAlert?
     
     var body: some View {
@@ -62,7 +64,23 @@ struct SettingsView: View {
                         Spacer()
                         Toggle("", isOn: $appSettings.isAutoSyncEnabled)
                     }
-                    
+
+                    Button(action: { showingNotionAuth = true }) {
+                        HStack {
+                            Label(NSLocalizedString("连接 Notion", comment: ""), systemImage: "link")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if notionAuth.authorizationCode != nil {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                            } else {
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                    }
+
                     Button(action: { showingDataManagement = true }) {
                         Label(NSLocalizedString("数据管理", comment: ""), systemImage: "externaldrive")
                             .foregroundColor(.primary)
@@ -124,6 +142,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingDataManagement) {
                 DataManagementView()
+            }
+            .sheet(isPresented: $showingNotionAuth) {
+                NotionAuthView()
             }
             .alert(item: $reminderAlert) { alert in
                 Alert(
@@ -873,6 +894,146 @@ struct AboutView: View {
                 #endif
             }
         }
+    }
+}
+
+// MARK: - Notion Auth View
+
+struct NotionAuthView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var notionAuth = NotionAuthService.shared
+    @State private var showingAlert = false
+    @State private var alertItem: DataAlert?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Spacer()
+
+                // Notion Logo/Icon
+                Image(systemName: "doc.text.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.primary)
+
+                VStack(spacing: 8) {
+                    Text(NSLocalizedString("连接到 Notion", comment: ""))
+                        .font(.title)
+                        .fontWeight(.bold)
+
+                    Text(NSLocalizedString("授权 LanRead 访问你的 Notion 工作区，以便同步你的阅读笔记和高亮。", comment: ""))
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+
+                // 状态显示
+                if let code = notionAuth.authorizationCode {
+                    VStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.green)
+
+                        Text(NSLocalizedString("授权成功", comment: ""))
+                            .font(.headline)
+                            .foregroundColor(.green)
+
+                        Text(NSLocalizedString("已获取授权码", comment: ""))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        // 显示授权码的前几位（仅用于调试）
+                        if !code.isEmpty {
+                            Text("Code: \(code.prefix(8))...")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .monospaced()
+                        }
+                    }
+                    .padding()
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(12)
+                }
+
+                if notionAuth.isAuthorizing {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text(NSLocalizedString("正在授权...", comment: ""))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // 授权按钮
+                Button(action: startAuthorization) {
+                    HStack {
+                        Image(systemName: "key.fill")
+                        Text(notionAuth.authorizationCode == nil ?
+                             NSLocalizedString("开始授权", comment: "") :
+                             NSLocalizedString("重新授权", comment: ""))
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(notionAuth.isAuthorizing ? Color.gray : Color.blue)
+                    .cornerRadius(12)
+                }
+                .disabled(notionAuth.isAuthorizing)
+                .padding(.horizontal)
+
+                // 说明文本
+                VStack(spacing: 8) {
+                    Text(NSLocalizedString("notion.auth.privacy_notice", comment: ""))
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal)
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle(NSLocalizedString("Notion 同步", comment: ""))
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(NSLocalizedString("取消", comment: "")) {
+                        dismiss()
+                    }
+                }
+
+                if notionAuth.authorizationCode != nil {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(NSLocalizedString("完成", comment: "")) {
+                            dismiss()
+                        }
+                        .fontWeight(.semibold)
+                    }
+                }
+            }
+            .alert(item: $alertItem) { alert in
+                Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    dismissButton: .default(Text(NSLocalizedString("确定", comment: "")))
+                )
+            }
+            .onChange(of: notionAuth.error) { error in
+                if let error = error {
+                    alertItem = DataAlert(
+                        title: NSLocalizedString("授权失败", comment: ""),
+                        message: error.localizedDescription
+                    )
+                }
+            }
+        }
+    }
+
+    private func startAuthorization() {
+        notionAuth.startAuthorization()
     }
 }
 

@@ -296,3 +296,27 @@
 "ai.error.network" = "Network error when contacting AI.";
 "ai.error.parse" = "Unable to parse AI response.";
 "ai.disclaimer" = "AI may generate incorrect information";
+
+// Notion OAuth
+"连接 Notion" = "Connect Notion";
+"连接到 Notion" = "Connect to Notion";
+"授权 LanRead 访问你的 Notion 工作区，以便同步你的阅读笔记和高亮。" = "Authorize LanRead to access your Notion workspace to sync your reading notes and highlights.";
+"授权成功" = "Authorization Successful";
+"已获取授权码" = "Authorization code received";
+"正在授权..." = "Authorizing...";
+"开始授权" = "Start Authorization";
+"重新授权" = "Re-authorize";
+"Notion 同步" = "Notion Sync";
+"授权失败" = "Authorization Failed";
+"取消" = "Cancel";
+"notion.auth.privacy_notice" = "We will only access the content you authorize, and won't access any other data.";
+"Notion OAuth 配置无效，请检查 Client ID" = "Invalid Notion OAuth configuration. Please check your Client ID.";
+"授权流程已在进行中" = "Authorization is already in progress.";
+"无法启动授权会话" = "Unable to start authorization session.";
+"用户取消了授权" = "User cancelled authorization.";
+"授权失败: %@" = "Authorization failed: %@";
+"无效的回调 URL" = "Invalid callback URL.";
+"State 验证失败，可能存在 CSRF 攻击" = "State verification failed. Possible CSRF attack detected.";
+"未收到授权码" = "Authorization code not received.";
+"Notion 授权错误: %@" = "Notion authorization error: %@";
+
