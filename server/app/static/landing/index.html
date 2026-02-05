@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lan Read (澜悦) — Precision in Every Line</title>
+  <title>Lan Read — Your first AI-powered reading companion</title>
+  <meta name="description" content="Lan Read turns ePub/txt into a conversational mentor on iOS and iPadOS: instant summaries, skimming, ask-while-reading, optional iCloud sync and Notion export, privacy-first local storage." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,700&display=swap" rel="stylesheet">
   <style>
@@ -79,11 +80,12 @@
       filter: blur(32px); opacity: 0.6; pointer-events: none;
     }
     h1 {
-      font-size: clamp(42px, 4vw, 64px); line-height: 1.06; margin: 0 0 22px;
+      font-size: clamp(42px, 4vw, 64px); line-height: 1.06; margin: 0 0 18px;
       letter-spacing: -0.02em;
       font-family: "Newsreader", "Epilogue", serif;
     }
-    .lead { color: var(--muted); max-width: 540px; font-size: 17px; line-height: 1.7; margin-bottom: 28px; }
+    .lead { color: var(--muted); max-width: 540px; font-size: 17px; line-height: 1.7; margin-bottom: 22px; }
+    .vision { color: var(--muted); font-size: 16px; margin-top: 18px; line-height: 1.6; max-width: 620px; }
     .cta-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
     .btn {
       padding: 14px 22px; border-radius: 14px; border: 1px solid var(--accent);
@@ -96,11 +98,11 @@
     .stat-card {
       border: 1px solid var(--line); border-radius: var(--radius);
       padding: 18px 20px; background: var(--panel); backdrop-filter: blur(6px);
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 14px;
       box-shadow: var(--paper-shadow);
     }
     .stat { display: flex; flex-direction: column; gap: 4px; }
-    .stat strong { font-size: 22px; color: var(--accent); letter-spacing: 0.01em; }
+    .stat strong { font-size: 18px; color: var(--accent); letter-spacing: 0.01em; }
     .monocard {
       border: 1px solid var(--line); border-radius: var(--radius);
       padding: 24px; background: linear-gradient(120deg, rgba(0,0,0,0.02), rgba(0,0,0,0));
@@ -150,9 +152,10 @@
     .section { max-width: 1180px; margin: 0 auto 120px; padding: 0 28px; position: relative; z-index: 2; }
     .section h2 { font-size: 26px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
-    .feature { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; background: var(--panel); min-height: 170px; box-shadow: 0 16px 40px rgba(0,0,0,0.06); }
-    .feature h3 { margin: 0 0 10px; font-size: 18px; letter-spacing: 0.01em; color: var(--text); }
+    .feature { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; background: var(--panel); min-height: 170px; box-shadow: 0 16px 40px rgba(0,0,0,0.06); position: relative; }
+    .feature h3 { margin: 0 0 10px; font-size: 18px; letter-spacing: 0.01em; color: var(--text); display: flex; align-items: center; gap: 10px; }
     .feature p { margin: 0; color: var(--muted); line-height: 1.6; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(20,20,20,0.06); border: 1px solid var(--line); color: var(--muted); font-size: 12px; letter-spacing: 0.02em; }
     .timeline {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;
     }
@@ -222,6 +225,7 @@
       color: #fff; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
       font-family: "DM Mono", monospace;
     }
+    .privacy-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; color: var(--muted); line-height: 1.6; }
 
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; margin-top: 46px; }
@@ -235,13 +239,13 @@
   <div class="grain"></div>
   <header>
     <nav>
-      <div class="logo"><div class="dot"></div><span data-i18n="brand.name">Lan Read · 澜悦</span></div>
+      <div class="logo"><div class="dot"></div><span data-key="brand.name">Lan Read · 澜悦</span></div>
       <div class="nav-links">
-        <a class="pill" href="#features" data-i18n="nav.features">Features</a>
-        <a class="pill" href="#workflow" data-i18n="nav.workflow">Workflow</a>
+        <a class="pill" href="#features" data-key="nav.features">Features</a>
+        <a class="pill" href="#workflow" data-key="nav.workflow">Workflow</a>
       </div>
       <div class="lang-switch">
-        <label for="language" data-i18n="nav.language">Language</label>
+        <label for="language" data-key="nav.language">Language</label>
         <select id="language" aria-label="Language selector">
           <option value="en">English</option>
           <option value="zh">中文</option>
@@ -254,19 +258,15 @@
     <div class="halo"></div>
     <div class="paper-sheet ruled">
       <div class="note-tab" aria-hidden="true"></div>
-      <div class="paper-label" data-i18n="paper.fieldnote">Field note</div>
-      <h1 data-i18n="hero.title">Line-perfect reading for technical teams</h1>
-      <p class="lead" data-i18n="hero.lead">Lan Read (澜悦) brings crisp monochrome layouts, AI summaries, and instant sync for people who read to build.</p>
+      <div class="paper-label" data-key="labels.fieldnote">Product note</div>
+      <h1 data-key="hero.title">Lan Read — Your first AI-powered reading companion</h1>
+      <p class="lead" data-key="hero.subtitle">Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with optional iCloud sync and Notion export.</p>
       <div class="cta-row">
-        <a class="btn" href="#workflow" data-i18n="hero.primary">See workflow</a>
-        <a class="btn ghost" href="#features" data-i18n="hero.secondary">Explore features</a>
+        <a class="btn" href="#features" data-key="hero.primaryCta">Explore features</a>
+        <a class="btn ghost" href="#workflow" data-key="hero.secondaryCta">See workflow</a>
       </div>
-      <div class="stat-card">
-        <div class="stat"><span data-i18n="stats.latency">Core summary latency</span><strong>&lt; 1.4s</strong></div>
-        <div class="stat"><span data-i18n="stats.daily">Daily active manuscripts</span><strong>12.4k+</strong></div>
-        <div class="stat"><span data-i18n="stats.locales">Locale coverage</span><strong>18 locales</strong></div>
-        <div class="stat"><span data-i18n="stats.error">Error rate</span><strong>0.03%</strong></div>
-      </div>
+      <div class="stat-card" id="fact-grid"></div>
+      <p class="vision" id="vision-line">Make every book a conversational mentor so you understand, remember, and discuss faster.</p>
       <div class="paper-edge" aria-hidden="true"></div>
     </div>
     <div class="outline-hero">
@@ -280,60 +280,40 @@
   </section>
 
   <section class="section" id="features">
-    <h2 data-i18n="features.title">Features</h2>
+    <h2 data-key="features.title">Features</h2>
     <div class="paper-sheet">
-      <div class="paper-label" data-i18n="paper.chapters">Chapters</div>
-      <div class="grid-3">
-        <div class="feature">
-          <h3 data-i18n="features.interface.title">Line-first interface</h3>
-          <p data-i18n="features.interface.body">Monochrome grid, high-contrast type, and disciplined whitespace to keep direction during long-form reading.</p>
-        </div>
-        <div class="feature">
-          <h3 data-i18n="features.summary.title">AI chapter summaries</h3>
-          <p data-i18n="features.summary.body">Built on AISummaryService with parallel inference; summaries appear as you turn the page.</p>
-        </div>
-        <div class="feature">
-          <h3 data-i18n="features.sync.title">Instant multi-device sync</h3>
-          <p data-i18n="features.sync.body">CloudKit plus local cache restores reading position in under 80ms when switching devices.</p>
-        </div>
-        <div class="feature">
-          <h3 data-i18n="features.privacy.title">Auditable privacy</h3>
-          <p data-i18n="features.privacy.body">Zero plaintext storage; DebugLogger keeps logs controlled for review.</p>
-        </div>
-        <div class="feature">
-          <h3 data-i18n="features.plugin.title">Extensible prompts</h3>
-          <p data-i18n="features.plugin.body">LocalizationHelper keeps prompts consistent while allowing per-team AI formatting.</p>
-        </div>
-        <div class="feature">
-          <h3 data-i18n="features.qa.title">Test-grade stability</h3>
-          <p data-i18n="features.qa.body">Coverage from xcodebuild test through localization and EPUB pipelines for CI reliability.</p>
-        </div>
-      </div>
+      <div class="paper-label" data-key="labels.chapters">Features</div>
+      <div class="grid-3" id="feature-grid"></div>
+      <p class="vision" id="features-privacy-note">No required signup. Library stays local; cloud sync, secure key exchange, and AI calls remain opt-in.</p>
+      <div class="paper-edge" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <section class="section" id="privacy">
+    <h2 data-key="privacy.title">Privacy &amp; sync</h2>
+    <div class="paper-sheet ruled">
+      <div class="paper-label" data-key="labels.privacy">Privacy</div>
+      <ul class="privacy-list" id="privacy-lines"></ul>
       <div class="paper-edge" aria-hidden="true"></div>
     </div>
   </section>
 
   <section class="section" id="workflow">
-    <h2 data-i18n="workflow.title">Workflow</h2>
+    <h2 data-key="workflow.title">Workflow</h2>
     <div class="paper-sheet ruled">
-      <div class="paper-label" data-i18n="paper.notebook">Notebook</div>
-      <div class="timeline">
-        <div class="step"><span>01</span><strong data-i18n="workflow.import.title">Import</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.import.body">Drag EPUB/PDF files; format checks and chunked indexing run in parallel.</p></div>
-        <div class="step"><span>02</span><strong data-i18n="workflow.generate.title">Generate</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.generate.body">AISummaryService orchestrates multi-path inference; chapter summaries and notes ship together.</p></div>
-        <div class="step"><span>03</span><strong data-i18n="workflow.read.title">Read</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.read.body">Line-focused reader with local highlight jumps for chapters and annotations.</p></div>
-        <div class="step"><span>04</span><strong data-i18n="workflow.sync.title">Sync</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.sync.body">CloudKit caching keeps latency visible and audit-friendly debugging trails.</p></div>
-      </div>
+      <div class="paper-label" data-key="labels.notebook">Workflow</div>
+      <div class="timeline" id="workflow-grid"></div>
       <div class="paper-edge" aria-hidden="true"></div>
     </div>
   </section>
 
   <footer>
     <div style="max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-      <span data-i18n="footer.note">© 2026 Lan Read (澜悦). Precision in every line.</span>
-      <span style="display:flex; gap:12px;">
-        <a class="pill" href="#" data-i18n="footer.privacy">Privacy</a>
-        <a class="pill" href="#" data-i18n="footer.changelog">Changelog</a>
-        <a class="pill" href="#" data-i18n="footer.support">Support</a>
+      <span data-key="footer.note">© 2026 Lan Read · 澜悦 — Your first AI-powered reading companion.</span>
+      <span style="display:flex; gap:12px; flex-wrap:wrap;">
+        <a class="pill" href="privacy.html" data-key="footer.privacy">Privacy</a>
+        <a class="pill" href="changelog.html" data-key="footer.changelog">Changelog</a>
+        <a class="pill" href="support.html" data-key="footer.support">Support</a>
       </span>
     </div>
   </footer>
@@ -346,109 +326,182 @@
       lines.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     });
 
-    const translations = {
-      en: {
-        'brand.name': 'Lan Read · 澜悦',
-        'nav.features': 'Features',
-        'nav.workflow': 'Workflow',
-        'nav.language': 'Language',
-        'paper.fieldnote': 'Field note',
-        'paper.chapters': 'Chapters',
-        'paper.notebook': 'Notebook',
-        'hero.title': 'Line-perfect reading for technical teams',
-        'hero.lead': 'Lan Read (澜悦) brings crisp monochrome layouts, AI summaries, and instant sync for people who read to build.',
-        'hero.primary': 'See workflow',
-        'hero.secondary': 'Explore features',
-        'stats.latency': 'Core summary latency',
-        'stats.daily': 'Daily active manuscripts',
-        'stats.locales': 'Locale coverage',
-        'stats.error': 'Error rate',
-        'features.title': 'Features',
-        'features.interface.title': 'Line-first interface',
-        'features.interface.body': 'Monochrome grid, high-contrast type, and disciplined whitespace to keep direction during long-form reading.',
-        'features.summary.title': 'AI chapter summaries',
-        'features.summary.body': 'Built on AISummaryService with parallel inference; summaries appear as you turn the page.',
-        'features.sync.title': 'Instant multi-device sync',
-        'features.sync.body': 'CloudKit plus local cache restores reading position in under 80ms when switching devices.',
-        'features.privacy.title': 'Auditable privacy',
-        'features.privacy.body': 'Zero plaintext storage; DebugLogger keeps logs controlled for review.',
-        'features.plugin.title': 'Extensible prompts',
-        'features.plugin.body': 'LocalizationHelper keeps prompts consistent while allowing per-team AI formatting.',
-        'features.qa.title': 'Test-grade stability',
-        'features.qa.body': 'Coverage from xcodebuild test through localization and EPUB pipelines for CI reliability.',
-        'workflow.title': 'Workflow',
-        'workflow.import.title': 'Import',
-        'workflow.import.body': 'Drag EPUB/PDF files; format checks and chunked indexing run in parallel.',
-        'workflow.generate.title': 'Generate',
-        'workflow.generate.body': 'AISummaryService orchestrates multi-path inference; chapter summaries and notes ship together.',
-        'workflow.read.title': 'Read',
-        'workflow.read.body': 'Line-focused reader with local highlight jumps for chapters and annotations.',
-        'workflow.sync.title': 'Sync',
-        'workflow.sync.body': 'CloudKit caching keeps latency visible and audit-friendly debugging trails.',
-        'footer.note': '© 2026 Lan Read (澜悦). Precision in every line.',
-        'footer.privacy': 'Privacy',
-        'footer.changelog': 'Changelog',
-        'footer.support': 'Support'
+    const languageSelect = document.getElementById('language');
+    const featureGrid = document.getElementById('feature-grid');
+    const workflowGrid = document.getElementById('workflow-grid');
+    const factGrid = document.getElementById('fact-grid');
+    const privacyLines = document.getElementById('privacy-lines');
+    const visionLine = document.getElementById('vision-line');
+    const featuresPrivacyNote = document.getElementById('features-privacy-note');
+
+    const setText = (selector, value) => {
+      const node = document.querySelector(selector);
+      if (node && value) node.textContent = value;
+    };
+
+    const fallbackEn = {
+      meta: {
+        title: 'Lan Read — Your first AI-powered reading companion',
+        description: 'Lan Read turns ePub/txt into a conversational mentor on iOS and iPadOS: instant summaries, skimming, ask-while-reading, optional iCloud sync and Notion export, privacy-first local storage.'
       },
-      zh: {
-        'brand.name': '澜悦 · Lan Read',
-        'nav.features': '功能地图',
-        'nav.workflow': '工作流',
-        'nav.language': '语言',
-        'paper.fieldnote': '边注',
-        'paper.chapters': '章节',
-        'paper.notebook': '笔记本',
-        'hero.title': '面向技术团队的线条级阅读体验',
-        'hero.lead': '澜悦（Lan Read）以黑白线条界面、AI 摘要与即时同步，服务那些为创造而阅读的人。',
-        'hero.primary': '查看工作流',
-        'hero.secondary': '浏览功能',
-        'stats.latency': '核心摘要延迟',
-        'stats.daily': '日常活跃书稿',
-        'stats.locales': '多语言覆盖',
-        'stats.error': '错误率',
-        'features.title': '功能地图',
-        'features.interface.title': '线条化界面',
-        'features.interface.body': '黑白网格与高对比字体，克制留白，长时间阅读仍保持方向感。',
-        'features.summary.title': 'AI 章节摘要',
-        'features.summary.body': '基于 AISummaryService 并行推理，翻页即可见章节摘要。',
-        'features.sync.title': '多设备瞬时同步',
-        'features.sync.body': 'CloudKit + 本地缓存，切换设备 80ms 内恢复阅读位置。',
-        'features.privacy.title': '可审计隐私',
-        'features.privacy.body': '零明文存储；DebugLogger 输出受控，满足审计需求。',
-        'features.plugin.title': '可拓展提示词',
-        'features.plugin.body': 'LocalizationHelper 保持提示词一致，同时支持团队级格式定制。',
-        'features.qa.title': '测试级稳定',
-        'features.qa.body': '覆盖 xcodebuild test、语言与 EPUB 流水线，确保 CI 稳定性。',
-        'workflow.title': '工作流',
-        'workflow.import.title': '导入',
-        'workflow.import.body': '拖拽 EPUB / PDF，格式校验与分块索引并行执行。',
-        'workflow.generate.title': '生成',
-        'workflow.generate.body': 'AISummaryService 调度多路推理，章节摘要与笔记同步生成。',
-        'workflow.read.title': '阅读',
-        'workflow.read.body': '线条化阅读器与局部高亮，快速跳转章节与注释。',
-        'workflow.sync.title': '同步',
-        'workflow.sync.body': 'CloudKit 缓存策略，让延迟可视、调试可回溯。',
-        'footer.note': '© 2026 澜悦 Lan Read. Precision in every line.',
-        'footer.privacy': '隐私',
-        'footer.changelog': '更新记录',
-        'footer.support': '支持'
+      brand: { name: 'Lan Read · 澜悦', tagline: 'Your first AI-Powered Reading Companion' },
+      nav: { features: 'Features', workflow: 'Workflow', language: 'Language' },
+      labels: { fieldnote: 'Product note', chapters: 'Features', notebook: 'Workflow', privacy: 'Privacy' },
+      hero: {
+        title: 'Lan Read — Your first AI-powered reading companion',
+        subtitle: 'Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with optional iCloud sync and Notion export.',
+        primaryCta: 'Explore features',
+        secondaryCta: 'See workflow'
+      },
+      vision: 'Make every book a conversational mentor so you understand, remember, and discuss faster.',
+      facts: [
+        { label: 'Platforms', value: 'iOS / iPadOS (macOS planned)' },
+        { label: 'Storage', value: 'Local-first, no required signup' },
+        { label: 'Sync', value: 'Optional iCloud (CloudKit) sync' },
+        { label: 'Export', value: 'Notion export for highlights and bookmarks' }
+      ],
+      features: {
+        title: 'Features',
+        items: [
+          { title: 'Local Book Import', body: 'Bring your own ePub or .txt from Files or iCloud Drive; keep your library local.' },
+          { title: 'Instant AI Summaries', body: 'Open a book to see a concise overview and chapter structure with caching and manual refresh.' },
+          { title: 'Skimming Mode', body: 'Chapter skeleton summaries with quick navigation for fast context building.' },
+          { title: 'Ask While Reading', body: 'Ask about selected text, a chapter, or the whole book—explain, translate, or give examples; selection shortcuts are planned.', status: 'planned' },
+          { title: 'Reader Essentials', body: 'TOC, search, bookmarks, highlights, annotations, themes, adjustable fonts and line spacing, night mode.' },
+          { title: 'Sync & Export', body: 'Optional CloudKit sync across devices plus Notion export for bookmarks and highlights.' },
+          { title: 'Comprehension Checks (planned)', body: 'Diagnostics and quizzes to test recall are designed and planned.', status: 'planned' }
+        ],
+        privacyNote: 'No required signup. Library stays local; cloud sync, secure key exchange, and AI calls remain opt-in.'
+      },
+      workflow: {
+        title: 'Workflow',
+        steps: [
+          { title: 'Import', body: 'Add ePub or text files from Files or iCloud Drive.' },
+          { title: 'Summarize', body: 'Open a book to get the AI overview and chapter skeleton; results are cached for reuse.' },
+          { title: 'Read & Ask', body: 'Highlight to ask, translate, or get examples while reading; selection shortcuts are planned.' },
+          { title: 'Sync / Export', body: 'Turn on iCloud sync when you want and export highlights/bookmarks to Notion.' }
+        ]
+      },
+      privacy: {
+        title: 'Privacy & sync',
+        lines: [
+          'Local-first by default; your library stays on device unless you enable cloud features.',
+          'Optional CloudKit sync and FastAPI key exchange keep credentials off the client while still anonymizing requests where possible.',
+          'No required registration. AI prompts avoid sending account identifiers; telemetry is minimal and focused on reliability.'
+        ]
+      },
+      footer: {
+        note: '© 2026 Lan Read · 澜悦 — Your first AI-powered reading companion.',
+        privacy: 'Privacy',
+        changelog: 'Changelog',
+        support: 'Support'
       }
     };
 
-    const languageSelect = document.getElementById('language');
+    const content = {};
+
+    const loadLanguageFile = async (lang) => {
+      try {
+        const res = await fetch(`content/${lang}.json`);
+        if (!res.ok) throw new Error('Failed to load content');
+        content[lang] = await res.json();
+      } catch (err) {
+        if (lang === 'en' && !content.en) content.en = fallbackEn;
+        console.warn(`Using fallback copy for ${lang}`, err);
+      }
+    };
+
+    const renderFacts = (facts = []) => {
+      if (!factGrid) return;
+      factGrid.innerHTML = facts.map(fact => `
+        <div class="stat">
+          <span>${fact.label}</span>
+          <strong>${fact.value}</strong>
+        </div>
+      `).join('');
+    };
+
+    const renderFeatures = (features, lang) => {
+      if (!featureGrid) return;
+      const plannedLabel = lang === 'zh' ? '规划中' : 'Planned';
+      featureGrid.innerHTML = (features?.items || []).map(item => `
+        <div class="feature">
+          <h3>${item.title}${item.status ? `<span class="badge">${plannedLabel}</span>` : ''}</h3>
+          <p>${item.body}</p>
+        </div>
+      `).join('');
+      if (featuresPrivacyNote) featuresPrivacyNote.textContent = features?.privacyNote || '';
+    };
+
+    const renderWorkflow = (workflow, lang) => {
+      if (!workflowGrid) return;
+      workflowGrid.innerHTML = (workflow?.steps || []).map((step, idx) => {
+        const number = String(idx + 1).padStart(2, '0');
+        return `
+          <div class="step">
+            <span>${number}</span>
+            <strong>${step.title}</strong>
+            <p class="lead" style="font-size:15px;margin-top:6px;">${step.body}</p>
+          </div>
+        `;
+      }).join('');
+    };
+
+    const renderPrivacy = (privacy) => {
+      if (!privacyLines) return;
+      privacyLines.innerHTML = (privacy?.lines || []).map(line => `<li>${line}</li>`).join('');
+      setText('[data-key="privacy.title"]', privacy?.title);
+    };
+
     const applyLanguage = (lang) => {
-      const chosen = translations[lang] ? lang : 'en';
+      const chosen = content[lang] ? lang : (content.en ? 'en' : 'en');
+      const t = content[chosen] || fallbackEn;
       document.documentElement.lang = chosen === 'zh' ? 'zh-Hans' : 'en';
-      document.querySelectorAll('[data-i18n]').forEach(node => {
-        const key = node.dataset.i18n;
-        if (translations[chosen][key]) node.textContent = translations[chosen][key];
-      });
       languageSelect.value = chosen;
+
+      document.title = t.meta?.title || fallbackEn.meta.title;
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute('content', t.meta?.description || '');
+
+      setText('[data-key="brand.name"]', t.brand?.name);
+      setText('[data-key="nav.features"]', t.nav?.features);
+      setText('[data-key="nav.workflow"]', t.nav?.workflow);
+      setText('[data-key="nav.language"]', t.nav?.language);
+
+      setText('[data-key="labels.fieldnote"]', t.labels?.fieldnote);
+      setText('[data-key="labels.chapters"]', t.labels?.chapters);
+      setText('[data-key="labels.notebook"]', t.labels?.notebook);
+      setText('[data-key="labels.privacy"]', t.labels?.privacy);
+
+      setText('[data-key="hero.title"]', t.hero?.title);
+      setText('[data-key="hero.subtitle"]', t.hero?.subtitle);
+      setText('[data-key="hero.primaryCta"]', t.hero?.primaryCta);
+      setText('[data-key="hero.secondaryCta"]', t.hero?.secondaryCta);
+
+      setText('[data-key="features.title"]', t.features?.title);
+      setText('[data-key="workflow.title"]', t.workflow?.title);
+
+      if (visionLine) visionLine.textContent = t.vision || '';
+
+      renderFacts(t.facts);
+      renderFeatures(t.features, chosen);
+      renderWorkflow(t.workflow, chosen);
+      renderPrivacy(t.privacy);
+
+      setText('[data-key="footer.note"]', t.footer?.note);
+      setText('[data-key="footer.privacy"]', t.footer?.privacy);
+      setText('[data-key="footer.changelog"]', t.footer?.changelog);
+      setText('[data-key="footer.support"]', t.footer?.support);
+
       localStorage.setItem('lanread-lang', chosen);
     };
 
+    (async () => {
+      await Promise.all([loadLanguageFile('en'), loadLanguageFile('zh')]);
+      applyLanguage(localStorage.getItem('lanread-lang') || 'en');
+    })();
+
     languageSelect.addEventListener('change', (e) => applyLanguage(e.target.value));
-    applyLanguage(localStorage.getItem('lanread-lang') || 'en');
   </script>
 </body>
 </html>

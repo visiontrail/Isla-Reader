@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "title": "Lan Read · 澜悦 —— 你的第一个 AI 阅读伙伴",
+    "description": "在 iOS 与 iPadOS 上把 ePub/txt 变成可对话的导师：即时摘要、章节略读、边读边问；默认本地存储，可选 iCloud 同步与 Notion 导出。"
+  },
+  "brand": {
+    "name": "Lan Read · 澜悦",
+    "tagline": "你的第一个 AI 阅读伙伴"
+  },
+  "nav": {
+    "features": "功能",
+    "workflow": "流程",
+    "language": "语言"
+  },
+  "labels": {
+    "fieldnote": "产品札记",
+    "chapters": "功能",
+    "notebook": "流程",
+    "privacy": "隐私"
+  },
+  "hero": {
+    "title": "Lan Read —— 你的 AI 阅读伙伴",
+    "subtitle": "导入 ePub 或 txt，打开即看 AI 摘要；章节略读快速建立脉络；边读边问、翻译或举例。默认本地优先，可选 iCloud 同步与 Notion 导出。",
+    "primaryCta": "查看功能",
+    "secondaryCta": "查看流程"
+  },
+  "vision": "让每本书都能对话，读得更快、记得更牢，也更容易讨论。",
+  "facts": [
+    { "label": "平台", "value": "iOS / iPadOS（未来考虑 macOS）" },
+    { "label": "存储", "value": "默认本地，无需注册" },
+    { "label": "同步", "value": "可选 iCloud（CloudKit）同步" },
+    { "label": "导出", "value": "书签与高亮可导出到 Notion" }
+  ],
+  "features": {
+    "title": "功能",
+    "items": [
+      { "title": "本地导入", "body": "从文件或 iCloud Drive 导入 ePub/txt，书库默认保存在本地。" },
+      { "title": "即时 AI 摘要", "body": "打开书就生成书籍与章节概要，支持缓存与手动刷新。" },
+      { "title": "略读模式", "body": "章节骨架摘要与快速跳转，迅速建立上下文。" },
+      { "title": "边读边问", "body": "针对选中文本、章节或整本书提问、翻译或举例；选区快捷操作规划中。", "status": "planned" },
+      { "title": "阅读基础能力", "body": "目录、搜索、书签、高亮、批注、主题、字体与行距、夜间模式。" },
+      { "title": "同步与导出", "body": "可选 CloudKit 同步；书签与高亮可导出到 Notion。" },
+      { "title": "理解诊断（规划中）", "body": "理解测验与诊断设计中，将用于检验记忆。", "status": "planned" }
+    ],
+    "privacyNote": "无需注册；资料默认留在本地。云同步、安全密钥下发、AI 请求均为可选。"
+  },
+  "workflow": {
+    "title": "流程",
+    "steps": [
+      { "title": "导入", "body": "从文件或 iCloud Drive 加入 ePub/txt。" },
+      { "title": "摘要", "body": "打开后显示 AI 生成的概览与章节骨架，结果会缓存。" },
+      { "title": "阅读与提问", "body": "高亮即可提问、翻译或举例；选区快捷方式规划中。" },
+      { "title": "同步 / 导出", "body": "需要时再开启 iCloud 同步，并可将书签/高亮导出到 Notion。" }
+    ]
+  },
+  "privacy": {
+    "title": "隐私与同步",
+    "lines": [
+      "默认本地优先，除非你主动开启云功能。",
+      "可选 CloudKit 同步与 FastAPI 密钥下发，减少在客户端暴露密钥，同时尽量匿名化请求。",
+      "无需注册。AI 提示尽量不携带账号标识；仅保留与稳定性相关的最小遥测。"
+    ]
+  },
+  "footer": {
+    "note": "© 2026 Lan Read · 澜悦 —— 你的第一个 AI 阅读伙伴。",
+    "privacy": "隐私",
+    "changelog": "更新记录",
+    "support": "支持"
+  }
+}

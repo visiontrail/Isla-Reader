@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lan Read · Privacy</title>
+  <meta name="description" content="Lan Read privacy & data use. Local-first by default with optional iCloud sync and secure AI key exchange." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f1eb;
+      --panel: #fffdf8;
+      --paper-edge: #e8e1d5;
+      --line: rgba(20,20,20,0.12);
+      --text: #14110f;
+      --muted: #5a5d61;
+      --accent: #14110f;
+      --radius: 18px;
+      --grid: 120px;
+      --paper-shadow: 0 20px 60px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; color: var(--text);
+      background:
+        radial-gradient(circle at 18% 16%, rgba(0,0,0,0.025), transparent 32%),
+        radial-gradient(circle at 78% 8%, rgba(0,0,0,0.018), transparent 30%),
+        var(--bg);
+      font-family: "Epilogue", "DM Mono", system-ui, -apple-system, sans-serif;
+      min-height: 100vh; overflow-x: hidden;
+    }
+    .grain {
+      position: fixed; inset: 0; pointer-events: none; opacity: 0.12;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+      mix-blend-mode: multiply; z-index: 5;
+    }
+    .grid {
+      position: fixed; inset: 0; pointer-events: none; z-index: 1;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: var(--grid) var(--grid);
+      mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 42%, rgba(0,0,0,0) 70%);
+    }
+    header {
+      position: sticky; top: 0; z-index: 10;
+      backdrop-filter: blur(14px);
+      background: rgba(255,253,248,0.90);
+      border-bottom: 1px solid var(--line);
+    }
+    nav {
+      max-width: 1180px; margin: 0 auto; padding: 14px 28px;
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      font-size: 14px; letter-spacing: 0.03em;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em;
+      font-family: "Newsreader", "Epilogue", serif;
+    }
+    .logo .dot { width: 12px; height: 12px; border: 2px solid var(--accent); border-radius: 50%; box-shadow: 0 0 0 6px rgba(0,0,0,0.05); }
+    .nav-links { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .pill {
+      padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); text-decoration: none; transition: border .3s, color .3s, background .3s;
+    }
+    .pill:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,0,0,0.03); }
+    .section { max-width: 1180px; margin: 0 auto 120px; padding: 0 28px; position: relative; z-index: 2; }
+    h1 {
+      font-size: clamp(32px, 4vw, 48px); line-height: 1.1; margin: 0 0 12px;
+      letter-spacing: -0.02em;
+      font-family: "Newsreader", "Epilogue", serif;
+    }
+    .lead { color: var(--muted); max-width: 760px; font-size: 17px; line-height: 1.7; margin: 0 0 18px; }
+    .paper-sheet {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 28px 26px 30px;
+      box-shadow: var(--paper-shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .paper-sheet::after {
+      content: ""; position: absolute; inset: 12px; border-radius: 14px; border: 1px dashed rgba(20,20,20,0.06);
+      pointer-events: none;
+    }
+    .paper-sheet.ruled {
+      background-image: linear-gradient(rgba(20,20,20,0.04) 1px, transparent 1px);
+      background-size: 100% 46px;
+    }
+    .paper-sheet .note-tab {
+      position: absolute; left: -12px; top: 22px; width: 22px; height: 82px;
+      background: linear-gradient(180deg, #d5c9b1, #e7dbc5);
+      border: 1px solid rgba(20,20,20,0.15);
+      border-radius: 10px 6px 6px 10px;
+      box-shadow: 6px 12px 20px rgba(0,0,0,0.10);
+    }
+    .paper-sheet .paper-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 14px; padding: 6px 10px;
+      border: 1px solid var(--line); border-radius: 999px; background: rgba(0,0,0,0.02);
+    }
+    .paper-sheet .paper-label::before {
+      content: "§"; font-family: "DM Mono", monospace; color: var(--accent); font-size: 12px;
+    }
+    .paper-edge {
+      position: absolute; inset: 18px -18px auto auto; height: 20px; background:
+        linear-gradient(90deg, rgba(20,20,20,0.10) 32%, transparent 32%),
+        var(--paper-edge);
+      border-radius: 999px; opacity: 0.65;
+    }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(20,20,20,0.06); border: 1px solid var(--line); color: var(--muted); font-size: 12px; letter-spacing: 0.02em; }
+    .privacy-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; color: var(--muted); line-height: 1.65; }
+    .privacy-card {
+      border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 18px 18px 20px; background: linear-gradient(120deg, rgba(0,0,0,0.02), rgba(0,0,0,0));
+      box-shadow: 0 16px 40px rgba(0,0,0,0.06);
+      position: relative;
+    }
+    .privacy-card::after {
+      content: ""; position: absolute; inset: 12px; border: 1px dashed var(--line); border-radius: var(--radius);
+      opacity: 0.6;
+    }
+    .privacy-card h3 { margin: 0 0 10px; font-size: 18px; letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 10px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    footer {
+      border-top: 1px solid var(--line); padding: 30px 28px 60px; color: var(--muted); background: rgba(247,248,250,0.8);
+      position: relative; z-index: 2;
+    }
+    @media (max-width: 900px) {
+      nav { padding: 12px 18px; flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="grain"></div>
+
+  <header>
+    <nav>
+      <div class="logo"><div class="dot"></div><span>Lan Read · 澜悦</span></div>
+      <div class="nav-links">
+        <a class="pill" href="index.html">Home</a>
+        <a class="pill" href="changelog.html">Changelog</a>
+        <a class="pill" href="support.html">Support</a>
+      </div>
+      <span class="pill" style="background:rgba(0,0,0,0.02);">Privacy</span>
+    </nav>
+  </header>
+
+  <section class="section" style="margin-top:64px;">
+    <div class="paper-sheet ruled">
+      <div class="note-tab" aria-hidden="true"></div>
+      <div class="paper-label">Privacy · 隐私</div>
+      <h1>Privacy &amp; Data Use</h1>
+      <p class="lead">Lan Read is local-first. Your library stays on-device unless you turn on optional CloudKit sync or use secure key exchange to fetch your own AI credentials. No mandatory accounts, minimal telemetry focused on reliability.</p>
+
+      <div class="grid-2" style="margin-top: 18px;">
+        <div class="privacy-card">
+          <h3>Key Points <span class="badge">English</span></h3>
+          <ul class="privacy-list">
+            <li>Local-first storage; books and highlights remain on your devices by default.</li>
+            <li>CloudKit sync is optional and uses your Apple ID; you control when it is enabled.</li>
+            <li>AI key exchange happens via your own FastAPI endpoint; credentials are not stored in the app bundle.</li>
+            <li>No required sign-up; AI requests avoid attaching account identifiers where possible.</li>
+            <li>Telemetry is minimal and reliability-focused (crash diagnostics and request timing only).</li>
+          </ul>
+        </div>
+
+        <div class="privacy-card">
+          <h3>要点 <span class="badge">中文</span></h3>
+          <ul class="privacy-list">
+            <li>默认本地优先，书籍与标注仅保留在你的设备上。</li>
+            <li>CloudKit 同步完全可选，使用你的 Apple ID，开启与否由你决定。</li>
+            <li>AI 密钥通过自建 FastAPI 下发，凭证不会写入 App 本地包内。</li>
+            <li>无需注册账号，AI 请求尽量不携带身份标识。</li>
+            <li>仅保留与稳定性相关的最小遥测（崩溃与请求耗时）。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="paper-edge" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div style="max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <span>© 2026 Lan Read · 澜悦 — Privacy &amp; data use.</span>
+      <span style="display:flex; gap:12px; flex-wrap:wrap;">
+        <a class="pill" href="index.html">Home</a>
+        <a class="pill" href="changelog.html">Changelog</a>
+        <a class="pill" href="support.html">Support</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>
