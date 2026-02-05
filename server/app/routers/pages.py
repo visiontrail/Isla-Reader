@@ -1,7 +1,12 @@
+from pathlib import Path
+
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
 router = APIRouter(tags=["public"])
+
+_STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+LANDING_HTML = (_STATIC_DIR / "landing" / "index.html").read_text(encoding="utf-8")
 
 PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -145,6 +150,11 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 </body>
 </html>
 """
+
+
+@router.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def marketing_home() -> HTMLResponse:
+    return HTMLResponse(LANDING_HTML, headers={"Cache-Control": "public, max-age=600"})
 
 
 @router.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
