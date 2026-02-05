@@ -1,20 +1,19 @@
 <!DOCTYPE html>
-<html lang="zh-Hans">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Isla Reader — Precision in Every Line</title>
+  <title>Lan Read (澜悦) — Precision in Every Line</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0b0d10;
-      --panel: rgba(255,255,255,0.02);
-      --line: rgba(255,255,255,0.08);
-      --glow: #4de1c1;
-      --text: #e9edf2;
-      --muted: #9aa3b3;
-      --accent: #7cf9d6;
+      --bg: #f7f8fa;
+      --panel: #ffffff;
+      --line: rgba(0,0,0,0.12);
+      --text: #0d0d0d;
+      --muted: #4b4f55;
+      --accent: #0d0d0d;
       --radius: 18px;
       --grid: 120px;
     }
@@ -25,9 +24,9 @@
       min-height: 100vh; overflow-x: hidden;
     }
     .grain {
-      position: fixed; inset: 0; pointer-events: none; opacity: 0.12;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
-      mix-blend-mode: screen; z-index: 5;
+      position: fixed; inset: 0; pointer-events: none; opacity: 0.10;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+      mix-blend-mode: multiply; z-index: 5;
     }
     .grid {
       position: fixed; inset: 0; pointer-events: none; z-index: 1;
@@ -35,12 +34,12 @@
         linear-gradient(var(--line) 1px, transparent 1px),
         linear-gradient(90deg, var(--line) 1px, transparent 1px);
       background-size: var(--grid) var(--grid);
-      mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 75%);
+      mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 42%, rgba(0,0,0,0) 70%);
     }
     header {
       position: sticky; top: 0; z-index: 10;
       backdrop-filter: blur(14px);
-      background: rgba(11,13,16,0.72);
+      background: rgba(247,248,250,0.92);
       border-bottom: 1px solid var(--line);
     }
     nav {
@@ -51,20 +50,26 @@
     .logo {
       display: flex; align-items: center; gap: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em;
     }
-    .logo .dot { width: 12px; height: 12px; border: 2px solid var(--accent); border-radius: 50%; box-shadow: 0 0 0 6px rgba(124,249,214,0.12); }
-    .pill {
-      padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; transition: border .3s, color .3s;
+    .logo .dot { width: 12px; height: 12px; border: 2px solid var(--accent); border-radius: 50%; box-shadow: 0 0 0 6px rgba(0,0,0,0.05); }
+    .nav-links { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .lang-switch { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .lang-switch select {
+      padding: 7px 10px; border-radius: 12px; border: 1px solid var(--line);
+      background: var(--panel); color: var(--text); font-size: 13px;
     }
-    .pill:hover { border-color: var(--accent); color: var(--accent); }
+    .pill {
+      padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); text-decoration: none; transition: border .3s, color .3s, background .3s;
+    }
+    .pill:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,0,0,0.03); }
     .hero {
       position: relative; z-index: 2; max-width: 1180px; margin: 80px auto 120px; padding: 0 28px;
       display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 44px; align-items: center;
     }
     .halo {
-      position: absolute; inset: 10% auto auto -6%; width: 520px; height: 520px;
-      background: radial-gradient(circle at 35% 35%, rgba(124,249,214,0.18), transparent 50%),
-                  radial-gradient(circle at 70% 50%, rgba(77,225,193,0.14), transparent 52%);
-      filter: blur(36px); opacity: 0.85; pointer-events: none;
+      position: absolute; inset: 12% auto auto -10%; width: 520px; height: 520px;
+      background: radial-gradient(circle at 40% 40%, rgba(0,0,0,0.10), transparent 52%),
+                  radial-gradient(circle at 68% 54%, rgba(0,0,0,0.06), transparent 60%);
+      filter: blur(32px); opacity: 0.6; pointer-events: none;
     }
     h1 {
       font-size: clamp(42px, 4vw, 64px); line-height: 1.06; margin: 0 0 22px;
@@ -74,12 +79,12 @@
     .cta-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
     .btn {
       padding: 14px 22px; border-radius: 14px; border: 1px solid var(--accent);
-      color: var(--bg); background: var(--accent); font-weight: 600; text-decoration: none;
-      box-shadow: 0 12px 30px rgba(124,249,214,0.18); transition: transform .25s ease, box-shadow .25s ease;
+      color: #ffffff; background: var(--accent); font-weight: 600; text-decoration: none;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.16); transition: transform .25s ease, box-shadow .25s ease, background .25s ease, color .25s ease;
     }
-    .btn:hover { transform: translateY(-3px); box-shadow: 0 18px 42px rgba(124,249,214,0.28); }
+    .btn:hover { transform: translateY(-3px); box-shadow: 0 18px 42px rgba(0,0,0,0.20); }
     .ghost { background: transparent; color: var(--accent); border-color: var(--line); box-shadow: none; }
-    .ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .ghost:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,0,0,0.05); }
     .stat-card {
       border: 1px solid var(--line); border-radius: var(--radius);
       padding: 18px 20px; background: var(--panel); backdrop-filter: blur(6px);
@@ -89,7 +94,7 @@
     .stat strong { font-size: 22px; color: var(--accent); letter-spacing: 0.01em; }
     .monocard {
       border: 1px solid var(--line); border-radius: var(--radius);
-      padding: 24px; background: linear-gradient(120deg, rgba(255,255,255,0.03), rgba(255,255,255,0.0));
+      padding: 24px; background: linear-gradient(120deg, rgba(0,0,0,0.02), rgba(0,0,0,0));
       position: relative; overflow: hidden;
     }
     .monocard::before {
@@ -98,25 +103,25 @@
     }
     .outline-hero {
       width: 100%; aspect-ratio: 4/3; border: 1px solid var(--line); border-radius: 22px;
-      position: relative; overflow: hidden; background: rgba(255,255,255,0.01);
+      position: relative; overflow: hidden; background: rgba(0,0,0,0.01);
     }
     .outline-hero .lines {
       position: absolute; inset: 0;
       background-image:
-        linear-gradient(90deg, rgba(124,249,214,0.12) 1px, transparent 1px),
-        linear-gradient(rgba(124,249,214,0.12) 1px, transparent 1px);
+        linear-gradient(90deg, rgba(0,0,0,0.10) 1px, transparent 1px),
+        linear-gradient(rgba(0,0,0,0.10) 1px, transparent 1px);
       background-size: 36px 36px;
       animation: drift 18s linear infinite;
     }
     .outline-hero .orb {
       position: absolute; width: 160px; height: 160px; border: 1px solid var(--accent);
       border-radius: 50%; top: 22%; left: 18%;
-      box-shadow: 0 0 0 14px rgba(124,249,214,0.08);
-      filter: drop-shadow(0 0 22px rgba(124,249,214,0.18));
+      box-shadow: 0 0 0 14px rgba(0,0,0,0.06);
+      filter: drop-shadow(0 0 22px rgba(0,0,0,0.12));
     }
     .outline-hero .chip {
       position: absolute; width: 200px; height: 120px; border: 1px solid var(--line);
-      right: 12%; bottom: 18%; border-radius: 14px; background: rgba(255,255,255,0.02);
+      right: 12%; bottom: 18%; border-radius: 14px; background: rgba(0,0,0,0.02);
       display: grid; grid-template-rows: repeat(3, 1fr); gap: 6px; padding: 14px;
     }
     .chip .bar { border: 1px solid var(--line); border-radius: 8px; }
@@ -128,29 +133,30 @@
     .section h2 { font-size: 26px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
     .feature { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; background: var(--panel); min-height: 170px; }
-    .feature h3 { margin: 0 0 10px; font-size: 18px; letter-spacing: 0.01em; }
+    .feature h3 { margin: 0 0 10px; font-size: 18px; letter-spacing: 0.01em; color: var(--text); }
     .feature p { margin: 0; color: var(--muted); line-height: 1.6; }
     .timeline {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;
     }
     .step {
       padding: 18px; border: 1px solid var(--line); border-radius: var(--radius);
-      background: linear-gradient(100deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+      background: linear-gradient(100deg, rgba(0,0,0,0.02), rgba(0,0,0,0));
       position: relative;
     }
     .step::after {
       content: ""; position: absolute; inset: 12px; border: 1px dashed var(--line); border-radius: var(--radius);
-      opacity: 0.4;
+      opacity: 0.5;
     }
     .step span { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center;
       border: 1px solid var(--accent); border-radius: 50%; color: var(--accent); font-weight: 600; margin-bottom: 12px; }
     footer {
-      border-top: 1px solid var(--line); padding: 30px 28px 60px; color: var(--muted); background: rgba(0,0,0,0.4);
+      border-top: 1px solid var(--line); padding: 30px 28px 60px; color: var(--muted); background: rgba(247,248,250,0.8);
       position: relative; z-index: 2;
     }
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; margin-top: 46px; }
-      nav { padding: 12px 18px; }
+      nav { padding: 12px 18px; flex-wrap: wrap; }
+      .lang-switch { width: 100%; justify-content: flex-end; }
     }
   </style>
 </head>
@@ -159,11 +165,17 @@
   <div class="grain"></div>
   <header>
     <nav>
-      <div class="logo"><div class="dot"></div>ISLA READER</div>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <a class="pill" href="#features">Feature Map</a>
-        <a class="pill" href="#workflow">Workflow</a>
-        <a class="pill" href="#cta">Get Access</a>
+      <div class="logo"><div class="dot"></div><span data-i18n="brand.name">Lan Read · 澜悦</span></div>
+      <div class="nav-links">
+        <a class="pill" href="#features" data-i18n="nav.features">Features</a>
+        <a class="pill" href="#workflow" data-i18n="nav.workflow">Workflow</a>
+      </div>
+      <div class="lang-switch">
+        <label for="language" data-i18n="nav.language">Language</label>
+        <select id="language" aria-label="Language selector">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+        </select>
       </div>
     </nav>
   </header>
@@ -171,17 +183,17 @@
   <section class="hero">
     <div class="halo"></div>
     <div>
-      <h1>精读每一行，AI 级别的线条感阅读体验</h1>
-      <p class="lead">Isla Reader 将深度摘要、无缝同步和线条化界面融合，打造面向技术人的阅读栈：清晰、克制、极致稳定。</p>
+      <h1 data-i18n="hero.title">Line-perfect reading for technical teams</h1>
+      <p class="lead" data-i18n="hero.lead">Lan Read (澜悦) brings crisp monochrome layouts, AI summaries, and instant sync for people who read to build.</p>
       <div class="cta-row">
-        <a class="btn" href="#cta">申请试用</a>
-        <a class="btn ghost" href="#workflow">查看工作流</a>
+        <a class="btn" href="#workflow" data-i18n="hero.primary">See workflow</a>
+        <a class="btn ghost" href="#features" data-i18n="hero.secondary">Explore features</a>
       </div>
       <div class="stat-card">
-        <div class="stat"><span>核心摘要延迟</span><strong>&lt; 1.4s</strong></div>
-        <div class="stat"><span>日常活跃书稿</span><strong>12.4k+</strong></div>
-        <div class="stat"><span>多语言覆盖</span><strong>18 locales</strong></div>
-        <div class="stat"><span>错误率</span><strong>0.03%</strong></div>
+        <div class="stat"><span data-i18n="stats.latency">Core summary latency</span><strong>&lt; 1.4s</strong></div>
+        <div class="stat"><span data-i18n="stats.daily">Daily active manuscripts</span><strong>12.4k+</strong></div>
+        <div class="stat"><span data-i18n="stats.locales">Locale coverage</span><strong>18 locales</strong></div>
+        <div class="stat"><span data-i18n="stats.error">Error rate</span><strong>0.03%</strong></div>
       </div>
     </div>
     <div class="outline-hero">
@@ -194,62 +206,52 @@
   </section>
 
   <section class="section" id="features">
-    <h2>Feature Map</h2>
+    <h2 data-i18n="features.title">Features</h2>
     <div class="grid-3">
       <div class="feature">
-        <h3>线条化阅读界面</h3>
-        <p>高对比度线框+微光网格，确保长时阅读仍具方向感，适配深色与弱光场景。</p>
+        <h3 data-i18n="features.interface.title">Line-first interface</h3>
+        <p data-i18n="features.interface.body">Monochrome grid, high-contrast type, and disciplined whitespace to keep direction during long-form reading.</p>
       </div>
       <div class="feature">
-        <h3>AI 章节摘要</h3>
-        <p>内置 AISummaryService，多线程批处理，摘要随翻页即时呈现，无额外等待。</p>
+        <h3 data-i18n="features.summary.title">AI chapter summaries</h3>
+        <p data-i18n="features.summary.body">Built on AISummaryService with parallel inference; summaries appear as you turn the page.</p>
       </div>
       <div class="feature">
-        <h3>多设备瞬时同步</h3>
-        <p>CloudKit + 本地缓存策略，切换设备只需 80ms 内恢复阅读进度。</p>
+        <h3 data-i18n="features.sync.title">Instant multi-device sync</h3>
+        <p data-i18n="features.sync.body">CloudKit plus local cache restores reading position in under 80ms when switching devices.</p>
       </div>
       <div class="feature">
-        <h3>可验证的隐私</h3>
-        <p>零明文存储；调试日志通过 DebugLogger 可控输出，满足审计需求。</p>
+        <h3 data-i18n="features.privacy.title">Auditable privacy</h3>
+        <p data-i18n="features.privacy.body">Zero plaintext storage; DebugLogger keeps logs controlled for review.</p>
       </div>
       <div class="feature">
-        <h3>可拓展插件</h3>
-        <p>通过 LocalizationHelper 保持语言一致，支持定制化 AI 提示词与格式。</p>
+        <h3 data-i18n="features.plugin.title">Extensible prompts</h3>
+        <p data-i18n="features.plugin.body">LocalizationHelper keeps prompts consistent while allowing per-team AI formatting.</p>
       </div>
       <div class="feature">
-        <h3>测试级稳定</h3>
-        <p>覆盖 xcodebuild test / localization / EPUB pipeline，CI 级别稳定性。</p>
+        <h3 data-i18n="features.qa.title">Test-grade stability</h3>
+        <p data-i18n="features.qa.body">Coverage from xcodebuild test through localization and EPUB pipelines for CI reliability.</p>
       </div>
     </div>
   </section>
 
   <section class="section" id="workflow">
-    <h2>Workflow</h2>
+    <h2 data-i18n="workflow.title">Workflow</h2>
     <div class="timeline">
-      <div class="step"><span>01</span><strong>导入</strong><p class="lead" style="font-size:15px;margin-top:6px;">拖拽 EPUB / PDF；格式校验与分块索引同时进行。</p></div>
-      <div class="step"><span>02</span><strong>生成</strong><p class="lead" style="font-size:15px;margin-top:6px;">AISummaryService 调度多路推理，章节摘要和笔记同步生成。</p></div>
-      <div class="step"><span>03</span><strong>阅读</strong><p class="lead" style="font-size:15px;margin-top:6px;">线条化阅读器 + 局部高亮，快速跳转章节/注释。</p></div>
-      <div class="step"><span>04</span><strong>同步</strong><p class="lead" style="font-size:15px;margin-top:6px;">CloudKit 缓存策略，延迟可见；调试日志可回溯。</p></div>
-    </div>
-  </section>
-
-  <section class="section monocard" id="cta">
-    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:18px; align-items:center;">
-      <div>
-        <h2 style="color:var(--text); margin:0 0 8px;">申请试用 · Beta Wave 03</h2>
-        <p style="color:var(--muted); margin:0;">面向技术团队与重度阅读者，提供私有化同步与定制提示词。</p>
-      </div>
-      <a class="btn" href="mailto:team@isla.app?subject=Isla%20Reader%20Beta">邮件申请</a>
+      <div class="step"><span>01</span><strong data-i18n="workflow.import.title">Import</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.import.body">Drag EPUB/PDF files; format checks and chunked indexing run in parallel.</p></div>
+      <div class="step"><span>02</span><strong data-i18n="workflow.generate.title">Generate</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.generate.body">AISummaryService orchestrates multi-path inference; chapter summaries and notes ship together.</p></div>
+      <div class="step"><span>03</span><strong data-i18n="workflow.read.title">Read</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.read.body">Line-focused reader with local highlight jumps for chapters and annotations.</p></div>
+      <div class="step"><span>04</span><strong data-i18n="workflow.sync.title">Sync</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.sync.body">CloudKit caching keeps latency visible and audit-friendly debugging trails.</p></div>
     </div>
   </section>
 
   <footer>
     <div style="max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-      <span>© 2026 Isla Reader. Precision in every line.</span>
+      <span data-i18n="footer.note">© 2026 Lan Read (澜悦). Precision in every line.</span>
       <span style="display:flex; gap:12px;">
-        <a class="pill" href="#">Privacy</a>
-        <a class="pill" href="#">Changelog</a>
-        <a class="pill" href="#">Support</a>
+        <a class="pill" href="#" data-i18n="footer.privacy">Privacy</a>
+        <a class="pill" href="#" data-i18n="footer.changelog">Changelog</a>
+        <a class="pill" href="#" data-i18n="footer.support">Support</a>
       </span>
     </div>
   </footer>
@@ -261,6 +263,104 @@
       const y = (e.clientY / window.innerHeight - 0.5) * 10;
       lines.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     });
+
+    const translations = {
+      en: {
+        'brand.name': 'Lan Read · 澜悦',
+        'nav.features': 'Features',
+        'nav.workflow': 'Workflow',
+        'nav.language': 'Language',
+        'hero.title': 'Line-perfect reading for technical teams',
+        'hero.lead': 'Lan Read (澜悦) brings crisp monochrome layouts, AI summaries, and instant sync for people who read to build.',
+        'hero.primary': 'See workflow',
+        'hero.secondary': 'Explore features',
+        'stats.latency': 'Core summary latency',
+        'stats.daily': 'Daily active manuscripts',
+        'stats.locales': 'Locale coverage',
+        'stats.error': 'Error rate',
+        'features.title': 'Features',
+        'features.interface.title': 'Line-first interface',
+        'features.interface.body': 'Monochrome grid, high-contrast type, and disciplined whitespace to keep direction during long-form reading.',
+        'features.summary.title': 'AI chapter summaries',
+        'features.summary.body': 'Built on AISummaryService with parallel inference; summaries appear as you turn the page.',
+        'features.sync.title': 'Instant multi-device sync',
+        'features.sync.body': 'CloudKit plus local cache restores reading position in under 80ms when switching devices.',
+        'features.privacy.title': 'Auditable privacy',
+        'features.privacy.body': 'Zero plaintext storage; DebugLogger keeps logs controlled for review.',
+        'features.plugin.title': 'Extensible prompts',
+        'features.plugin.body': 'LocalizationHelper keeps prompts consistent while allowing per-team AI formatting.',
+        'features.qa.title': 'Test-grade stability',
+        'features.qa.body': 'Coverage from xcodebuild test through localization and EPUB pipelines for CI reliability.',
+        'workflow.title': 'Workflow',
+        'workflow.import.title': 'Import',
+        'workflow.import.body': 'Drag EPUB/PDF files; format checks and chunked indexing run in parallel.',
+        'workflow.generate.title': 'Generate',
+        'workflow.generate.body': 'AISummaryService orchestrates multi-path inference; chapter summaries and notes ship together.',
+        'workflow.read.title': 'Read',
+        'workflow.read.body': 'Line-focused reader with local highlight jumps for chapters and annotations.',
+        'workflow.sync.title': 'Sync',
+        'workflow.sync.body': 'CloudKit caching keeps latency visible and audit-friendly debugging trails.',
+        'footer.note': '© 2026 Lan Read (澜悦). Precision in every line.',
+        'footer.privacy': 'Privacy',
+        'footer.changelog': 'Changelog',
+        'footer.support': 'Support'
+      },
+      zh: {
+        'brand.name': '澜悦 · Lan Read',
+        'nav.features': '功能地图',
+        'nav.workflow': '工作流',
+        'nav.language': '语言',
+        'hero.title': '面向技术团队的线条级阅读体验',
+        'hero.lead': '澜悦（Lan Read）以黑白线条界面、AI 摘要与即时同步，服务那些为创造而阅读的人。',
+        'hero.primary': '查看工作流',
+        'hero.secondary': '浏览功能',
+        'stats.latency': '核心摘要延迟',
+        'stats.daily': '日常活跃书稿',
+        'stats.locales': '多语言覆盖',
+        'stats.error': '错误率',
+        'features.title': '功能地图',
+        'features.interface.title': '线条化界面',
+        'features.interface.body': '黑白网格与高对比字体，克制留白，长时间阅读仍保持方向感。',
+        'features.summary.title': 'AI 章节摘要',
+        'features.summary.body': '基于 AISummaryService 并行推理，翻页即可见章节摘要。',
+        'features.sync.title': '多设备瞬时同步',
+        'features.sync.body': 'CloudKit + 本地缓存，切换设备 80ms 内恢复阅读位置。',
+        'features.privacy.title': '可审计隐私',
+        'features.privacy.body': '零明文存储；DebugLogger 输出受控，满足审计需求。',
+        'features.plugin.title': '可拓展提示词',
+        'features.plugin.body': 'LocalizationHelper 保持提示词一致，同时支持团队级格式定制。',
+        'features.qa.title': '测试级稳定',
+        'features.qa.body': '覆盖 xcodebuild test、语言与 EPUB 流水线，确保 CI 稳定性。',
+        'workflow.title': '工作流',
+        'workflow.import.title': '导入',
+        'workflow.import.body': '拖拽 EPUB / PDF，格式校验与分块索引并行执行。',
+        'workflow.generate.title': '生成',
+        'workflow.generate.body': 'AISummaryService 调度多路推理，章节摘要与笔记同步生成。',
+        'workflow.read.title': '阅读',
+        'workflow.read.body': '线条化阅读器与局部高亮，快速跳转章节与注释。',
+        'workflow.sync.title': '同步',
+        'workflow.sync.body': 'CloudKit 缓存策略，让延迟可视、调试可回溯。',
+        'footer.note': '© 2026 澜悦 Lan Read. Precision in every line.',
+        'footer.privacy': '隐私',
+        'footer.changelog': '更新记录',
+        'footer.support': '支持'
+      }
+    };
+
+    const languageSelect = document.getElementById('language');
+    const applyLanguage = (lang) => {
+      const chosen = translations[lang] ? lang : 'en';
+      document.documentElement.lang = chosen === 'zh' ? 'zh-Hans' : 'en';
+      document.querySelectorAll('[data-i18n]').forEach(node => {
+        const key = node.dataset.i18n;
+        if (translations[chosen][key]) node.textContent = translations[chosen][key];
+      });
+      languageSelect.value = chosen;
+      localStorage.setItem('lanread-lang', chosen);
+    };
+
+    languageSelect.addEventListener('change', (e) => applyLanguage(e.target.value));
+    applyLanguage(localStorage.getItem('lanread-lang') || 'en');
   </script>
 </body>
 </html>
