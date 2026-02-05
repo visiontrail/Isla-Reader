@@ -1,12 +1,15 @@
 from pathlib import Path
 
-from fastapi import APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
 
 router = APIRouter(tags=["public"])
 
 _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
-LANDING_HTML = (_STATIC_DIR / "landing" / "index.html").read_text(encoding="utf-8")
+_LANDING_DIR = _STATIC_DIR / "landing"
+_LANDING_CONTENT_DIR = _LANDING_DIR / "content"
+
+LANDING_HTML = (_LANDING_DIR / "index.html").read_text(encoding="utf-8")
 
 PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -167,6 +170,42 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def marketing_home() -> HTMLResponse:
     return HTMLResponse(LANDING_HTML, headers={"Cache-Control": "public, max-age=600"})
+
+
+@router.get("/content/{lang}.json", include_in_schema=False)
+async def marketing_copy(lang: str):
+    """Serve localized landing copy used by the front-end language switcher."""
+    normalized = lang.lower()
+    if normalized not in {"en", "zh"}:
+        normalized = "en"
+
+    path = _LANDING_CONTENT_DIR / f"{normalized}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="copy not found")
+
+    return FileResponse(path, media_type="application/json", headers={"Cache-Control": "public, max-age=900"})
+
+
+def _landing_file(filename: str) -> FileResponse:
+    path = _LANDING_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="page not found")
+    return FileResponse(path, media_type="text/html", headers={"Cache-Control": "public, max-age=900"})
+
+
+@router.get("/privacy.html", include_in_schema=False)
+async def landing_privacy_html():
+    return _landing_file("privacy.html")
+
+
+@router.get("/changelog.html", include_in_schema=False)
+async def landing_changelog_html():
+    return _landing_file("changelog.html")
+
+
+@router.get("/support.html", include_in_schema=False)
+async def landing_support_html():
+    return _landing_file("support.html")
 
 
 @router.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
