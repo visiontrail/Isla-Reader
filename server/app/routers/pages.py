@@ -139,6 +139,18 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       </ul>
     </section>
 
+    <section id="notion">
+      <h2>Notion Sync (Optional)</h2>
+      <p>If you opt into syncing highlights or notes to Notion, we perform only the OAuth code exchange on the server to keep the Notion client secret off your device.</p>
+      <ul>
+        <li>Data we receive: the authorization code, redirect URI, client_id, nonce, timestamp, and HMAC signature used to validate the request. These are sent to Notion over HTTPS to obtain the access token.</li>
+        <li>The Notion access token is returned directly to your device with <code>Cache-Control: no-store</code>; the server does not store or log the token.</li>
+        <li>Logs keep minimal metadata (status, workspace_id/name, bot_id) for troubleshooting and omit the authorization code and access token.</li>
+        <li>Book content and notes are not proxied through our server for Notion sync; your device uses the token to call Notion’s API directly.</li>
+        <li>You may revoke the integration anytime in Notion (“Settings & Members → My connections”) or disconnect in the app; no server-side deletion is required because tokens are never persisted server-side.</li>
+      </ul>
+    </section>
+
     <section>
       <h2>Your Rights & Contact</h2>
       <ul>

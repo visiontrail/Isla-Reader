@@ -5,26 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lan Read (澜悦) — Precision in Every Line</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f7f8fa;
-      --panel: #ffffff;
-      --line: rgba(0,0,0,0.12);
-      --text: #0d0d0d;
-      --muted: #4b4f55;
-      --accent: #0d0d0d;
+      --bg: #f3f1eb;
+      --panel: #fffdf8;
+      --paper-edge: #e8e1d5;
+      --line: rgba(20,20,20,0.12);
+      --text: #14110f;
+      --muted: #5a5d61;
+      --accent: #14110f;
       --radius: 18px;
       --grid: 120px;
+      --paper-shadow: 0 20px 60px rgba(0,0,0,0.08);
     }
     * { box-sizing: border-box; }
     body {
-      margin: 0; color: var(--text); background: var(--bg);
+      margin: 0; color: var(--text);
+      background:
+        radial-gradient(circle at 18% 16%, rgba(0,0,0,0.025), transparent 32%),
+        radial-gradient(circle at 78% 8%, rgba(0,0,0,0.018), transparent 30%),
+        var(--bg);
       font-family: "Epilogue", "DM Mono", system-ui, -apple-system, sans-serif;
       min-height: 100vh; overflow-x: hidden;
     }
     .grain {
-      position: fixed; inset: 0; pointer-events: none; opacity: 0.10;
+      position: fixed; inset: 0; pointer-events: none; opacity: 0.12;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
       mix-blend-mode: multiply; z-index: 5;
     }
@@ -39,7 +45,7 @@
     header {
       position: sticky; top: 0; z-index: 10;
       backdrop-filter: blur(14px);
-      background: rgba(247,248,250,0.92);
+      background: rgba(255,253,248,0.90);
       border-bottom: 1px solid var(--line);
     }
     nav {
@@ -49,6 +55,7 @@
     }
     .logo {
       display: flex; align-items: center; gap: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em;
+      font-family: "Newsreader", "Epilogue", serif;
     }
     .logo .dot { width: 12px; height: 12px; border: 2px solid var(--accent); border-radius: 50%; box-shadow: 0 0 0 6px rgba(0,0,0,0.05); }
     .nav-links { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -74,6 +81,7 @@
     h1 {
       font-size: clamp(42px, 4vw, 64px); line-height: 1.06; margin: 0 0 22px;
       letter-spacing: -0.02em;
+      font-family: "Newsreader", "Epilogue", serif;
     }
     .lead { color: var(--muted); max-width: 540px; font-size: 17px; line-height: 1.7; margin-bottom: 28px; }
     .cta-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
@@ -89,6 +97,7 @@
       border: 1px solid var(--line); border-radius: var(--radius);
       padding: 18px 20px; background: var(--panel); backdrop-filter: blur(6px);
       display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px;
+      box-shadow: var(--paper-shadow);
     }
     .stat { display: flex; flex-direction: column; gap: 4px; }
     .stat strong { font-size: 22px; color: var(--accent); letter-spacing: 0.01em; }
@@ -103,8 +112,16 @@
     }
     .outline-hero {
       width: 100%; aspect-ratio: 4/3; border: 1px solid var(--line); border-radius: 22px;
-      position: relative; overflow: hidden; background: rgba(0,0,0,0.01);
+      position: relative; overflow: visible; background: var(--panel);
+      box-shadow: var(--paper-shadow);
     }
+    .outline-hero::before, .outline-hero::after {
+      content: ""; position: absolute; inset: -12px; border: 1px solid var(--line);
+      border-radius: 24px; background: var(--panel); z-index: -1;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.06);
+    }
+    .outline-hero::before { transform: rotate(-1deg); opacity: 0.7; }
+    .outline-hero::after { transform: rotate(1.4deg); opacity: 0.5; }
     .outline-hero .lines {
       position: absolute; inset: 0;
       background-image:
@@ -118,6 +135,7 @@
       border-radius: 50%; top: 22%; left: 18%;
       box-shadow: 0 0 0 14px rgba(0,0,0,0.06);
       filter: drop-shadow(0 0 22px rgba(0,0,0,0.12));
+      background: radial-gradient(circle at 40% 40%, rgba(0,0,0,0.05), transparent 60%);
     }
     .outline-hero .chip {
       position: absolute; width: 200px; height: 120px; border: 1px solid var(--line);
@@ -132,7 +150,7 @@
     .section { max-width: 1180px; margin: 0 auto 120px; padding: 0 28px; position: relative; z-index: 2; }
     .section h2 { font-size: 26px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
-    .feature { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; background: var(--panel); min-height: 170px; }
+    .feature { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; background: var(--panel); min-height: 170px; box-shadow: 0 16px 40px rgba(0,0,0,0.06); }
     .feature h3 { margin: 0 0 10px; font-size: 18px; letter-spacing: 0.01em; color: var(--text); }
     .feature p { margin: 0; color: var(--muted); line-height: 1.6; }
     .timeline {
@@ -153,6 +171,58 @@
       border-top: 1px solid var(--line); padding: 30px 28px 60px; color: var(--muted); background: rgba(247,248,250,0.8);
       position: relative; z-index: 2;
     }
+
+    .paper-sheet {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 28px 26px 30px;
+      box-shadow: var(--paper-shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .paper-sheet::after {
+      content: ""; position: absolute; inset: 12px; border-radius: 14px; border: 1px dashed rgba(20,20,20,0.06);
+      pointer-events: none;
+    }
+    .paper-sheet.ruled {
+      background-image: linear-gradient(rgba(20,20,20,0.04) 1px, transparent 1px);
+      background-size: 100% 46px;
+    }
+    .paper-sheet .note-tab {
+      position: absolute; left: -12px; top: 22px; width: 22px; height: 82px;
+      background: linear-gradient(180deg, #d5c9b1, #e7dbc5);
+      border: 1px solid rgba(20,20,20,0.15);
+      border-radius: 10px 6px 6px 10px;
+      box-shadow: 6px 12px 20px rgba(0,0,0,0.10);
+    }
+    .paper-sheet .paper-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 14px; padding: 6px 10px;
+      border: 1px solid var(--line); border-radius: 999px; background: rgba(0,0,0,0.02);
+    }
+    .paper-sheet .paper-label::before {
+      content: "§"; font-family: "DM Mono", monospace; color: var(--accent); font-size: 12px;
+    }
+    .paper-edge {
+      position: absolute; inset: 18px -18px auto auto; height: 20px; background:
+        linear-gradient(90deg, rgba(20,20,20,0.10) 32%, transparent 32%),
+        var(--paper-edge);
+      border-radius: 999px; opacity: 0.65;
+    }
+    .bookmark {
+      position: absolute; right: 16px; top: -10px; width: 44px; height: 70px;
+      background: linear-gradient(180deg, #111, #2b2b2b);
+      clip-path: polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%);
+      box-shadow: 0 12px 26px rgba(0,0,0,0.16);
+    }
+    .bookmark::after {
+      content: "lan"; position: absolute; inset: 0; display: grid; place-items: center;
+      color: #fff; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+      font-family: "DM Mono", monospace;
+    }
+
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; margin-top: 46px; }
       nav { padding: 12px 18px; flex-wrap: wrap; }
@@ -182,7 +252,9 @@
 
   <section class="hero">
     <div class="halo"></div>
-    <div>
+    <div class="paper-sheet ruled">
+      <div class="note-tab" aria-hidden="true"></div>
+      <div class="paper-label" data-i18n="paper.fieldnote">Field note</div>
       <h1 data-i18n="hero.title">Line-perfect reading for technical teams</h1>
       <p class="lead" data-i18n="hero.lead">Lan Read (澜悦) brings crisp monochrome layouts, AI summaries, and instant sync for people who read to build.</p>
       <div class="cta-row">
@@ -195,8 +267,10 @@
         <div class="stat"><span data-i18n="stats.locales">Locale coverage</span><strong>18 locales</strong></div>
         <div class="stat"><span data-i18n="stats.error">Error rate</span><strong>0.03%</strong></div>
       </div>
+      <div class="paper-edge" aria-hidden="true"></div>
     </div>
     <div class="outline-hero">
+      <div class="bookmark" aria-hidden="true"></div>
       <div class="lines" id="lines"></div>
       <div class="orb"></div>
       <div class="chip">
@@ -207,41 +281,49 @@
 
   <section class="section" id="features">
     <h2 data-i18n="features.title">Features</h2>
-    <div class="grid-3">
-      <div class="feature">
-        <h3 data-i18n="features.interface.title">Line-first interface</h3>
-        <p data-i18n="features.interface.body">Monochrome grid, high-contrast type, and disciplined whitespace to keep direction during long-form reading.</p>
+    <div class="paper-sheet">
+      <div class="paper-label" data-i18n="paper.chapters">Chapters</div>
+      <div class="grid-3">
+        <div class="feature">
+          <h3 data-i18n="features.interface.title">Line-first interface</h3>
+          <p data-i18n="features.interface.body">Monochrome grid, high-contrast type, and disciplined whitespace to keep direction during long-form reading.</p>
+        </div>
+        <div class="feature">
+          <h3 data-i18n="features.summary.title">AI chapter summaries</h3>
+          <p data-i18n="features.summary.body">Built on AISummaryService with parallel inference; summaries appear as you turn the page.</p>
+        </div>
+        <div class="feature">
+          <h3 data-i18n="features.sync.title">Instant multi-device sync</h3>
+          <p data-i18n="features.sync.body">CloudKit plus local cache restores reading position in under 80ms when switching devices.</p>
+        </div>
+        <div class="feature">
+          <h3 data-i18n="features.privacy.title">Auditable privacy</h3>
+          <p data-i18n="features.privacy.body">Zero plaintext storage; DebugLogger keeps logs controlled for review.</p>
+        </div>
+        <div class="feature">
+          <h3 data-i18n="features.plugin.title">Extensible prompts</h3>
+          <p data-i18n="features.plugin.body">LocalizationHelper keeps prompts consistent while allowing per-team AI formatting.</p>
+        </div>
+        <div class="feature">
+          <h3 data-i18n="features.qa.title">Test-grade stability</h3>
+          <p data-i18n="features.qa.body">Coverage from xcodebuild test through localization and EPUB pipelines for CI reliability.</p>
+        </div>
       </div>
-      <div class="feature">
-        <h3 data-i18n="features.summary.title">AI chapter summaries</h3>
-        <p data-i18n="features.summary.body">Built on AISummaryService with parallel inference; summaries appear as you turn the page.</p>
-      </div>
-      <div class="feature">
-        <h3 data-i18n="features.sync.title">Instant multi-device sync</h3>
-        <p data-i18n="features.sync.body">CloudKit plus local cache restores reading position in under 80ms when switching devices.</p>
-      </div>
-      <div class="feature">
-        <h3 data-i18n="features.privacy.title">Auditable privacy</h3>
-        <p data-i18n="features.privacy.body">Zero plaintext storage; DebugLogger keeps logs controlled for review.</p>
-      </div>
-      <div class="feature">
-        <h3 data-i18n="features.plugin.title">Extensible prompts</h3>
-        <p data-i18n="features.plugin.body">LocalizationHelper keeps prompts consistent while allowing per-team AI formatting.</p>
-      </div>
-      <div class="feature">
-        <h3 data-i18n="features.qa.title">Test-grade stability</h3>
-        <p data-i18n="features.qa.body">Coverage from xcodebuild test through localization and EPUB pipelines for CI reliability.</p>
-      </div>
+      <div class="paper-edge" aria-hidden="true"></div>
     </div>
   </section>
 
   <section class="section" id="workflow">
     <h2 data-i18n="workflow.title">Workflow</h2>
-    <div class="timeline">
-      <div class="step"><span>01</span><strong data-i18n="workflow.import.title">Import</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.import.body">Drag EPUB/PDF files; format checks and chunked indexing run in parallel.</p></div>
-      <div class="step"><span>02</span><strong data-i18n="workflow.generate.title">Generate</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.generate.body">AISummaryService orchestrates multi-path inference; chapter summaries and notes ship together.</p></div>
-      <div class="step"><span>03</span><strong data-i18n="workflow.read.title">Read</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.read.body">Line-focused reader with local highlight jumps for chapters and annotations.</p></div>
-      <div class="step"><span>04</span><strong data-i18n="workflow.sync.title">Sync</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.sync.body">CloudKit caching keeps latency visible and audit-friendly debugging trails.</p></div>
+    <div class="paper-sheet ruled">
+      <div class="paper-label" data-i18n="paper.notebook">Notebook</div>
+      <div class="timeline">
+        <div class="step"><span>01</span><strong data-i18n="workflow.import.title">Import</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.import.body">Drag EPUB/PDF files; format checks and chunked indexing run in parallel.</p></div>
+        <div class="step"><span>02</span><strong data-i18n="workflow.generate.title">Generate</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.generate.body">AISummaryService orchestrates multi-path inference; chapter summaries and notes ship together.</p></div>
+        <div class="step"><span>03</span><strong data-i18n="workflow.read.title">Read</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.read.body">Line-focused reader with local highlight jumps for chapters and annotations.</p></div>
+        <div class="step"><span>04</span><strong data-i18n="workflow.sync.title">Sync</strong><p class="lead" style="font-size:15px;margin-top:6px;" data-i18n="workflow.sync.body">CloudKit caching keeps latency visible and audit-friendly debugging trails.</p></div>
+      </div>
+      <div class="paper-edge" aria-hidden="true"></div>
     </div>
   </section>
 
@@ -270,6 +352,9 @@
         'nav.features': 'Features',
         'nav.workflow': 'Workflow',
         'nav.language': 'Language',
+        'paper.fieldnote': 'Field note',
+        'paper.chapters': 'Chapters',
+        'paper.notebook': 'Notebook',
         'hero.title': 'Line-perfect reading for technical teams',
         'hero.lead': 'Lan Read (澜悦) brings crisp monochrome layouts, AI summaries, and instant sync for people who read to build.',
         'hero.primary': 'See workflow',
@@ -310,6 +395,9 @@
         'nav.features': '功能地图',
         'nav.workflow': '工作流',
         'nav.language': '语言',
+        'paper.fieldnote': '边注',
+        'paper.chapters': '章节',
+        'paper.notebook': '笔记本',
         'hero.title': '面向技术团队的线条级阅读体验',
         'hero.lead': '澜悦（Lan Read）以黑白线条界面、AI 摘要与即时同步，服务那些为创造而阅读的人。',
         'hero.primary': '查看工作流',
