@@ -67,8 +67,15 @@ struct SettingsView: View {
 
                     Button(action: { showingNotionAuth = true }) {
                         HStack {
-                            Label(NSLocalizedString("连接 Notion", comment: ""), systemImage: "link")
-                                .foregroundColor(.primary)
+                            Label {
+                                Text(NSLocalizedString("连接 Notion", comment: ""))
+                            } icon: {
+                                Image("NotionIcon")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 18, height: 18)
+                            }
+                            .foregroundColor(.primary)
                             Spacer()
                             if notionAuth.authorizationCode != nil {
                                 Image(systemName: "checkmark.circle.fill")
@@ -911,9 +918,10 @@ struct NotionAuthView: View {
                 Spacer()
 
                 // Notion Logo/Icon
-                Image(systemName: "doc.text.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.primary)
+                Image("NotionIcon")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 60, height: 60)
 
                 VStack(spacing: 8) {
                     Text(NSLocalizedString("连接到 Notion", comment: ""))
