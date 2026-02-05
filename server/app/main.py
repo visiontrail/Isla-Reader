@@ -23,6 +23,7 @@ def _is_https(request: Request) -> bool:
 async def enforce_https(request: Request, call_next):
     settings = get_settings()
     if settings.require_https and not _is_https(request):
+        logger.warning("Rejecting non-HTTPS request path=%s client=%s", request.url.path, request.client)
         return JSONResponse(status_code=400, content={"detail": "HTTPS is required for this endpoint"})
 
     response = await call_next(request)

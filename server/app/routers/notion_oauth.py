@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Response, status, HTTPException
 from pydantic import BaseModel, Field
 
 from ..config import Settings, get_settings
@@ -63,13 +63,29 @@ async def exchange_notion_code(
     response: Response,
     settings: Settings = Depends(get_settings),
 ) -> NotionExchangeResponse | Dict[str, Any]:
-    verify_signed_request(
-        client_id=payload.client_id,
-        nonce=payload.nonce,
-        timestamp=payload.timestamp,
-        signature=payload.signature,
-        settings=settings,
+    logger.info(
+        "Notion exchange request received path=/v1/oauth/notion/exchange client_id=%s nonce=%s ts=%s",
+        payload.client_id,
+        payload.nonce,
+        payload.timestamp,
     )
+    try:
+        verify_signed_request(
+            client_id=payload.client_id,
+            nonce=payload.nonce,
+            timestamp=payload.timestamp,
+            signature=payload.signature,
+            settings=settings,
+        )
+    except HTTPException as exc:
+        logger.warning(
+            "Notion exchange rejected during verification status=%s detail=%s nonce=%s",
+            exc.status_code,
+            exc.detail,
+            payload.nonce,
+        )
+        response.headers["Cache-Control"] = "no-store"
+        raise
 
     notion_client_id = settings.notion_client_id or settings.client_id
     notion_client_secret = settings.notion_client_secret or settings.client_secret
@@ -129,9 +145,11 @@ async def exchange_notion_code(
 
     # Avoid logging sensitive fields (code/access_token).
     logger.info(
-        "Notion token exchange succeeded status=%s workspace_id=%s",
+        "Notion token exchange succeeded status=%s workspace_id=%s workspace_name=%s bot_id=%s",
         notion_resp.status_code,
         data.get("workspace_id"),
+        data.get("workspace_name"),
+        data.get("bot_id"),
     )
 
     return NotionExchangeResponse(
