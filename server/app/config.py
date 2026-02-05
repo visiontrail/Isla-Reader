@@ -56,7 +56,12 @@ class Settings(BaseSettings):
     notion_client_secret: Optional[str] = None
     notion_token_url: str = "https://api.notion.com/v1/oauth/token"
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="ISLA_", case_sensitive=False)
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="ISLA_",
+        case_sensitive=False,
+        extra="ignore",  # tolerate unknown env vars to avoid startup failures
+    )
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
