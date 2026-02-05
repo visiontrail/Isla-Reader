@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     require_https: bool = True
     request_ttl_seconds: int = 300
     hsts_max_age: int = 63_072_000  # 2 years
+    notion_client_id: Optional[str] = None
+    notion_client_secret: Optional[str] = None
+    notion_token_url: str = "https://api.notion.com/v1/oauth/token"
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ISLA_", case_sensitive=False)
 

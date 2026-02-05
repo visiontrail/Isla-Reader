@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 
 from .config import Settings, get_settings
 from .logging_utils import configure_logging, get_logger
-from .routers import key, metrics, pages
+from .routers import key, metrics, pages, notion_oauth
 
 app = FastAPI(
     title="LanRead Server",
@@ -72,3 +72,4 @@ async def health(settings: Settings = Depends(get_settings)) -> dict:
 app.include_router(key.router)
 app.include_router(metrics.router)
 app.include_router(pages.router)
+app.include_router(notion_oauth.router)
