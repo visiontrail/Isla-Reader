@@ -8,7 +8,6 @@
 "支持" = "Support";
 "阅读偏好" = "Reading Preferences";
 "主题外观" = "Theme Appearance";
-"iCloud 同步" = "iCloud Sync";
 "数据管理" = "Data Management";
 "阅读提醒" = "Reading Reminder";
 "每日目标" = "Daily Goal";
@@ -319,4 +318,3 @@
 "State 验证失败，可能存在 CSRF 攻击" = "State verification failed. Possible CSRF attack detected.";
 "未收到授权码" = "Authorization code not received.";
 "Notion 授权错误: %@" = "Notion authorization error: %@";
-

@@ -99,7 +99,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
     <header>
       <p class="eyebrow">LanRead</p>
       <h1>Privacy Policy</h1>
-      <p class="updated">Updated: 2025-02-20</p>
+      <p class="updated">Updated: 2026-02-05</p>
       <p class="updated">This policy applies to the LanRead iOS app and its companion backend (isla-reader.top).</p>
     </header>
 
@@ -107,9 +107,9 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       <h2>Our Principles</h2>
       <p>We collect only the minimum data needed to provide reading and AI features. Books and reading content stay on your device by default, and required network traffic is encrypted.</p>
       <ul>
-        <li>No account is required; data is tied to your Apple ID and device.</li>
-        <li>Book content is not uploaded unless you turn on "iCloud Sync" or trigger AI features (summaries, translation, etc.).</li>
-        <li>You can export, import, or erase local and synced data in "Settings &gt; Data Management."</li>
+        <li>No account is required; data remains local to your device.</li>
+        <li>Book content is not uploaded unless you trigger AI features (summaries, translation, etc.).</li>
+        <li>You can export, import, or erase local data anytime in "Settings &gt; Data Management."</li>
       </ul>
     </section>
 
@@ -123,23 +123,13 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       </ul>
     </section>
 
-    <section id="cloudkit">
-      <h2>iCloud / CloudKit Storage</h2>
-      <p>When "iCloud Sync" is enabled, your reading data is written to Apple’s CloudKit private database and is tied only to your Apple ID.</p>
-      <ul>
-        <li>Sync scope: book metadata (title, author, cover thumbnail, format/size/checksum), reading progress and time, bookmarks, highlights/annotations, notes, and AI summaries or skimming caches generated on device.</li>
-        <li>Developers cannot directly access your CloudKit private data; Apple protects it with encryption in transit and at rest.</li>
-        <li>When you turn off "iCloud Sync," data remains on-device; "Settings &gt; Data Management &gt; Clear All Data" removes local data and clears the synced copy via Core Data/CloudKit.</li>
-      </ul>
-    </section>
-
     <section id="ai">
       <h2>AI Feature Uploads</h2>
       <p>When you use translation, explanation, AI summary, or skimming, we send the relevant text over HTTPS to your configured OpenAI-compatible endpoint (DashScope by default) to generate results.</p>
       <ul>
         <li>Uploaded content is limited to the book passages you request to process plus necessary prompt context; it excludes account identifiers and ad identifiers.</li>
         <li>API keys can be issued by the secure server (isla-reader.top/v1/keys/ai); this server does not store your book content and only signs and forwards credentials.</li>
-        <li>We do not persist uploaded text on the server; generated summaries/key points remain on your device and, if iCloud is enabled, sync to your CloudKit private space.</li>
+        <li>We do not persist uploaded text on the server; generated summaries/key points remain on your device.</li>
         <li>Third-party model providers (e.g., DashScope or your custom OpenAI-compatible service) may handle data under their own privacy policies. Please review them before use.</li>
       </ul>
     </section>
@@ -147,7 +137,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
     <section>
       <h2>Your Rights & Contact</h2>
       <ul>
-        <li>You can export or erase local data anytime via "Data Management," and keep data on-device by disabling iCloud.</li>
+        <li>You can export or erase local data anytime via "Data Management." All data stays on-device.</li>
         <li>For questions about this policy or data handling, contact <a href="mailto:guoliang88925@icloud.com">guoliang88925@icloud.com</a>.</li>
       </ul>
     </section>

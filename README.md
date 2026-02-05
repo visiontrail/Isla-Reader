@@ -19,10 +19,9 @@ IslaBooks is an intelligent e-book reading application for iOS and iPadOS that l
 - 💬 **Conversational Reading Assistant**: Ask questions about selected text, chapters, or entire books
 - 🎯 **Comprehension Diagnostics**: Auto-generated quizzes to assess understanding
 - 🔖 **Advanced Reader**: Bookmarks, highlights, annotations, search, and customizable themes
-- ☁️ **iCloud Sync**: Seamless synchronization across devices via CloudKit
 - 🔗 **Notion Sync**: Export bookmarks and highlights to Notion
 - 🌙 **Reading Modes**: Night mode, adjustable fonts, line spacing, and layout settings
-- 🔒 **Privacy-First**: No registration required, local-first approach with optional cloud sync
+- 🔒 **Privacy-First**: No registration required, local-first data storage
 
 ## Vision
 
@@ -93,15 +92,8 @@ IslaBooks reimagines the reading experience by combining traditional e-reading c
 - Configurable line spacing and margins
 - Night mode with blue light reduction
 
-### 5. Sync & Privacy
+### 5. Privacy
 
-#### iCloud Integration
-- Automatic sync via CloudKit (no app registration required)
-- Syncs: reading progress, bookmarks, highlights, notes, settings
-- Optional: disable cloud sync for local-only storage
-- One-tap cloud data deletion
-
-#### Privacy Commitment
 - Minimal data collection
 - No third-party analytics or tracking
 - User owns all imported content
@@ -114,19 +106,13 @@ IslaBooks reimagines the reading experience by combining traditional e-reading c
 - **Platform**: iOS 16.0+, iPadOS 16.0+
 - **Language**: Swift 5.9+
 - **UI Framework**: SwiftUI
-- **Storage**: Core Data + iCloud CloudKit
+- **Storage**: Core Data (on-device)
 
 ### AI Integration
 - **Model**: OpenAI-compatible API (configurable)
 - **Streaming**: Progressive UI updates (simulated streaming); SSE planned
 - **Context Management**: Rule-based paragraph extraction (no vector DB)
 - **Caching**: Aggressive summary and response caching
-
-### Data Synchronization
-- **Service**: CloudKit Private Database
-- **Scope**: User library, progress, annotations, preferences
-- **Conflict Resolution**: Last-write-wins with timestamp
-- **Offline Support**: Full offline reading with sync on reconnection
 
 ## Installation
 
@@ -149,17 +135,12 @@ cd IslaBooks-ios/Isla\ Reader
 open Isla\ Reader.xcodeproj
 ```
 
-3. **Configure CloudKit**
-   - Enable iCloud capability in project settings
-   - Select CloudKit container
-   - Ensure "CloudKit" is enabled in Signing & Capabilities
-
-4. **Configure AI & secure server**
+3. **Configure AI & secure server**
    - Copy `Config/AISecrets.xcconfig.example` to `Config/AISecrets.xcconfig`
    - Recommended: point `SECURE_SERVER_BASE_URL`, `SECURE_SERVER_CLIENT_ID`, `SECURE_SERVER_CLIENT_SECRET`, `SECURE_SERVER_REQUIRE_TLS` to the backend so it can deliver `api_endpoint`/`model`/`api_key` dynamically.
    - Optional fallback (offline/local only): set `AI_API_ENDPOINT`, `AI_MODEL`, and `AI_API_KEY` manually.
 
-5. **Build and Run**
+4. **Build and Run**
    - Select target device or simulator
    - Press `Cmd + R` to build and run
 
@@ -189,7 +170,6 @@ open Isla\ Reader.xcodeproj
 
 4. **Track Progress**
    - Bookmarks auto-save
-   - Progress syncs across devices via iCloud
    - View reading statistics in "My Library"
 
 ### Advanced Features
@@ -226,7 +206,6 @@ Configure preset actions for text selection:
 
 ### v0.5 (Planned)
 - [ ] Selection-based Q&A (translate, explain, summarize)
-- [ ] Minimal iCloud sync (progress only)
 
 ### v1.0 (Future)
 
@@ -294,7 +273,7 @@ cd scripts
 
 ### Privacy Features
 - No email or personal identification collected
-- iCloud used only for data sync (optional)
+- All reading data stored locally on device
 - AI requests anonymized and not logged
 - User controls all data with export/delete options
 - Compliant with App Privacy Nutrition Label requirements

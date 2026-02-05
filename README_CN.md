@@ -19,10 +19,9 @@ IslaBooks 是一款面向 iOS 与 iPadOS 的智能电子书阅读应用，利用
 - 💬 交互式阅读助手：可针对选区、章节或整书进行提问
 - 🎯 理解诊断：自动生成测验评估理解程度
 - 🔖 高级阅读器：书签、高亮、批注、搜索与可定制主题
-- ☁️ iCloud 同步：通过 CloudKit 在设备间无缝同步
 - 🔗 同步到 Notion：将书签与标注同步到 Notion
 - 🌙 阅读模式：夜间模式、可调字体、行距与版式
-- 🔒 隐私优先：无需注册，本地优先，可选云同步
+- 🔒 隐私优先：无需注册，数据本地优先
 
 ## 愿景
 
@@ -93,15 +92,8 @@ IslaBooks 将传统电子阅读与 AI 理解工具结合，使读者不仅能高
 - 可配置行距与页边距
 - 夜间模式与蓝光降低
 
-### 5. 同步与隐私
+### 5. 隐私
 
-#### iCloud 集成
-- 通过 CloudKit 自动同步（无需应用内注册）
-- 同步内容：阅读进度、书签、高亮、笔记、设置
-- 可选禁用云同步，仅本地存储
-- 一键删除云端数据
-
-#### 隐私承诺
 - 最小化数据采集
 - 不接入第三方分析或追踪
 - 用户拥有导入内容的完全所有权
@@ -114,19 +106,13 @@ IslaBooks 将传统电子阅读与 AI 理解工具结合，使读者不仅能高
 - 平台：iOS 16.0+，iPadOS 16.0+
 - 语言：Swift 5.9+
 - UI 框架：SwiftUI
-- 存储：Core Data + iCloud CloudKit
+- 存储：Core Data（仅本地）
 
 ### AI 集成
 - 模型：兼容 OpenAI API（可配置）
 - 流式：渐进式 UI 更新（模拟流式）；计划支持 SSE
 - 上下文管理：基于规则的段落抽取（无向量数据库）
 - 缓存：积极的摘要与响应缓存
-
-### 数据同步
-- 服务：CloudKit 私有数据库
-- 范围：用户书库、进度、批注、偏好设置
-- 冲突解决：时间戳末写胜（Last-write-wins）
-- 离线支持：完整离线阅读，重联后同步
 
 ## 安装
 
@@ -149,17 +135,12 @@ cd IslaBooks-ios/Isla\ Reader
 open Isla\ Reader.xcodeproj
 ```
 
-3. 配置 CloudKit
-   - 在项目设置启用 iCloud 能力
-   - 选择 CloudKit 容器
-   - 在 Signing & Capabilities 中开启 “CloudKit”
-
-4. 配置 AI 与安全服务器
+3. 配置 AI 与安全服务器
    - 将 `Config/AISecrets.xcconfig.example` 复制为 `Config/AISecrets.xcconfig`
    - 推荐：配置安全服务器，让后端下发 `api_endpoint` / `model` / `api_key`，客户端填好 `SECURE_SERVER_BASE_URL`、`SECURE_SERVER_CLIENT_ID`、`SECURE_SERVER_CLIENT_SECRET`、`SECURE_SERVER_REQUIRE_TLS`（可将 `AI_API_ENDPOINT`、`AI_MODEL` 留空）。
    - 可选备用（离线/本地调试）：手动设置 `AI_API_ENDPOINT`、`AI_MODEL` 和 `AI_API_KEY`
 
-5. 构建与运行
+4. 构建与运行
    - 选择目标设备或模拟器
    - 按 `Cmd + R` 构建并运行
 
@@ -190,7 +171,6 @@ open Isla\ Reader.xcodeproj
 
 4. 跟踪进度
    - 自动保存书签
-   - 通过 iCloud 在设备间同步进度
    - 在“我的书库”查看阅读统计
 
 ### 高级功能
@@ -226,7 +206,6 @@ open Isla\ Reader.xcodeproj
 
 ### v0.5（计划）
 - [ ] 选区问答（翻译、解释、总结）
-- [ ] 最小 iCloud 同步（仅进度）
 
 ### v1.0（未来）
 
@@ -297,7 +276,7 @@ cd scripts
 
 ### 隐私特性
 - 不收集邮箱或个人身份信息
-- iCloud 仅用于数据同步（可选）
+- 阅读数据仅存储在本地设备
 - AI 请求匿名化且不记录
 - 用户完全掌控数据，可导出/删除
 - 符合 App 隐私营养标签要求

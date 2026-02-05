@@ -57,14 +57,8 @@ struct SettingsView: View {
                     }
                 }
                 
-                // Data & Sync
-                Section(NSLocalizedString("数据与同步", comment: "")) {
-                    HStack {
-                        Label(NSLocalizedString("iCloud 同步", comment: ""), systemImage: "icloud")
-                        Spacer()
-                        Toggle("", isOn: $appSettings.isAutoSyncEnabled)
-                    }
-
+                // Data
+                Section(NSLocalizedString("数据", comment: "")) {
                     Button(action: { showingNotionAuth = true }) {
                         HStack {
                             Label {

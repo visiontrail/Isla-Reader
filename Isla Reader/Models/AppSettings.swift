@@ -145,7 +145,6 @@ class AppSettings: ObservableObject {
         "reading_font",
         "line_spacing",
         "page_margins",
-        "auto_sync_enabled",
         "reading_reminder_enabled",
         "daily_reading_goal"
     ]
@@ -194,12 +193,6 @@ class AppSettings: ObservableObject {
         }
     }
     
-    @Published var isAutoSyncEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(isAutoSyncEnabled, forKey: "auto_sync_enabled")
-        }
-    }
-    
     @Published var isReadingReminderEnabled: Bool {
         didSet {
             UserDefaults.standard.set(isReadingReminderEnabled, forKey: "reading_reminder_enabled")
@@ -223,7 +216,6 @@ class AppSettings: ObservableObject {
         self.readingFont = ReadingFont(rawValue: UserDefaults.standard.string(forKey: "reading_font") ?? "") ?? .system
         self.lineSpacing = UserDefaults.standard.object(forKey: "line_spacing") as? Double ?? 1.2
         self.pageMargins = UserDefaults.standard.object(forKey: "page_margins") as? Double ?? 20.0
-        self.isAutoSyncEnabled = UserDefaults.standard.object(forKey: "auto_sync_enabled") as? Bool ?? true
         self.isReadingReminderEnabled = UserDefaults.standard.object(forKey: "reading_reminder_enabled") as? Bool ?? false
         self.dailyReadingGoal = UserDefaults.standard.object(forKey: "daily_reading_goal") as? Int ?? 30
     }
@@ -242,7 +234,6 @@ class AppSettings: ObservableObject {
         readingFont = .system
         lineSpacing = 1.2
         pageMargins = 20.0
-        isAutoSyncEnabled = true
         isReadingReminderEnabled = false
         dailyReadingGoal = 30
     }
