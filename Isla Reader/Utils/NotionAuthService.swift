@@ -30,7 +30,11 @@ final class NotionAuthService: NSObject, ObservableObject {
     /// Notion OAuth Client ID
     /// 注意：这是公开的 client_id，可以安全地存储在 iOS App 中
     /// client_secret 应该只在后端使用，不应出现在 iOS 代码中
-    private let clientID = "YOUR_NOTION_CLIENT_ID" // TODO: 替换为你的 Notion Client ID
+    /// 优先从 Info.plist 的 `NOTION_CLIENT_ID` 读取，便于用 xcconfig 覆盖
+    private var clientID: String {
+        let raw = Bundle.main.object(forInfoDictionaryKey: "NOTION_CLIENT_ID") as? String
+        return raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "YOUR_NOTION_CLIENT_ID"
+    }
 
     /// OAuth 回调 URL Scheme
     private let redirectScheme = "lanread"
@@ -63,6 +67,7 @@ final class NotionAuthService: NSObject, ObservableObject {
     func startAuthorization(presentationContext: ASWebAuthenticationPresentationContextProviding? = nil) {
         // 防止重复授权
         guard !isAuthorizing else {
+            DebugLogger.warning("Notion OAuth already in progress; ignoring duplicate tap")
             error = .alreadyInProgress
             return
         }
@@ -76,9 +81,12 @@ final class NotionAuthService: NSObject, ObservableObject {
 
         // 构建授权 URL
         guard let authURL = buildAuthorizationURL(state: state) else {
+            DebugLogger.error("Notion OAuth configuration invalid - missing or placeholder client ID")
             error = .invalidConfiguration
             return
         }
+
+        DebugLogger.info("Starting Notion OAuth: state=\(state.prefix(8))..., redirect=\(redirectURI)")
 
         // 创建并启动 ASWebAuthenticationSession
         let session = ASWebAuthenticationSession(
@@ -106,6 +114,7 @@ final class NotionAuthService: NSObject, ObservableObject {
 
         // 启动授权流程
         if !session.start() {
+            DebugLogger.error("ASWebAuthenticationSession failed to start")
             isAuthorizing = false
             error = .sessionFailedToStart
             cleanup()
@@ -124,13 +133,16 @@ final class NotionAuthService: NSObject, ObservableObject {
     /// - Parameter state: CSRF 防护 state
     /// - Returns: 授权 URL
     private func buildAuthorizationURL(state: String) -> URL? {
-        guard !clientID.isEmpty, clientID != "YOUR_NOTION_CLIENT_ID" else {
+        let id = clientID
+        guard !id.isEmpty,
+              id != "YOUR_NOTION_CLIENT_ID",
+              !id.contains("$(") else { // 未被替换的占位符
             return nil
         }
 
         var components = URLComponents(string: "https://api.notion.com/v1/oauth/authorize")
         components?.queryItems = [
-            URLQueryItem(name: "client_id", value: clientID),
+            URLQueryItem(name: "client_id", value: id),
             URLQueryItem(name: "redirect_uri", value: redirectURI),
             URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "state", value: state),
@@ -155,19 +167,23 @@ final class NotionAuthService: NSObject, ObservableObject {
         // 处理取消或错误
         if let error = error {
             if (error as NSError).code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                DebugLogger.info("Notion OAuth cancelled by user")
                 self.error = .userCancelled
             } else {
+                DebugLogger.error("Notion OAuth session failed", error: error)
                 self.error = .authSessionFailed(error)
             }
             return
         }
 
         guard let callbackURL = callbackURL else {
+            DebugLogger.error("Notion OAuth callback URL missing")
             self.error = .invalidCallback
             return
         }
 
         // 解析回调 URL
+        DebugLogger.info("Received Notion OAuth callback: \(callbackURL.absoluteString)")
         parseCallback(url: callbackURL)
     }
 
@@ -187,18 +203,21 @@ final class NotionAuthService: NSObject, ObservableObject {
 
         // 检查是否有错误参数
         if let errorParam = errorParam {
+            DebugLogger.error("Notion OAuth error from server: \(errorParam)")
             error = .notionAPIError(errorParam)
             return
         }
 
         // 验证 state（CSRF 防护）
         guard let state = state, state == pendingState else {
+            DebugLogger.error("Notion OAuth state mismatch")
             error = .stateMismatch
             return
         }
 
         // 验证 code
         guard let code = code, !code.isEmpty else {
+            DebugLogger.error("Notion OAuth missing authorization code")
             error = .missingAuthorizationCode
             return
         }
@@ -211,6 +230,7 @@ final class NotionAuthService: NSObject, ObservableObject {
 
         // 这里可以触发后续流程，例如通知 UI 或调用后端交换 token
         // 注意：code → token 的交换应该在你的后端完成，不要在 iOS App 中使用 client_secret
+        DebugLogger.success("Notion OAuth succeeded; code prefix=\(code.prefix(8))")
     }
 
     // MARK: - State Generation
