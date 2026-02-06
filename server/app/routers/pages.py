@@ -621,11 +621,6 @@ def _landing_file(filename: str) -> FileResponse:
     return FileResponse(path, media_type="text/html", headers={"Cache-Control": "public, max-age=900"})
 
 
-@router.get("/privacy.html", include_in_schema=False)
-async def landing_privacy_html():
-    return _landing_file("privacy.html")
-
-
 @router.get("/changelog.html", include_in_schema=False)
 async def landing_changelog_html():
     return _landing_file("changelog.html")
