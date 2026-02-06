@@ -4,7 +4,7 @@
     "description": "Lan Read turns ePub/txt into a conversational mentor on iOS and iPadOS: instant summaries, skimming, ask-while-reading, optional iCloud sync and Notion export, privacy-first local storage."
   },
   "brand": {
-    "name": "Lan Read · 澜悦",
+    "name": "Lan Read",
     "tagline": "Your first AI-Powered Reading Companion"
   },
   "nav": {
@@ -62,7 +62,7 @@
     ]
   },
   "footer": {
-    "note": "© 2026 Lan Read · 澜悦 — Your first AI-powered reading companion.",
+    "note": "© 2026 Lan Read — Your first AI-powered reading companion.",
     "privacy": "Privacy",
     "changelog": "Changelog",
     "support": "Support"

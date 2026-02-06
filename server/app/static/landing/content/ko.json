@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "title": "Lan Read — 당신의 첫 AI 독서 파트너",
+    "description": "Lan Read는 iOS / iPadOS에서 ePub/txt를 대화형 독서 멘토로 바꿉니다. 즉시 요약, 스킴 읽기, 읽는 중 질문, 선택형 iCloud 동기화 및 Notion 내보내기, 로컬 우선 저장을 지원합니다."
+  },
+  "brand": {
+    "name": "Lan Read",
+    "tagline": "당신의 첫 AI 독서 파트너"
+  },
+  "nav": {
+    "features": "기능",
+    "workflow": "워크플로",
+    "language": "언어"
+  },
+  "labels": {
+    "fieldnote": "제품 노트",
+    "chapters": "기능",
+    "notebook": "워크플로",
+    "privacy": "개인정보"
+  },
+  "hero": {
+    "title": "당신의 첫 AI 독서 파트너",
+    "subtitle": "ePub 또는 txt를 가져오고, 열자마자 AI 요약을 확인하세요. Skim read로 장을 빠르게 훑고 읽는 중 질문할 수 있습니다. 기본은 로컬 우선이며 필요 시 iCloud 동기화와 Notion 내보내기를 사용할 수 있습니다.",
+    "primaryCta": "기능 보기",
+    "secondaryCta": "흐름 보기"
+  },
+  "vision": "모든 책을 대화 가능한 멘토로 만들어 더 빠르게 이해하고, 더 오래 기억하고, 더 쉽게 토론하세요.",
+  "facts": [
+    { "label": "플랫폼", "value": "iOS / iPadOS (macOS 예정)" },
+    { "label": "저장", "value": "로컬 우선, 가입 필수 아님" },
+    { "label": "동기화", "value": "선택형 iCloud (CloudKit) 동기화" },
+    { "label": "내보내기", "value": "하이라이트/북마크 Notion 내보내기" }
+  ],
+  "features": {
+    "title": "기능",
+    "items": [
+      { "title": "로컬 도서 가져오기", "body": "Files 또는 iCloud Drive에서 ePub / txt를 가져와 라이브러리를 로컬에 유지합니다." },
+      { "title": "즉시 AI 요약", "body": "책을 열면 간결한 개요와 장 구조를 표시하며, 캐시와 수동 새로고침을 지원합니다." },
+      { "title": "스킴 모드", "body": "장 골격 요약과 빠른 이동으로 문맥을 신속히 파악합니다." },
+      { "title": "읽는 중 질문", "body": "선택 텍스트, 장, 책 전체에 대해 질문/번역/예시 요청이 가능합니다. 선택 단축 기능은 계획 중입니다.", "status": "planned" },
+      { "title": "리더 필수 기능", "body": "목차, 검색, 북마크, 하이라이트, 주석, 테마, 폰트/줄 간격 조절, 야간 모드." },
+      { "title": "동기화 및 내보내기", "body": "선택형 CloudKit 동기화와 북마크/하이라이트 Notion 내보내기." },
+      { "title": "이해도 점검(예정)", "body": "회상력을 확인하는 진단 및 퀴즈 기능을 설계 중입니다.", "status": "planned" }
+    ],
+    "privacyNote": "회원가입은 필수가 아닙니다. 라이브러리는 기본적으로 로컬에 남으며, 클라우드 동기화·키 교환·AI 호출은 모두 옵트인입니다."
+  },
+  "workflow": {
+    "title": "워크플로",
+    "steps": [
+      { "title": "가져오기", "body": "Files 또는 iCloud Drive에서 ePub / txt 파일을 추가합니다." },
+      { "title": "요약", "body": "책을 열면 AI 개요와 장 골격을 생성하고, 결과는 재사용을 위해 캐시됩니다." },
+      { "title": "읽기 및 질문", "body": "읽는 중 하이라이트하여 질문, 번역, 예시를 요청할 수 있습니다. 선택 단축 기능은 계획 중입니다." },
+      { "title": "동기화 / 내보내기", "body": "필요할 때 iCloud 동기화를 켜고 하이라이트/북마크를 Notion으로 내보냅니다." }
+    ]
+  },
+  "privacy": {
+    "title": "개인정보 및 동기화",
+    "lines": [
+      "기본값은 로컬 우선이며, 클라우드 기능을 켜기 전까지 라이브러리는 기기에 유지됩니다.",
+      "선택형 CloudKit 동기화와 FastAPI 키 교환으로 자격 증명을 클라이언트에서 분리하고 가능한 범위에서 익명성을 유지합니다.",
+      "등록은 필수가 아닙니다. AI 프롬프트는 계정 식별자 전송을 피하고, 텔레메트리는 안정성 중심의 최소 수준만 수집합니다."
+    ]
+  },
+  "footer": {
+    "note": "© 2026 Lan Read — 당신의 첫 AI 독서 파트너.",
+    "privacy": "개인정보",
+    "changelog": "변경 기록",
+    "support": "지원"
+  }
+}

@@ -714,7 +714,7 @@
   <div class="grain"></div>
   <header>
     <nav>
-      <div class="logo"><div class="dot"></div><span data-key="brand.name">Lan Read · 澜悦</span></div>
+      <div class="logo"><div class="dot"></div><span data-key="brand.name">Lan Read</span></div>
       <div class="nav-links">
         <a class="pill" href="#features" data-key="nav.features">Features</a>
         <a class="pill" href="#workflow" data-key="nav.workflow">Workflow</a>
@@ -723,7 +723,8 @@
         <label for="language" data-key="nav.language">Language</label>
         <select id="language" aria-label="Language selector">
           <option value="en">English</option>
-          <option value="zh">中文</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
         </select>
       </div>
     </nav>
@@ -856,7 +857,7 @@
 
   <footer>
     <div style="max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-      <span data-key="footer.note">© 2026 Lan Read · 澜悦 — Your first AI-powered reading companion.</span>
+      <span data-key="footer.note">© 2026 Lan Read — Your first AI-powered reading companion.</span>
       <span style="display:flex; gap:12px; flex-wrap:wrap;">
         <a class="pill" href="/privacy" data-key="footer.privacy">Privacy</a>
         <a class="pill" href="changelog.html" data-key="footer.changelog">Changelog</a>
@@ -936,7 +937,7 @@
         title: 'Lan Read — Your first AI-powered reading companion',
         description: 'Lan Read turns ePub/txt into a conversational mentor on iOS and iPadOS: instant summaries, skimming, ask-while-reading, optional iCloud sync and Notion export, privacy-first local storage.'
       },
-      brand: { name: 'Lan Read · 澜悦', tagline: 'Your first AI-Powered Reading Companion' },
+      brand: { name: 'Lan Read', tagline: 'Your first AI-Powered Reading Companion' },
       nav: { features: 'Features', workflow: 'Workflow', language: 'Language' },
       labels: { fieldnote: 'Product note', chapters: 'Features', notebook: 'Workflow', privacy: 'Privacy' },
       hero: {
@@ -983,7 +984,7 @@
         ]
       },
       footer: {
-        note: '© 2026 Lan Read · 澜悦 — Your first AI-powered reading companion.',
+        note: '© 2026 Lan Read — Your first AI-powered reading companion.',
         privacy: 'Privacy',
         changelog: 'Changelog',
         support: 'Support'
@@ -1015,7 +1016,8 @@
 
     const renderFeatures = (features, lang) => {
       if (!featureGrid) return;
-      const plannedLabel = lang === 'zh' ? '规划中' : 'Planned';
+      const plannedLabelMap = { ja: '予定', ko: '예정', en: 'Planned' };
+      const plannedLabel = plannedLabelMap[lang] || plannedLabelMap.en;
       featureGrid.innerHTML = (features?.items || []).map(item => `
         <div class="feature">
           <h3>${item.title}${item.status ? `<span class="badge">${plannedLabel}</span>` : ''}</h3>
@@ -1025,7 +1027,7 @@
       if (featuresPrivacyNote) featuresPrivacyNote.textContent = features?.privacyNote || '';
     };
 
-    const renderWorkflow = (workflow, lang) => {
+    const renderWorkflow = (workflow) => {
       if (!workflowGrid) return;
       workflowGrid.innerHTML = (workflow?.steps || []).map((step, idx) => {
         const number = String(idx + 1).padStart(2, '0');
@@ -1046,51 +1048,95 @@
     };
 
     const bookLocale = (lang, t) => {
-      const isZh = lang === 'zh';
       const facts = t.facts || fallbackEn.facts;
-      const storageFact = facts[1] || { label: isZh ? '存储' : 'Storage', value: '' };
-      const syncFact = facts[2] || { label: isZh ? '同步' : 'Sync', value: '' };
-      const exportFact = facts[3] || { label: isZh ? '导出' : 'Export', value: '' };
-      return isZh ? {
-        openLabel: '翻开',
-        coverLabel: '封皮',
-        prevLabel: '上一页',
-        nextLabel: '下一页',
-        coverStrip: ['AI Summary', 'Skim read', 'Products', 'Sync', 'Export'],
-        coverEmboss: 'summary · skim · products · storage · sync · export',
-        summaryTag: 'AI Summary',
-        summaryMeta: '流式输出',
-        summaryTitle: '这本 App 做了什么',
-        summaryStream: `Lan Read 把你的 ePub / txt 书库变成一个可对话阅读伙伴。\n\n它会在你打开书时给出 AI 摘要，帮助你先建立整体脉络；你可以用 Skim read 快速扫章节，再按需深入；同时支持可选 iCloud 同步与 Notion 导出，让阅读记录在“默认本地优先”的前提下按你的节奏流动。`,
-        summaryPoints: [
-          '打开即看摘要，减少进入成本',
-          'Skim read 先抓骨架，再深入细读',
-          '同步与导出都是可选，不打断本地阅读'
-        ],
-        skimTag: 'Skim read',
-        skimMeta: '章节骨架',
-        skimTitle: '先看全貌，再决定读哪里',
-        skimBody: 'Skim read 会把章节压缩成骨架，让你在几分钟内定位重点、争议点与关键名词，不需要逐页滚动。',
-        skimPills: ['章节级摘要', '快速跳转上下文', '先筛选再深读'],
-        platformsTag: 'Products',
-        platformsMeta: '覆盖范围',
-        platformsTitle: '产品: iPhone / iPad（Mac 规划中）',
-        platformsBody: '当前体验聚焦具体设备而非系统概念：在 iPhone 上强调单手快速进入，在 iPad 上强调大屏长时阅读与分屏协作。',
-        platformsImageAlt: 'Lan Read 在 iPhone 与 iPad 上的产品形态',
-        platformsImageCaption: '产品形态：iPhone + iPad，Mac 版本规划中。',
-        storageTag: 'Storage',
-        storageMeta: '本地优先',
-        storageTitle: `${storageFact.label}: ${storageFact.value}`,
-        storageBody: '默认本地保存让你不需要先注册账号再开始读书。是否上云由你决定，库数据与阅读轨迹可以持续留在设备里。',
-        syncTag: 'Sync',
-        syncMeta: '可选云端',
-        syncTitle: `${syncFact.label}: ${syncFact.value}`,
-        syncBody: '当你需要多设备延续阅读时再开启同步。设计上保持“可选开启、可控范围”，让云端只在你需要时介入。',
-        exportTag: 'Export',
-        exportMeta: '知识流转',
-        exportTitle: `${exportFact.label}: ${exportFact.value}`,
-        exportBody: '高亮和书签可导出到 Notion，把阅读结果接入你的知识管理流程，方便复盘、整理与后续写作。'
-      } : {
+      const storageFact = facts[1] || { label: 'Storage', value: '' };
+      const syncFact = facts[2] || { label: 'Sync', value: '' };
+      const exportFact = facts[3] || { label: 'Export', value: '' };
+      if (lang === 'ja') {
+        return {
+          openLabel: '開く',
+          coverLabel: '表紙',
+          prevLabel: '前へ',
+          nextLabel: '次へ',
+          coverStrip: ['AI要約', 'Skim read', '製品', '同期', 'エクスポート'],
+          coverEmboss: 'summary · skim · products · storage · sync · export',
+          summaryTag: 'AI要約',
+          summaryMeta: 'ストリーミング',
+          summaryTitle: 'このアプリでできること',
+          summaryStream: `Lan Read は、あなたの ePub / txt ライブラリを会話できる読書パートナーに変えます。\n\n本を開くと AI 要約で全体像を素早く把握でき、Skim read で章の骨格を短時間で確認できます。さらに、必要なときだけ iCloud 同期や Notion エクスポートを使えるため、ローカルファーストの読書体験を崩しません。`,
+          summaryPoints: [
+            'AI要約ですぐに全体像を把握',
+            '章の骨格を先に見てから深読み',
+            '同期とエクスポートは必要時のみ有効化'
+          ],
+          skimTag: 'Skim read',
+          skimMeta: '章の骨格',
+          skimTitle: '全体を先に把握して、読む場所を決める',
+          skimBody: 'Skim read は章を構造化して要点を抽出し、優先ポイントや論点、重要語を数分で見つけられるようにします。',
+          skimPills: ['章単位の要約', '文脈へ素早くジャンプ', '先に絞ってから深く読む'],
+          platformsTag: '製品',
+          platformsMeta: '対応範囲',
+          platformsTitle: '製品: iPhone / iPad（Mac は計画中）',
+          platformsBody: 'OS 名称ではなく製品体験として設計しています。iPhone は片手での短時間利用、iPad は長時間読書と分割表示に最適化されています。',
+          platformsImageAlt: 'iPhone と iPad 上の Lan Read 製品体験',
+          platformsImageCaption: '製品フォーカス: iPhone + iPad（Mac は計画中）。',
+          storageTag: '保存',
+          storageMeta: 'ローカル優先',
+          storageTitle: `${storageFact.label}: ${storageFact.value}`,
+          storageBody: 'アカウント登録なしですぐ読書を始められます。明示的にクラウドを選ぶまで、書籍と読書履歴は端末内に保持されます。',
+          syncTag: '同期',
+          syncMeta: '任意のクラウド',
+          syncTitle: `${syncFact.label}: ${syncFact.value}`,
+          syncBody: '複数デバイスで続きを読みたいときだけ同期を有効化できます。クラウド利用はオプトインで、範囲もユーザーが制御できます。',
+          exportTag: 'エクスポート',
+          exportMeta: '知識フロー',
+          exportTitle: `${exportFact.label}: ${exportFact.value}`,
+          exportBody: 'ハイライトやブックマークを Notion に送ることで、読書結果をメモ、振り返り、執筆の流れに接続できます。'
+        };
+      }
+      if (lang === 'ko') {
+        return {
+          openLabel: '열기',
+          coverLabel: '표지',
+          prevLabel: '이전',
+          nextLabel: '다음',
+          coverStrip: ['AI 요약', 'Skim read', '제품', '동기화', '내보내기'],
+          coverEmboss: 'summary · skim · products · storage · sync · export',
+          summaryTag: 'AI 요약',
+          summaryMeta: '스트리밍',
+          summaryTitle: '이 앱이 하는 일',
+          summaryStream: `Lan Read는 당신의 ePub / txt 라이브러리를 대화형 읽기 파트너로 바꿉니다.\n\n책을 열면 AI 요약으로 먼저 큰 흐름을 파악하고, Skim read로 장별 구조를 빠르게 훑을 수 있습니다. 필요할 때만 iCloud 동기화와 Notion 내보내기를 켤 수 있어 로컬 우선 경험을 유지합니다.`,
+          summaryPoints: [
+            'AI 요약으로 빠른 전체 파악',
+            '장 구조를 먼저 보고 필요한 부분만 깊게 읽기',
+            '동기화와 내보내기는 선택적으로 사용'
+          ],
+          skimTag: 'Skim read',
+          skimMeta: '챕터 골격',
+          skimTitle: '먼저 전체를 보고, 읽을 위치를 결정',
+          skimBody: 'Skim read는 장 내용을 구조 단위로 압축해 핵심 포인트, 논점, 용어를 몇 분 안에 찾도록 도와줍니다.',
+          skimPills: ['챕터 단위 요약', '빠른 문맥 점프', '먼저 선별 후 정독'],
+          platformsTag: '제품',
+          platformsMeta: '지원 범위',
+          platformsTitle: '제품: iPhone / iPad (Mac 예정)',
+          platformsBody: 'OS 라벨보다 제품 경험 중심으로 설계했습니다. iPhone은 한 손의 빠른 사용, iPad는 장시간 읽기와 분할 화면에 최적화됩니다.',
+          platformsImageAlt: 'iPhone과 iPad에서의 Lan Read 제품 경험',
+          platformsImageCaption: '제품 초점: iPhone + iPad, Mac은 계획 중.',
+          storageTag: '저장',
+          storageMeta: '로컬 우선',
+          storageTitle: `${storageFact.label}: ${storageFact.value}`,
+          storageBody: '계정 등록 없이 바로 읽기를 시작할 수 있습니다. 클라우드를 선택하기 전까지 책과 읽기 기록은 기기에 로컬로 유지됩니다.',
+          syncTag: '동기화',
+          syncMeta: '선택형 클라우드',
+          syncTitle: `${syncFact.label}: ${syncFact.value}`,
+          syncBody: '여러 기기에서 이어 읽기가 필요할 때만 동기화를 켤 수 있습니다. 클라우드 사용은 옵트인 방식이며 범위도 제어 가능합니다.',
+          exportTag: '내보내기',
+          exportMeta: '지식 흐름',
+          exportTitle: `${exportFact.label}: ${exportFact.value}`,
+          exportBody: '하이라이트와 북마크를 Notion으로 보내 읽기 결과를 메모, 복습, 작성 워크플로에 연결할 수 있습니다.'
+        };
+      }
+      return {
         openLabel: 'Open',
         coverLabel: 'Cover',
         prevLabel: 'Prev',
@@ -1313,7 +1359,8 @@
     const applyLanguage = (lang) => {
       const chosen = content[lang] ? lang : (content.en ? 'en' : 'en');
       const t = content[chosen] || fallbackEn;
-      document.documentElement.lang = chosen === 'zh' ? 'zh-Hans' : 'en';
+      const htmlLangMap = { en: 'en', ja: 'ja', ko: 'ko' };
+      document.documentElement.lang = htmlLangMap[chosen] || 'en';
       languageSelect.value = chosen;
 
       document.title = t.meta?.title || fallbackEn.meta.title;
@@ -1342,7 +1389,7 @@
 
       renderFacts(t.facts);
       renderFeatures(t.features, chosen);
-      renderWorkflow(t.workflow, chosen);
+      renderWorkflow(t.workflow);
       renderPrivacy(t.privacy);
       renderBook(t, chosen);
 
@@ -1355,7 +1402,7 @@
     };
 
     (async () => {
-      await Promise.all([loadLanguageFile('en'), loadLanguageFile('zh')]);
+      await Promise.all([loadLanguageFile('en'), loadLanguageFile('ja'), loadLanguageFile('ko')]);
       applyLanguage(localStorage.getItem('lanread-lang') || 'en');
       setBookPage(0);
     })();

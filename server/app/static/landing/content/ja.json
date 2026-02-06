@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "title": "Lan Read — あなたの最初のAI読書パートナー",
+    "description": "Lan Read は iOS / iPadOS 上で ePub/txt を対話型の読書メンターに変換します。即時要約、スキム読書、読書中Q&A、任意の iCloud 同期と Notion エクスポート、ローカル優先ストレージに対応。"
+  },
+  "brand": {
+    "name": "Lan Read",
+    "tagline": "あなたの最初のAI読書パートナー"
+  },
+  "nav": {
+    "features": "機能",
+    "workflow": "ワークフロー",
+    "language": "言語"
+  },
+  "labels": {
+    "fieldnote": "プロダクトノート",
+    "chapters": "機能",
+    "notebook": "ワークフロー",
+    "privacy": "プライバシー"
+  },
+  "hero": {
+    "title": "あなたの最初のAI読書パートナー",
+    "subtitle": "ePub または txt を取り込み、開くとすぐに AI 要約。Skim read で章を素早く把握し、読みながら質問できます。既定はローカル優先、必要に応じて iCloud 同期と Notion エクスポート。",
+    "primaryCta": "機能を見る",
+    "secondaryCta": "流れを見る"
+  },
+  "vision": "すべての本を対話できるメンターにし、理解・記憶・議論をより速く。",
+  "facts": [
+    { "label": "対応", "value": "iOS / iPadOS（macOS は計画中）" },
+    { "label": "保存", "value": "ローカル優先、登録不要" },
+    { "label": "同期", "value": "任意の iCloud（CloudKit）同期" },
+    { "label": "エクスポート", "value": "ハイライトとブックマークを Notion へ" }
+  ],
+  "features": {
+    "title": "機能",
+    "items": [
+      { "title": "ローカル書籍インポート", "body": "Files または iCloud Drive から ePub / txt を取り込み、ライブラリをローカルに保持。" },
+      { "title": "即時AI要約", "body": "本を開くと簡潔な概要と章構造を表示。キャッシュと手動再生成に対応。" },
+      { "title": "スキミングモード", "body": "章の骨格要約と高速ナビゲーションで文脈を素早く把握。" },
+      { "title": "読みながら質問", "body": "選択テキスト・章・全体について質問、翻訳、例示が可能。選択ショートカットは計画中。", "status": "planned" },
+      { "title": "リーダー基本機能", "body": "目次、検索、ブックマーク、ハイライト、注釈、テーマ、フォント調整、行間、ナイトモード。" },
+      { "title": "同期とエクスポート", "body": "任意の CloudKit 同期と、ブックマーク/ハイライトの Notion エクスポート。" },
+      { "title": "理解度チェック（計画中）", "body": "記憶定着を確認する診断とクイズを設計中。", "status": "planned" }
+    ],
+    "privacyNote": "登録は必須ではありません。ライブラリはローカル保持が既定で、クラウド同期・鍵連携・AI 呼び出しはすべて任意です。"
+  },
+  "workflow": {
+    "title": "ワークフロー",
+    "steps": [
+      { "title": "取り込み", "body": "Files または iCloud Drive から ePub / txt を追加。" },
+      { "title": "要約", "body": "本を開くと AI 概要と章の骨格を生成。結果は再利用のためキャッシュ。" },
+      { "title": "読書と質問", "body": "読みながらハイライトして質問、翻訳、例示。選択ショートカットは計画中。" },
+      { "title": "同期 / エクスポート", "body": "必要なときに iCloud 同期を有効化し、ハイライト/ブックマークを Notion へ。" }
+    ]
+  },
+  "privacy": {
+    "title": "プライバシーと同期",
+    "lines": [
+      "既定はローカル優先。クラウド機能を有効化するまでライブラリは端末内に保持されます。",
+      "任意の CloudKit 同期と FastAPI 鍵連携により、認証情報をクライアントに残さず可能な範囲で匿名化を維持します。",
+      "登録は不要。AI プロンプトはアカウント識別子送信を避け、テレメトリは信頼性改善に必要な最小限のみ。"
+    ]
+  },
+  "footer": {
+    "note": "© 2026 Lan Read — あなたの最初のAI読書パートナー。",
+    "privacy": "プライバシー",
+    "changelog": "変更履歴",
+    "support": "サポート"
+  }
+}
