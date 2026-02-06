@@ -118,7 +118,7 @@
       padding: clamp(18px, 2.2vw, 30px);
       transform-origin: left center;
       transform-style: preserve-3d;
-      transition: transform 1s cubic-bezier(0.2, 0.75, 0.1, 1), box-shadow .8s ease;
+      transition: transform 1s cubic-bezier(0.2, 0.75, 0.1, 1), box-shadow .8s ease, opacity .8s ease;
       box-shadow:
         inset 0 0 0 1px rgba(247,240,226,0.08),
         inset 12px 0 30px rgba(0,0,0,0.35),
@@ -128,6 +128,7 @@
     }
     .book-3d.is-open .book-cover {
       transform: rotateY(-168deg);
+      opacity: 0.1;
       box-shadow:
         inset 0 0 0 1px rgba(247,240,226,0.04),
         inset 16px 0 38px rgba(0,0,0,0.45),
@@ -785,10 +786,6 @@
         </div>
       </div>
       <p class="book-hidden-subtitle" data-key="hero.subtitle">Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with optional iCloud sync and Notion export.</p>
-      <div class="cta-row">
-        <a class="btn" href="#features" data-key="hero.primaryCta">Explore features</a>
-        <a class="btn ghost" href="#workflow" data-key="hero.secondaryCta">See workflow</a>
-      </div>
       <p class="vision" id="vision-line">Make every book a conversational mentor so you understand, remember, and discuss faster.</p>
     </div>
     <div class="outline-hero">
@@ -1027,6 +1024,7 @@
       const exportFact = facts[3] || { label: isZh ? '导出' : 'Export', value: '' };
       return isZh ? {
         openLabel: '翻开',
+        coverLabel: '封皮',
         prevLabel: '上一页',
         nextLabel: '下一页',
         coverStrip: ['AI Summary', 'Skim read', 'Sync', 'Export'],
@@ -1063,6 +1061,7 @@
         exportBody: '高亮和书签可导出到 Notion，把阅读结果接入你的知识管理流程，方便复盘、整理与后续写作。'
       } : {
         openLabel: 'Open',
+        coverLabel: 'Cover',
         prevLabel: 'Prev',
         nextLabel: 'Next',
         coverStrip: ['AI Summary', 'Skim read', 'Platforms', 'Sync', 'Export'],
@@ -1100,19 +1099,29 @@
       };
     };
 
+    const updateBookControls = (index) => {
+      const total = String(bookPages.length).padStart(2, '0');
+      const current = String(index + 1).padStart(2, '0');
+      if (bookCounter) bookCounter.textContent = `${current} / ${total}`;
+
+      const canBackToCover = bookOpen && index === 0;
+      if (bookPrevLabel && currentBookLocale) {
+        bookPrevLabel.textContent = canBackToCover ? currentBookLocale.coverLabel : currentBookLocale.prevLabel;
+      }
+      if (bookPrevButton && currentBookLocale) {
+        bookPrevButton.setAttribute('aria-label', canBackToCover ? currentBookLocale.coverLabel : currentBookLocale.prevLabel);
+      }
+      if (bookPrevButton) bookPrevButton.disabled = !bookOpen;
+      if (bookNextButton) bookNextButton.disabled = bookOpen && index === bookPages.length - 1;
+    };
+
     const setBookPage = (index) => {
       bookPages.forEach((page, pageIndex) => {
         page.classList.toggle('is-active', pageIndex === index);
         page.classList.remove('page-out-next', 'page-out-prev', 'page-in-next', 'page-in-prev');
       });
       currentBookPage = index;
-      if (bookCounter) {
-        const total = String(bookPages.length).padStart(2, '0');
-        const current = String(index + 1).padStart(2, '0');
-        bookCounter.textContent = `${current} / ${total}`;
-      }
-      if (bookPrevButton) bookPrevButton.disabled = index === 0;
-      if (bookNextButton) bookNextButton.disabled = index === bookPages.length - 1;
+      updateBookControls(index);
     };
 
     const runSummaryStream = (text) => {
@@ -1201,6 +1210,7 @@
       } else if (currentBookPage === 0) {
         runSummaryStream(b.summaryStream);
       }
+      updateBookControls(currentBookPage);
     };
 
     const openBook = () => {
@@ -1211,8 +1221,28 @@
       if (currentBookLocale) runSummaryStream(currentBookLocale.summaryStream);
     };
 
+    const closeBook = () => {
+      if (!bookOpen || !heroBook) return;
+      bookOpen = false;
+      heroBook.classList.remove('is-open');
+      streamToken += 1;
+      if (streamTimer) {
+        clearInterval(streamTimer);
+        streamTimer = null;
+      }
+      if (summaryStream) {
+        summaryStream.textContent = '';
+        summaryStream.classList.remove('is-typing');
+      }
+      setBookPage(0);
+    };
+
     const flipBookPage = (direction) => {
       if (!bookOpen) return;
+      if (direction === 'prev' && currentBookPage === 0) {
+        closeBook();
+        return;
+      }
       const nextIndex = direction === 'next' ? currentBookPage + 1 : currentBookPage - 1;
       if (nextIndex < 0 || nextIndex >= bookPages.length) return;
 
@@ -1227,14 +1257,7 @@
       currentEl.classList.remove('is-active');
       nextEl.classList.add('is-active');
       currentBookPage = nextIndex;
-
-      if (bookCounter) {
-        const total = String(bookPages.length).padStart(2, '0');
-        const current = String(nextIndex + 1).padStart(2, '0');
-        bookCounter.textContent = `${current} / ${total}`;
-      }
-      if (bookPrevButton) bookPrevButton.disabled = nextIndex === 0;
-      if (bookNextButton) bookNextButton.disabled = nextIndex === bookPages.length - 1;
+      updateBookControls(nextIndex);
 
       setTimeout(() => {
         currentEl.classList.remove('page-out-next', 'page-out-prev');
