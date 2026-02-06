@@ -164,7 +164,8 @@
       margin: 16px 0 14px;
       font-size: clamp(28px, 3.2vw, 40px);
       line-height: 1;
-      max-width: 10ch;
+      max-width: min(22ch, calc(100% - 22px));
+      text-wrap: balance;
       color: #f9f3e8;
       text-shadow: 0 2px 8px rgba(0,0,0,0.24);
     }
@@ -666,7 +667,7 @@
       nav { padding: 12px 18px; flex-wrap: wrap; }
       .lang-switch { width: 100%; justify-content: flex-end; }
       .book-3d { aspect-ratio: 5 / 4.5; }
-      .book-cover h1 { max-width: 13ch; }
+      .book-cover h1 { max-width: min(18ch, calc(100% - 18px)); }
       .book-pages { inset: 12px 12px 58px; }
       .book-page { padding: 15px 14px 16px; }
       .book-foot { left: 10px; right: 10px; grid-template-columns: 86px 1fr 86px; }
