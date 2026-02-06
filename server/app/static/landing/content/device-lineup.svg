@@ -1,0 +1,54 @@
+<svg width="960" height="460" viewBox="0 0 960 460" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="480" y1="14" x2="480" y2="446" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F9F2E2"/>
+      <stop offset="1" stop-color="#E9DCC3"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2D261E"/>
+      <stop offset="1" stop-color="#1B1713"/>
+    </linearGradient>
+    <linearGradient id="light" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="12" y="12" width="936" height="436" rx="26" fill="url(#bg)" stroke="#A08F72" stroke-opacity="0.45" stroke-width="2"/>
+  <path d="M42 94C160 34 308 26 430 74" stroke="#B7A483" stroke-opacity="0.42" stroke-width="2"/>
+  <path d="M508 388C628 432 786 424 910 350" stroke="#B7A483" stroke-opacity="0.34" stroke-width="2"/>
+
+  <g opacity="0.42">
+    <rect x="618" y="56" width="288" height="180" rx="16" fill="none" stroke="#8D7B5D" stroke-width="2" stroke-dasharray="9 7"/>
+    <rect x="636" y="74" width="252" height="134" rx="10" fill="#F3E8D1" stroke="#AB9879" stroke-opacity="0.55" stroke-width="1.5"/>
+    <text x="762" y="132" fill="#8D7B5D" font-family="DM Mono, monospace" font-size="18" text-anchor="middle" letter-spacing="1.2">Mac</text>
+    <text x="762" y="162" fill="#8D7B5D" font-family="DM Mono, monospace" font-size="12" text-anchor="middle" letter-spacing="1">PLANNED</text>
+  </g>
+
+  <g transform="translate(128 72)">
+    <rect x="0" y="0" width="188" height="352" rx="34" fill="#3D3326" stroke="#1F1A15" stroke-width="2"/>
+    <rect x="12" y="16" width="164" height="320" rx="24" fill="url(#screen)"/>
+    <rect x="12" y="16" width="164" height="320" rx="24" fill="url(#light)"/>
+    <rect x="44" y="130" width="100" height="12" rx="6" fill="#E4D5BA" fill-opacity="0.92"/>
+    <rect x="44" y="152" width="86" height="8" rx="4" fill="#BDAA8A" fill-opacity="0.85"/>
+    <rect x="44" y="170" width="104" height="8" rx="4" fill="#BDAA8A" fill-opacity="0.62"/>
+    <rect x="44" y="194" width="76" height="48" rx="10" fill="#D7C5A3" fill-opacity="0.82"/>
+    <circle cx="94" cy="338" r="4.5" fill="#8A7758"/>
+    <text x="94" y="292" fill="#D9C9AB" font-family="DM Mono, monospace" font-size="13" text-anchor="middle" letter-spacing="1.8">iPHONE</text>
+  </g>
+
+  <g transform="translate(378 90)">
+    <rect x="0" y="0" width="438" height="304" rx="30" fill="#3A3023" stroke="#1F1A15" stroke-width="2"/>
+    <rect x="18" y="16" width="402" height="268" rx="18" fill="url(#screen)"/>
+    <rect x="18" y="16" width="402" height="268" rx="18" fill="url(#light)"/>
+    <rect x="58" y="58" width="188" height="16" rx="8" fill="#E4D5BA" fill-opacity="0.92"/>
+    <rect x="58" y="86" width="154" height="9" rx="4.5" fill="#BDAA8A" fill-opacity="0.8"/>
+    <rect x="58" y="108" width="194" height="9" rx="4.5" fill="#BDAA8A" fill-opacity="0.58"/>
+    <rect x="58" y="136" width="142" height="94" rx="12" fill="#D7C5A3" fill-opacity="0.82"/>
+    <rect x="214" y="136" width="148" height="94" rx="12" fill="#D7C5A3" fill-opacity="0.62"/>
+    <rect x="200" y="292" width="38" height="4" rx="2" fill="#8A7758"/>
+    <text x="219" y="260" fill="#D9C9AB" font-family="DM Mono, monospace" font-size="14" text-anchor="middle" letter-spacing="2">iPAD</text>
+  </g>
+
+  <text x="70" y="52" fill="#7C6B4E" font-family="DM Mono, monospace" font-size="13" letter-spacing="1.9">LAN READ PRODUCTS</text>
+</svg>

@@ -401,6 +401,29 @@
       font-size: 13px;
       color: #4e473d;
     }
+    .page-illustration {
+      margin-top: 14px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(20,20,20,0.14);
+      background: rgba(255,255,255,0.62);
+    }
+    .page-illustration img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid rgba(20,20,20,0.1);
+      background: linear-gradient(180deg, #fbf5e9, #f2e8d4);
+    }
+    .illustration-caption {
+      margin: 8px 2px 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #625a4e;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
     .book-foot {
       position: absolute;
       left: 14px;
@@ -744,11 +767,15 @@
             </article>
             <article class="book-page" data-page-index="2">
               <div class="book-page-head">
-                <span class="ink-tag" id="platforms-tag">Platforms</span>
+                <span class="ink-tag" id="platforms-tag">Products</span>
                 <span class="ink-meta" id="platforms-meta">Coverage</span>
               </div>
               <h3 id="platforms-title"></h3>
               <p id="platforms-body"></p>
+              <div class="page-illustration">
+                <img id="platforms-image" src="content/device-lineup.svg" alt="Lan Read products on iPhone and iPad" loading="lazy" />
+                <p class="illustration-caption" id="platforms-image-caption"></p>
+              </div>
             </article>
             <article class="book-page" data-page-index="3">
               <div class="book-page-head">
@@ -877,6 +904,8 @@
     const platformsMeta = document.getElementById('platforms-meta');
     const platformsTitle = document.getElementById('platforms-title');
     const platformsBody = document.getElementById('platforms-body');
+    const platformsImage = document.getElementById('platforms-image');
+    const platformsImageCaption = document.getElementById('platforms-image-caption');
     const storageTag = document.getElementById('storage-tag');
     const storageMeta = document.getElementById('storage-meta');
     const storageTitle = document.getElementById('storage-title');
@@ -1019,7 +1048,6 @@
     const bookLocale = (lang, t) => {
       const isZh = lang === 'zh';
       const facts = t.facts || fallbackEn.facts;
-      const platformFact = facts[0] || { label: isZh ? '平台' : 'Platforms', value: '' };
       const storageFact = facts[1] || { label: isZh ? '存储' : 'Storage', value: '' };
       const syncFact = facts[2] || { label: isZh ? '同步' : 'Sync', value: '' };
       const exportFact = facts[3] || { label: isZh ? '导出' : 'Export', value: '' };
@@ -1028,8 +1056,8 @@
         coverLabel: '封皮',
         prevLabel: '上一页',
         nextLabel: '下一页',
-        coverStrip: ['AI Summary', 'Skim read', 'Sync', 'Export'],
-        coverEmboss: 'summary · skim · platforms · storage · sync · export',
+        coverStrip: ['AI Summary', 'Skim read', 'Products', 'Sync', 'Export'],
+        coverEmboss: 'summary · skim · products · storage · sync · export',
         summaryTag: 'AI Summary',
         summaryMeta: '流式输出',
         summaryTitle: '这本 App 做了什么',
@@ -1044,10 +1072,12 @@
         skimTitle: '先看全貌，再决定读哪里',
         skimBody: 'Skim read 会把章节压缩成骨架，让你在几分钟内定位重点、争议点与关键名词，不需要逐页滚动。',
         skimPills: ['章节级摘要', '快速跳转上下文', '先筛选再深读'],
-        platformsTag: 'Platforms',
+        platformsTag: 'Products',
         platformsMeta: '覆盖范围',
-        platformsTitle: `${platformFact.label}: ${platformFact.value}`,
-        platformsBody: '当前核心体验围绕移动端阅读场景优化，触发摘要、略读和边读边问都贴近 iPhone / iPad 的单手与分屏使用习惯。',
+        platformsTitle: '产品: iPhone / iPad（Mac 规划中）',
+        platformsBody: '当前体验聚焦具体设备而非系统概念：在 iPhone 上强调单手快速进入，在 iPad 上强调大屏长时阅读与分屏协作。',
+        platformsImageAlt: 'Lan Read 在 iPhone 与 iPad 上的产品形态',
+        platformsImageCaption: '产品形态：iPhone + iPad，Mac 版本规划中。',
         storageTag: 'Storage',
         storageMeta: '本地优先',
         storageTitle: `${storageFact.label}: ${storageFact.value}`,
@@ -1065,8 +1095,8 @@
         coverLabel: 'Cover',
         prevLabel: 'Prev',
         nextLabel: 'Next',
-        coverStrip: ['AI Summary', 'Skim read', 'Platforms', 'Sync', 'Export'],
-        coverEmboss: 'summary · skim · platforms · storage · sync · export',
+        coverStrip: ['AI Summary', 'Skim read', 'Products', 'Sync', 'Export'],
+        coverEmboss: 'summary · skim · products · storage · sync · export',
         summaryTag: 'AI Summary',
         summaryMeta: 'Streaming',
         summaryTitle: 'What this app does',
@@ -1081,10 +1111,12 @@
         skimTitle: 'Map quickly, then dive where it matters',
         skimBody: 'Skim read compresses chapters into structural cues so you can find priorities, arguments, and terms in minutes instead of paging line by line.',
         skimPills: ['Chapter-level snapshots', 'Fast context jump', 'Filter first, deep read next'],
-        platformsTag: 'Platforms',
+        platformsTag: 'Products',
         platformsMeta: 'Coverage',
-        platformsTitle: `${platformFact.label}: ${platformFact.value}`,
-        platformsBody: 'The current experience is tuned for mobile reading moments, keeping summaries, skimming, and in-context Q&A natural on iPhone and iPad.',
+        platformsTitle: 'Products: iPhone / iPad (Mac planned)',
+        platformsBody: 'This is presented as product surfaces, not OS labels: iPhone is optimized for quick one-hand sessions, while iPad is tuned for long-form and split-view reading.',
+        platformsImageAlt: 'Lan Read product surfaces on iPhone and iPad',
+        platformsImageCaption: 'Product focus: iPhone + iPad, with Mac in planning.',
         storageTag: 'Storage',
         storageMeta: 'Local-first',
         storageTitle: `${storageFact.label}: ${storageFact.value}`,
@@ -1182,6 +1214,8 @@
       if (platformsMeta) platformsMeta.textContent = b.platformsMeta;
       if (platformsTitle) platformsTitle.textContent = b.platformsTitle;
       if (platformsBody) platformsBody.textContent = b.platformsBody;
+      if (platformsImage) platformsImage.setAttribute('alt', b.platformsImageAlt || '');
+      if (platformsImageCaption) platformsImageCaption.textContent = b.platformsImageCaption || '';
 
       if (storageTag) storageTag.textContent = b.storageTag;
       if (storageMeta) storageMeta.textContent = b.storageMeta;
