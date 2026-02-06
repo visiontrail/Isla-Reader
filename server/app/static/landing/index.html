@@ -95,6 +95,439 @@
     .btn:hover { transform: translateY(-3px); box-shadow: 0 18px 42px rgba(0,0,0,0.20); }
     .ghost { background: transparent; color: var(--accent); border-color: var(--line); box-shadow: none; }
     .ghost:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,0,0,0.05); }
+    .book-hero {
+      position: relative;
+      padding: 10px 4px 12px;
+    }
+    .book-3d {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 5 / 3.7;
+      perspective: 1800px;
+      filter: drop-shadow(0 30px 50px rgba(0,0,0,0.14));
+    }
+    .book-cover {
+      position: absolute;
+      inset: 0;
+      border-radius: 18px 10px 10px 18px;
+      border: 1px solid rgba(18,15,12,0.32);
+      background:
+        radial-gradient(circle at 20% 12%, rgba(255,255,255,0.14), transparent 48%),
+        linear-gradient(135deg, #4a3c2a 0%, #2d2318 44%, #1f1911 100%);
+      color: #f7f0e2;
+      padding: clamp(18px, 2.2vw, 30px);
+      transform-origin: left center;
+      transform-style: preserve-3d;
+      transition: transform 1s cubic-bezier(0.2, 0.75, 0.1, 1), box-shadow .8s ease;
+      box-shadow:
+        inset 0 0 0 1px rgba(247,240,226,0.08),
+        inset 12px 0 30px rgba(0,0,0,0.35),
+        0 12px 24px rgba(0,0,0,0.3);
+      overflow: hidden;
+      z-index: 6;
+    }
+    .book-3d.is-open .book-cover {
+      transform: rotateY(-168deg);
+      box-shadow:
+        inset 0 0 0 1px rgba(247,240,226,0.04),
+        inset 16px 0 38px rgba(0,0,0,0.45),
+        0 0 0 rgba(0,0,0,0);
+      pointer-events: none;
+    }
+    .book-cover::before {
+      content: "";
+      position: absolute;
+      inset: 14px;
+      border: 1px solid rgba(247,240,226,0.24);
+      border-radius: 10px;
+    }
+    .book-cover::after {
+      content: "";
+      position: absolute;
+      inset: -30% -10% auto auto;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.16), transparent 70%);
+      transform: rotate(-18deg);
+      pointer-events: none;
+    }
+    .cover-kicker {
+      margin: 0;
+      font-size: 11px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: rgba(247,240,226,0.82);
+    }
+    .book-cover h1 {
+      margin: 16px 0 14px;
+      font-size: clamp(28px, 3.2vw, 40px);
+      line-height: 1;
+      max-width: 10ch;
+      color: #f9f3e8;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.24);
+    }
+    .cover-strip {
+      display: grid;
+      gap: 8px;
+      max-width: 260px;
+    }
+    .cover-strip span {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 4px 10px 5px;
+      border-radius: 999px;
+      border: 1px solid rgba(247,240,226,0.28);
+      background: rgba(255,255,255,0.05);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(247,240,226,0.92);
+    }
+    .cover-emboss {
+      position: absolute;
+      left: clamp(20px, 2.8vw, 34px);
+      right: 120px;
+      bottom: 18px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(247,240,226,0.22);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(247,240,226,0.74);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cover-open-corner {
+      position: absolute;
+      right: 14px;
+      bottom: 12px;
+      width: 92px;
+      height: 82px;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      cursor: pointer;
+      color: #fbf6ea;
+      font-family: inherit;
+    }
+    .cover-open-corner::before {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 0;
+      height: 0;
+      border-left: 56px solid transparent;
+      border-top: 56px solid transparent;
+      border-right: 0;
+      border-bottom: 56px solid rgba(251,246,234,0.22);
+      filter: drop-shadow(-2px -2px 6px rgba(0,0,0,0.24));
+      transform-origin: right bottom;
+      animation: cornerFlap 1.3s ease-in-out infinite;
+      transition: border-bottom-color .25s ease;
+    }
+    .cover-open-corner::after {
+      content: "↗";
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      font-size: 20px;
+      opacity: 0.9;
+      transform: translateY(0);
+      animation: arrowHint 1.2s ease-in-out infinite;
+    }
+    .cover-open-corner span {
+      position: absolute;
+      right: 12px;
+      bottom: 56px;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-family: "DM Mono", monospace;
+    }
+    .cover-open-corner:hover::before { border-bottom-color: rgba(251,246,234,0.34); }
+    .book-interior {
+      position: absolute;
+      inset: 0;
+      border-radius: 10px 16px 16px 10px;
+      border: 1px solid rgba(20,20,20,0.16);
+      background:
+        linear-gradient(90deg, rgba(10,10,10,0.16) 0, rgba(10,10,10,0.03) 6%, transparent 14%),
+        linear-gradient(180deg, #fffdf8, #f7f1e4);
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.45), 0 16px 40px rgba(0,0,0,0.1);
+      opacity: 0;
+      transform: scale(0.985);
+      transition: opacity .35s ease, transform .35s ease;
+    }
+    .book-3d.is-open .book-interior {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .book-spine {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -10px;
+      width: 18px;
+      border-radius: 14px 0 0 14px;
+      background: linear-gradient(180deg, #382d1f, #271e14);
+      border: 1px solid rgba(18,15,12,0.34);
+      box-shadow: inset -2px 0 6px rgba(0,0,0,0.4);
+    }
+    .book-pages {
+      position: absolute;
+      inset: 14px 16px 60px;
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, rgba(20,20,20,0.08), transparent 6%),
+        linear-gradient(180deg, #fffef9, #faf3e7);
+      border: 1px solid rgba(20,20,20,0.1);
+      overflow: hidden;
+    }
+    .book-pages::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(rgba(70,62,46,0.08) 1px, transparent 1px);
+      background-size: 100% 35px;
+      opacity: 0.72;
+      pointer-events: none;
+    }
+    .book-page {
+      position: absolute;
+      inset: 0;
+      padding: 18px 20px 20px;
+      opacity: 0;
+      transform: translateX(18px) scale(0.99);
+      pointer-events: none;
+      transition: opacity .32s ease, transform .38s ease;
+    }
+    .book-page.is-active {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+      pointer-events: auto;
+    }
+    .book-page.page-out-next { animation: pageOutNext .42s cubic-bezier(0.39, 0.05, 0.52, 0.97) forwards; }
+    .book-page.page-out-prev { animation: pageOutPrev .42s cubic-bezier(0.39, 0.05, 0.52, 0.97) forwards; }
+    .book-page.page-in-next { animation: pageInNext .42s cubic-bezier(0.29, 0.75, 0.27, 1) forwards; }
+    .book-page.page-in-prev { animation: pageInPrev .42s cubic-bezier(0.29, 0.75, 0.27, 1) forwards; }
+    .book-page-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .ink-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(20,20,20,0.17);
+      background: rgba(20,20,20,0.04);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #3f3a34;
+    }
+    .ink-meta {
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      color: #6b665f;
+      letter-spacing: 0.04em;
+    }
+    .book-page h3 {
+      margin: 0 0 8px;
+      font-size: clamp(20px, 2vw, 26px);
+      line-height: 1.15;
+      font-family: "Newsreader", serif;
+      position: relative;
+      z-index: 1;
+    }
+    .book-page p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.62;
+      color: #454038;
+      position: relative;
+      z-index: 1;
+    }
+    .streaming-block {
+      margin-top: 14px;
+      padding: 13px 14px;
+      border: 1px solid rgba(20,20,20,0.12);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.7);
+      min-height: 122px;
+    }
+    .streaming-text {
+      white-space: pre-wrap;
+      min-height: 86px;
+    }
+    .streaming-text.is-typing::after {
+      content: "▋";
+      margin-left: 3px;
+      animation: blinkCursor 0.8s steps(1, end) infinite;
+    }
+    .summary-points {
+      margin: 12px 0 0;
+      padding-left: 18px;
+      color: #4b463e;
+      display: grid;
+      gap: 5px;
+      font-size: 14px;
+      line-height: 1.5;
+      position: relative;
+      z-index: 1;
+    }
+    .page-pill-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .page-pill {
+      padding: 8px 10px;
+      border-radius: 9px;
+      border: 1px solid rgba(20,20,20,0.14);
+      background: rgba(255,255,255,0.58);
+      font-size: 13px;
+      color: #4e473d;
+    }
+    .book-foot {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 10px;
+      display: grid;
+      grid-template-columns: 96px 1fr 96px;
+      align-items: end;
+      gap: 6px;
+    }
+    .page-corner {
+      border: none;
+      position: relative;
+      height: 46px;
+      width: 96px;
+      background: transparent;
+      cursor: pointer;
+      font-family: "DM Mono", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 11px;
+      color: #4e4639;
+      transition: transform .2s ease, opacity .2s ease;
+    }
+    .page-corner span {
+      position: absolute;
+      bottom: 5px;
+      left: 14px;
+      right: 14px;
+      text-align: center;
+      z-index: 2;
+    }
+    .page-corner::before {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      transition: filter .25s ease, transform .25s ease;
+    }
+    .page-corner::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0 2px, transparent 2px 5px);
+      opacity: 0;
+      transition: opacity .25s ease;
+    }
+    .page-corner.prev::before {
+      left: 0;
+      border-width: 46px 0 0 68px;
+      border-color: transparent transparent transparent rgba(228,216,198,0.95);
+      animation: footHintPrev 1.4s ease-in-out infinite;
+    }
+    .page-corner.next::before {
+      right: 0;
+      border-width: 0 68px 46px 0;
+      border-color: transparent rgba(228,216,198,0.95) transparent transparent;
+      animation: footHintNext 1.4s ease-in-out infinite;
+    }
+    .page-corner:hover {
+      transform: translateY(-2px);
+    }
+    .page-corner:hover::after { opacity: 0.45; }
+    .page-corner:hover::before { filter: brightness(1.06); }
+    .page-corner:disabled {
+      opacity: 0.38;
+      cursor: default;
+      transform: none;
+    }
+    .page-corner:disabled::before {
+      animation: none;
+    }
+    .page-counter {
+      text-align: center;
+      font-family: "DM Mono", monospace;
+      font-size: 12px;
+      color: #6f685e;
+      letter-spacing: 0.08em;
+      padding-bottom: 3px;
+    }
+    .book-hidden-subtitle {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      clip: rect(0 0 0 0);
+      overflow: hidden;
+    }
+    @keyframes pageOutNext {
+      0% { transform: translateX(0) rotateY(0deg); opacity: 1; }
+      100% { transform: translateX(-26px) rotateY(-8deg); opacity: 0; }
+    }
+    @keyframes pageOutPrev {
+      0% { transform: translateX(0) rotateY(0deg); opacity: 1; }
+      100% { transform: translateX(26px) rotateY(8deg); opacity: 0; }
+    }
+    @keyframes pageInNext {
+      0% { transform: translateX(26px) rotateY(8deg); opacity: 0; }
+      100% { transform: translateX(0) rotateY(0); opacity: 1; }
+    }
+    @keyframes pageInPrev {
+      0% { transform: translateX(-26px) rotateY(-8deg); opacity: 0; }
+      100% { transform: translateX(0) rotateY(0); opacity: 1; }
+    }
+    @keyframes blinkCursor {
+      0%, 48% { opacity: 1; }
+      49%, 100% { opacity: 0; }
+    }
+    @keyframes cornerFlap {
+      0%, 100% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(-8deg) scale(1.02); }
+    }
+    @keyframes arrowHint {
+      0%, 100% { transform: translateY(0); opacity: 0.92; }
+      50% { transform: translateY(-5px); opacity: 1; }
+    }
+    @keyframes footHintPrev {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translate(-3px, -2px); }
+    }
+    @keyframes footHintNext {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translate(3px, -2px); }
+    }
     .stat-card {
       border: 1px solid var(--line); border-radius: var(--radius);
       padding: 18px 20px; background: var(--panel); backdrop-filter: blur(6px);
@@ -231,6 +664,23 @@
       .hero { grid-template-columns: 1fr; margin-top: 46px; }
       nav { padding: 12px 18px; flex-wrap: wrap; }
       .lang-switch { width: 100%; justify-content: flex-end; }
+      .book-3d { aspect-ratio: 5 / 4.5; }
+      .book-cover h1 { max-width: 13ch; }
+      .book-pages { inset: 12px 12px 58px; }
+      .book-page { padding: 15px 14px 16px; }
+      .book-foot { left: 10px; right: 10px; grid-template-columns: 86px 1fr 86px; }
+      .page-corner { width: 86px; }
+      .page-corner.prev::before { border-width: 44px 0 0 60px; }
+      .page-corner.next::before { border-width: 0 60px 44px 0; }
+      .cta-row { margin-top: 14px; }
+    }
+    @media (max-width: 520px) {
+      .book-cover { padding: 16px 14px 14px; }
+      .cover-strip span { font-size: 10px; }
+      .cover-open-corner { width: 74px; height: 70px; right: 8px; bottom: 8px; }
+      .cover-open-corner::before { border-left: 46px solid transparent; border-top: 46px solid transparent; border-bottom: 46px solid rgba(251,246,234,0.22); }
+      .cover-open-corner span { bottom: 46px; font-size: 9px; }
+      .cover-emboss { right: 74px; }
     }
   </style>
 </head>
@@ -256,17 +706,90 @@
 
   <section class="hero">
     <div class="halo"></div>
-    <div class="paper-sheet ruled">
-      <div class="note-tab" aria-hidden="true"></div>
-      <h1 data-key="hero.title">Your first AI-powered reading companion</h1>
-      <p class="lead" data-key="hero.subtitle">Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with optional iCloud sync and Notion export.</p>
+    <div class="book-hero">
+      <div class="book-3d" id="hero-book">
+        <div class="book-spine" aria-hidden="true"></div>
+        <div class="book-cover" id="book-cover">
+          <p class="cover-kicker">Lan Read · Edition 2026</p>
+          <h1 data-key="hero.title">Your first AI-powered reading companion</h1>
+          <div class="cover-strip" id="cover-strip"></div>
+          <p class="cover-emboss" id="cover-emboss"></p>
+          <button class="cover-open-corner" id="book-open-trigger" type="button" aria-label="Open book">
+            <span id="book-open-label">Open</span>
+          </button>
+        </div>
+        <div class="book-interior" id="book-interior">
+          <div class="book-pages" id="book-pages">
+            <article class="book-page is-active" data-page-index="0">
+              <div class="book-page-head">
+                <span class="ink-tag" id="summary-tag">AI Summary</span>
+                <span class="ink-meta" id="summary-meta">Streaming</span>
+              </div>
+              <h3 id="summary-title">What this app does</h3>
+              <div class="streaming-block">
+                <p class="streaming-text" id="summary-stream"></p>
+              </div>
+              <ul class="summary-points" id="summary-points"></ul>
+            </article>
+            <article class="book-page" data-page-index="1">
+              <div class="book-page-head">
+                <span class="ink-tag" id="skim-tag">Skim Read</span>
+                <span class="ink-meta" id="skim-meta">Chapter skeleton</span>
+              </div>
+              <h3 id="skim-title">Read fast, decide where to dive</h3>
+              <p id="skim-body"></p>
+              <div class="page-pill-list" id="skim-pills"></div>
+            </article>
+            <article class="book-page" data-page-index="2">
+              <div class="book-page-head">
+                <span class="ink-tag" id="platforms-tag">Platforms</span>
+                <span class="ink-meta" id="platforms-meta">Coverage</span>
+              </div>
+              <h3 id="platforms-title"></h3>
+              <p id="platforms-body"></p>
+            </article>
+            <article class="book-page" data-page-index="3">
+              <div class="book-page-head">
+                <span class="ink-tag" id="storage-tag">Storage</span>
+                <span class="ink-meta" id="storage-meta">Local-first</span>
+              </div>
+              <h3 id="storage-title"></h3>
+              <p id="storage-body"></p>
+            </article>
+            <article class="book-page" data-page-index="4">
+              <div class="book-page-head">
+                <span class="ink-tag" id="sync-tag">Sync</span>
+                <span class="ink-meta" id="sync-meta">Optional cloud</span>
+              </div>
+              <h3 id="sync-title"></h3>
+              <p id="sync-body"></p>
+            </article>
+            <article class="book-page" data-page-index="5">
+              <div class="book-page-head">
+                <span class="ink-tag" id="export-tag">Export</span>
+                <span class="ink-meta" id="export-meta">Notion</span>
+              </div>
+              <h3 id="export-title"></h3>
+              <p id="export-body"></p>
+            </article>
+          </div>
+          <div class="book-foot">
+            <button class="page-corner prev" id="book-prev" type="button" aria-label="Previous page">
+              <span id="book-prev-label">Prev</span>
+            </button>
+            <div class="page-counter" id="book-counter">01 / 06</div>
+            <button class="page-corner next" id="book-next" type="button" aria-label="Next page">
+              <span id="book-next-label">Next</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <p class="book-hidden-subtitle" data-key="hero.subtitle">Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with optional iCloud sync and Notion export.</p>
       <div class="cta-row">
         <a class="btn" href="#features" data-key="hero.primaryCta">Explore features</a>
         <a class="btn ghost" href="#workflow" data-key="hero.secondaryCta">See workflow</a>
       </div>
-      <div class="stat-card" id="fact-grid"></div>
       <p class="vision" id="vision-line">Make every book a conversational mentor so you understand, remember, and discuss faster.</p>
-      <div class="paper-edge" aria-hidden="true"></div>
     </div>
     <div class="outline-hero">
       <div class="bookmark" aria-hidden="true"></div>
@@ -332,6 +855,49 @@
     const privacyLines = document.getElementById('privacy-lines');
     const visionLine = document.getElementById('vision-line');
     const featuresPrivacyNote = document.getElementById('features-privacy-note');
+    const heroBook = document.getElementById('hero-book');
+    const bookOpenTrigger = document.getElementById('book-open-trigger');
+    const bookPrevButton = document.getElementById('book-prev');
+    const bookNextButton = document.getElementById('book-next');
+    const bookCounter = document.getElementById('book-counter');
+    const bookOpenLabel = document.getElementById('book-open-label');
+    const bookPrevLabel = document.getElementById('book-prev-label');
+    const bookNextLabel = document.getElementById('book-next-label');
+    const coverStrip = document.getElementById('cover-strip');
+    const coverEmboss = document.getElementById('cover-emboss');
+    const summaryTag = document.getElementById('summary-tag');
+    const summaryMeta = document.getElementById('summary-meta');
+    const summaryTitle = document.getElementById('summary-title');
+    const summaryStream = document.getElementById('summary-stream');
+    const summaryPoints = document.getElementById('summary-points');
+    const skimTag = document.getElementById('skim-tag');
+    const skimMeta = document.getElementById('skim-meta');
+    const skimTitle = document.getElementById('skim-title');
+    const skimBody = document.getElementById('skim-body');
+    const skimPills = document.getElementById('skim-pills');
+    const platformsTag = document.getElementById('platforms-tag');
+    const platformsMeta = document.getElementById('platforms-meta');
+    const platformsTitle = document.getElementById('platforms-title');
+    const platformsBody = document.getElementById('platforms-body');
+    const storageTag = document.getElementById('storage-tag');
+    const storageMeta = document.getElementById('storage-meta');
+    const storageTitle = document.getElementById('storage-title');
+    const storageBody = document.getElementById('storage-body');
+    const syncTag = document.getElementById('sync-tag');
+    const syncMeta = document.getElementById('sync-meta');
+    const syncTitle = document.getElementById('sync-title');
+    const syncBody = document.getElementById('sync-body');
+    const exportTag = document.getElementById('export-tag');
+    const exportMeta = document.getElementById('export-meta');
+    const exportTitle = document.getElementById('export-title');
+    const exportBody = document.getElementById('export-body');
+    const bookPages = Array.from(document.querySelectorAll('.book-page'));
+
+    let bookOpen = false;
+    let currentBookPage = 0;
+    let streamTimer = null;
+    let streamToken = 0;
+    let currentBookLocale = null;
 
     const setText = (selector, value) => {
       const node = document.querySelector(selector);
@@ -452,6 +1018,240 @@
       setText('[data-key="privacy.title"]', privacy?.title);
     };
 
+    const bookLocale = (lang, t) => {
+      const isZh = lang === 'zh';
+      const facts = t.facts || fallbackEn.facts;
+      const platformFact = facts[0] || { label: isZh ? '平台' : 'Platforms', value: '' };
+      const storageFact = facts[1] || { label: isZh ? '存储' : 'Storage', value: '' };
+      const syncFact = facts[2] || { label: isZh ? '同步' : 'Sync', value: '' };
+      const exportFact = facts[3] || { label: isZh ? '导出' : 'Export', value: '' };
+      return isZh ? {
+        openLabel: '翻开',
+        prevLabel: '上一页',
+        nextLabel: '下一页',
+        coverStrip: ['AI Summary', 'Skim read', 'Sync', 'Export'],
+        coverEmboss: 'summary · skim · platforms · storage · sync · export',
+        summaryTag: 'AI Summary',
+        summaryMeta: '流式输出',
+        summaryTitle: '这本 App 做了什么',
+        summaryStream: `Lan Read 把你的 ePub / txt 书库变成一个可对话阅读伙伴。\n\n它会在你打开书时给出 AI 摘要，帮助你先建立整体脉络；你可以用 Skim read 快速扫章节，再按需深入；同时支持可选 iCloud 同步与 Notion 导出，让阅读记录在“默认本地优先”的前提下按你的节奏流动。`,
+        summaryPoints: [
+          '打开即看摘要，减少进入成本',
+          'Skim read 先抓骨架，再深入细读',
+          '同步与导出都是可选，不打断本地阅读'
+        ],
+        skimTag: 'Skim read',
+        skimMeta: '章节骨架',
+        skimTitle: '先看全貌，再决定读哪里',
+        skimBody: 'Skim read 会把章节压缩成骨架，让你在几分钟内定位重点、争议点与关键名词，不需要逐页滚动。',
+        skimPills: ['章节级摘要', '快速跳转上下文', '先筛选再深读'],
+        platformsTag: 'Platforms',
+        platformsMeta: '覆盖范围',
+        platformsTitle: `${platformFact.label}: ${platformFact.value}`,
+        platformsBody: '当前核心体验围绕移动端阅读场景优化，触发摘要、略读和边读边问都贴近 iPhone / iPad 的单手与分屏使用习惯。',
+        storageTag: 'Storage',
+        storageMeta: '本地优先',
+        storageTitle: `${storageFact.label}: ${storageFact.value}`,
+        storageBody: '默认本地保存让你不需要先注册账号再开始读书。是否上云由你决定，库数据与阅读轨迹可以持续留在设备里。',
+        syncTag: 'Sync',
+        syncMeta: '可选云端',
+        syncTitle: `${syncFact.label}: ${syncFact.value}`,
+        syncBody: '当你需要多设备延续阅读时再开启同步。设计上保持“可选开启、可控范围”，让云端只在你需要时介入。',
+        exportTag: 'Export',
+        exportMeta: '知识流转',
+        exportTitle: `${exportFact.label}: ${exportFact.value}`,
+        exportBody: '高亮和书签可导出到 Notion，把阅读结果接入你的知识管理流程，方便复盘、整理与后续写作。'
+      } : {
+        openLabel: 'Open',
+        prevLabel: 'Prev',
+        nextLabel: 'Next',
+        coverStrip: ['AI Summary', 'Skim read', 'Platforms', 'Sync', 'Export'],
+        coverEmboss: 'summary · skim · platforms · storage · sync · export',
+        summaryTag: 'AI Summary',
+        summaryMeta: 'Streaming',
+        summaryTitle: 'What this app does',
+        summaryStream: `Lan Read turns your ePub / txt library into a conversational reading companion.\n\nOpen a title and it generates an AI summary so you get orientation before deep reading. Then Skim read helps you scan chapter skeletons fast, while optional iCloud sync and Notion export keep your reading flow portable without breaking a local-first default.`,
+        summaryPoints: [
+          'Instant orientation from AI summaries',
+          'Skim chapter skeletons before diving in',
+          'Sync and export stay optional by design'
+        ],
+        skimTag: 'Skim read',
+        skimMeta: 'Chapter skeleton',
+        skimTitle: 'Map quickly, then dive where it matters',
+        skimBody: 'Skim read compresses chapters into structural cues so you can find priorities, arguments, and terms in minutes instead of paging line by line.',
+        skimPills: ['Chapter-level snapshots', 'Fast context jump', 'Filter first, deep read next'],
+        platformsTag: 'Platforms',
+        platformsMeta: 'Coverage',
+        platformsTitle: `${platformFact.label}: ${platformFact.value}`,
+        platformsBody: 'The current experience is tuned for mobile reading moments, keeping summaries, skimming, and in-context Q&A natural on iPhone and iPad.',
+        storageTag: 'Storage',
+        storageMeta: 'Local-first',
+        storageTitle: `${storageFact.label}: ${storageFact.value}`,
+        storageBody: 'You can start reading without account setup. Books and reading traces stay local by default until you explicitly choose a cloud path.',
+        syncTag: 'Sync',
+        syncMeta: 'Optional cloud',
+        syncTitle: `${syncFact.label}: ${syncFact.value}`,
+        syncBody: 'Enable sync only when you need cross-device continuity. The model is opt-in and scoped, so cloud involvement stays user-controlled.',
+        exportTag: 'Export',
+        exportMeta: 'Knowledge flow',
+        exportTitle: `${exportFact.label}: ${exportFact.value}`,
+        exportBody: 'Highlights and bookmarks can move into Notion so reading output flows directly into your note, review, and writing process.'
+      };
+    };
+
+    const setBookPage = (index) => {
+      bookPages.forEach((page, pageIndex) => {
+        page.classList.toggle('is-active', pageIndex === index);
+        page.classList.remove('page-out-next', 'page-out-prev', 'page-in-next', 'page-in-prev');
+      });
+      currentBookPage = index;
+      if (bookCounter) {
+        const total = String(bookPages.length).padStart(2, '0');
+        const current = String(index + 1).padStart(2, '0');
+        bookCounter.textContent = `${current} / ${total}`;
+      }
+      if (bookPrevButton) bookPrevButton.disabled = index === 0;
+      if (bookNextButton) bookNextButton.disabled = index === bookPages.length - 1;
+    };
+
+    const runSummaryStream = (text) => {
+      if (!summaryStream) return;
+      streamToken += 1;
+      const token = streamToken;
+      if (streamTimer) clearInterval(streamTimer);
+      summaryStream.textContent = '';
+      summaryStream.classList.add('is-typing');
+      let cursor = 0;
+      streamTimer = setInterval(() => {
+        if (token !== streamToken) {
+          clearInterval(streamTimer);
+          streamTimer = null;
+          return;
+        }
+        cursor += 1;
+        summaryStream.textContent = text.slice(0, cursor);
+        if (cursor >= text.length) {
+          clearInterval(streamTimer);
+          streamTimer = null;
+          summaryStream.classList.remove('is-typing');
+        }
+      }, 17);
+    };
+
+    const renderBook = (t, lang) => {
+      const b = bookLocale(lang, t);
+      currentBookLocale = b;
+
+      if (bookOpenLabel) bookOpenLabel.textContent = b.openLabel;
+      if (bookPrevLabel) bookPrevLabel.textContent = b.prevLabel;
+      if (bookNextLabel) bookNextLabel.textContent = b.nextLabel;
+      if (bookOpenTrigger) bookOpenTrigger.setAttribute('aria-label', b.openLabel);
+      if (bookPrevButton) bookPrevButton.setAttribute('aria-label', b.prevLabel);
+      if (bookNextButton) bookNextButton.setAttribute('aria-label', b.nextLabel);
+
+      if (coverStrip) {
+        coverStrip.innerHTML = b.coverStrip.map(item => `<span>${item}</span>`).join('');
+      }
+      if (coverEmboss) coverEmboss.textContent = b.coverEmboss;
+
+      if (summaryTag) summaryTag.textContent = b.summaryTag;
+      if (summaryMeta) summaryMeta.textContent = b.summaryMeta;
+      if (summaryTitle) summaryTitle.textContent = b.summaryTitle;
+      if (summaryPoints) {
+        summaryPoints.innerHTML = b.summaryPoints.map(line => `<li>${line}</li>`).join('');
+      }
+
+      if (skimTag) skimTag.textContent = b.skimTag;
+      if (skimMeta) skimMeta.textContent = b.skimMeta;
+      if (skimTitle) skimTitle.textContent = b.skimTitle;
+      if (skimBody) skimBody.textContent = b.skimBody;
+      if (skimPills) skimPills.innerHTML = b.skimPills.map(line => `<div class="page-pill">${line}</div>`).join('');
+
+      if (platformsTag) platformsTag.textContent = b.platformsTag;
+      if (platformsMeta) platformsMeta.textContent = b.platformsMeta;
+      if (platformsTitle) platformsTitle.textContent = b.platformsTitle;
+      if (platformsBody) platformsBody.textContent = b.platformsBody;
+
+      if (storageTag) storageTag.textContent = b.storageTag;
+      if (storageMeta) storageMeta.textContent = b.storageMeta;
+      if (storageTitle) storageTitle.textContent = b.storageTitle;
+      if (storageBody) storageBody.textContent = b.storageBody;
+
+      if (syncTag) syncTag.textContent = b.syncTag;
+      if (syncMeta) syncMeta.textContent = b.syncMeta;
+      if (syncTitle) syncTitle.textContent = b.syncTitle;
+      if (syncBody) syncBody.textContent = b.syncBody;
+
+      if (exportTag) exportTag.textContent = b.exportTag;
+      if (exportMeta) exportMeta.textContent = b.exportMeta;
+      if (exportTitle) exportTitle.textContent = b.exportTitle;
+      if (exportBody) exportBody.textContent = b.exportBody;
+
+      if (!bookOpen) {
+        streamToken += 1;
+        if (streamTimer) {
+          clearInterval(streamTimer);
+          streamTimer = null;
+        }
+        if (summaryStream) {
+          summaryStream.textContent = '';
+          summaryStream.classList.remove('is-typing');
+        }
+      } else if (currentBookPage === 0) {
+        runSummaryStream(b.summaryStream);
+      }
+    };
+
+    const openBook = () => {
+      if (bookOpen || !heroBook) return;
+      bookOpen = true;
+      heroBook.classList.add('is-open');
+      setBookPage(0);
+      if (currentBookLocale) runSummaryStream(currentBookLocale.summaryStream);
+    };
+
+    const flipBookPage = (direction) => {
+      if (!bookOpen) return;
+      const nextIndex = direction === 'next' ? currentBookPage + 1 : currentBookPage - 1;
+      if (nextIndex < 0 || nextIndex >= bookPages.length) return;
+
+      const currentEl = bookPages[currentBookPage];
+      const nextEl = bookPages[nextIndex];
+      currentEl.classList.remove('page-out-next', 'page-out-prev', 'page-in-next', 'page-in-prev');
+      nextEl.classList.remove('page-out-next', 'page-out-prev', 'page-in-next', 'page-in-prev');
+
+      currentEl.classList.add(direction === 'next' ? 'page-out-next' : 'page-out-prev');
+      nextEl.classList.add(direction === 'next' ? 'page-in-next' : 'page-in-prev');
+
+      currentEl.classList.remove('is-active');
+      nextEl.classList.add('is-active');
+      currentBookPage = nextIndex;
+
+      if (bookCounter) {
+        const total = String(bookPages.length).padStart(2, '0');
+        const current = String(nextIndex + 1).padStart(2, '0');
+        bookCounter.textContent = `${current} / ${total}`;
+      }
+      if (bookPrevButton) bookPrevButton.disabled = nextIndex === 0;
+      if (bookNextButton) bookNextButton.disabled = nextIndex === bookPages.length - 1;
+
+      setTimeout(() => {
+        currentEl.classList.remove('page-out-next', 'page-out-prev');
+        nextEl.classList.remove('page-in-next', 'page-in-prev');
+      }, 430);
+
+      if (nextIndex === 0 && currentBookLocale) runSummaryStream(currentBookLocale.summaryStream);
+      else {
+        streamToken += 1;
+        if (streamTimer) {
+          clearInterval(streamTimer);
+          streamTimer = null;
+        }
+        if (summaryStream) summaryStream.classList.remove('is-typing');
+      }
+    };
+
     const applyLanguage = (lang) => {
       const chosen = content[lang] ? lang : (content.en ? 'en' : 'en');
       const t = content[chosen] || fallbackEn;
@@ -486,6 +1286,7 @@
       renderFeatures(t.features, chosen);
       renderWorkflow(t.workflow, chosen);
       renderPrivacy(t.privacy);
+      renderBook(t, chosen);
 
       setText('[data-key="footer.note"]', t.footer?.note);
       setText('[data-key="footer.privacy"]', t.footer?.privacy);
@@ -498,9 +1299,28 @@
     (async () => {
       await Promise.all([loadLanguageFile('en'), loadLanguageFile('zh')]);
       applyLanguage(localStorage.getItem('lanread-lang') || 'en');
+      setBookPage(0);
     })();
 
     languageSelect.addEventListener('change', (e) => applyLanguage(e.target.value));
+    if (bookOpenTrigger) {
+      bookOpenTrigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        openBook();
+      });
+    }
+    if (bookNextButton) {
+      bookNextButton.addEventListener('click', () => {
+        if (!bookOpen) {
+          openBook();
+          return;
+        }
+        flipBookPage('next');
+      });
+    }
+    if (bookPrevButton) {
+      bookPrevButton.addEventListener('click', () => flipBookPage('prev'));
+    }
   </script>
 </body>
 </html>
