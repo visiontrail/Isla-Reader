@@ -723,6 +723,7 @@
         <label for="language" data-key="nav.language">Language</label>
         <select id="language" aria-label="Language selector">
           <option value="en">English</option>
+          <option value="zh">中文</option>
           <option value="ja">日本語</option>
           <option value="ko">한국어</option>
         </select>
@@ -1016,7 +1017,7 @@
 
     const renderFeatures = (features, lang) => {
       if (!featureGrid) return;
-      const plannedLabelMap = { ja: '予定', ko: '예정', en: 'Planned' };
+      const plannedLabelMap = { zh: '规划中', ja: '予定', ko: '예정', en: 'Planned' };
       const plannedLabel = plannedLabelMap[lang] || plannedLabelMap.en;
       featureGrid.innerHTML = (features?.items || []).map(item => `
         <div class="feature">
@@ -1052,6 +1053,48 @@
       const storageFact = facts[1] || { label: 'Storage', value: '' };
       const syncFact = facts[2] || { label: 'Sync', value: '' };
       const exportFact = facts[3] || { label: 'Export', value: '' };
+      if (lang === 'zh') {
+        return {
+          openLabel: '翻开',
+          coverLabel: '封皮',
+          prevLabel: '上一页',
+          nextLabel: '下一页',
+          coverStrip: ['AI Summary', 'Skim read', 'Products', 'Sync', 'Export'],
+          coverEmboss: 'summary · skim · products · storage · sync · export',
+          summaryTag: 'AI Summary',
+          summaryMeta: '流式输出',
+          summaryTitle: '这本 App 做了什么',
+          summaryStream: `Lan Read 把你的 ePub / txt 书库变成一个可对话阅读伙伴。\n\n它会在你打开书时给出 AI 摘要，帮助你先建立整体脉络；你可以用 Skim read 快速扫章节，再按需深入；同时支持可选 iCloud 同步与 Notion 导出，让阅读记录在“默认本地优先”的前提下按你的节奏流动。`,
+          summaryPoints: [
+            '打开即看摘要，减少进入成本',
+            'Skim read 先抓骨架，再深入细读',
+            '同步与导出都是可选，不打断本地阅读'
+          ],
+          skimTag: 'Skim read',
+          skimMeta: '章节骨架',
+          skimTitle: '先看全貌，再决定读哪里',
+          skimBody: 'Skim read 会把章节压缩成骨架，让你在几分钟内定位重点、争议点与关键名词，不需要逐页滚动。',
+          skimPills: ['章节级摘要', '快速跳转上下文', '先筛选再深读'],
+          platformsTag: 'Products',
+          platformsMeta: '覆盖范围',
+          platformsTitle: '产品: iPhone / iPad（Mac 规划中）',
+          platformsBody: '当前体验聚焦具体设备而非系统概念：在 iPhone 上强调单手快速进入，在 iPad 上强调大屏长时阅读与分屏协作。',
+          platformsImageAlt: 'Lan Read 在 iPhone 与 iPad 上的产品形态',
+          platformsImageCaption: '产品形态：iPhone + iPad，Mac 版本规划中。',
+          storageTag: 'Storage',
+          storageMeta: '本地优先',
+          storageTitle: `${storageFact.label}: ${storageFact.value}`,
+          storageBody: '默认本地保存让你不需要先注册账号再开始读书。是否上云由你决定，库数据与阅读轨迹可以持续留在设备里。',
+          syncTag: 'Sync',
+          syncMeta: '可选云端',
+          syncTitle: `${syncFact.label}: ${syncFact.value}`,
+          syncBody: '当你需要多设备延续阅读时再开启同步。设计上保持“可选开启、可控范围”，让云端只在你需要时介入。',
+          exportTag: 'Export',
+          exportMeta: '知识流转',
+          exportTitle: `${exportFact.label}: ${exportFact.value}`,
+          exportBody: '高亮和书签可导出到 Notion，把阅读结果接入你的知识管理流程，方便复盘、整理与后续写作。'
+        };
+      }
       if (lang === 'ja') {
         return {
           openLabel: '開く',
@@ -1359,7 +1402,7 @@
     const applyLanguage = (lang) => {
       const chosen = content[lang] ? lang : (content.en ? 'en' : 'en');
       const t = content[chosen] || fallbackEn;
-      const htmlLangMap = { en: 'en', ja: 'ja', ko: 'ko' };
+      const htmlLangMap = { en: 'en', zh: 'zh-Hans', ja: 'ja', ko: 'ko' };
       document.documentElement.lang = htmlLangMap[chosen] || 'en';
       languageSelect.value = chosen;
 
@@ -1402,7 +1445,7 @@
     };
 
     (async () => {
-      await Promise.all([loadLanguageFile('en'), loadLanguageFile('ja'), loadLanguageFile('ko')]);
+      await Promise.all([loadLanguageFile('en'), loadLanguageFile('zh'), loadLanguageFile('ja'), loadLanguageFile('ko')]);
       applyLanguage(localStorage.getItem('lanread-lang') || 'en');
       setBookPage(0);
     })();
