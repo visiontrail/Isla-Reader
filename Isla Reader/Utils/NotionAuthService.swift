@@ -19,6 +19,12 @@ import UIKit
 @MainActor
 final class NotionAuthService: NSObject, ObservableObject {
     static let shared = NotionAuthService()
+    static let callbackScheme = "lanread"
+    static let callbackHost = "notion-oauth-callback"
+
+    static var callbackRedirectURI: String {
+        "\(callbackScheme)://\(callbackHost)"
+    }
 
     // MARK: - Published Properties
 
@@ -38,12 +44,12 @@ final class NotionAuthService: NSObject, ObservableObject {
     }
 
     /// OAuth 回调 URL Scheme
-    private let redirectScheme = "lanread"
-    private let redirectHost = "notion-oauth-callback"
+    private let redirectScheme = NotionAuthService.callbackScheme
+    private let redirectHost = NotionAuthService.callbackHost
 
     /// 完整的 redirect_uri
     private var redirectURI: String {
-        "\(redirectScheme)://\(redirectHost)"
+        NotionAuthService.callbackRedirectURI
     }
 
     // MARK: - State Management (CSRF Protection)

@@ -318,3 +318,19 @@
 "State 验证失败，可能存在 CSRF 攻击" = "State 验证失败，可能存在 CSRF 攻击";
 "未收到授权码" = "未收到授权码";
 "Notion 授权错误: %@" = "Notion 授权错误: %@";
+"notion.connection.connecting" = "连接中...";
+"notion.connection.disconnected" = "未连接";
+"notion.connection.current_workspace" = "工作区：%@";
+"notion.connection.disconnect" = "断开连接";
+"notion.connection.connected_message" = "已连接到工作区：%@";
+"notion.connection.workspace.unknown" = "Notion 工作区";
+
+"notion.session.error.invalid_code" = "授权码无效，请重试。";
+"notion.session.error.invalid_url" = "Notion 服务地址无效。";
+"notion.session.error.encoding" = "无法构建 Notion 授权请求。";
+"notion.session.error.invalid_response" = "Notion 服务响应无效。";
+"notion.session.error.missing_field" = "Notion 响应缺少字段：%@";
+"notion.session.error.server" = "Notion 服务返回错误：%@";
+"notion.session.error.transport" = "连接 Notion 服务失败：%@";
+"notion.session.error.configuration" = "Notion 服务配置错误：%@";
+"notion.session.error.keychain" = "Keychain 访问失败：%@";

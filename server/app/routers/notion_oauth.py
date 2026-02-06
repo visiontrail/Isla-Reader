@@ -26,6 +26,7 @@ class NotionExchangeResponse(BaseModel):
     access_token: str
     workspace_id: Optional[str] = None
     workspace_name: Optional[str] = None
+    workspace_icon: Optional[str] = None
     bot_id: Optional[str] = None
     notion_owner: Optional[Dict[str, Any]] = None
 
@@ -203,6 +204,7 @@ async def exchange_notion_code(
         access_token=access_token,
         workspace_id=data.get("workspace_id"),
         workspace_name=data.get("workspace_name"),
+        workspace_icon=data.get("workspace_icon"),
         bot_id=data.get("bot_id"),
         notion_owner=data.get("owner"),
     )

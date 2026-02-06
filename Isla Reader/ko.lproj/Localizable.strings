@@ -295,3 +295,42 @@
 "ai.error.network" = "AI 서비스 연결에 실패했습니다.";
 "ai.error.parse" = "AI 응답을 해석할 수 없습니다.";
 "ai.disclaimer" = "AI가 잘못된 정보를 생성할 수 있습니다";
+
+// Notion OAuth
+"连接 Notion" = "Notion 연결";
+"连接到 Notion" = "Notion에 연결";
+"授权 LanRead 访问你的 Notion 工作区，以便同步你的阅读笔记和高亮。" = "LanRead가 Notion 워크스페이스에 접근하여 독서 노트와 하이라이트를 동기화하도록 허용합니다.";
+"授权成功" = "인증 성공";
+"已获取授权码" = "인증 코드를 받았습니다";
+"正在授权..." = "인증 중...";
+"开始授权" = "인증 시작";
+"重新授权" = "다시 인증";
+"Notion 同步" = "Notion 동기화";
+"授权失败" = "인증 실패";
+"取消" = "취소";
+"notion.auth.privacy_notice" = "허용한 콘텐츠에만 접근하며, 다른 데이터에는 접근하지 않습니다.";
+"Notion OAuth 配置无效，请检查 Client ID" = "Notion OAuth 설정이 올바르지 않습니다. Client ID를 확인하세요.";
+"授权流程已在进行中" = "인증 절차가 이미 진행 중입니다.";
+"无法启动授权会话" = "인증 세션을 시작할 수 없습니다.";
+"用户取消了授权" = "사용자가 인증을 취소했습니다.";
+"授权失败: %@" = "인증 실패: %@";
+"无效的回调 URL" = "유효하지 않은 콜백 URL입니다.";
+"State 验证失败，可能存在 CSRF 攻击" = "State 검증 실패. CSRF 공격 가능성이 있습니다.";
+"未收到授权码" = "인증 코드를 받지 못했습니다.";
+"Notion 授权错误: %@" = "Notion 인증 오류: %@";
+"notion.connection.connecting" = "연결 중...";
+"notion.connection.disconnected" = "연결 안 됨";
+"notion.connection.current_workspace" = "워크스페이스: %@";
+"notion.connection.disconnect" = "연결 해제";
+"notion.connection.connected_message" = "워크스페이스에 연결되었습니다: %@";
+"notion.connection.workspace.unknown" = "Notion 워크스페이스";
+
+"notion.session.error.invalid_code" = "인증 코드가 유효하지 않습니다. 다시 시도하세요.";
+"notion.session.error.invalid_url" = "Notion 서비스 URL이 유효하지 않습니다.";
+"notion.session.error.encoding" = "Notion 인증 요청을 구성하지 못했습니다.";
+"notion.session.error.invalid_response" = "Notion 서비스 응답이 올바르지 않습니다.";
+"notion.session.error.missing_field" = "Notion 응답에 필수 필드가 없습니다: %@";
+"notion.session.error.server" = "Notion 서비스 오류: %@";
+"notion.session.error.transport" = "Notion 서비스에 연결하지 못했습니다: %@";
+"notion.session.error.configuration" = "Notion 서비스 설정 오류: %@";
+"notion.session.error.keychain" = "Keychain 접근 실패: %@";

@@ -318,3 +318,19 @@
 "State 验证失败，可能存在 CSRF 攻击" = "State verification failed. Possible CSRF attack detected.";
 "未收到授权码" = "Authorization code not received.";
 "Notion 授权错误: %@" = "Notion authorization error: %@";
+"notion.connection.connecting" = "Connecting...";
+"notion.connection.disconnected" = "Not connected";
+"notion.connection.current_workspace" = "Workspace: %@";
+"notion.connection.disconnect" = "Disconnect";
+"notion.connection.connected_message" = "Connected to workspace: %@";
+"notion.connection.workspace.unknown" = "Notion Workspace";
+
+"notion.session.error.invalid_code" = "Authorization code is invalid. Please try again.";
+"notion.session.error.invalid_url" = "Notion service URL is invalid.";
+"notion.session.error.encoding" = "Failed to build Notion authorization request.";
+"notion.session.error.invalid_response" = "Notion service returned an invalid response.";
+"notion.session.error.missing_field" = "Notion response is missing required field: %@";
+"notion.session.error.server" = "Notion service returned an error: %@";
+"notion.session.error.transport" = "Failed to reach Notion service: %@";
+"notion.session.error.configuration" = "Notion service configuration error: %@";
+"notion.session.error.keychain" = "Keychain access failed: %@";
