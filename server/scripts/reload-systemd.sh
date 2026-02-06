@@ -37,12 +37,6 @@ fi
 
 cd "$REPO_DIR"
 
-if [[ -n "$(git status --porcelain)" ]]; then
-  echo "检测到未提交的本地修改，已停止部署以避免覆盖。" >&2
-  echo "请先处理修改（提交 / stash）后重试。" >&2
-  exit 1
-fi
-
 if [[ -z "$TARGET_BRANCH" ]]; then
   TARGET_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 fi
