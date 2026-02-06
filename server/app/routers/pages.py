@@ -139,7 +139,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       opacity: 0.6;
     }
     .privacy-card h3 { margin: 0 0 10px; font-size: 18px; letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 10px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .privacy-stack { display: grid; gap: 16px; }
     footer {
       border-top: 1px solid var(--line); padding: 30px 28px 60px; color: var(--muted); background: rgba(247,248,250,0.8);
       position: relative; z-index: 2;
@@ -173,7 +173,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       <p class="lead">We collect only the minimum data needed to provide reading and AI features. Books and reading content stay on your device by default, and required network traffic is encrypted. This policy applies to the Lan Read iOS app and its companion backend (isla-reader.top).</p>
       <div class="meta-line"><span class="dot"></span><span>Updated: 2026-02-05</span></div>
 
-      <div class="grid-2" style="margin-top: 18px;">
+      <div class="privacy-stack" style="margin-top: 18px;">
         <div class="privacy-card">
           <h3>Our Principles</h3>
           <ul class="privacy-list">
