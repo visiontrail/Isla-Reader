@@ -164,7 +164,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
     <nav>
       <div class="logo"><div class="dot"></div><span>Lan Read · 澜悦</span></div>
       <div class="nav-links">
-        <a class="pill" id="nav-home" href="index.html">Home</a>
+        <a class="pill" id="nav-home" href="/">Home</a>
         <a class="pill" id="nav-changelog" href="changelog.html">Changelog</a>
         <a class="pill" id="nav-support" href="support.html">Support</a>
         <span class="pill active" id="nav-privacy" style="background:rgba(0,0,0,0.02);">Privacy</span>
@@ -224,7 +224,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
     <div style="max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
       <span id="footer-note">© 2026 Lan Read · 澜悦 — Privacy &amp; data use.</span>
       <span style="display:flex; gap:12px; flex-wrap:wrap;">
-        <a class="pill" id="footer-home" href="index.html">Home</a>
+        <a class="pill" id="footer-home" href="/">Home</a>
         <a class="pill" id="footer-changelog" href="changelog.html">Changelog</a>
         <a class="pill" id="footer-support" href="support.html">Support</a>
       </span>
