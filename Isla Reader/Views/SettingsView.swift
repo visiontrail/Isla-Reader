@@ -57,8 +57,8 @@ struct SettingsView: View {
                     }
                 }
                 
-                // Data
-                Section(NSLocalizedString("数据", comment: "")) {
+                // Data & Sync
+                Section(NSLocalizedString("数据与同步", comment: "")) {
                     Button(action: { showingNotionAuth = true }) {
                         HStack {
                             Label {
@@ -903,7 +903,6 @@ struct AboutView: View {
 struct NotionAuthView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var notionAuth = NotionAuthService.shared
-    @State private var showingAlert = false
     @State private var alertItem: DataAlert?
 
     var body: some View {
@@ -1025,10 +1024,12 @@ struct NotionAuthView: View {
             }
             .onChange(of: notionAuth.error) { error in
                 if let error = error {
-                    alertItem = DataAlert(
-                        title: NSLocalizedString("授权失败", comment: ""),
-                        message: error.localizedDescription
-                    )
+                    showErrorAlert(error)
+                }
+            }
+            .onChange(of: notionAuth.authorizationCode) { code in
+                if let code = code, !code.isEmpty {
+                    showSuccessAlert(for: code)
                 }
             }
         }
@@ -1036,6 +1037,24 @@ struct NotionAuthView: View {
 
     private func startAuthorization() {
         notionAuth.startAuthorization()
+    }
+
+    private func showErrorAlert(_ error: NotionAuthError) {
+        let title = error == .userCancelled
+            ? NSLocalizedString("取消", comment: "")
+            : NSLocalizedString("授权失败", comment: "")
+
+        alertItem = DataAlert(
+            title: title,
+            message: error.localizedDescription
+        )
+    }
+
+    private func showSuccessAlert(for code: String) {
+        alertItem = DataAlert(
+            title: NSLocalizedString("授权成功", comment: ""),
+            message: "\(NSLocalizedString("已获取授权码", comment: ""))\nCode: \(code.prefix(8))..."
+        )
     }
 }
 

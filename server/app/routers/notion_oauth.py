@@ -1,7 +1,8 @@
 from typing import Any, Dict, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, Response, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from ..config import Settings, get_settings
@@ -29,6 +30,12 @@ class NotionExchangeResponse(BaseModel):
     notion_owner: Optional[Dict[str, Any]] = None
 
 
+class NotionExchangeErrorResponse(BaseModel):
+    error: str
+    error_description: Optional[str] = None
+    status_code: int
+
+
 async def _exchange_code_with_notion(
     *,
     code: str,
@@ -52,17 +59,43 @@ async def _exchange_code_with_notion(
         return await client.post(token_url, json=payload, headers=headers, auth=(client_id, client_secret))
 
 
+def _error_response(
+    *,
+    status_code: int,
+    error: str,
+    error_description: Optional[str] = None,
+) -> JSONResponse:
+    payload = NotionExchangeErrorResponse(
+        error=error,
+        error_description=error_description,
+        status_code=status_code,
+    ).model_dump(exclude_none=True)
+    return JSONResponse(
+        status_code=status_code,
+        content=payload,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 @router.post(
     "/exchange",
     response_model=NotionExchangeResponse,
+    response_model_exclude_none=True,
     status_code=status.HTTP_200_OK,
+    responses={
+        400: {"model": NotionExchangeErrorResponse},
+        401: {"model": NotionExchangeErrorResponse},
+        500: {"model": NotionExchangeErrorResponse},
+        502: {"model": NotionExchangeErrorResponse},
+        503: {"model": NotionExchangeErrorResponse},
+    },
     summary="Exchange Notion OAuth code for access token (server-side)",
 )
 async def exchange_notion_code(
     payload: NotionExchangeRequest,
     response: Response,
     settings: Settings = Depends(get_settings),
-) -> NotionExchangeResponse | Dict[str, Any]:
+) -> NotionExchangeResponse | JSONResponse:
     logger.info(
         "Notion exchange request received path=/v1/oauth/notion/exchange client_id=%s nonce=%s ts=%s",
         payload.client_id,
@@ -84,12 +117,22 @@ async def exchange_notion_code(
             exc.detail,
             payload.nonce,
         )
-        response.headers["Cache-Control"] = "no-store"
-        raise
+        return _error_response(
+            status_code=exc.status_code,
+            error="request_verification_failed",
+            error_description=str(exc.detail),
+        )
 
-    notion_client_id = settings.notion_client_id or settings.client_id
-    notion_client_secret = settings.notion_client_secret or settings.client_secret
+    notion_client_id = settings.notion_client_id
+    notion_client_secret = settings.notion_client_secret
     token_url = settings.notion_token_url
+    if not notion_client_id or not notion_client_secret:
+        logger.error("Notion OAuth credentials are missing from environment configuration")
+        return _error_response(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error="config_error",
+            error_description="Notion OAuth credentials are not configured",
+        )
 
     try:
         notion_resp = await _exchange_code_with_notion(
@@ -101,15 +144,11 @@ async def exchange_notion_code(
         )
     except httpx.RequestError as exc:
         logger.error("Notion token request failed (network): %s", exc)
-        response.headers["Cache-Control"] = "no-store"
-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {
-            "error": "network_error",
-            "error_description": "Failed to reach Notion token endpoint",
-            "status_code": status.HTTP_503_SERVICE_UNAVAILABLE,
-        }
-
-    response.headers["Cache-Control"] = "no-store"
+        return _error_response(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            error="network_error",
+            error_description="Failed to reach Notion token endpoint",
+        )
 
     if notion_resp.status_code >= 400:
         error_body: Dict[str, Any] = {}
@@ -125,23 +164,30 @@ async def exchange_notion_code(
             notion_resp.status_code,
             error,
         )
-        response.status_code = notion_resp.status_code
-        return {
-            "error": error,
-            "error_description": description,
-            "status_code": notion_resp.status_code,
-        }
+        return _error_response(
+            status_code=notion_resp.status_code,
+            error=error,
+            error_description=description,
+        )
 
     try:
         data = notion_resp.json()
     except Exception:
         logger.error("Notion token response not JSON parseable status=%s", notion_resp.status_code)
-        response.status_code = status.HTTP_502_BAD_GATEWAY
-        return {
-            "error": "invalid_response",
-            "error_description": "Unexpected response format from Notion",
-            "status_code": status.HTTP_502_BAD_GATEWAY,
-        }
+        return _error_response(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            error="invalid_response",
+            error_description="Unexpected response format from Notion",
+        )
+
+    access_token = data.get("access_token")
+    if not isinstance(access_token, str) or not access_token:
+        logger.error("Notion token response missing access_token status=%s", notion_resp.status_code)
+        return _error_response(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            error="invalid_response",
+            error_description="Notion response missing access_token",
+        )
 
     # Avoid logging sensitive fields (code/access_token).
     logger.info(
@@ -152,8 +198,9 @@ async def exchange_notion_code(
         data.get("bot_id"),
     )
 
+    response.headers["Cache-Control"] = "no-store"
     return NotionExchangeResponse(
-        access_token=data.get("access_token"),
+        access_token=access_token,
         workspace_id=data.get("workspace_id"),
         workspace_name=data.get("workspace_name"),
         bot_id=data.get("bot_id"),

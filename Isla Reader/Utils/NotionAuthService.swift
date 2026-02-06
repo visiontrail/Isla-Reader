@@ -7,6 +7,7 @@
 
 import Foundation
 import AuthenticationServices
+import Security
 import SwiftUI
 
 #if canImport(UIKit)
@@ -38,11 +39,11 @@ final class NotionAuthService: NSObject, ObservableObject {
 
     /// OAuth 回调 URL Scheme
     private let redirectScheme = "lanread"
-    private let redirectPath = "notion-oauth-callback"
+    private let redirectHost = "notion-oauth-callback"
 
     /// 完整的 redirect_uri
     private var redirectURI: String {
-        "\(redirectScheme)://\(redirectPath)"
+        "\(redirectScheme)://\(redirectHost)"
     }
 
     // MARK: - State Management (CSRF Protection)
@@ -83,6 +84,7 @@ final class NotionAuthService: NSObject, ObservableObject {
         guard let authURL = buildAuthorizationURL(state: state) else {
             DebugLogger.error("Notion OAuth configuration invalid - missing or placeholder client ID")
             error = .invalidConfiguration
+            cleanup()
             return
         }
 
@@ -190,6 +192,21 @@ final class NotionAuthService: NSObject, ObservableObject {
     /// 解析回调 URL，提取 code 和 state
     /// - Parameter url: 回调 URL
     private func parseCallback(url: URL) {
+        guard let scheme = url.scheme?.lowercased(),
+              let host = url.host?.lowercased(),
+              scheme == redirectScheme,
+              host == redirectHost else {
+            DebugLogger.error("Unexpected callback URL target: \(url.absoluteString)")
+            error = .invalidCallback
+            return
+        }
+
+        guard let expectedState = pendingState else {
+            DebugLogger.error("No pending OAuth state available for verification")
+            error = .stateMismatch
+            return
+        }
+
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let queryItems = components.queryItems else {
             error = .invalidCallback
@@ -201,17 +218,17 @@ final class NotionAuthService: NSObject, ObservableObject {
         let state = queryItems.first { $0.name == "state" }?.value
         let errorParam = queryItems.first { $0.name == "error" }?.value
 
+        // 验证 state（CSRF 防护）
+        guard let state = state, state == expectedState else {
+            DebugLogger.error("Notion OAuth state mismatch")
+            error = .stateMismatch
+            return
+        }
+
         // 检查是否有错误参数
         if let errorParam = errorParam {
             DebugLogger.error("Notion OAuth error from server: \(errorParam)")
             error = .notionAPIError(errorParam)
-            return
-        }
-
-        // 验证 state（CSRF 防护）
-        guard let state = state, state == pendingState else {
-            DebugLogger.error("Notion OAuth state mismatch")
-            error = .stateMismatch
             return
         }
 
@@ -238,8 +255,15 @@ final class NotionAuthService: NSObject, ObservableObject {
     /// 生成随机 state 字符串（用于 CSRF 防护）
     /// - Returns: 随机 state 字符串
     private func generateState() -> String {
-        let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        return String((0..<32).map { _ in letters.randomElement()! })
+        let charset = Array("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+        var randomBytes = [UInt8](repeating: 0, count: 32)
+
+        if SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes) == errSecSuccess {
+            return String(randomBytes.map { charset[Int($0) % charset.count] })
+        }
+
+        DebugLogger.warning("SecRandomCopyBytes failed, falling back to UUID-based state")
+        return UUID().uuidString.replacingOccurrences(of: "-", with: "")
     }
 
     // MARK: - Cleanup
@@ -322,12 +346,14 @@ private class DefaultPresentationContextProvider: NSObject, ASWebAuthenticationP
     static let shared = DefaultPresentationContextProvider()
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        // 获取当前活跃的窗口
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
-            // Fallback: 返回第一个窗口
-            return UIApplication.shared.windows.first ?? ASPresentationAnchor()
+        let windowScenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+
+        if let keyWindow = windowScenes
+            .flatMap(\.windows)
+            .first(where: { $0.isKeyWindow }) {
+            return keyWindow
         }
-        return window
+
+        return windowScenes.flatMap(\.windows).first ?? ASPresentationAnchor()
     }
 }

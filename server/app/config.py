@@ -2,7 +2,7 @@ import json
 from functools import lru_cache
 from typing import Any, List, Optional
 
-from pydantic import field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,9 +52,18 @@ class Settings(BaseSettings):
     require_https: bool = True
     request_ttl_seconds: int = 300
     hsts_max_age: int = 63_072_000  # 2 years
-    notion_client_id: Optional[str] = None
-    notion_client_secret: Optional[str] = None
-    notion_token_url: str = "https://api.notion.com/v1/oauth/token"
+    notion_client_id: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("ISLA_NOTION_CLIENT_ID", "NOTION_CLIENT_ID"),
+    )
+    notion_client_secret: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("ISLA_NOTION_CLIENT_SECRET", "NOTION_CLIENT_SECRET"),
+    )
+    notion_token_url: str = Field(
+        default="https://api.notion.com/v1/oauth/token",
+        validation_alias=AliasChoices("ISLA_NOTION_TOKEN_URL", "NOTION_TOKEN_URL"),
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

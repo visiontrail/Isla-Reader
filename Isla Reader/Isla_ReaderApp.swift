@@ -41,20 +41,6 @@ struct Isla_ReaderApp: App {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environment(\.locale, appSettings.locale)
-                .onOpenURL { url in
-                    handleOpenURL(url)
-                }
-        }
-    }
-
-    /// 处理自定义 URL Scheme 回调
-    /// 主要用于 OAuth 流程（例如 Notion OAuth）
-    private func handleOpenURL(_ url: URL) {
-        // 检查是否是 Notion OAuth 回调
-        if url.scheme == "lanread" && url.host == "notion-oauth-callback" {
-            // URL 会自动被 ASWebAuthenticationSession 处理
-            // 这里不需要额外的处理逻辑
-            print("📱 Received Notion OAuth callback: \(url)")
         }
     }
 }

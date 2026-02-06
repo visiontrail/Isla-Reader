@@ -79,6 +79,7 @@ curl -k -X POST https://localhost:8443/v1/keys/ai \
 - `GET /privacy` — 静态隐私政策页面（客户端/审核可直接访问）。
 - `POST /v1/keys/ai` — 返回 AI API Key 以及可远程调配的 `api_endpoint`、`model`。请求体需签名，响应默认带 `Cache-Control: no-store`。
     - 签名计算：`HMAC_SHA256(client_id + "." + nonce + "." + timestamp, client_secret)`，并使用十六进制字符串传输。
+- `POST /v1/oauth/notion/exchange` — 使用同一套签名校验机制代理 Notion OAuth `code` 换 token（服务端使用 HTTP Basic Auth 调用 Notion，避免在 iOS 内存放 `client_secret`）。成功返回 `access_token` 与工作区信息；失败返回 `{error, error_description?, status_code}`；响应头强制 `Cache-Control: no-store`。
 - `POST /v1/metrics` — 采集客户端上报的 AI/API 调用指标，需携带 `X-Metrics-Key`（默认与 `client_secret` 相同，可单独配置 `ISLA_METRICS_INGEST_TOKEN`）。请确保与 iOS 构建时的 `SECURE_SERVER_METRICS_TOKEN` 一致，否则会被 401 拒绝。
 - `GET /admin/metrics/ads` — 登录后返回最近 7 天广告加载成功/失败次数及失败原因统计，数据由客户端上报（`source=ads`）。
 - `GET /admin/metrics` — 登录后查看实时统计面板（`ISLA_DASHBOARD_USERNAME`/`ISLA_DASHBOARD_PASSWORD`），数据持久化在 `ISLA_METRICS_DATA_FILE`（默认 `data/metrics.jsonl`，保留数量由 `ISLA_METRICS_MAX_EVENTS` 控制）。
@@ -98,6 +99,7 @@ curl -k -X POST https://localhost:8443/v1/keys/ai \
 
 - 生产环境务必使用受信任证书并保持 `ISLA_REQUIRE_HTTPS=true`（配合反向代理的 `X-Forwarded-Proto` 识别）。
 - 为不同客户端分配独立的 `client_id`/`client_secret`，定期轮换。
+- 配置 Notion OAuth 时请仅在服务端 `.env` 设置 `ISLA_NOTION_CLIENT_ID` / `ISLA_NOTION_CLIENT_SECRET`（兼容 `NOTION_CLIENT_ID` / `NOTION_CLIENT_SECRET`），不要下发到客户端。
 - 部署时尽量仅暴露必要端口：推荐只暴露 `80/443`，后端应用端口仅本机监听。
 
 ---
