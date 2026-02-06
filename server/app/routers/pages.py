@@ -9,6 +9,7 @@ _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _LANDING_DIR = _STATIC_DIR / "landing"
 _LANDING_CONTENT_DIR = _LANDING_DIR / "content"
 _ALLOWED_LANDING_CONTENT_IMAGE_EXTS = {".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}
+_ALLOWED_LANDING_COPY_LANGS = {"en", "zh", "ja", "ko"}
 
 LANDING_HTML = (_LANDING_DIR / "index.html").read_text(encoding="utf-8")
 
@@ -605,7 +606,7 @@ async def marketing_home() -> HTMLResponse:
 async def marketing_copy(lang: str):
     """Serve localized landing copy used by the front-end language switcher."""
     normalized = lang.lower()
-    if normalized not in {"en", "zh"}:
+    if normalized not in _ALLOWED_LANDING_COPY_LANGS:
         normalized = "en"
 
     path = _LANDING_CONTENT_DIR / f"{normalized}.json"
