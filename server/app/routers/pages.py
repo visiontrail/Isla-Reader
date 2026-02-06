@@ -8,6 +8,7 @@ router = APIRouter(tags=["public"])
 _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _LANDING_DIR = _STATIC_DIR / "landing"
 _LANDING_CONTENT_DIR = _LANDING_DIR / "content"
+_ALLOWED_LANDING_CONTENT_IMAGE_EXTS = {".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}
 
 LANDING_HTML = (_LANDING_DIR / "index.html").read_text(encoding="utf-8")
 
@@ -612,6 +613,26 @@ async def marketing_copy(lang: str):
         raise HTTPException(status_code=404, detail="copy not found")
 
     return FileResponse(path, media_type="application/json", headers={"Cache-Control": "public, max-age=900"})
+
+
+@router.get("/content/{filename}", include_in_schema=False)
+async def marketing_content_asset(filename: str):
+    """Serve static landing content assets (images only)."""
+    if not filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=404, detail="asset not found")
+
+    ext = Path(filename).suffix.lower()
+    if ext not in _ALLOWED_LANDING_CONTENT_IMAGE_EXTS:
+        raise HTTPException(status_code=404, detail="asset not found")
+
+    base = _LANDING_CONTENT_DIR.resolve()
+    path = (_LANDING_CONTENT_DIR / filename).resolve()
+    if base not in path.parents:
+        raise HTTPException(status_code=404, detail="asset not found")
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="asset not found")
+
+    return FileResponse(path, headers={"Cache-Control": "public, max-age=900"})
 
 
 def _landing_file(filename: str) -> FileResponse:
