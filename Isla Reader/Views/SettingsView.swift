@@ -10,7 +10,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @StateObject private var appSettings = AppSettings.shared
-    @StateObject private var notionSession = NotionSessionManager.shared
+    @StateObject private var notionAuth = NotionAuthService.shared
     @State private var showingAbout = false
     @State private var showingDataManagement = false
     @State private var showingNotionAuth = false
@@ -61,7 +61,7 @@ struct SettingsView: View {
                 Section(NSLocalizedString("数据与同步", comment: "")) {
                     Button(action: { showingNotionAuth = true }) {
                         HStack(spacing: 12) {
-                            NotionWorkspaceIconView(iconValue: notionSession.workspaceIcon, size: 20)
+                            NotionWorkspaceIconView(iconValue: notionAuth.workspaceIcon, size: 20)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(NSLocalizedString("连接 Notion", comment: ""))
@@ -208,16 +208,20 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var notionConnectionSubtitle: some View {
-        switch notionSession.connectionState {
+        switch notionAuth.state {
         case .connected(let workspaceName):
             Text(workspaceName)
                 .font(.caption)
                 .foregroundColor(.secondary)
-        case .connecting:
-            Text(NSLocalizedString("notion.connection.connecting", comment: ""))
+        case .authenticating:
+            Text(NSLocalizedString("正在授权...", comment: ""))
                 .font(.caption)
                 .foregroundColor(.secondary)
-        case .disconnected:
+        case .finalizing:
+            Text(NSLocalizedString("notion.connection.finalizing", comment: ""))
+                .font(.caption)
+                .foregroundColor(.secondary)
+        case .idle:
             Text(NSLocalizedString("notion.connection.disconnected", comment: ""))
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -231,17 +235,17 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var notionConnectionAccessory: some View {
-        switch notionSession.connectionState {
+        switch notionAuth.state {
         case .connected:
             Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.green)
-        case .connecting:
+        case .authenticating, .finalizing:
             ProgressView()
                 .controlSize(.small)
         case .error:
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundColor(.orange)
-        case .disconnected:
+        case .idle:
             Image(systemName: "chevron.right")
                 .foregroundColor(.secondary)
                 .font(.caption)
@@ -979,17 +983,14 @@ private struct NotionWorkspaceIconView: View {
 struct NotionAuthView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var notionAuth = NotionAuthService.shared
-    @StateObject private var notionSession = NotionSessionManager.shared
     @State private var alertItem: DataAlert?
-    @State private var lastHandledCode: String?
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
                 Spacer()
 
-                // Notion Logo/Icon
-                NotionWorkspaceIconView(iconValue: notionSession.workspaceIcon, size: 60)
+                NotionWorkspaceIconView(iconValue: notionAuth.workspaceIcon, size: 60)
 
                 VStack(spacing: 8) {
                     Text(NSLocalizedString("连接到 Notion", comment: ""))
@@ -1003,53 +1004,8 @@ struct NotionAuthView: View {
                         .padding(.horizontal)
                 }
 
-                // 状态显示
-                if case .connected(let workspaceName) = notionSession.connectionState {
-                    VStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.green)
+                statusContent
 
-                        Text(NSLocalizedString("授权成功", comment: ""))
-                            .font(.headline)
-                            .foregroundColor(.green)
-
-                        HStack(spacing: 8) {
-                            NotionWorkspaceIconView(iconValue: notionSession.workspaceIcon, size: 20)
-                            Text(
-                                String(
-                                    format: NSLocalizedString("notion.connection.current_workspace", comment: ""),
-                                    workspaceName
-                                )
-                            )
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding()
-                    .background(Color.green.opacity(0.1))
-                    .cornerRadius(12)
-                }
-
-                if notionAuth.isAuthorizing {
-                    VStack(spacing: 12) {
-                        ProgressView()
-                        Text(NSLocalizedString("正在授权...", comment: ""))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                if isSessionConnecting {
-                    VStack(spacing: 12) {
-                        ProgressView()
-                        Text(NSLocalizedString("notion.connection.connecting", comment: ""))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                // 授权按钮
                 Button(action: startAuthorization) {
                     HStack {
                         Image(systemName: "key.fill")
@@ -1059,13 +1015,13 @@ struct NotionAuthView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background((notionAuth.isAuthorizing || isSessionConnecting) ? Color.gray : Color.blue)
+                    .background(notionAuth.isBusy ? Color.gray : Color.blue)
                     .cornerRadius(12)
                 }
-                .disabled(notionAuth.isAuthorizing || isSessionConnecting)
+                .disabled(notionAuth.isBusy)
                 .padding(.horizontal)
 
-                if notionSession.isConnected {
+                if notionAuth.isConnected {
                     Button(role: .destructive, action: disconnectNotion) {
                         Text(NSLocalizedString("notion.connection.disconnect", comment: ""))
                             .font(.subheadline)
@@ -1095,7 +1051,7 @@ struct NotionAuthView: View {
                     }
                 }
 
-                if notionSession.isConnected {
+                if notionAuth.isConnected {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(NSLocalizedString("完成", comment: "")) {
                             dismiss()
@@ -1111,26 +1067,7 @@ struct NotionAuthView: View {
                     dismissButton: .default(Text(NSLocalizedString("确定", comment: "")))
                 )
             }
-            .onChange(of: notionAuth.error) { error in
-                if let error = error {
-                    showErrorAlert(error)
-                }
-            }
-            .onChange(of: notionAuth.authorizationCode) { code in
-                guard let code, !code.isEmpty, code != lastHandledCode else {
-                    return
-                }
-
-                lastHandledCode = code
-
-                Task {
-                    await notionSession.finalizeOAuth(authorizationCode: code)
-                    if case .connected(let workspaceName) = notionSession.connectionState {
-                        showSuccessAlert(for: workspaceName)
-                    }
-                }
-            }
-            .onChange(of: notionSession.connectionState) { state in
+            .onChange(of: notionAuth.state) { state in
                 if case .error(let message) = state {
                     alertItem = DataAlert(
                         title: NSLocalizedString("授权失败", comment: ""),
@@ -1141,15 +1078,63 @@ struct NotionAuthView: View {
         }
     }
 
-    private var isSessionConnecting: Bool {
-        if case .connecting = notionSession.connectionState {
-            return true
+    @ViewBuilder
+    private var statusContent: some View {
+        switch notionAuth.state {
+        case .connected(let workspaceName):
+            VStack(spacing: 12) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 50))
+                    .foregroundColor(.green)
+
+                Text(NSLocalizedString("授权成功", comment: ""))
+                    .font(.headline)
+                    .foregroundColor(.green)
+
+                HStack(spacing: 8) {
+                    NotionWorkspaceIconView(iconValue: notionAuth.workspaceIcon, size: 20)
+                    Text(String(format: NSLocalizedString("notion.connection.current_workspace", comment: ""), workspaceName))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding()
+            .background(Color.green.opacity(0.1))
+            .cornerRadius(12)
+        case .authenticating:
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(NSLocalizedString("正在授权...", comment: ""))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        case .finalizing:
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(NSLocalizedString("notion.connection.finalizing", comment: ""))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        case .error(let message):
+            VStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 26))
+                    .foregroundColor(.orange)
+                Text(message)
+                    .font(.caption)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.red)
+            }
+            .padding()
+            .background(Color.orange.opacity(0.1))
+            .cornerRadius(12)
+        case .idle:
+            EmptyView()
         }
-        return false
     }
 
     private var authorizationButtonTitle: String {
-        switch notionSession.connectionState {
+        switch notionAuth.state {
         case .connected:
             return NSLocalizedString("重新授权", comment: "")
         default:
@@ -1158,33 +1143,11 @@ struct NotionAuthView: View {
     }
 
     private func startAuthorization() {
-        lastHandledCode = nil
         notionAuth.startAuthorization()
     }
 
     private func disconnectNotion() {
-        notionSession.disconnect()
-    }
-
-    private func showErrorAlert(_ error: NotionAuthError) {
-        let title = error == .userCancelled
-            ? NSLocalizedString("取消", comment: "")
-            : NSLocalizedString("授权失败", comment: "")
-
-        alertItem = DataAlert(
-            title: title,
-            message: error.localizedDescription
-        )
-    }
-
-    private func showSuccessAlert(for workspaceName: String) {
-        alertItem = DataAlert(
-            title: NSLocalizedString("授权成功", comment: ""),
-            message: String(
-                format: NSLocalizedString("notion.connection.connected_message", comment: ""),
-                workspaceName
-            )
-        )
+        notionAuth.disconnect()
     }
 }
 

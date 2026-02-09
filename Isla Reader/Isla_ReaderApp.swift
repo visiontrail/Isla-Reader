@@ -20,7 +20,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 struct Isla_ReaderApp: App {
     let persistenceController = PersistenceController.shared
     @StateObject private var appSettings = AppSettings.shared
-    @StateObject private var notionSessionManager = NotionSessionManager.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     init() {
@@ -42,7 +41,6 @@ struct Isla_ReaderApp: App {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environment(\.locale, appSettings.locale)
-                .environmentObject(notionSessionManager)
         }
     }
 }

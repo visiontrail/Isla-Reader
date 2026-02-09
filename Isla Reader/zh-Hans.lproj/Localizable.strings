@@ -319,11 +319,13 @@
 "未收到授权码" = "未收到授权码";
 "Notion 授权错误: %@" = "Notion 授权错误: %@";
 "notion.connection.connecting" = "连接中...";
+"notion.connection.finalizing" = "正在交换 Token...";
 "notion.connection.disconnected" = "未连接";
 "notion.connection.current_workspace" = "工作区：%@";
 "notion.connection.disconnect" = "断开连接";
 "notion.connection.connected_message" = "已连接到工作区：%@";
 "notion.connection.workspace.unknown" = "Notion 工作区";
+"notion.auth.error.missing_session" = "OAuth 回调缺少 session 参数。";
 
 "notion.session.error.invalid_code" = "授权码无效，请重试。";
 "notion.session.error.invalid_url" = "Notion 服务地址无效。";

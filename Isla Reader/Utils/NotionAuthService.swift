@@ -2,11 +2,9 @@
 //  NotionAuthService.swift
 //  LanRead
 //
-//  Created by Claude on 2026/1/25.
-//
 
-import Foundation
 import AuthenticationServices
+import Foundation
 import Security
 import SwiftUI
 
@@ -14,252 +12,383 @@ import SwiftUI
 import UIKit
 #endif
 
-/// Notion OAuth 认证服务
-/// 负责处理 Notion OAuth 2.0 授权流程的前半段：生成授权 URL、启动授权、接收回调
 @MainActor
 final class NotionAuthService: NSObject, ObservableObject {
     static let shared = NotionAuthService()
+
     static let callbackScheme = "lanread"
-    static let callbackHost = "notion-oauth-callback"
-
+    static let callbackHost = "notion"
+    static let callbackPath = "/finish"
     static var callbackRedirectURI: String {
-        "\(callbackScheme)://\(callbackHost)"
+        "\(callbackScheme)://\(callbackHost)\(callbackPath)"
     }
 
-    // MARK: - Published Properties
+    @Published private(set) var state: NotionAuthState = .idle
+    @Published private(set) var workspaceIcon: String?
 
-    @Published var isAuthorizing = false
-    @Published var authorizationCode: String?
-    @Published var error: NotionAuthError?
-
-    // MARK: - Configuration
-
-    /// Notion OAuth Client ID
-    /// 注意：这是公开的 client_id，可以安全地存储在 iOS App 中
-    /// client_secret 应该只在后端使用，不应出现在 iOS 代码中
-    /// 优先从 Info.plist 的 `NOTION_CLIENT_ID` 读取，便于用 xcconfig 覆盖
-    private var clientID: String {
-        let raw = Bundle.main.object(forInfoDictionaryKey: "NOTION_CLIENT_ID") as? String
-        return raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "YOUR_NOTION_CLIENT_ID"
-    }
-
-    /// OAuth 回调 URL Scheme
-    private let redirectScheme = NotionAuthService.callbackScheme
-    private let redirectHost = NotionAuthService.callbackHost
-
-    /// 完整的 redirect_uri
-    private var redirectURI: String {
-        NotionAuthService.callbackRedirectURI
-    }
-
-    // MARK: - State Management (CSRF Protection)
-
-    /// 当前授权流程的 state（一次性使用）
-    /// 存储在内存中，授权完成后立即清理
     private var pendingState: String?
-
-    /// ASWebAuthenticationSession 实例
     private var authSession: ASWebAuthenticationSession?
+    private var currentSession: NotionOAuthStoredSession?
 
-    // MARK: - Private Init
+    private let secureStore: NotionAuthSecureStore
+    private let networkSession: URLSession
 
     private override init() {
+        self.secureStore = NotionAuthKeychainStore()
+        self.networkSession = .shared
         super.init()
+        restoreSession()
     }
 
-    // MARK: - Public Methods
+    var isBusy: Bool {
+        switch state {
+        case .authenticating, .finalizing:
+            return true
+        default:
+            return false
+        }
+    }
 
-    /// 启动 Notion OAuth 授权流程
-    /// - Parameter presentationContext: 用于展示授权页面的窗口上下文
+    var isConnected: Bool {
+        if case .connected = state {
+            return true
+        }
+        return false
+    }
+
+    var accessToken: String? {
+        currentSession?.accessToken
+    }
+
     func startAuthorization(presentationContext: ASWebAuthenticationPresentationContextProviding? = nil) {
-        // 防止重复授权
-        guard !isAuthorizing else {
-            DebugLogger.warning("Notion OAuth already in progress; ignoring duplicate tap")
-            error = .alreadyInProgress
+        guard !isBusy else {
+            state = .error(NotionAuthError.alreadyInProgress.localizedDescription)
             return
         }
 
-        // 重置状态
-        reset()
+        let generatedState = generateState()
+        pendingState = generatedState
 
-        // 生成新的 state 用于 CSRF 防护
-        let state = generateState()
-        pendingState = state
-
-        // 构建授权 URL
-        guard let authURL = buildAuthorizationURL(state: state) else {
-            DebugLogger.error("Notion OAuth configuration invalid - missing or placeholder client ID")
-            error = .invalidConfiguration
-            cleanup()
+        guard let authURL = buildAuthorizationURL(state: generatedState) else {
+            state = .error(NotionAuthError.invalidConfiguration.localizedDescription)
+            pendingState = nil
             return
         }
 
-        DebugLogger.info("Starting Notion OAuth: state=\(state.prefix(8))..., redirect=\(redirectURI)")
-
-        // 创建并启动 ASWebAuthenticationSession
         let session = ASWebAuthenticationSession(
             url: authURL,
-            callbackURLScheme: redirectScheme
+            callbackURLScheme: Self.callbackScheme
         ) { [weak self] callbackURL, sessionError in
             Task { @MainActor [weak self] in
                 self?.handleAuthCallback(callbackURL: callbackURL, error: sessionError)
             }
         }
 
-        // 配置展示上下文
-        if let context = presentationContext {
-            session.presentationContextProvider = context
+        if let presentationContext {
+            session.presentationContextProvider = presentationContext
         } else {
-            // 使用默认上下文提供者
+            #if canImport(UIKit)
             session.presentationContextProvider = DefaultPresentationContextProvider.shared
+            #endif
         }
 
-        // 优先使用 ephemeral session（不共享 cookies）
         session.prefersEphemeralWebBrowserSession = true
 
-        isAuthorizing = true
         authSession = session
+        state = .authenticating
 
-        // 启动授权流程
         if !session.start() {
-            DebugLogger.error("ASWebAuthenticationSession failed to start")
-            isAuthorizing = false
-            error = .sessionFailedToStart
-            cleanup()
+            state = .error(NotionAuthError.sessionFailedToStart.localizedDescription)
+            cleanupAuthSession()
         }
     }
 
-    /// 取消当前授权流程
-    func cancelAuthorization() {
+    func disconnect() {
         authSession?.cancel()
-        cleanup()
+        cleanupAuthSession()
+
+        do {
+            try secureStore.delete()
+            _ = NotionDatabaseMappingStore.shared.clearAllMappings()
+        } catch {
+            state = .error(NotionAuthError.keychainFailure(error.localizedDescription).localizedDescription)
+            return
+        }
+
+        currentSession = nil
+        workspaceIcon = nil
+        state = .idle
     }
 
-    // MARK: - URL Building
+    func clearErrorIfNeeded() {
+        if case .error = state {
+            state = .idle
+        }
+    }
 
-    /// 构建 Notion OAuth 授权 URL
-    /// - Parameter state: CSRF 防护 state
-    /// - Returns: 授权 URL
+    private func restoreSession() {
+        do {
+            guard let session = try secureStore.load() else {
+                state = .idle
+                workspaceIcon = nil
+                currentSession = nil
+                return
+            }
+
+            currentSession = session
+            workspaceIcon = session.workspaceIcon
+            state = .connected(workspaceName: session.workspaceName)
+        } catch {
+            DebugLogger.error("Failed to restore Notion session", error: error)
+            try? secureStore.delete()
+            currentSession = nil
+            workspaceIcon = nil
+            state = .idle
+        }
+    }
+
     private func buildAuthorizationURL(state: String) -> URL? {
-        let id = clientID
-        guard !id.isEmpty,
-              id != "YOUR_NOTION_CLIENT_ID",
-              !id.contains("$(") else { // 未被替换的占位符
+        let clientID = trimmedInfoValue(for: "NOTION_CLIENT_ID")
+        let redirectURI = trimmedInfoValue(for: "NOTION_REDIRECT_URI")
+
+        guard !clientID.isEmpty, !redirectURI.isEmpty else {
             return nil
         }
 
         var components = URLComponents(string: "https://api.notion.com/v1/oauth/authorize")
         components?.queryItems = [
-            URLQueryItem(name: "client_id", value: id),
-            URLQueryItem(name: "redirect_uri", value: redirectURI),
+            URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "state", value: state),
-            URLQueryItem(name: "owner", value: "user") // 可选：指定授权类型
+            URLQueryItem(name: "owner", value: "user"),
+            URLQueryItem(name: "redirect_uri", value: redirectURI),
+            URLQueryItem(name: "state", value: state)
         ]
 
         return components?.url
     }
 
-    // MARK: - Callback Handling
-
-    /// 处理授权回调
-    /// - Parameters:
-    ///   - callbackURL: 回调 URL
-    ///   - error: 可能的错误
     private func handleAuthCallback(callbackURL: URL?, error: Error?) {
-        defer {
-            isAuthorizing = false
-            cleanup()
-        }
+        authSession = nil
 
-        // 处理取消或错误
-        if let error = error {
-            if (error as NSError).code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
-                DebugLogger.info("Notion OAuth cancelled by user")
-                self.error = .userCancelled
+        if let error {
+            let nsError = error as NSError
+            if nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                state = .error(NotionAuthError.userCancelled.localizedDescription)
             } else {
-                DebugLogger.error("Notion OAuth session failed", error: error)
-                self.error = .authSessionFailed(error)
+                state = .error(NotionAuthError.authSessionFailed(error.localizedDescription).localizedDescription)
             }
+            pendingState = nil
             return
         }
 
-        guard let callbackURL = callbackURL else {
-            DebugLogger.error("Notion OAuth callback URL missing")
-            self.error = .invalidCallback
+        guard let callbackURL else {
+            state = .error(NotionAuthError.invalidCallback.localizedDescription)
+            pendingState = nil
             return
         }
 
-        // 解析回调 URL
-        DebugLogger.info("Received Notion OAuth callback: \(callbackURL.absoluteString)")
-        parseCallback(url: callbackURL)
+        do {
+            let sessionID = try parseSessionID(from: callbackURL)
+            Task { [weak self] in
+                await self?.finalizeOAuth(sessionID: sessionID)
+            }
+        } catch {
+            let authError = (error as? NotionAuthError) ?? .invalidCallback
+            state = .error(authError.localizedDescription)
+        }
     }
 
-    /// 解析回调 URL，提取 code 和 state
-    /// - Parameter url: 回调 URL
-    private func parseCallback(url: URL) {
+    private func parseSessionID(from url: URL) throws -> String {
         guard let scheme = url.scheme?.lowercased(),
               let host = url.host?.lowercased(),
-              scheme == redirectScheme,
-              host == redirectHost else {
-            DebugLogger.error("Unexpected callback URL target: \(url.absoluteString)")
-            error = .invalidCallback
-            return
+              scheme == Self.callbackScheme,
+              host == Self.callbackHost else {
+            throw NotionAuthError.invalidCallback
         }
 
-        guard let expectedState = pendingState else {
-            DebugLogger.error("No pending OAuth state available for verification")
-            error = .stateMismatch
-            return
+        let normalizedPath = url.path.hasPrefix("/") ? url.path : "/\(url.path)"
+        guard normalizedPath == Self.callbackPath else {
+            throw NotionAuthError.invalidCallback
         }
 
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let queryItems = components.queryItems else {
-            error = .invalidCallback
-            return
+            throw NotionAuthError.invalidCallback
         }
 
-        // 提取参数
-        let code = queryItems.first { $0.name == "code" }?.value
-        let state = queryItems.first { $0.name == "state" }?.value
-        let errorParam = queryItems.first { $0.name == "error" }?.value
-
-        // 验证 state（CSRF 防护）
-        guard let state = state, state == expectedState else {
-            DebugLogger.error("Notion OAuth state mismatch")
-            error = .stateMismatch
-            return
+        if let expectedState = pendingState {
+            let returnedState = queryItems.first(where: { $0.name == "state" })?.value
+            guard returnedState == expectedState else {
+                throw NotionAuthError.stateMismatch
+            }
         }
 
-        // 检查是否有错误参数
-        if let errorParam = errorParam {
-            DebugLogger.error("Notion OAuth error from server: \(errorParam)")
-            error = .notionAPIError(errorParam)
-            return
+        if let errorCode = queryItems.first(where: { $0.name == "error" })?.value,
+           !errorCode.isEmpty {
+            throw NotionAuthError.finalizeFailed(errorCode)
         }
 
-        // 验证 code
-        guard let code = code, !code.isEmpty else {
-            DebugLogger.error("Notion OAuth missing authorization code")
-            error = .missingAuthorizationCode
-            return
-        }
+        let sessionID = queryItems.first(where: { $0.name == "session" || $0.name == "session_id" })?.value?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // 成功！保存 authorization code
-        authorizationCode = code
-
-        // 清理 pending state（一次性使用）
         pendingState = nil
 
-        // 这里可以触发后续流程，例如通知 UI 或调用后端交换 token
-        // 注意：code → token 的交换应该在你的后端完成，不要在 iOS App 中使用 client_secret
-        DebugLogger.success("Notion OAuth succeeded; code prefix=\(code.prefix(8))")
+        guard let sessionID, !sessionID.isEmpty else {
+            throw NotionAuthError.missingSessionID
+        }
+
+        return sessionID
     }
 
-    // MARK: - State Generation
+    private func finalizeOAuth(sessionID: String) async {
+        state = .finalizing
 
-    /// 生成随机 state 字符串（用于 CSRF 防护）
-    /// - Returns: 随机 state 字符串
+        do {
+            let payload = try await finalizeRequest(sessionID: sessionID)
+            let session = try buildStoredSession(from: payload)
+
+            if let existingWorkspaceId = currentSession?.workspaceId,
+               let newWorkspaceId = session.workspaceId,
+               existingWorkspaceId != newWorkspaceId {
+                _ = NotionDatabaseMappingStore.shared.clearAllMappings()
+            }
+
+            try secureStore.save(session)
+
+            currentSession = session
+            workspaceIcon = session.workspaceIcon
+            state = .connected(workspaceName: session.workspaceName)
+            DebugLogger.success("Notion OAuth connected workspace=\(session.workspaceName)")
+        } catch {
+            let authError = (error as? NotionAuthError) ?? .networkFailure(error.localizedDescription)
+            state = .error(authError.localizedDescription)
+            DebugLogger.error("Notion OAuth finalize failed", error: error)
+        }
+    }
+
+    private func finalizeRequest(sessionID: String) async throws -> NotionFinalizeResponse {
+        let url = try finalizeEndpointURL()
+
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+
+        let body: Data
+        do {
+            body = try encoder.encode(NotionFinalizeRequest(sessionID: sessionID))
+        } catch {
+            throw NotionAuthError.invalidFinalizeResponse
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.timeoutInterval = 30
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await networkSession.data(for: request)
+        } catch {
+            throw NotionAuthError.networkFailure(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NotionAuthError.invalidFinalizeResponse
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if let errorResponse = try? decoder.decode(NotionFinalizeErrorResponse.self, from: data) {
+                let message = errorResponse.errorDescription ?? errorResponse.message ?? errorResponse.error
+                throw NotionAuthError.finalizeFailed(message)
+            }
+
+            let fallback = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let fallback, !fallback.isEmpty {
+                throw NotionAuthError.finalizeFailed(fallback)
+            }
+
+            throw NotionAuthError.finalizeFailed(HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode))
+        }
+
+        guard let payload = try? decoder.decode(NotionFinalizeResponse.self, from: data) else {
+            throw NotionAuthError.invalidFinalizeResponse
+        }
+
+        return payload
+    }
+
+    private func finalizeEndpointURL() throws -> URL {
+        let baseURLString = trimmedInfoValue(for: "SecureServerBaseURL")
+        guard !baseURLString.isEmpty, let baseURL = URL(string: baseURLString) else {
+            throw NotionAuthError.invalidConfiguration
+        }
+
+        let requireTLS = parseBool(trimmedInfoValue(for: "SecureServerRequireTLS"), defaultValue: true)
+        if requireTLS && baseURL.scheme?.lowercased() != "https" {
+            throw NotionAuthError.invalidConfiguration
+        }
+
+        guard let url = URL(string: "/v1/oauth/finalize", relativeTo: baseURL) else {
+            throw NotionAuthError.invalidConfiguration
+        }
+
+        return url
+    }
+
+    private func buildStoredSession(from payload: NotionFinalizeResponse) throws -> NotionOAuthStoredSession {
+        let accessToken = payload.accessToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !accessToken.isEmpty else {
+            throw NotionAuthError.invalidFinalizeResponse
+        }
+        let workspaceNameRaw = (payload.workspaceName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let workspaceName = workspaceNameRaw.isEmpty
+            ? NSLocalizedString("notion.connection.workspace.unknown", comment: "")
+            : workspaceNameRaw
+
+        return NotionOAuthStoredSession(
+            accessToken: accessToken,
+            workspaceName: workspaceName,
+            workspaceId: payload.workspaceId,
+            workspaceIcon: payload.workspaceIcon,
+            botId: payload.botId
+        )
+    }
+
+    private func cleanupAuthSession() {
+        authSession = nil
+        pendingState = nil
+    }
+
+    private func parseBool(_ value: String, defaultValue: Bool) -> Bool {
+        guard !value.isEmpty else { return defaultValue }
+        switch value.lowercased() {
+        case "1", "true", "yes":
+            return true
+        case "0", "false", "no":
+            return false
+        default:
+            return defaultValue
+        }
+    }
+
+    private func trimmedInfoValue(for key: String) -> String {
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String else {
+            return ""
+        }
+
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed.hasPrefix("$(") || trimmed == "YOUR_NOTION_CLIENT_ID" {
+            return ""
+        }
+
+        return trimmed.replacingOccurrences(of: "\\/", with: "/")
+    }
+
     private func generateState() -> String {
         let charset = Array("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
         var randomBytes = [UInt8](repeating: 0, count: 32)
@@ -268,38 +397,31 @@ final class NotionAuthService: NSObject, ObservableObject {
             return String(randomBytes.map { charset[Int($0) % charset.count] })
         }
 
-        DebugLogger.warning("SecRandomCopyBytes failed, falling back to UUID-based state")
         return UUID().uuidString.replacingOccurrences(of: "-", with: "")
-    }
-
-    // MARK: - Cleanup
-
-    /// 清理授权会话和临时状态
-    private func cleanup() {
-        authSession = nil
-        pendingState = nil
-    }
-
-    /// 重置所有状态
-    private func reset() {
-        authorizationCode = nil
-        error = nil
-        cleanup()
     }
 }
 
-// MARK: - NotionAuthError
+enum NotionAuthState: Equatable {
+    case idle
+    case authenticating
+    case finalizing
+    case connected(workspaceName: String)
+    case error(String)
+}
 
 enum NotionAuthError: LocalizedError, Equatable {
     case invalidConfiguration
     case alreadyInProgress
     case sessionFailedToStart
     case userCancelled
-    case authSessionFailed(Error)
+    case authSessionFailed(String)
     case invalidCallback
     case stateMismatch
-    case missingAuthorizationCode
-    case notionAPIError(String)
+    case missingSessionID
+    case finalizeFailed(String)
+    case invalidFinalizeResponse
+    case networkFailure(String)
+    case keychainFailure(String)
 
     var errorDescription: String? {
         switch self {
@@ -311,55 +433,146 @@ enum NotionAuthError: LocalizedError, Equatable {
             return NSLocalizedString("无法启动授权会话", comment: "")
         case .userCancelled:
             return NSLocalizedString("用户取消了授权", comment: "")
-        case .authSessionFailed(let error):
-            return String(format: NSLocalizedString("授权失败: %@", comment: ""), error.localizedDescription)
+        case .authSessionFailed(let description):
+            return String(format: NSLocalizedString("授权失败: %@", comment: ""), description)
         case .invalidCallback:
             return NSLocalizedString("无效的回调 URL", comment: "")
         case .stateMismatch:
             return NSLocalizedString("State 验证失败，可能存在 CSRF 攻击", comment: "")
-        case .missingAuthorizationCode:
-            return NSLocalizedString("未收到授权码", comment: "")
-        case .notionAPIError(let errorCode):
-            return String(format: NSLocalizedString("Notion 授权错误: %@", comment: ""), errorCode)
-        }
-    }
-
-    // Equatable 实现
-    static func == (lhs: NotionAuthError, rhs: NotionAuthError) -> Bool {
-        switch (lhs, rhs) {
-        case (.invalidConfiguration, .invalidConfiguration),
-             (.alreadyInProgress, .alreadyInProgress),
-             (.sessionFailedToStart, .sessionFailedToStart),
-             (.userCancelled, .userCancelled),
-             (.invalidCallback, .invalidCallback),
-             (.stateMismatch, .stateMismatch),
-             (.missingAuthorizationCode, .missingAuthorizationCode):
-            return true
-        case (.authSessionFailed(let lhsError), .authSessionFailed(let rhsError)):
-            return lhsError.localizedDescription == rhsError.localizedDescription
-        case (.notionAPIError(let lhsCode), .notionAPIError(let rhsCode)):
-            return lhsCode == rhsCode
-        default:
-            return false
+        case .missingSessionID:
+            return NSLocalizedString("notion.auth.error.missing_session", comment: "")
+        case .finalizeFailed(let message):
+            return String(format: NSLocalizedString("notion.session.error.server", comment: ""), message)
+        case .invalidFinalizeResponse:
+            return NSLocalizedString("notion.session.error.invalid_response", comment: "")
+        case .networkFailure(let reason):
+            return String(format: NSLocalizedString("notion.session.error.transport", comment: ""), reason)
+        case .keychainFailure(let reason):
+            return String(format: NSLocalizedString("notion.session.error.keychain", comment: ""), reason)
         }
     }
 }
 
-// MARK: - Default Presentation Context Provider
+private struct NotionFinalizeRequest: Encodable {
+    let sessionID: String
+}
 
-/// 默认的 ASWebAuthenticationSession 展示上下文提供者
-private class DefaultPresentationContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
+private struct NotionFinalizeResponse: Decodable {
+    let accessToken: String
+    let workspaceName: String?
+    let workspaceId: String?
+    let workspaceIcon: String?
+    let botId: String?
+}
+
+private struct NotionFinalizeErrorResponse: Decodable {
+    let error: String
+    let errorDescription: String?
+    let message: String?
+}
+
+private struct NotionOAuthStoredSession: Codable {
+    let accessToken: String
+    let workspaceName: String
+    let workspaceId: String?
+    let workspaceIcon: String?
+    let botId: String?
+}
+
+private protocol NotionAuthSecureStore {
+    func save(_ session: NotionOAuthStoredSession) throws
+    func load() throws -> NotionOAuthStoredSession?
+    func delete() throws
+}
+
+private final class NotionAuthKeychainStore: NotionAuthSecureStore {
+    private let service: String
+    private let account = "notion.oauth.session"
+
+    init(service: String = Bundle.main.bundleIdentifier ?? "com.islareader.app") {
+        self.service = service
+    }
+
+    func save(_ session: NotionOAuthStoredSession) throws {
+        let data = try JSONEncoder().encode(session)
+
+        let deleteStatus = SecItemDelete(baseQuery as CFDictionary)
+        if deleteStatus != errSecSuccess && deleteStatus != errSecItemNotFound {
+            throw NotionAuthError.keychainFailure(osStatusMessage(deleteStatus))
+        }
+
+        var query = baseQuery
+        query[kSecValueData as String] = data
+        query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+
+        let addStatus = SecItemAdd(query as CFDictionary, nil)
+        guard addStatus == errSecSuccess else {
+            throw NotionAuthError.keychainFailure(osStatusMessage(addStatus))
+        }
+    }
+
+    func load() throws -> NotionOAuthStoredSession? {
+        var query = baseQuery
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        if status == errSecItemNotFound {
+            return nil
+        }
+
+        guard status == errSecSuccess else {
+            throw NotionAuthError.keychainFailure(osStatusMessage(status))
+        }
+
+        guard let data = result as? Data else {
+            throw NotionAuthError.invalidFinalizeResponse
+        }
+
+        do {
+            return try JSONDecoder().decode(NotionOAuthStoredSession.self, from: data)
+        } catch {
+            try? delete()
+            return nil
+        }
+    }
+
+    func delete() throws {
+        let status = SecItemDelete(baseQuery as CFDictionary)
+        if status != errSecSuccess && status != errSecItemNotFound {
+            throw NotionAuthError.keychainFailure(osStatusMessage(status))
+        }
+    }
+
+    private var baseQuery: [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+    }
+
+    private func osStatusMessage(_ status: OSStatus) -> String {
+        (SecCopyErrorMessageString(status, nil) as String?) ?? "OSStatus \(status)"
+    }
+}
+
+#if canImport(UIKit)
+private final class DefaultPresentationContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
     static let shared = DefaultPresentationContextProvider()
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        let windowScenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
 
-        if let keyWindow = windowScenes
+        if let keyWindow = scenes
             .flatMap(\.windows)
             .first(where: { $0.isKeyWindow }) {
             return keyWindow
         }
 
-        return windowScenes.flatMap(\.windows).first ?? ASPresentationAnchor()
+        return scenes.flatMap(\.windows).first ?? ASPresentationAnchor()
     }
 }
+#endif

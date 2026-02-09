@@ -319,11 +319,13 @@
 "未收到授权码" = "인증 코드를 받지 못했습니다.";
 "Notion 授权错误: %@" = "Notion 인증 오류: %@";
 "notion.connection.connecting" = "연결 중...";
+"notion.connection.finalizing" = "토큰 교환 중...";
 "notion.connection.disconnected" = "연결 안 됨";
 "notion.connection.current_workspace" = "워크스페이스: %@";
 "notion.connection.disconnect" = "연결 해제";
 "notion.connection.connected_message" = "워크스페이스에 연결되었습니다: %@";
 "notion.connection.workspace.unknown" = "Notion 워크스페이스";
+"notion.auth.error.missing_session" = "OAuth 콜백에 session 파라미터가 없습니다.";
 
 "notion.session.error.invalid_code" = "인증 코드가 유효하지 않습니다. 다시 시도하세요.";
 "notion.session.error.invalid_url" = "Notion 서비스 URL이 유효하지 않습니다.";

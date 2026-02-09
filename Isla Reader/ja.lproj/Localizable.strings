@@ -319,11 +319,13 @@
 "未收到授权码" = "認可コードを受信できませんでした。";
 "Notion 授权错误: %@" = "Notion 認証エラー: %@";
 "notion.connection.connecting" = "接続中...";
+"notion.connection.finalizing" = "トークンを交換しています...";
 "notion.connection.disconnected" = "未接続";
 "notion.connection.current_workspace" = "ワークスペース: %@";
 "notion.connection.disconnect" = "接続を解除";
 "notion.connection.connected_message" = "ワークスペースに接続しました: %@";
 "notion.connection.workspace.unknown" = "Notion ワークスペース";
+"notion.auth.error.missing_session" = "OAuth コールバックに session パラメータがありません。";
 
 "notion.session.error.invalid_code" = "認可コードが無効です。再試行してください。";
 "notion.session.error.invalid_url" = "Notion サービス URL が無効です。";

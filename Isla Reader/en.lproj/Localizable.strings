@@ -319,11 +319,13 @@
 "未收到授权码" = "Authorization code not received.";
 "Notion 授权错误: %@" = "Notion authorization error: %@";
 "notion.connection.connecting" = "Connecting...";
+"notion.connection.finalizing" = "Finalizing token exchange...";
 "notion.connection.disconnected" = "Not connected";
 "notion.connection.current_workspace" = "Workspace: %@";
 "notion.connection.disconnect" = "Disconnect";
 "notion.connection.connected_message" = "Connected to workspace: %@";
 "notion.connection.workspace.unknown" = "Notion Workspace";
+"notion.auth.error.missing_session" = "OAuth callback is missing session id.";
 
 "notion.session.error.invalid_code" = "Authorization code is invalid. Please try again.";
 "notion.session.error.invalid_url" = "Notion service URL is invalid.";
