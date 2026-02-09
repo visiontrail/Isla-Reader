@@ -169,6 +169,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
         <a class="pill" id="nav-home" href="/">Home</a>
         <a class="pill" id="nav-changelog" href="changelog.html">Changelog</a>
         <a class="pill" id="nav-support" href="support.html">Support</a>
+        <a class="pill" id="nav-terms" href="/terms">Terms</a>
         <span class="pill active" id="nav-privacy" style="background:rgba(0,0,0,0.02);">Privacy</span>
       </div>
       <div class="lang-switch">
@@ -227,6 +228,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       <span id="footer-note">© 2026 Lan Read · 澜悦 — Privacy &amp; data use.</span>
       <span style="display:flex; gap:12px; flex-wrap:wrap;">
         <a class="pill" id="footer-home" href="/">Home</a>
+        <a class="pill" id="footer-terms" href="/terms">Terms</a>
         <a class="pill" id="footer-changelog" href="changelog.html">Changelog</a>
         <a class="pill" id="footer-support" href="support.html">Support</a>
       </span>
@@ -257,6 +259,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           home: 'Home',
           changelog: 'Changelog',
           support: 'Support',
+          terms: 'Terms',
           privacy: 'Privacy',
           language: 'Language'
         },
@@ -316,6 +319,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
         footer: {
           note: '© 2026 Lan Read · 澜悦 — Privacy & data use.',
           home: 'Home',
+          terms: 'Terms',
           changelog: 'Changelog',
           support: 'Support'
         }
@@ -329,6 +333,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           home: '主页',
           changelog: '更新日志',
           support: '支持',
+          terms: '条款',
           privacy: '隐私',
           language: '语言'
         },
@@ -388,6 +393,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
         footer: {
           note: '© 2026 Lan Read · 澜悦 — 隐私与数据使用。',
           home: '主页',
+          terms: '条款',
           changelog: '更新日志',
           support: '支持'
         }
@@ -401,6 +407,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           home: 'ホーム',
           changelog: '更新履歴',
           support: 'サポート',
+          terms: '規約',
           privacy: 'プライバシー',
           language: '言語'
         },
@@ -460,6 +467,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
         footer: {
           note: '© 2026 Lan Read · 澜悦 — プライバシーとデータ利用。',
           home: 'ホーム',
+          terms: '規約',
           changelog: '更新履歴',
           support: 'サポート'
         }
@@ -473,6 +481,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           home: '홈',
           changelog: '변경 로그',
           support: '지원',
+          terms: '약관',
           privacy: '개인정보',
           language: '언어'
         },
@@ -532,6 +541,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
         footer: {
           note: '© 2026 Lan Read · 澜悦 — 개인정보 및 데이터 사용.',
           home: '홈',
+          terms: '약관',
           changelog: '변경 로그',
           support: '지원'
         }
@@ -554,6 +564,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       setText('nav-home', t.nav.home);
       setText('nav-changelog', t.nav.changelog);
       setText('nav-support', t.nav.support);
+      setText('nav-terms', t.nav.terms);
       setText('nav-privacy', t.nav.privacy);
       setText('nav-language', t.nav.language);
 
@@ -579,6 +590,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 
       setText('footer-note', t.footer.note);
       setText('footer-home', t.footer.home);
+      setText('footer-terms', t.footer.terms);
       setText('footer-changelog', t.footer.changelog);
       setText('footer-support', t.footer.support);
 
@@ -651,6 +663,21 @@ async def landing_changelog_html():
 @router.get("/support.html", include_in_schema=False)
 async def landing_support_html():
     return _landing_file("support.html")
+
+
+@router.get("/terms.html", include_in_schema=False)
+async def landing_terms_html():
+    return _landing_file("terms.html")
+
+
+@router.get("/terms", include_in_schema=False)
+async def landing_terms():
+    return _landing_file("terms.html")
+
+
+@router.get("/terms-of-use", include_in_schema=False)
+async def landing_terms_of_use():
+    return _landing_file("terms.html")
 
 
 @router.get("/privacy", response_class=HTMLResponse, include_in_schema=False)

@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lan Read · Terms of Use</title>
+  <meta name="description" content="Lan Read Terms of Use covering service scope, user responsibilities, AI outputs, and legal terms." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f1eb;
+      --panel: #fffdf8;
+      --line: rgba(20,20,20,0.12);
+      --text: #14110f;
+      --muted: #5a5d61;
+      --accent: #14110f;
+      --radius: 18px;
+      --grid: 120px;
+      --paper-shadow: 0 20px 60px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 16%, rgba(0,0,0,0.025), transparent 32%),
+        radial-gradient(circle at 78% 8%, rgba(0,0,0,0.018), transparent 30%),
+        var(--bg);
+      font-family: "Epilogue", "DM Mono", system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.12;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+      mix-blend-mode: multiply;
+      z-index: 5;
+    }
+    .grid {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: var(--grid) var(--grid);
+      mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 42%, rgba(0,0,0,0) 70%);
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(14px);
+      background: rgba(255,253,248,0.90);
+      border-bottom: 1px solid var(--line);
+    }
+    nav {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      font-size: 14px;
+      letter-spacing: 0.03em;
+      flex-wrap: wrap;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-family: "Newsreader", "Epilogue", serif;
+    }
+    .logo .dot {
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 0 6px rgba(0,0,0,0.05);
+    }
+    .nav-links {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .lang-switch {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .lang-switch select {
+      padding: 7px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .pill {
+      padding: 8px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--text);
+      text-decoration: none;
+      transition: border .3s, color .3s, background .3s;
+    }
+    .pill:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0,0,0,0.03);
+    }
+    .pill.active { background: rgba(0,0,0,0.04); }
+    .section {
+      max-width: 1180px;
+      margin: 0 auto 120px;
+      padding: 0 28px;
+      position: relative;
+      z-index: 2;
+    }
+    h1 {
+      font-size: clamp(32px, 4vw, 48px);
+      line-height: 1.1;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+      font-family: "Newsreader", "Epilogue", serif;
+    }
+    .lead {
+      color: var(--muted);
+      max-width: 840px;
+      font-size: 17px;
+      line-height: 1.7;
+      margin: 0 0 18px;
+    }
+    .meta-line {
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .meta-line .dot {
+      width: 7px;
+      height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .paper-sheet {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 28px 26px 30px;
+      box-shadow: var(--paper-shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .paper-sheet::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(20,20,20,0.06);
+      pointer-events: none;
+    }
+    .paper-sheet.ruled {
+      background-image: linear-gradient(rgba(20,20,20,0.04) 1px, transparent 1px);
+      background-size: 100% 46px;
+    }
+    .paper-sheet .note-tab {
+      position: absolute;
+      left: -12px;
+      top: 22px;
+      width: 22px;
+      height: 82px;
+      background: linear-gradient(180deg, #d5c9b1, #e7dbc5);
+      border: 1px solid rgba(20,20,20,0.15);
+      border-radius: 10px 6px 6px 10px;
+      box-shadow: 6px 12px 20px rgba(0,0,0,0.10);
+    }
+    .paper-sheet .paper-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(0,0,0,0.02);
+    }
+    .paper-sheet .paper-label::before {
+      content: "§";
+      font-family: "DM Mono", monospace;
+      color: var(--accent);
+      font-size: 12px;
+    }
+    .terms-stack {
+      display: grid;
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .terms-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px 18px 20px;
+      background: linear-gradient(120deg, rgba(0,0,0,0.02), rgba(0,0,0,0));
+      box-shadow: 0 16px 40px rgba(0,0,0,0.06);
+      position: relative;
+    }
+    .terms-card::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .terms-card h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      letter-spacing: 0.01em;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .terms-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .terms-list code {
+      background: rgba(20,20,20,0.05);
+      padding: 1px 5px;
+      border-radius: 5px;
+    }
+    .paper-edge {
+      position: absolute;
+      inset: 18px -18px auto auto;
+      height: 20px;
+      background:
+        linear-gradient(90deg, rgba(20,20,20,0.10) 32%, transparent 32%),
+        #e8e1d5;
+      border-radius: 999px;
+      opacity: 0.65;
+    }
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 30px 28px 60px;
+      color: var(--muted);
+      background: rgba(247,248,250,0.8);
+      position: relative;
+      z-index: 2;
+    }
+    @media (max-width: 900px) {
+      nav { padding: 12px 18px; }
+      .lang-switch { width: 100%; justify-content: flex-end; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="grain"></div>
+
+  <header>
+    <nav>
+      <div class="logo"><div class="dot"></div><span>Lan Read · 澜悦</span></div>
+      <div class="nav-links">
+        <a class="pill" id="nav-home" href="/">Home</a>
+        <a class="pill" id="nav-changelog" href="changelog.html">Changelog</a>
+        <a class="pill" id="nav-support" href="support.html">Support</a>
+        <a class="pill" id="nav-privacy" href="/privacy">Privacy</a>
+        <span class="pill active" id="nav-terms">Terms</span>
+      </div>
+      <div class="lang-switch">
+        <label for="language" id="nav-language">Language</label>
+        <select id="language" aria-label="Language selector">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+        </select>
+      </div>
+    </nav>
+  </header>
+
+  <section class="section" style="margin-top:64px;">
+    <div class="paper-sheet ruled">
+      <div class="note-tab" aria-hidden="true"></div>
+      <div class="paper-label" id="terms-label">Terms</div>
+      <h1 id="terms-title">Terms of Use</h1>
+      <p class="lead" id="terms-lead">These Terms govern your use of the Lan Read iOS app and the companion service at isla-reader.top. By using the app, you agree to these Terms and our Privacy Policy.</p>
+      <div class="meta-line"><span class="dot"></span><span id="terms-updated">Effective: 2026-02-09</span></div>
+
+      <div class="terms-stack">
+        <div class="terms-card">
+          <h3 id="scope-title">Scope & Acceptance</h3>
+          <ul class="terms-list" id="scope-list"></ul>
+        </div>
+        <div class="terms-card">
+          <h3 id="license-title">License & Permitted Use</h3>
+          <ul class="terms-list" id="license-list"></ul>
+        </div>
+        <div class="terms-card">
+          <h3 id="user-title">Your Content & Responsibilities</h3>
+          <ul class="terms-list" id="user-list"></ul>
+        </div>
+        <div class="terms-card">
+          <h3 id="ai-title">AI Features & Third-party Services</h3>
+          <ul class="terms-list" id="ai-list"></ul>
+        </div>
+        <div class="terms-card">
+          <h3 id="legal-title">Disclaimers & Liability</h3>
+          <ul class="terms-list" id="legal-list"></ul>
+        </div>
+        <div class="terms-card">
+          <h3 id="changes-title">Changes, Suspension & Contact</h3>
+          <ul class="terms-list" id="changes-list"></ul>
+        </div>
+      </div>
+      <div class="paper-edge" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div style="max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <span id="footer-note">© 2026 Lan Read · 澜悦 — Terms of use.</span>
+      <span style="display:flex; gap:12px; flex-wrap:wrap;">
+        <a class="pill" id="footer-home" href="/">Home</a>
+        <a class="pill" id="footer-privacy" href="/privacy">Privacy</a>
+        <a class="pill" id="footer-changelog" href="changelog.html">Changelog</a>
+        <a class="pill" id="footer-support" href="support.html">Support</a>
+      </span>
+    </div>
+  </footer>
+
+  <script>
+    const languageSelect = document.getElementById('language');
+
+    const setText = (id, value) => {
+      const node = document.getElementById(id);
+      if (node && value) node.textContent = value;
+    };
+
+    const setList = (id, items) => {
+      const node = document.getElementById(id);
+      if (!node) return;
+      node.innerHTML = (items || []).map(item => `<li>${item}</li>`).join('');
+    };
+
+    const copy = {
+      en: {
+        meta: {
+          title: 'Lan Read · Terms of Use',
+          description: 'Lan Read Terms of Use covering service scope, user responsibilities, AI outputs, and legal terms.'
+        },
+        nav: {
+          home: 'Home',
+          changelog: 'Changelog',
+          support: 'Support',
+          privacy: 'Privacy',
+          terms: 'Terms',
+          language: 'Language'
+        },
+        header: {
+          label: 'Terms',
+          title: 'Terms of Use',
+          lead: 'These Terms govern your use of the Lan Read iOS app and the companion service at isla-reader.top. By using the app, you agree to these Terms and our Privacy Policy.',
+          updated: 'Effective: 2026-02-09'
+        },
+        sections: {
+          scope: {
+            title: 'Scope & Acceptance',
+            items: [
+              'These Terms apply to the Lan Read app, website pages, and related backend APIs used to support AI keys, Notion OAuth exchange, and reliability metrics.',
+              'You must follow all applicable laws and platform rules (including Apple App Store policies) when using Lan Read.',
+              'If you do not agree with these Terms, stop using the app and related services.'
+            ]
+          },
+          license: {
+            title: 'License & Permitted Use',
+            items: [
+              'We grant you a limited, revocable, non-transferable, non-exclusive license to use Lan Read for personal or internal business reading workflows.',
+              'You may not reverse engineer, scrape, overload, distribute malware through, or attempt unauthorized access to Lan Read services.',
+              'You may not resell, sublicense, or mirror the service without prior written permission.'
+            ]
+          },
+          user: {
+            title: 'Your Content & Responsibilities',
+            items: [
+              'You are responsible for the books, notes, highlights, and prompts you import or submit.',
+              'You confirm that you have the rights or permissions needed to process uploaded content through AI services.',
+              'Do not use Lan Read to process unlawful, infringing, or harmful content, or to violate others’ intellectual property or privacy rights.',
+              'You are responsible for backup decisions and data management choices on your own device.'
+            ]
+          },
+          ai: {
+            title: 'AI Features & Third-party Services',
+            items: [
+              'AI outputs are generated content and may be incomplete, inaccurate, or unsuitable for high-stakes decisions.',
+              'Lan Read does not provide legal, medical, financial, or professional advice; verify critical information independently.',
+              'AI requests may be processed by third-party model providers you configure (DashScope by default), each with their own terms and privacy policies.',
+              'Optional integrations such as iCloud/CloudKit, Notion, and Google AdMob are governed by their respective provider terms.'
+            ]
+          },
+          legal: {
+            title: 'Disclaimers & Liability',
+            items: [
+              'Lan Read is provided on an "as is" and "as available" basis to the maximum extent permitted by law.',
+              'We do not guarantee uninterrupted service, compatibility with every file, or error-free AI results.',
+              'To the extent permitted by law, we are not liable for indirect, incidental, special, consequential, or punitive damages arising from use of the service.',
+              'If liability cannot be excluded, it is limited to the greater of (a) amounts you paid for Lan Read in the past 12 months or (b) USD 50.'
+            ]
+          },
+          changes: {
+            title: 'Changes, Suspension & Contact',
+            items: [
+              'We may update these Terms when features, providers, or legal requirements change. Material changes will be reflected with a new effective date.',
+              'We may suspend or limit access for abuse, security risk, or legal compliance reasons.',
+              'For questions about these Terms, contact <a href="mailto:guoliang88925@icloud.com">guoliang88925@icloud.com</a>.',
+              'These Terms are governed by applicable laws in your jurisdiction, without limiting mandatory consumer protections.'
+            ]
+          }
+        },
+        footer: {
+          note: '© 2026 Lan Read · 澜悦 — Terms of use.',
+          home: 'Home',
+          privacy: 'Privacy',
+          changelog: 'Changelog',
+          support: 'Support'
+        }
+      },
+      zh: {
+        meta: {
+          title: 'Lan Read · 使用条款',
+          description: 'Lan Read 使用条款，涵盖服务范围、用户责任、AI 输出与法律约定。'
+        },
+        nav: {
+          home: '主页',
+          changelog: '更新日志',
+          support: '支持',
+          privacy: '隐私',
+          terms: '条款',
+          language: '语言'
+        },
+        header: {
+          label: '条款 · Terms',
+          title: '使用条款',
+          lead: '本条款适用于 Lan Read iOS 应用及其配套服务 isla-reader.top。使用本应用即表示你同意本条款及隐私政策。',
+          updated: '生效日期：2026-02-09'
+        },
+        sections: {
+          scope: {
+            title: '适用范围与同意',
+            items: [
+              '本条款适用于 Lan Read 应用、网站页面以及为 AI 密钥、Notion OAuth 交换和稳定性指标提供支持的后端 API。',
+              '使用 Lan Read 时，你应遵守适用法律法规与平台规则（包括 Apple App Store 政策）。',
+              '若你不同意本条款，请停止使用本应用及相关服务。'
+            ]
+          },
+          license: {
+            title: '许可与允许使用',
+            items: [
+              '我们授予你可撤销、不可转让、非独占的有限许可，用于个人或内部业务阅读场景。',
+              '你不得对服务进行逆向工程、抓取、超载攻击、传播恶意软件或尝试未授权访问。',
+              '未经书面许可，不得转售、再许可或镜像本服务。'
+            ]
+          },
+          user: {
+            title: '你的内容与责任',
+            items: [
+              '你对导入或提交的书籍、笔记、高亮与提示词内容负责。',
+              '你确认对提交给 AI 服务处理的内容拥有必要的权利或授权。',
+              '不得使用 Lan Read 处理违法、侵权或有害内容，不得侵犯他人的知识产权或隐私权。',
+              '你应自行决定备份策略并管理设备上的本地数据。'
+            ]
+          },
+          ai: {
+            title: 'AI 功能与第三方服务',
+            items: [
+              'AI 输出属于生成内容，可能不完整、不准确，且不适用于高风险决策。',
+              'Lan Read 不提供法律、医疗、金融或其他专业建议；关键信息请独立核验。',
+              'AI 请求可能由你配置的第三方模型服务处理（默认 DashScope），其数据处理受各自条款与隐私政策约束。',
+              '可选集成功能（如 iCloud/CloudKit、Notion、Google AdMob）同样受各提供方条款约束。'
+            ]
+          },
+          legal: {
+            title: '免责声明与责任限制',
+            items: [
+              '在法律允许的最大范围内，Lan Read 按“现状”和“可用性”提供。',
+              '我们不保证服务持续不中断、兼容所有文件类型或 AI 输出绝对无误。',
+              '在法律允许范围内，我们不对因使用服务导致的间接、附带、特殊、后果性或惩罚性损害承担责任。',
+              '若责任限制无法完全排除，最高责任以以下两者较高者为限：你过去 12 个月为 Lan Read 支付的金额，或 50 美元。'
+            ]
+          },
+          changes: {
+            title: '条款变更、暂停与联系',
+            items: [
+              '当功能、供应商或法律要求变化时，我们可能更新本条款；重大变更会更新生效日期。',
+              '如出现滥用、安全风险或法律合规需要，我们可能暂停或限制访问。',
+              '如对本条款有疑问，请联系 <a href="mailto:guoliang88925@icloud.com">guoliang88925@icloud.com</a>。',
+              '本条款受你所在司法辖区适用法律约束，并不影响强制性消费者保护权益。'
+            ]
+          }
+        },
+        footer: {
+          note: '© 2026 Lan Read · 澜悦 — 使用条款。',
+          home: '主页',
+          privacy: '隐私',
+          changelog: '更新日志',
+          support: '支持'
+        }
+      },
+      ja: {
+        meta: {
+          title: 'Lan Read · 利用規約',
+          description: 'Lan Read の利用規約。サービス範囲、ユーザー責任、AI出力、法的条件を定めます。'
+        },
+        nav: {
+          home: 'ホーム',
+          changelog: '更新履歴',
+          support: 'サポート',
+          privacy: 'プライバシー',
+          terms: '規約',
+          language: '言語'
+        },
+        header: {
+          label: '規約 · Terms',
+          title: '利用規約',
+          lead: '本規約は Lan Read iOS アプリおよび関連サービス isla-reader.top の利用に適用されます。利用を開始した時点で、本規約とプライバシーポリシーに同意したものとみなされます。',
+          updated: '発効日：2026-02-09'
+        },
+        sections: {
+          scope: {
+            title: '適用範囲と同意',
+            items: [
+              '本規約は、Lan Read アプリ、Web ページ、および AI キー、Notion OAuth 交換、信頼性指標を支える関連 API に適用されます。',
+              'Lan Read の利用にあたり、適用法令およびプラットフォーム規約（Apple App Store ポリシーを含む）を遵守してください。',
+              '本規約に同意できない場合は、アプリおよび関連サービスの利用を中止してください。'
+            ]
+          },
+          license: {
+            title: 'ライセンスと許可された利用',
+            items: [
+              '当社は、個人利用または社内利用の読書ワークフロー向けに、限定的・取消可能・譲渡不可・非独占の利用ライセンスを付与します。',
+              'リバースエンジニアリング、スクレイピング、過負荷攻撃、マルウェア配布、無許可アクセスの試みは禁止します。',
+              '事前の書面許可なく、再販売、再許諾、ミラー配信はできません。'
+            ]
+          },
+          user: {
+            title: 'ユーザーコンテンツと責任',
+            items: [
+              '取り込んだ書籍、ノート、ハイライト、プロンプト内容はユーザー自身の責任で管理してください。',
+              'AI 処理に送信するコンテンツについて、必要な権利または許諾を有していることを保証してください。',
+              '違法・侵害・有害なコンテンツの処理、または第三者の知的財産権・プライバシー権の侵害を目的として利用しないでください。',
+              'バックアップ方針および端末内データ管理はユーザーが判断・実施するものとします。'
+            ]
+          },
+          ai: {
+            title: 'AI 機能と第三者サービス',
+            items: [
+              'AI 出力は生成結果であり、不完全・不正確である可能性があります。重要な意思決定には使用しないでください。',
+              'Lan Read は法務・医療・金融その他の専門助言を提供しません。重要情報は必ず独自に確認してください。',
+              'AI リクエストは、ユーザーが設定した第三者モデル提供者（既定は DashScope）で処理される場合があり、各社の規約とプライバシーポリシーが適用されます。',
+              'iCloud/CloudKit、Notion、Google AdMob などの任意連携には、各提供者の利用条件が適用されます。'
+            ]
+          },
+          legal: {
+            title: '免責と責任制限',
+            items: [
+              '法令で許容される最大範囲で、Lan Read は「現状有姿」かつ「提供可能な範囲」で提供されます。',
+              'サービスの常時稼働、すべてのファイル互換性、AI 出力の完全性は保証しません。',
+              '法令で許される範囲で、間接損害・付随損害・特別損害・結果損害・懲罰的損害について責任を負いません。',
+              '責任制限が認められない場合でも、当社の責任総額は「過去12か月にユーザーが支払った金額」または「USD 50」のいずれか高い方を上限とします。'
+            ]
+          },
+          changes: {
+            title: '規約変更・停止・連絡先',
+            items: [
+              '機能、提供者、法的要件の変更に応じて本規約を更新することがあります。重要な変更は発効日を更新して示します。',
+              '不正利用、セキュリティリスク、法令遵守のため、アクセスを停止または制限することがあります。',
+              '本規約に関するお問い合わせ先：<a href="mailto:guoliang88925@icloud.com">guoliang88925@icloud.com</a>。',
+              '本規約は、強行法規による消費者保護を害さない範囲で、利用者の法域で適用される法令に従います。'
+            ]
+          }
+        },
+        footer: {
+          note: '© 2026 Lan Read · 澜悦 — 利用規約。',
+          home: 'ホーム',
+          privacy: 'プライバシー',
+          changelog: '更新履歴',
+          support: 'サポート'
+        }
+      },
+      ko: {
+        meta: {
+          title: 'Lan Read · 이용약관',
+          description: 'Lan Read 이용약관: 서비스 범위, 사용자 책임, AI 결과, 법적 조건을 안내합니다.'
+        },
+        nav: {
+          home: '홈',
+          changelog: '변경 로그',
+          support: '지원',
+          privacy: '개인정보',
+          terms: '약관',
+          language: '언어'
+        },
+        header: {
+          label: '약관 · Terms',
+          title: '이용약관',
+          lead: '본 약관은 Lan Read iOS 앱과 관련 서비스 isla-reader.top의 이용에 적용됩니다. 앱을 사용하면 본 약관 및 개인정보처리방침에 동의한 것으로 간주됩니다.',
+          updated: '시행일: 2026-02-09'
+        },
+        sections: {
+          scope: {
+            title: '적용 범위 및 동의',
+            items: [
+              '본 약관은 Lan Read 앱, 웹 페이지, 그리고 AI 키/Notion OAuth 교환/신뢰성 지표를 지원하는 관련 백엔드 API에 적용됩니다.',
+              'Lan Read 사용 시 관련 법령 및 플랫폼 규정(Apple App Store 정책 포함)을 준수해야 합니다.',
+              '본 약관에 동의하지 않으면 앱 및 관련 서비스 사용을 중단해야 합니다.'
+            ]
+          },
+          license: {
+            title: '라이선스 및 허용된 사용',
+            items: [
+              '당사는 개인 또는 내부 업무 독서 워크플로를 위한 제한적, 취소 가능, 양도 불가, 비독점 라이선스를 부여합니다.',
+              '역공학, 스크래핑, 과부하 유발, 악성코드 배포, 무단 접근 시도는 금지됩니다.',
+              '사전 서면 허가 없이 서비스 재판매, 재라이선스, 미러링은 허용되지 않습니다.'
+            ]
+          },
+          user: {
+            title: '사용자 콘텐츠 및 책임',
+            items: [
+              '가져오거나 제출한 도서, 노트, 하이라이트, 프롬프트 내용에 대한 책임은 사용자에게 있습니다.',
+              'AI 서비스로 처리하는 콘텐츠에 대해 필요한 권리 또는 사용 허가를 보유하고 있음을 보장해야 합니다.',
+              '불법, 침해, 유해 콘텐츠 처리나 타인의 지식재산권/개인정보 권리 침해 목적으로 사용하면 안 됩니다.',
+              '백업 정책과 기기 내 데이터 관리 선택은 사용자 책임입니다.'
+            ]
+          },
+          ai: {
+            title: 'AI 기능 및 제3자 서비스',
+            items: [
+              'AI 결과는 생성물이며 불완전하거나 부정확할 수 있고, 고위험 의사결정에 적합하지 않을 수 있습니다.',
+              'Lan Read는 법률, 의료, 금융 등 전문 자문을 제공하지 않습니다. 중요한 정보는 별도로 검증해야 합니다.',
+              'AI 요청은 사용자가 설정한 제3자 모델 제공자(기본 DashScope)에서 처리될 수 있으며, 해당 제공자의 약관/개인정보정책이 적용됩니다.',
+              'iCloud/CloudKit, Notion, Google AdMob 같은 선택형 연동은 각 제공자의 약관을 따릅니다.'
+            ]
+          },
+          legal: {
+            title: '면책 및 책임 제한',
+            items: [
+              '법이 허용하는 최대 범위에서 Lan Read는 "있는 그대로" 그리고 "제공 가능한 범위"로 제공됩니다.',
+              '서비스의 무중단 제공, 모든 파일 호환성, AI 결과의 완전무결성은 보장하지 않습니다.',
+              '법이 허용하는 범위에서 간접적, 부수적, 특별, 결과적, 징벌적 손해에 대해 책임지지 않습니다.',
+              '책임 제한이 완전히 배제될 수 없는 경우, 당사의 총 책임은 최근 12개월 내 사용자가 Lan Read에 지급한 금액 또는 미화 50달러 중 큰 금액을 상한으로 합니다.'
+            ]
+          },
+          changes: {
+            title: '약관 변경, 중단 및 문의',
+            items: [
+              '기능, 제공자, 법적 요구사항이 바뀌면 본 약관을 업데이트할 수 있으며, 중요한 변경은 시행일로 고지합니다.',
+              '남용, 보안 위험, 법적 준수 사유가 있는 경우 접근을 제한하거나 중단할 수 있습니다.',
+              '본 약관 관련 문의: <a href="mailto:guoliang88925@icloud.com">guoliang88925@icloud.com</a>.',
+              '본 약관은 강행 소비자 보호 규정을 침해하지 않는 범위에서 사용자 관할의 적용 법령을 따릅니다.'
+            ]
+          }
+        },
+        footer: {
+          note: '© 2026 Lan Read · 澜悦 — 이용약관.',
+          home: '홈',
+          privacy: '개인정보',
+          changelog: '변경 로그',
+          support: '지원'
+        }
+      }
+    };
+
+    const applyLanguage = (lang) => {
+      const chosen = copy[lang] ? lang : 'en';
+      const t = copy[chosen];
+
+      if (document.documentElement) {
+        document.documentElement.lang = chosen === 'zh' ? 'zh-Hans' : chosen;
+      }
+      if (languageSelect) languageSelect.value = chosen;
+
+      document.title = t.meta.title;
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute('content', t.meta.description);
+
+      setText('nav-home', t.nav.home);
+      setText('nav-changelog', t.nav.changelog);
+      setText('nav-support', t.nav.support);
+      setText('nav-privacy', t.nav.privacy);
+      setText('nav-terms', t.nav.terms);
+      setText('nav-language', t.nav.language);
+
+      setText('terms-label', t.header.label);
+      setText('terms-title', t.header.title);
+      setText('terms-lead', t.header.lead);
+      setText('terms-updated', t.header.updated);
+
+      setText('scope-title', t.sections.scope.title);
+      setList('scope-list', t.sections.scope.items);
+
+      setText('license-title', t.sections.license.title);
+      setList('license-list', t.sections.license.items);
+
+      setText('user-title', t.sections.user.title);
+      setList('user-list', t.sections.user.items);
+
+      setText('ai-title', t.sections.ai.title);
+      setList('ai-list', t.sections.ai.items);
+
+      setText('legal-title', t.sections.legal.title);
+      setList('legal-list', t.sections.legal.items);
+
+      setText('changes-title', t.sections.changes.title);
+      setList('changes-list', t.sections.changes.items);
+
+      setText('footer-note', t.footer.note);
+      setText('footer-home', t.footer.home);
+      setText('footer-privacy', t.footer.privacy);
+      setText('footer-changelog', t.footer.changelog);
+      setText('footer-support', t.footer.support);
+
+      localStorage.setItem('lanread-terms-lang', chosen);
+    };
+
+    const storedLang = localStorage.getItem('lanread-terms-lang');
+    applyLanguage(copy[storedLang] ? storedLang : 'en');
+
+    if (languageSelect) {
+      languageSelect.addEventListener('change', (e) => applyLanguage(e.target.value));
+    }
+  </script>
+</body>
+</html>
