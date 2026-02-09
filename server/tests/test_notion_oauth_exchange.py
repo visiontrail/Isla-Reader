@@ -1,8 +1,5 @@
 import asyncio
-import hashlib
-import hmac
-from datetime import datetime, timezone
-from uuid import uuid4
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 import pytest
@@ -12,9 +9,6 @@ from app.config import get_settings
 from app.main import app
 from app.routers import notion_oauth
 
-TEST_CLIENT_ID = "ios-test-client"
-TEST_CLIENT_SECRET = "ios-test-secret"
-
 
 @pytest.fixture(autouse=True)
 def _configure_test_env(monkeypatch: pytest.MonkeyPatch):
@@ -22,86 +16,46 @@ def _configure_test_env(monkeypatch: pytest.MonkeyPatch):
         "ISLA_API_KEY": "sk-test",
         "ISLA_API_ENDPOINT": "https://example.com/v1",
         "ISLA_AI_MODEL": "gpt-test",
-        "ISLA_CLIENT_ID": TEST_CLIENT_ID,
-        "ISLA_CLIENT_SECRET": TEST_CLIENT_SECRET,
+        "ISLA_CLIENT_ID": "ios-test-client",
+        "ISLA_CLIENT_SECRET": "ios-test-secret",
         "ISLA_REQUIRE_HTTPS": "false",
-        "ISLA_REQUEST_TTL_SECONDS": "300",
         "NOTION_CLIENT_ID": "notion-client-id",
         "NOTION_CLIENT_SECRET": "notion-client-secret",
+        "NOTION_REDIRECT_URI": "https://example.com/notion/callback",
     }
     for key, value in env.items():
         monkeypatch.setenv(key, value)
 
     get_settings.cache_clear()
+    notion_oauth._SESSION_CACHE.clear()
+    notion_oauth._STATE_GUARD.clear()
     yield
+    notion_oauth._SESSION_CACHE.clear()
+    notion_oauth._STATE_GUARD.clear()
     get_settings.cache_clear()
 
 
-def _sign_payload(*, client_id: str, nonce: str, timestamp: int, secret: str) -> str:
-    payload = f"{client_id}.{nonce}.{timestamp}"
-    return hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
-
-
-def _build_payload(*, timestamp: int | None = None, signature: str | None = None) -> dict:
-    ts = timestamp or int(datetime.now(timezone.utc).timestamp())
-    nonce = f"nonce-{uuid4().hex}"
-    signed = signature or _sign_payload(
-        client_id=TEST_CLIENT_ID,
-        nonce=nonce,
-        timestamp=ts,
-        secret=TEST_CLIENT_SECRET,
-    )
-    return {
-        "client_id": TEST_CLIENT_ID,
-        "nonce": nonce,
-        "timestamp": ts,
-        "signature": signed,
-        "code": "test-oauth-code",
-        "redirect_uri": "lanread://oauth/notion",
-    }
-
-
-def test_exchange_rejects_invalid_signature(monkeypatch: pytest.MonkeyPatch):
-    async def _should_not_call_notion(**kwargs):
-        pytest.fail(f"Notion endpoint should not be called, kwargs={kwargs}")
-
-    monkeypatch.setattr(notion_oauth, "_exchange_code_with_notion", _should_not_call_notion)
-
-    payload = _build_payload(signature="invalid-signature")
+def test_callback_rejects_invalid_state():
     with TestClient(app) as client:
-        response = client.post("/v1/oauth/notion/exchange", json=payload)
+        response = client.get(
+            "/notion/callback",
+            params={"code": "oauth-code", "state": "bad state"},
+            follow_redirects=False,
+        )
 
-    assert response.status_code == 401
+    assert response.status_code == 302
     assert response.headers.get("cache-control") == "no-store"
-    assert response.json() == {
-        "error": "request_verification_failed",
-        "error_description": "Invalid signature",
-        "status_code": 401,
-    }
+    location = response.headers["location"]
+    parsed = urlparse(location)
+    query = parse_qs(parsed.query)
+
+    assert parsed.scheme == "lanread"
+    assert parsed.netloc == "notion"
+    assert parsed.path == "/error"
+    assert "msg" in query
 
 
-def test_exchange_rejects_expired_timestamp(monkeypatch: pytest.MonkeyPatch):
-    async def _should_not_call_notion(**kwargs):
-        pytest.fail(f"Notion endpoint should not be called, kwargs={kwargs}")
-
-    monkeypatch.setattr(notion_oauth, "_exchange_code_with_notion", _should_not_call_notion)
-
-    expired_timestamp = int(datetime.now(timezone.utc).timestamp()) - 301
-    payload = _build_payload(timestamp=expired_timestamp)
-
-    with TestClient(app) as client:
-        response = client.post("/v1/oauth/notion/exchange", json=payload)
-
-    assert response.status_code == 401
-    assert response.headers.get("cache-control") == "no-store"
-    assert response.json() == {
-        "error": "request_verification_failed",
-        "error_description": "Request timestamp expired",
-        "status_code": 401,
-    }
-
-
-def test_exchange_returns_notion_error_payload(monkeypatch: pytest.MonkeyPatch):
+def test_callback_redirects_error_when_notion_rejects_code(monkeypatch: pytest.MonkeyPatch):
     async def _mock_notion_exchange(**kwargs):
         request = httpx.Request("POST", "https://api.notion.com/v1/oauth/token")
         return httpx.Response(
@@ -111,50 +65,83 @@ def test_exchange_returns_notion_error_payload(monkeypatch: pytest.MonkeyPatch):
         )
 
     monkeypatch.setattr(notion_oauth, "_exchange_code_with_notion", _mock_notion_exchange)
-
-    payload = _build_payload()
     with TestClient(app) as client:
-        response = client.post("/v1/oauth/notion/exchange", json=payload)
-
-    assert response.status_code == 400
-    assert response.headers.get("cache-control") == "no-store"
-    assert response.json() == {
-        "error": "invalid_grant",
-        "error_description": "Authorization code is invalid",
-        "status_code": 400,
-    }
-
-
-def test_exchange_success_returns_access_token(monkeypatch: pytest.MonkeyPatch):
-    async def _mock_notion_exchange(**kwargs):
-        request = httpx.Request("POST", "https://api.notion.com/v1/oauth/token")
-        return httpx.Response(
-            status_code=200,
-            json={
-                "access_token": "secret-access-token",
-                "workspace_id": "workspace-123",
-                "workspace_name": "Workspace Name",
-                "bot_id": "bot-123",
-                "owner": {"type": "user", "user": {"id": "user-1"}},
-            },
-            request=request,
+        response = client.get(
+            "/notion/callback",
+            params={"code": "oauth-code", "state": "stateAbc123XYZ"},
+            follow_redirects=False,
         )
 
-    monkeypatch.setattr(notion_oauth, "_exchange_code_with_notion", _mock_notion_exchange)
-
-    payload = _build_payload()
-    with TestClient(app) as client:
-        response = client.post("/v1/oauth/notion/exchange", json=payload)
-
-    assert response.status_code == 200
+    assert response.status_code == 302
     assert response.headers.get("cache-control") == "no-store"
-    assert response.json() == {
+    location = response.headers["location"]
+    parsed = urlparse(location)
+    query = parse_qs(parsed.query)
+    assert parsed.path == "/error"
+    assert "Notion OAuth failed" in query["msg"][0]
+
+
+def test_callback_success_and_finalize_is_one_time(monkeypatch: pytest.MonkeyPatch):
+    notion_payload = {
         "access_token": "secret-access-token",
         "workspace_id": "workspace-123",
         "workspace_name": "Workspace Name",
+        "workspace_icon": "https://example.com/icon.png",
         "bot_id": "bot-123",
-        "notion_owner": {"type": "user", "user": {"id": "user-1"}},
+        "owner": {"type": "user", "user": {"id": "user-1"}},
     }
+
+    async def _mock_notion_exchange(**kwargs):
+        request = httpx.Request("POST", "https://api.notion.com/v1/oauth/token")
+        return httpx.Response(status_code=200, json=notion_payload, request=request)
+
+    monkeypatch.setattr(notion_oauth, "_exchange_code_with_notion", _mock_notion_exchange)
+    with TestClient(app) as client:
+        callback_response = client.get(
+            "/notion/callback",
+            params={"code": "oauth-code", "state": "stateAbc123XYZ"},
+            follow_redirects=False,
+        )
+
+        assert callback_response.status_code == 302
+        assert callback_response.headers.get("cache-control") == "no-store"
+
+        callback_location = callback_response.headers["location"]
+        parsed = urlparse(callback_location)
+        query = parse_qs(parsed.query)
+        session_id = query["session"][0]
+        returned_state = query["state"][0]
+
+        assert parsed.scheme == "lanread"
+        assert parsed.netloc == "notion"
+        assert parsed.path == "/finish"
+        assert returned_state == "stateAbc123XYZ"
+        assert session_id
+
+        finalize_response = client.post("/v1/oauth/finalize", json={"session_id": session_id})
+        assert finalize_response.status_code == 200
+        assert finalize_response.headers.get("cache-control") == "no-store"
+        assert finalize_response.json() == notion_payload
+
+        reused_response = client.post("/v1/oauth/finalize", json={"session_id": session_id})
+        assert reused_response.status_code == 400
+        assert reused_response.json()["error"] == "session_expired"
+
+
+def test_finalize_rejects_expired_or_missing_session():
+    notion_oauth._SESSION_CACHE.set(
+        "session-expired",
+        {"access_token": "tmp"},
+        ttl_seconds=0,
+    )
+    with TestClient(app) as client:
+        expired = client.post("/v1/oauth/finalize", json={"session_id": "session-expired"})
+        missing = client.post("/v1/oauth/finalize", json={"session_id": "missing-session"})
+
+    assert expired.status_code == 400
+    assert expired.json()["error"] == "session_expired"
+    assert missing.status_code == 400
+    assert missing.json()["error"] == "session_expired"
 
 
 def test_exchange_with_notion_uses_http_basic_auth(monkeypatch: pytest.MonkeyPatch):
@@ -173,7 +160,7 @@ def test_exchange_with_notion_uses_http_basic_auth(monkeypatch: pytest.MonkeyPat
     asyncio.run(
         notion_oauth._exchange_code_with_notion(
             code="oauth-code",
-            redirect_uri="lanread://oauth/notion",
+            redirect_uri="https://example.com/notion/callback",
             client_id="notion-client-id",
             client_secret="notion-client-secret",
             token_url="https://api.notion.com/v1/oauth/token",

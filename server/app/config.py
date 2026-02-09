@@ -64,6 +64,10 @@ class Settings(BaseSettings):
         default="https://api.notion.com/v1/oauth/token",
         validation_alias=AliasChoices("ISLA_NOTION_TOKEN_URL", "NOTION_TOKEN_URL"),
     )
+    notion_redirect_uri: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("ISLA_NOTION_REDIRECT_URI", "NOTION_REDIRECT_URI"),
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

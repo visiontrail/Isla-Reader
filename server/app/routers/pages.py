@@ -301,11 +301,11 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
             title: 'Notion Sync (Optional)',
             items: [
               'If you opt into syncing highlights or notes to Notion, we perform only the OAuth code exchange on the server to keep the Notion client secret off your device.',
-              'Data we receive: the authorization code, redirect URI, client_id, nonce, timestamp, and HMAC signature used to validate the request. These are sent to Notion over HTTPS to obtain the access token.',
-              'The Notion access token is returned directly to your device with <code>Cache-Control: no-store</code>; the server does not store or log the token.',
+              'Data we receive: the authorization code and OAuth state from Notion callback. We send these to Notion over HTTPS, then create a one-time session ID for app handoff.',
+              'The Notion token payload is cached for up to 60 seconds only (in-memory/Redis style ephemeral cache), returned to your device via <code>/v1/oauth/finalize</code>, and deleted immediately after retrieval.',
               'Logs keep minimal metadata (status, workspace_id/name, bot_id) for troubleshooting and omit the authorization code and access token.',
               'Book content and notes are not proxied through our server for Notion sync; your device uses the token to call Notion’s API directly.',
-              'You may revoke the integration anytime in Notion (“Settings & Members → My connections”) or disconnect in the app; no server-side deletion is required because tokens are never persisted server-side.'
+              'You may revoke the integration anytime in Notion (“Settings & Members → My connections”) or disconnect in the app; expired temporary sessions are automatically removed.'
             ]
           },
           rights: {
@@ -375,11 +375,11 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
             title: 'Notion 同步（可选）',
             items: [
               '若你选择同步高亮或笔记至 Notion，我们仅在服务器完成 OAuth code 交换，以避免 Notion 客户端密钥出现在设备上。',
-              '我们接收的数据：授权码、redirect URI、client_id、nonce、时间戳与 HMAC 签名；这些会通过 HTTPS 发送至 Notion 以换取访问令牌。',
-              'Notion 访问令牌会直接返回你的设备并设置 <code>Cache-Control: no-store</code>；服务器不存储也不记录令牌。',
+              '我们接收的数据：Notion 回调中的授权码与 OAuth state；随后通过 HTTPS 向 Notion 换取访问令牌，并生成一次性 session_id 回传 App。',
+              'Notion Token JSON 仅会在 60 秒内临时缓存（内存/Redis 类短期缓存）；App 调用 <code>/v1/oauth/finalize</code> 取回后会立即删除。',
               '日志仅保留最小元数据（status、workspace_id/name、bot_id）用于排障，不含授权码和访问令牌。',
               'Notion 同步的书籍内容与笔记不会经过服务器代理；设备使用令牌直接调用 Notion API。',
-              '你可以在 Notion（“Settings & Members → My connections”）或应用内随时撤销；由于令牌从不持久化，无需服务器端删除。'
+              '你可以在 Notion（“Settings & Members → My connections”）或应用内随时撤销；过期的一次性会话会自动清理。'
             ]
           },
           rights: {
@@ -449,11 +449,11 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
             title: 'Notion 同期（任意）',
             items: [
               'Notion 同期を選択した場合、サーバーで OAuth のコード交換のみを行い、クライアントシークレットを端末外に保持します。',
-              '受信するデータ：認可コード、redirect URI、client_id、nonce、タイムスタンプ、HMAC 署名。これらを HTTPS で Notion に送信しアクセストークンを取得します。',
-              'アクセストークンは <code>Cache-Control: no-store</code> で端末に直接返却され、サーバーは保存・記録しません。',
+              '受信するデータ：Notion コールバックの認可コードと OAuth state。HTTPS で Notion に送信してアクセストークンを取得し、アプリ引き渡し用の一時 session_id を発行します。',
+              'Notion の token JSON は最大 60 秒だけ一時キャッシュ（メモリ/Redis 相当）され、<code>/v1/oauth/finalize</code> で取得後すぐ削除されます。',
               'ログは最小メタデータ（status、workspace_id/name、bot_id）のみで、認可コードとトークンは含みません。',
               '書籍内容とノートはサーバーを経由せず、端末がトークンで Notion API を直接呼び出します。',
-              'Notion 側またはアプリでいつでも解除可能。トークンは保存しないためサーバー側の削除は不要です。'
+              'Notion 側またはアプリでいつでも解除可能。期限切れの一時セッションは自動削除されます。'
             ]
           },
           rights: {
@@ -523,11 +523,11 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
             title: 'Notion 동기화(선택)',
             items: [
               'Notion 동기화를 선택하면 OAuth 코드 교환만 서버에서 수행하여 클라이언트 시크릿을 기기에 두지 않습니다.',
-              '수신 데이터: 인증 코드, redirect URI, client_id, nonce, 타임스탬프, HMAC 서명. 이를 HTTPS로 Notion에 전송해 액세스 토큰을 획득합니다.',
-              '액세스 토큰은 <code>Cache-Control: no-store</code>로 기기에 직접 반환되며, 서버는 저장하거나 로그하지 않습니다.',
+              '수신 데이터: Notion 콜백의 인증 코드와 OAuth state. 이를 HTTPS로 Notion에 전송해 토큰을 교환하고 앱 전달용 1회성 session_id를 발급합니다.',
+              'Notion 토큰 JSON은 최대 60초 동안만 임시 캐시(메모리/Redis 성격)에 저장되며, <code>/v1/oauth/finalize</code>로 조회 후 즉시 삭제됩니다.',
               '로그는 최소 메타데이터(status, workspace_id/name, bot_id)만 유지하고 인증 코드와 토큰은 포함하지 않습니다.',
               '책 내용과 노트는 서버를 거치지 않으며, 기기가 토큰으로 Notion API를 직접 호출합니다.',
-              'Notion 또는 앱에서 언제든지 연결을 해제할 수 있으며, 토큰을 저장하지 않으므로 서버 측 삭제가 필요하지 않습니다.'
+              'Notion 또는 앱에서 언제든지 연결을 해제할 수 있으며, 만료된 임시 세션은 자동으로 정리됩니다.'
             ]
           },
           rights: {

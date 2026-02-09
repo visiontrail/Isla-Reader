@@ -19,6 +19,7 @@ final class NotionAuthService: NSObject, ObservableObject {
     static let callbackScheme = "lanread"
     static let callbackHost = "notion"
     static let callbackPath = "/finish"
+    static let callbackErrorPath = "/error"
     static var callbackRedirectURI: String {
         "\(callbackScheme)://\(callbackHost)\(callbackPath)"
     }
@@ -207,10 +208,6 @@ final class NotionAuthService: NSObject, ObservableObject {
         }
 
         let normalizedPath = url.path.hasPrefix("/") ? url.path : "/\(url.path)"
-        guard normalizedPath == Self.callbackPath else {
-            throw NotionAuthError.invalidCallback
-        }
-
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let queryItems = components.queryItems else {
             throw NotionAuthError.invalidCallback
@@ -221,6 +218,20 @@ final class NotionAuthService: NSObject, ObservableObject {
             guard returnedState == expectedState else {
                 throw NotionAuthError.stateMismatch
             }
+        }
+
+        if normalizedPath == Self.callbackErrorPath {
+            pendingState = nil
+            let rawMessage = queryItems.first(where: { $0.name == "msg" })?.value?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let message = (rawMessage?.isEmpty == false ? rawMessage : nil) ?? "Notion OAuth failed"
+            throw NotionAuthError.finalizeFailed(
+                message
+            )
+        }
+
+        guard normalizedPath == Self.callbackPath else {
+            throw NotionAuthError.invalidCallback
         }
 
         if let errorCode = queryItems.first(where: { $0.name == "error" })?.value,
