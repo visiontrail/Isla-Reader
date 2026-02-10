@@ -38,6 +38,12 @@
         <relationship name="libraryItem" destinationEntity="LibraryItem" inverseName="book" inverseEntity="LibraryItem" minCount="0" maxCount="1" deleteRule="Cascade" optional="YES" toMany="NO"/>
     </entity>
 
+    <entity name="BookMapping" representedClassName="BookMapping" syncable="YES" codeGenerationType="none">
+        <attribute name="bookID" optional="NO" attributeType="String"/>
+        <attribute name="notionPageID" optional="NO" attributeType="String"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+
     <entity name="Bookmark" representedClassName="Bookmark" syncable="YES" codeGenerationType="none">
         <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="chapterIndex" optional="NO" attributeType="Integer 32" usesScalarValueType="YES"/>
@@ -89,6 +95,7 @@
     <elements>
         <element name="LibraryItem" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="Book" positionX="-63" positionY="-18" width="128" height="44"/>
+        <element name="BookMapping" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="Bookmark" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="Highlight" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="Annotation" positionX="-63" positionY="-18" width="128" height="44"/>
