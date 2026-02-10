@@ -54,9 +54,39 @@
       display: flex; align-items: center; justify-content: space-between; gap: 18px;
       font-size: 14px; letter-spacing: 0.03em;
     }
-    .logo {
-      display: flex; align-items: center; gap: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em;
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+    .logo-wordmark {
+      display: inline-block;
       font-family: "Newsreader", "Epilogue", serif;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .logo-wordmark.is-mixed-script {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.2em;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .logo-wordmark.is-mixed-script .latin {
+      font-family: "Newsreader", "Epilogue", serif;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      line-height: 1;
+    }
+    .logo-wordmark.is-mixed-script .separator {
+      font-family: "Newsreader", "Epilogue", serif;
+      letter-spacing: 0.14em;
+      line-height: 1;
+      transform: translateY(-0.01em);
+    }
+    .logo-wordmark.is-mixed-script .cjk {
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+      letter-spacing: 0.03em;
+      line-height: 1;
+      transform: translateY(-0.05em);
     }
     .logo .dot { width: 12px; height: 12px; border: 2px solid var(--accent); border-radius: 50%; box-shadow: 0 0 0 6px rgba(0,0,0,0.05); }
     .nav-links { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -714,7 +744,7 @@
   <div class="grain"></div>
   <header>
     <nav>
-      <div class="logo"><div class="dot"></div><span data-key="brand.name">Lan Read</span></div>
+      <div class="logo"><div class="dot"></div><span class="logo-wordmark" data-key="brand.name">Lan Read</span></div>
       <div class="nav-links">
         <a class="pill" href="#features" data-key="nav.features">Features</a>
         <a class="pill" href="#workflow" data-key="nav.workflow">Workflow</a>
@@ -932,6 +962,48 @@
     const setText = (selector, value) => {
       const node = document.querySelector(selector);
       if (node && value) node.textContent = value;
+    };
+
+    const cjkPattern = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af]/;
+    const latinPattern = /[A-Za-z]/;
+
+    const escapeHtml = (value = '') => value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    const renderBrand = (value) => {
+      const node = document.querySelector('[data-key="brand.name"]');
+      if (!node) return;
+      const raw = (value || '').trim();
+      if (!raw) {
+        node.classList.remove('is-mixed-script');
+        node.textContent = '';
+        return;
+      }
+
+      const parts = raw.split(/\s*[·•・]\s*/).filter(Boolean);
+      const hasCjk = cjkPattern.test(raw);
+      const hasLatin = latinPattern.test(raw);
+      if (parts.length === 2 && hasCjk && hasLatin) {
+        const [first, second] = parts;
+        const firstHasCjk = cjkPattern.test(first);
+        const secondHasCjk = cjkPattern.test(second);
+        const firstHasLatin = latinPattern.test(first);
+        const secondHasLatin = latinPattern.test(second);
+        if ((firstHasCjk && secondHasLatin) || (firstHasLatin && secondHasCjk)) {
+          const latin = firstHasLatin ? first : second;
+          const cjk = firstHasCjk ? first : second;
+          node.classList.add('is-mixed-script');
+          node.innerHTML = `<span class="latin">${escapeHtml(latin)}</span><span class="separator">·</span><span class="cjk">${escapeHtml(cjk)}</span>`;
+          return;
+        }
+      }
+
+      node.classList.remove('is-mixed-script');
+      node.textContent = raw;
     };
 
     const fallbackEn = {
@@ -1412,7 +1484,7 @@
       const metaDesc = document.querySelector('meta[name="description"]');
       if (metaDesc) metaDesc.setAttribute('content', t.meta?.description || '');
 
-      setText('[data-key="brand.name"]', t.brand?.name);
+      renderBrand(t.brand?.name);
       setText('[data-key="nav.features"]', t.nav?.features);
       setText('[data-key="nav.workflow"]', t.nav?.workflow);
       setText('[data-key="nav.language"]', t.nav?.language);
