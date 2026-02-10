@@ -110,7 +110,6 @@ final class NotionAuthService: NSObject, ObservableObject {
 
         do {
             try secureStore.delete()
-            _ = NotionDatabaseMappingStore.shared.clearAllMappings()
         } catch {
             state = .error(NotionAuthError.keychainFailure(error.localizedDescription).localizedDescription)
             return

@@ -64,12 +64,11 @@ LanRead 当前使用以下安全闭环：
 
 ## UI 状态机
 
-Settings -> Data & Sync 使用状态机驱动：
+Settings -> Data & Sync 使用 `NotionSessionManager` 状态机驱动：
 
-- `Idle`
-- `Authenticating`（正在授权）
-- `Finalizing`（正在交换 Token）
-- `Connected(workspace)`
+- `Disconnected`
+- `Connecting`（授权 + Finalize 期间）
+- `Connected(workspaceName)`
 - `Error(message)`
 
 ## 调试检查清单

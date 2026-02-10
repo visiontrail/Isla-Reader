@@ -22,10 +22,15 @@ final class NotionSessionManager: ObservableObject {
     @Published private(set) var workspaceIcon: String?
 
     private let authService: NotionAuthService
+    private let mappingStore: NotionDatabaseMappingStoring
     private var cancellables = Set<AnyCancellable>()
 
-    init(authService: NotionAuthService = .shared) {
+    init(
+        authService: NotionAuthService = .shared,
+        mappingStore: NotionDatabaseMappingStoring = NotionDatabaseMappingStore.shared
+    ) {
         self.authService = authService
+        self.mappingStore = mappingStore
         bindAuthState()
         refreshFromStorage()
     }
@@ -41,8 +46,34 @@ final class NotionSessionManager: ObservableObject {
         authService.accessToken
     }
 
+    var isConnecting: Bool {
+        if case .connecting = connectionState {
+            return true
+        }
+        return false
+    }
+
+    var workspaceName: String? {
+        if case .connected(let workspaceName) = connectionState {
+            return workspaceName
+        }
+        return nil
+    }
+
+    func startAuthorization() {
+        authService.startAuthorization()
+    }
+
     func disconnect() {
+        let clearedMappingsCount = mappingStore.clearAllMappings()
         authService.disconnect()
+        if clearedMappingsCount > 0 {
+            DebugLogger.info("Notion mapping store cleared count=\(clearedMappingsCount)")
+        }
+    }
+
+    func clearErrorIfNeeded() {
+        authService.clearErrorIfNeeded()
     }
 
     func refreshFromStorage() {

@@ -107,4 +107,5 @@ struct SidebarView: View {
 #Preview {
     MainTabView()
         .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+        .environmentObject(NotionSessionManager.shared)
 }

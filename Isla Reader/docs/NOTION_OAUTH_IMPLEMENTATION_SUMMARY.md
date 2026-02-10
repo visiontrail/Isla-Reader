@@ -12,11 +12,16 @@
    - 调用 `POST /v1/oauth/finalize`（body: `{session_id}`）
    - Keychain 持久化会话
 
-2. `Isla Reader/Views/SettingsView.swift`
-   - Settings 中新增 Data & Sync 的 Notion 入口
-   - UI 状态机：`Idle / Authenticating / Finalizing / Connected / Error`
+2. `Isla Reader/Utils/NotionSessionManager.swift`
+   - 对外连接生命周期管理（状态、断开、映射清理）
+   - 状态机：`Disconnected / Connecting / Connected(workspaceName) / Error`
+   - App 启动时恢复 Keychain 会话并同步 UI 状态
 
-3. `Isla Reader/Info.plist`
+3. `Isla Reader/Views/SettingsView.swift`
+   - Settings 中 Data & Sync 的 Notion 入口
+   - 展示当前 Workspace 名称与 Icon
+
+4. `Isla Reader/Info.plist`
    - URL Types: `lanread`
    - `NOTION_CLIENT_ID`
    - `NOTION_REDIRECT_URI`
