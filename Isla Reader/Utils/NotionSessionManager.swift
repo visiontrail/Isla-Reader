@@ -93,6 +93,21 @@ final class NotionSessionManager: ObservableObject {
                 self?.workspaceIcon = icon
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .notionAccessTokenExpired)
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.handleAccessTokenExpired()
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func handleAccessTokenExpired() {
+        guard isConnected || isConnecting else {
+            return
+        }
+        disconnect()
     }
 
     private static func mapState(_ state: NotionAuthState) -> ConnectionState {
