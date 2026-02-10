@@ -61,6 +61,10 @@ final class NotionAuthService: NSObject, ObservableObject {
         currentSession?.accessToken
     }
 
+    var workspaceID: String? {
+        currentSession?.workspaceId
+    }
+
     func startAuthorization(presentationContext: ASWebAuthenticationPresentationContextProviding? = nil) {
         guard !isBusy else {
             state = .error(NotionAuthError.alreadyInProgress.localizedDescription)

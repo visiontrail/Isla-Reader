@@ -980,6 +980,12 @@ struct NotionAuthView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var notionSessionManager: NotionSessionManager
     @State private var alertItem: DataAlert?
+    @State private var parentPageOptions: [NotionParentPageOption] = []
+    @State private var showingPagePicker = false
+    @State private var isLoadingParentPages = false
+    @State private var isCreatingDatabase = false
+    @State private var selectedParentPageID: String?
+    @State private var hasAutoStartedInitialization = false
 
     var body: some View {
         NavigationStack {
@@ -1011,10 +1017,10 @@ struct NotionAuthView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(notionSessionManager.isConnecting ? Color.gray : Color.blue)
+                    .background(isAuthorizationButtonDisabled ? Color.gray : Color.blue)
                     .cornerRadius(12)
                 }
-                .disabled(notionSessionManager.isConnecting)
+                .disabled(isAuthorizationButtonDisabled)
                 .padding(.horizontal)
 
                 if notionSessionManager.isConnected {
@@ -1064,12 +1070,38 @@ struct NotionAuthView: View {
                 )
             }
             .onChange(of: notionSessionManager.connectionState) { state in
-                if case .error(let message) = state {
+                switch state {
+                case .error(let message):
                     alertItem = DataAlert(
                         title: NSLocalizedString("授权失败", comment: ""),
                         message: message
                     )
+                case .connected:
+                    triggerInitializationIfNeeded(force: true)
+                case .connecting, .disconnected:
+                    hasAutoStartedInitialization = false
+                    showingPagePicker = false
                 }
+            }
+            .onChange(of: notionSessionManager.isInitialized) { isInitialized in
+                if isInitialized {
+                    showingPagePicker = false
+                }
+            }
+            .onAppear {
+                triggerInitializationIfNeeded(force: false)
+            }
+            .sheet(isPresented: $showingPagePicker) {
+                NotionParentPagePickerView(
+                    pages: parentPageOptions,
+                    isRefreshing: isLoadingParentPages,
+                    isSubmitting: isCreatingDatabase,
+                    selectedPageID: selectedParentPageID,
+                    onRefresh: { fetchParentPages(force: true) },
+                    onSelect: selectParentPage,
+                    onClose: { showingPagePicker = false }
+                )
+                .interactiveDismissDisabled(isCreatingDatabase)
             }
         }
     }
@@ -1078,25 +1110,61 @@ struct NotionAuthView: View {
     private var statusContent: some View {
         switch notionSessionManager.connectionState {
         case .connected(let workspaceName):
-            VStack(spacing: 12) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.green)
+            if notionSessionManager.isInitialized {
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 50))
+                        .foregroundColor(.green)
 
-                Text(NSLocalizedString("授权成功", comment: ""))
-                    .font(.headline)
-                    .foregroundColor(.green)
+                    Text(NSLocalizedString("notion.init.status.completed", comment: ""))
+                        .font(.headline)
+                        .foregroundColor(.green)
 
-                HStack(spacing: 8) {
-                    NotionWorkspaceIconView(iconValue: notionSessionManager.workspaceIcon, size: 20)
-                    Text(String(format: NSLocalizedString("notion.connection.current_workspace", comment: ""), workspaceName))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 8) {
+                        NotionWorkspaceIconView(iconValue: notionSessionManager.workspaceIcon, size: 20)
+                        Text(String(format: NSLocalizedString("notion.connection.current_workspace", comment: ""), workspaceName))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
+                .padding()
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(12)
+            } else {
+                VStack(spacing: 12) {
+                    if isLoadingParentPages {
+                        ProgressView()
+                        Text(NSLocalizedString("notion.init.loading_pages", comment: ""))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else if isCreatingDatabase {
+                        ProgressView()
+                        Text(NSLocalizedString("notion.init.creating_database", comment: ""))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Image(systemName: "list.bullet.rectangle")
+                            .font(.system(size: 24))
+                            .foregroundColor(.blue)
+
+                        Text(NSLocalizedString("notion.init.status.pending", comment: ""))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+
+                        Button(action: { fetchParentPages(force: true) }) {
+                            Text(NSLocalizedString("notion.init.pick_page.button", comment: ""))
+                                .font(.footnote)
+                                .fontWeight(.semibold)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.blue.opacity(0.08))
+                .cornerRadius(12)
             }
-            .padding()
-            .background(Color.green.opacity(0.1))
-            .cornerRadius(12)
         case .connecting:
             VStack(spacing: 12) {
                 ProgressView()
@@ -1131,12 +1199,222 @@ struct NotionAuthView: View {
         }
     }
 
+    private var isAuthorizationButtonDisabled: Bool {
+        notionSessionManager.isConnecting || isLoadingParentPages || isCreatingDatabase
+    }
+
     private func startAuthorization() {
+        hasAutoStartedInitialization = false
+        parentPageOptions = []
+        showingPagePicker = false
         notionSessionManager.startAuthorization()
     }
 
     private func disconnectNotion() {
+        hasAutoStartedInitialization = false
+        parentPageOptions = []
+        selectedParentPageID = nil
+        showingPagePicker = false
         notionSessionManager.disconnect()
+    }
+
+    private func triggerInitializationIfNeeded(force: Bool) {
+        guard notionSessionManager.isConnected else {
+            return
+        }
+
+        guard !notionSessionManager.isInitialized else {
+            return
+        }
+
+        if !force && hasAutoStartedInitialization {
+            return
+        }
+
+        hasAutoStartedInitialization = true
+        fetchParentPages(force: force)
+    }
+
+    private func fetchParentPages(force: Bool) {
+        guard notionSessionManager.isConnected else {
+            return
+        }
+
+        guard !notionSessionManager.isInitialized else {
+            showingPagePicker = false
+            return
+        }
+
+        if isLoadingParentPages {
+            return
+        }
+
+        if !force && !parentPageOptions.isEmpty {
+            showingPagePicker = true
+            return
+        }
+
+        isLoadingParentPages = true
+
+        Task {
+            do {
+                let pages = try await notionSessionManager.fetchParentPagesForInitialization()
+                await MainActor.run {
+                    parentPageOptions = pages
+                    showingPagePicker = true
+                    isLoadingParentPages = false
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingParentPages = false
+                    alertItem = DataAlert(
+                        title: NSLocalizedString("notion.init.error.title", comment: ""),
+                        message: error.localizedDescription
+                    )
+                }
+            }
+        }
+    }
+
+    private func selectParentPage(_ page: NotionParentPageOption) {
+        guard !isCreatingDatabase else {
+            return
+        }
+
+        isCreatingDatabase = true
+        selectedParentPageID = page.id
+
+        Task {
+            do {
+                try await notionSessionManager.initializeLibraryDatabase(parentPageID: page.id)
+                await MainActor.run {
+                    isCreatingDatabase = false
+                    selectedParentPageID = nil
+                    showingPagePicker = false
+                }
+            } catch let error as NotionInitializationError {
+                await MainActor.run {
+                    isCreatingDatabase = false
+                    selectedParentPageID = nil
+
+                    if error == .permissionDenied {
+                        alertItem = DataAlert(
+                            title: NSLocalizedString("notion.init.error.permission_denied", comment: ""),
+                            message: NSLocalizedString("notion.init.error.permission_denied.detail", comment: "")
+                        )
+                    } else {
+                        alertItem = DataAlert(
+                            title: NSLocalizedString("notion.init.error.title", comment: ""),
+                            message: error.localizedDescription
+                        )
+                    }
+
+                    showingPagePicker = true
+                }
+            } catch {
+                await MainActor.run {
+                    isCreatingDatabase = false
+                    selectedParentPageID = nil
+                    alertItem = DataAlert(
+                        title: NSLocalizedString("notion.init.error.title", comment: ""),
+                        message: error.localizedDescription
+                    )
+                    showingPagePicker = true
+                }
+            }
+        }
+    }
+}
+
+private struct NotionParentPagePickerView: View {
+    let pages: [NotionParentPageOption]
+    let isRefreshing: Bool
+    let isSubmitting: Bool
+    let selectedPageID: String?
+    let onRefresh: () -> Void
+    let onSelect: (NotionParentPageOption) -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isRefreshing && pages.isEmpty {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text(NSLocalizedString("notion.init.loading_pages", comment: ""))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if pages.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "tray")
+                            .font(.system(size: 26))
+                            .foregroundColor(.secondary)
+                        Text(NSLocalizedString("notion.init.page.empty", comment: ""))
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List(pages) { page in
+                        Button(action: { onSelect(page) }) {
+                            HStack(spacing: 10) {
+                                NotionWorkspaceIconView(iconValue: page.icon, size: 24)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(page.title)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                    if let subtitle = page.subtitle, !subtitle.isEmpty {
+                                        Text(subtitle)
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(1)
+                                    }
+                                }
+                                Spacer()
+                                if isSubmitting && selectedPageID == page.id {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .disabled(isSubmitting)
+                    }
+                }
+            }
+            .navigationTitle(NSLocalizedString("notion.init.pick_page.title", comment: ""))
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(NSLocalizedString("取消", comment: "")) {
+                        onClose()
+                    }
+                    .disabled(isSubmitting)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(NSLocalizedString("notion.common.refresh", comment: "")) {
+                        onRefresh()
+                    }
+                    .disabled(isRefreshing || isSubmitting)
+                }
+            }
+            .safeAreaInset(edge: .top) {
+                Text(NSLocalizedString("notion.init.pick_page.description", comment: ""))
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+            }
+        }
     }
 }
 

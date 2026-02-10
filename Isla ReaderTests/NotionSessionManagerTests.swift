@@ -34,6 +34,30 @@ struct NotionSessionManagerTests {
         let persisted = defaults.dictionary(forKey: "notion.database_mapping.v1") as? [String: String]
         #expect((persisted ?? [:]).isEmpty)
     }
+
+    @Test
+    func initializationStorePersistsDatabaseState() {
+        let defaults = makeIsolatedDefaults()
+        let store = NotionLibraryInitializationStore(defaults: defaults)
+
+        store.save(databaseID: "db_123", workspaceID: "workspace_a")
+        let state = store.load(workspaceID: "workspace_a")
+
+        #expect(state.isInitialized)
+        #expect(state.databaseID == "db_123")
+    }
+
+    @Test
+    func initializationStoreClearsStateForDifferentWorkspace() {
+        let defaults = makeIsolatedDefaults()
+        let store = NotionLibraryInitializationStore(defaults: defaults)
+
+        store.save(databaseID: "db_123", workspaceID: "workspace_a")
+        let state = store.load(workspaceID: "workspace_b")
+
+        #expect(!state.isInitialized)
+        #expect(state.databaseID == nil)
+    }
 }
 
 private extension NotionSessionManagerTests {
