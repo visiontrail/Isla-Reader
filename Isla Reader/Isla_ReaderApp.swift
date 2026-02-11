@@ -43,6 +43,9 @@ struct Isla_ReaderApp: App {
     
     init() {
         NetworkPermissionWarmup.shared.triggerWarmupIfNeeded()
+        Task { @MainActor in
+            NotionSyncEngine.shared.start(notionSessionManager: NotionSessionManager.shared)
+        }
         
         // Update reading statuses on app launch
         // Check for books that haven't been accessed in a week and mark them as paused

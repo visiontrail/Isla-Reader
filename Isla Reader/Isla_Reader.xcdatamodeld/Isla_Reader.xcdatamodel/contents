@@ -92,6 +92,18 @@
         <relationship name="book" destinationEntity="Book" inverseName="readingProgress" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Nullify" optional="NO" toMany="NO"/>
     </entity>
 
+    <entity name="SyncQueue" representedClassName="SyncQueue" syncable="YES" codeGenerationType="none">
+        <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="operationType" optional="NO" attributeType="String"/>
+        <attribute name="payload" optional="NO" attributeType="String"/>
+        <attribute name="statusRaw" optional="NO" attributeType="String"/>
+        <attribute name="retryCount" optional="NO" attributeType="Integer 32" usesScalarValueType="YES"/>
+        <attribute name="nextAttemptAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="lastError" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+
     <elements>
         <element name="LibraryItem" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="Book" positionX="-63" positionY="-18" width="128" height="44"/>
@@ -100,5 +112,6 @@
         <element name="Highlight" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="Annotation" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="ReadingProgress" positionX="-63" positionY="-18" width="128" height="44"/>
+        <element name="SyncQueue" positionX="-63" positionY="-18" width="128" height="44"/>
     </elements>
 </model>

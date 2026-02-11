@@ -77,6 +77,7 @@ final class DataResetService {
                 "Annotation",
                 "Bookmark",
                 "Highlight",
+                "SyncQueue",
                 "ReadingProgress",
                 "LibraryItem",
                 "Book"
