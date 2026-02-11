@@ -77,7 +77,10 @@ final class DataResetService {
                 "Annotation",
                 "Bookmark",
                 "Highlight",
+                "SyncQueueItem",
                 "SyncQueue",
+                "BookMapping",
+                "NotionSyncConfig",
                 "ReadingProgress",
                 "LibraryItem",
                 "Book"

@@ -37,6 +37,7 @@ extension Book {
     @NSManaged public var aiKeyPoints: String? // JSON string for key points array
     @NSManaged public var aiSummaryGeneratedAt: Date?
     @NSManaged public var skimmingSummaries: String? // JSON string for skimming mode summaries
+    @NSManaged public var notionPageId: String?
     
     // Relationships
     @NSManaged public var readingProgress: ReadingProgress?

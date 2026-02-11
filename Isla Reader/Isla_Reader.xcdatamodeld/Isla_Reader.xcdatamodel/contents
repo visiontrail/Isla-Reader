@@ -31,6 +31,7 @@
         <attribute name="aiKeyPoints" optional="YES" attributeType="String"/>
         <attribute name="aiSummaryGeneratedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="skimmingSummaries" optional="YES" attributeType="String"/>
+        <attribute name="notionPageId" optional="YES" attributeType="String"/>
         <relationship name="readingProgress" destinationEntity="ReadingProgress" inverseName="book" inverseEntity="ReadingProgress" minCount="0" maxCount="1" deleteRule="Cascade" optional="YES" toMany="NO"/>
         <relationship name="bookmarks" destinationEntity="Bookmark" inverseName="book" inverseEntity="Bookmark" minCount="0" maxCount="0" deleteRule="Cascade" optional="YES" toMany="YES"/>
         <relationship name="highlights" destinationEntity="Highlight" inverseName="book" inverseEntity="Highlight" minCount="0" maxCount="0" deleteRule="Cascade" optional="YES" toMany="YES"/>
@@ -42,6 +43,13 @@
         <attribute name="bookID" optional="NO" attributeType="String"/>
         <attribute name="notionPageID" optional="NO" attributeType="String"/>
         <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+
+    <entity name="NotionSyncConfig" representedClassName="NotionSyncConfig" syncable="YES" codeGenerationType="none">
+        <attribute name="databaseId" optional="NO" attributeType="String"/>
+        <attribute name="containerPageId" optional="NO" attributeType="String"/>
+        <attribute name="workspaceName" optional="NO" attributeType="String"/>
+        <attribute name="lastSyncedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
     </entity>
 
     <entity name="Bookmark" representedClassName="Bookmark" syncable="YES" codeGenerationType="none">
@@ -104,14 +112,26 @@
         <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
     </entity>
 
+    <entity name="SyncQueueItem" representedClassName="SyncQueueItem" syncable="YES" codeGenerationType="none">
+        <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="targetBookId" optional="NO" attributeType="String"/>
+        <attribute name="type" optional="NO" attributeType="String"/>
+        <attribute name="payload" optional="NO" attributeType="Binary"/>
+        <attribute name="status" optional="NO" attributeType="String"/>
+        <attribute name="retryCount" optional="NO" attributeType="Integer 16" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+
     <elements>
         <element name="LibraryItem" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="Book" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="BookMapping" positionX="-63" positionY="-18" width="128" height="44"/>
+        <element name="NotionSyncConfig" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="Bookmark" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="Highlight" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="Annotation" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="ReadingProgress" positionX="-63" positionY="-18" width="128" height="44"/>
         <element name="SyncQueue" positionX="-63" positionY="-18" width="128" height="44"/>
+        <element name="SyncQueueItem" positionX="-63" positionY="-18" width="128" height="44"/>
     </elements>
 </model>

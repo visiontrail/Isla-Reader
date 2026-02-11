@@ -7,11 +7,6 @@ import Combine
 import CoreData
 import Foundation
 
-enum NotionSyncQueueStatus: String {
-    case pending
-    case synced
-}
-
 enum NotionSyncOperationType: String, Codable, Sendable {
     case highlight
     case note
@@ -31,7 +26,7 @@ struct NotionSyncQueueTask: Sendable {
     let id: UUID
     let operationType: NotionSyncOperationType
     let payload: NotionSyncPayload
-    let retryCount: Int32
+    let retryCount: Int16
 }
 
 enum NotionSyncQueueStoreError: LocalizedError {
@@ -49,11 +44,10 @@ enum NotionSyncQueueStoreError: LocalizedError {
 }
 
 protocol NotionSyncQueueStoring: Sendable {
-    func fetchNextPendingTask(now: Date) throws -> NotionSyncQueueTask?
-    func nextPendingAttemptDate() throws -> Date?
+    func fetchNextPendingTask() throws -> NotionSyncQueueTask?
     func markTaskSynced(id: UUID) throws
-    func markTaskFailed(id: UUID, retryCount: Int32, nextAttemptAt: Date, message: String) throws
-    func pausePendingTasks(until: Date, message: String) throws
+    func markTaskFailed(id: UUID, retryCount: Int16, shouldRetry: Bool, message: String) throws
+    func resetInProgressTasks() throws
 }
 
 protocol NotionBookSyncing: Sendable {
@@ -85,102 +79,80 @@ final class CoreDataSyncQueueStore: @unchecked Sendable, NotionSyncQueueStoring 
         payload: NotionSyncPayload,
         in context: NSManagedObjectContext
     ) -> Bool {
-        guard let payloadData = try? encoder.encode(payload),
-              let payloadString = String(data: payloadData, encoding: .utf8) else {
+        guard let payloadData = try? encoder.encode(payload) else {
             DebugLogger.error("NotionSyncEngine: queue payload 编码失败")
             return false
         }
 
         let now = Date()
-        let item = SyncQueue(context: context)
+        let item = SyncQueueItem(context: context)
         item.id = UUID()
-        item.operationType = operation.rawValue
-        item.payload = payloadString
-        item.statusRaw = NotionSyncQueueStatus.pending.rawValue
+        item.targetBookId = payload.bookID
+        item.type = operation.rawValue
+        item.payload = payloadData
+        item.status = SyncQueueItemStatus.pending.rawValue
         item.retryCount = 0
-        item.nextAttemptAt = now
         item.createdAt = now
-        item.updatedAt = now
-        item.lastError = nil
         return true
     }
 
-    func fetchNextPendingTask(now: Date) throws -> NotionSyncQueueTask? {
+    func fetchNextPendingTask() throws -> NotionSyncQueueTask? {
         try performOnBackgroundContext { context in
-            let request = SyncQueue.fetchRequest()
+            let request = SyncQueueItem.fetchRequest()
             request.fetchLimit = 1
-            request.predicate = NSPredicate(
-                format: "statusRaw == %@ AND nextAttemptAt <= %@",
-                NotionSyncQueueStatus.pending.rawValue,
-                now as NSDate
-            )
+            request.predicate = NSPredicate(format: "status == %@", SyncQueueItemStatus.pending.rawValue)
             request.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
 
             guard let item = try context.fetch(request).first else {
                 return nil
             }
+
+            item.status = SyncQueueItemStatus.inProgress.rawValue
+            try self.saveIfNeeded(context)
             return try self.decodeTask(item)
         }
     }
 
-    func nextPendingAttemptDate() throws -> Date? {
+    func resetInProgressTasks() throws {
         try performOnBackgroundContext { context in
-            let request = SyncQueue.fetchRequest()
-            request.fetchLimit = 1
-            request.predicate = NSPredicate(format: "statusRaw == %@", NotionSyncQueueStatus.pending.rawValue)
-            request.sortDescriptors = [NSSortDescriptor(key: "nextAttemptAt", ascending: true)]
-            return try context.fetch(request).first?.nextAttemptAt
+            let request = SyncQueueItem.fetchRequest()
+            request.predicate = NSPredicate(format: "status == %@", SyncQueueItemStatus.inProgress.rawValue)
+            let items = try context.fetch(request)
+
+            for item in items {
+                item.status = SyncQueueItemStatus.pending.rawValue
+            }
+
+            try self.saveIfNeeded(context)
         }
     }
 
     func markTaskSynced(id: UUID) throws {
         _ = try performOnBackgroundContext { context in
             guard let item = try self.fetchTask(id: id, in: context) else { return }
-            item.statusRaw = NotionSyncQueueStatus.synced.rawValue
             context.delete(item)
             try self.saveIfNeeded(context)
         }
     }
 
-    func markTaskFailed(id: UUID, retryCount: Int32, nextAttemptAt: Date, message: String) throws {
+    func markTaskFailed(id: UUID, retryCount: Int16, shouldRetry: Bool, message: String) throws {
         _ = try performOnBackgroundContext { context in
             guard let item = try self.fetchTask(id: id, in: context) else { return }
             item.retryCount = retryCount
-            item.nextAttemptAt = nextAttemptAt
-            item.lastError = message
-            item.updatedAt = Date()
-            item.statusRaw = NotionSyncQueueStatus.pending.rawValue
-            try self.saveIfNeeded(context)
-        }
-    }
-
-    func pausePendingTasks(until: Date, message: String) throws {
-        _ = try performOnBackgroundContext { context in
-            let request = SyncQueue.fetchRequest()
-            request.predicate = NSPredicate(format: "statusRaw == %@", NotionSyncQueueStatus.pending.rawValue)
-            let items = try context.fetch(request)
-            let now = Date()
-
-            for item in items where item.nextAttemptAt < until {
-                item.nextAttemptAt = until
-                item.updatedAt = now
-                item.lastError = message
+            item.status = shouldRetry ? SyncQueueItemStatus.pending.rawValue : SyncQueueItemStatus.failed.rawValue
+            if !message.isEmpty {
+                DebugLogger.warning("NotionSyncEngine: task \(id) failed - \(message)")
             }
-
             try self.saveIfNeeded(context)
         }
     }
 
-    private func decodeTask(_ item: SyncQueue) throws -> NotionSyncQueueTask {
-        guard let operationType = NotionSyncOperationType(rawValue: item.operationType) else {
+    private func decodeTask(_ item: SyncQueueItem) throws -> NotionSyncQueueTask {
+        guard let operationType = NotionSyncOperationType(rawValue: item.type) else {
             throw NotionSyncQueueStoreError.invalidOperation
         }
 
-        guard let payloadData = item.payload.data(using: .utf8) else {
-            throw NotionSyncQueueStoreError.invalidPayload
-        }
-
-        let payload = try decoder.decode(NotionSyncPayload.self, from: payloadData)
+        let payload = try decoder.decode(NotionSyncPayload.self, from: item.payload)
         return NotionSyncQueueTask(
             id: item.id,
             operationType: operationType,
@@ -189,8 +161,8 @@ final class CoreDataSyncQueueStore: @unchecked Sendable, NotionSyncQueueStoring 
         )
     }
 
-    private func fetchTask(id: UUID, in context: NSManagedObjectContext) throws -> SyncQueue? {
-        let request = SyncQueue.fetchRequest()
+    private func fetchTask(id: UUID, in context: NSManagedObjectContext) throws -> SyncQueueItem? {
+        let request = SyncQueueItem.fetchRequest()
         request.fetchLimit = 1
         request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
         return try context.fetch(request).first
@@ -227,9 +199,11 @@ actor NotionSyncQueueProcessor {
     private let queueStore: NotionSyncQueueStoring
     private let bookSyncer: NotionBookSyncing
     private let blockAppender: NotionContentAppending
+    private let syncConfigStore: NotionSyncConfigStoring
 
     private let debounceDelay: TimeInterval
     private let unknownErrorDelay: TimeInterval
+    private let maxRetryCount: Int16
 
     private var isNetworkAvailable = true
     private var isNotionReady = false
@@ -241,14 +215,18 @@ actor NotionSyncQueueProcessor {
         queueStore: NotionSyncQueueStoring,
         bookSyncer: NotionBookSyncing = NotionBookSyncer(),
         blockAppender: NotionContentAppending = NotionPageBlockAppender(),
+        syncConfigStore: NotionSyncConfigStoring = CoreDataNotionSyncConfigStore.shared,
         debounceDelay: TimeInterval = 2,
-        unknownErrorDelay: TimeInterval = 8
+        unknownErrorDelay: TimeInterval = 8,
+        maxRetryCount: Int16 = 5
     ) {
         self.queueStore = queueStore
         self.bookSyncer = bookSyncer
         self.blockAppender = blockAppender
+        self.syncConfigStore = syncConfigStore
         self.debounceDelay = debounceDelay
         self.unknownErrorDelay = unknownErrorDelay
+        self.maxRetryCount = maxRetryCount
     }
 
     func notifyDataEnqueued() {
@@ -307,12 +285,10 @@ actor NotionSyncQueueProcessor {
                 break
             }
 
-            let now = Date()
             let task: NotionSyncQueueTask
 
             do {
-                guard let nextTask = try queueStore.fetchNextPendingTask(now: now) else {
-                    try scheduleNextAttemptIfNeeded(from: now)
+                guard let nextTask = try queueStore.fetchNextPendingTask() else {
                     break
                 }
                 task = nextTask
@@ -324,6 +300,7 @@ actor NotionSyncQueueProcessor {
             do {
                 try await syncTask(task)
                 try queueStore.markTaskSynced(id: task.id)
+                try? syncConfigStore.updateLastSyncedAt(Date())
             } catch {
                 let action = handleFailure(error, for: task)
                 switch action {
@@ -390,69 +367,79 @@ actor NotionSyncQueueProcessor {
 
     private func handleFailure(_ error: Error, for task: NotionSyncQueueTask) -> FailureAction {
         let nextRetryCount = task.retryCount + 1
+        let shouldRetry = nextRetryCount <= maxRetryCount
         let message = error.localizedDescription
 
         if case NotionAPIError.rateLimited(let retryAfter) = error {
             let delay = max(1, retryAfter ?? 5)
-            let nextAttempt = Date().addingTimeInterval(delay)
 
             do {
                 try queueStore.markTaskFailed(
                     id: task.id,
                     retryCount: nextRetryCount,
-                    nextAttemptAt: nextAttempt,
+                    shouldRetry: shouldRetry,
                     message: message
                 )
-                try queueStore.pausePendingTasks(until: nextAttempt, message: message)
             } catch {
                 DebugLogger.error("NotionSyncEngine: failed to persist rate-limit state", error: error)
             }
 
+            if !shouldRetry {
+                return .continueProcessing
+            }
             DebugLogger.warning("NotionSyncEngine: rate limited, pause \(delay)s")
             return .pauseAndStop(delay: delay)
         }
 
         if isNetworkError(error) {
             let delay = networkBackoffDelay(retryCount: nextRetryCount)
-            let nextAttempt = Date().addingTimeInterval(delay)
             do {
                 try queueStore.markTaskFailed(
                     id: task.id,
                     retryCount: nextRetryCount,
-                    nextAttemptAt: nextAttempt,
+                    shouldRetry: shouldRetry,
                     message: message
                 )
             } catch {
                 DebugLogger.error("NotionSyncEngine: failed to persist network backoff", error: error)
             }
 
+            if !shouldRetry {
+                return .continueProcessing
+            }
             DebugLogger.warning("NotionSyncEngine: network failure, backoff \(delay)s")
             return .pauseAndStop(delay: delay)
         }
 
+        if error is NotionSyncQueueStoreError {
+            do {
+                try queueStore.markTaskFailed(
+                    id: task.id,
+                    retryCount: nextRetryCount,
+                    shouldRetry: false,
+                    message: message
+                )
+            } catch {
+                DebugLogger.error("NotionSyncEngine: failed to persist terminal task state", error: error)
+            }
+            return .continueProcessing
+        }
+
         let delay = unknownErrorDelay
-        let nextAttempt = Date().addingTimeInterval(delay)
         do {
             try queueStore.markTaskFailed(
                 id: task.id,
                 retryCount: nextRetryCount,
-                nextAttemptAt: nextAttempt,
+                shouldRetry: shouldRetry,
                 message: message
             )
         } catch {
             DebugLogger.error("NotionSyncEngine: failed to persist retry state", error: error)
         }
+        if shouldRetry {
+            return .pauseAndStop(delay: delay)
+        }
         return .continueProcessing
-    }
-
-    private func scheduleNextAttemptIfNeeded(from now: Date) throws {
-        guard let nextAttempt = try queueStore.nextPendingAttemptDate() else {
-            return
-        }
-
-        if nextAttempt > now {
-            scheduleRun(after: nextAttempt.timeIntervalSince(now), reason: "next_attempt")
-        }
     }
 
     private func scheduleRun(after delay: TimeInterval, reason: String) {
@@ -467,7 +454,7 @@ actor NotionSyncQueueProcessor {
         }
     }
 
-    private func networkBackoffDelay(retryCount: Int32) -> TimeInterval {
+    private func networkBackoffDelay(retryCount: Int16) -> TimeInterval {
         let exponent = max(0, min(Int(retryCount) - 1, 6))
         return pow(2, Double(exponent))
     }
@@ -512,6 +499,12 @@ final class NotionSyncEngine {
     func start(notionSessionManager: NotionSessionManager) {
         guard !started else { return }
         started = true
+
+        do {
+            try queueStore.resetInProgressTasks()
+        } catch {
+            DebugLogger.error("NotionSyncEngine: failed to reset in-progress queue tasks", error: error)
+        }
 
         observeCoreDataChanges()
         observeNotionSession(notionSessionManager)

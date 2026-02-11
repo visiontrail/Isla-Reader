@@ -11,7 +11,6 @@ struct NotionSyncEngineTests {
     @Test
     func processesTenPendingTasksWhenNotionAndNetworkReady() async throws {
         let store = InMemorySyncQueueStore()
-        let now = Date()
         for index in 0..<10 {
             store.seed(
                 task: makeTask(
@@ -19,8 +18,7 @@ struct NotionSyncEngineTests {
                     retryCount: 0,
                     highlightText: "highlight \(index)",
                     noteContent: nil
-                ),
-                nextAttemptAt: now
+                )
             )
         }
 
@@ -47,8 +45,7 @@ struct NotionSyncEngineTests {
                 retryCount: 0,
                 highlightText: "source",
                 noteContent: "note content"
-            ),
-            nextAttemptAt: Date()
+            )
         )
         store.seed(
             task: makeTask(
@@ -56,8 +53,7 @@ struct NotionSyncEngineTests {
                 retryCount: 0,
                 highlightText: "second highlight",
                 noteContent: nil
-            ),
-            nextAttemptAt: Date()
+            )
         )
 
         let appender = MockAppender(mode: .rateLimited(retryAfter: 3))
@@ -67,18 +63,13 @@ struct NotionSyncEngineTests {
             blockAppender: appender
         )
 
-        let start = Date()
         await processor.setNetworkAvailable(true)
         await processor.setNotionReady(true)
 
         let failures = store.failureRecords()
         #expect(failures.count == 1)
         #expect(failures.first?.retryCount == 1)
-        #expect(abs((failures.first?.nextAttemptAt.timeIntervalSince(start) ?? 0) - 3) < 1.5)
-
-        let pauses = store.pauseRecords()
-        #expect(pauses.count == 1)
-        #expect(abs((pauses.first?.timeIntervalSince(start) ?? 0) - 3) < 1.5)
+        #expect(failures.first?.shouldRetry == true)
     }
 
     @Test
@@ -90,8 +81,7 @@ struct NotionSyncEngineTests {
                 retryCount: 0,
                 highlightText: "network case",
                 noteContent: nil
-            ),
-            nextAttemptAt: Date()
+            )
         )
 
         let appender = MockAppender(mode: .networkFailure)
@@ -101,20 +91,19 @@ struct NotionSyncEngineTests {
             blockAppender: appender
         )
 
-        let start = Date()
         await processor.setNetworkAvailable(true)
         await processor.setNotionReady(true)
 
         let failures = store.failureRecords()
         #expect(failures.count == 1)
         #expect(failures.first?.retryCount == 1)
-        #expect(abs((failures.first?.nextAttemptAt.timeIntervalSince(start) ?? 0) - 1) < 1.0)
+        #expect(failures.first?.shouldRetry == true)
     }
 }
 
 private func makeTask(
     operationType: NotionSyncOperationType,
-    retryCount: Int32,
+    retryCount: Int16,
     highlightText: String?,
     noteContent: String?
 ) -> NotionSyncQueueTask {
@@ -137,78 +126,63 @@ private func makeTask(
 private final class InMemorySyncQueueStore: @unchecked Sendable, NotionSyncQueueStoring {
     struct FailureRecord {
         let id: UUID
-        let retryCount: Int32
-        let nextAttemptAt: Date
+        let retryCount: Int16
+        let shouldRetry: Bool
         let message: String
     }
 
-    private struct StoredTask {
-        var task: NotionSyncQueueTask
-        var nextAttemptAt: Date
-    }
-
     private let queue = DispatchQueue(label: "NotionSyncEngineTests.InMemorySyncQueueStore")
-    private var tasks: [StoredTask] = []
+    private var tasks: [NotionSyncQueueTask] = []
     private var failures: [FailureRecord] = []
-    private var pauses: [Date] = []
 
-    func seed(task: NotionSyncQueueTask, nextAttemptAt: Date) {
+    func seed(task: NotionSyncQueueTask) {
         queue.sync {
-            tasks.append(StoredTask(task: task, nextAttemptAt: nextAttemptAt))
+            tasks.append(task)
         }
     }
 
-    func fetchNextPendingTask(now: Date) throws -> NotionSyncQueueTask? {
+    func fetchNextPendingTask() throws -> NotionSyncQueueTask? {
         queue.sync {
-            guard let index = tasks.firstIndex(where: { $0.nextAttemptAt <= now }) else {
+            guard let index = tasks.indices.first else {
                 return nil
             }
-            return tasks[index].task
+            return tasks[index]
         }
     }
 
-    func nextPendingAttemptDate() throws -> Date? {
-        queue.sync {
-            tasks.map(\.nextAttemptAt).min()
-        }
-    }
+    func resetInProgressTasks() throws {}
 
     func markTaskSynced(id: UUID) throws {
         queue.sync {
-            tasks.removeAll { $0.task.id == id }
+            tasks.removeAll { $0.id == id }
         }
     }
 
-    func markTaskFailed(id: UUID, retryCount: Int32, nextAttemptAt: Date, message: String) throws {
+    func markTaskFailed(id: UUID, retryCount: Int16, shouldRetry: Bool, message: String) throws {
         queue.sync {
-            guard let index = tasks.firstIndex(where: { $0.task.id == id }) else { return }
+            guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
             let current = tasks[index]
-            tasks[index] = StoredTask(
-                task: NotionSyncQueueTask(
-                    id: current.task.id,
-                    operationType: current.task.operationType,
-                    payload: current.task.payload,
-                    retryCount: retryCount
-                ),
-                nextAttemptAt: nextAttemptAt
+            let updated = NotionSyncQueueTask(
+                id: current.id,
+                operationType: current.operationType,
+                payload: current.payload,
+                retryCount: retryCount
             )
+
+            if shouldRetry {
+                tasks[index] = updated
+            } else {
+                tasks.remove(at: index)
+            }
+
             failures.append(
                 FailureRecord(
                     id: id,
                     retryCount: retryCount,
-                    nextAttemptAt: nextAttemptAt,
+                    shouldRetry: shouldRetry,
                     message: message
                 )
             )
-        }
-    }
-
-    func pausePendingTasks(until: Date, message: String) throws {
-        queue.sync {
-            pauses.append(until)
-            for index in tasks.indices where tasks[index].nextAttemptAt < until {
-                tasks[index].nextAttemptAt = until
-            }
         }
     }
 
@@ -218,10 +192,6 @@ private final class InMemorySyncQueueStore: @unchecked Sendable, NotionSyncQueue
 
     func failureRecords() -> [FailureRecord] {
         queue.sync { failures }
-    }
-
-    func pauseRecords() -> [Date] {
-        queue.sync { pauses }
     }
 }
 

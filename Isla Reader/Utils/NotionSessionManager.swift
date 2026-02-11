@@ -51,18 +51,24 @@ final class NotionSessionManager: ObservableObject {
     private let notionClient: NotionAPIClient
     private let mappingStore: NotionDatabaseMappingStoring
     private let initializationStore: NotionLibraryInitializationStoring
+    private let syncConfigStore: NotionSyncConfigStoring
+    private let syncDataCleaner: NotionSyncDataCleaning
     private var cancellables = Set<AnyCancellable>()
 
     init(
         authService: NotionAuthService = .shared,
         notionClient: NotionAPIClient = NotionAPIClient(),
         mappingStore: NotionDatabaseMappingStoring = NotionDatabaseMappingStore.shared,
-        initializationStore: NotionLibraryInitializationStoring = NotionLibraryInitializationStore.shared
+        initializationStore: NotionLibraryInitializationStoring = NotionLibraryInitializationStore.shared,
+        syncConfigStore: NotionSyncConfigStoring = CoreDataNotionSyncConfigStore.shared,
+        syncDataCleaner: NotionSyncDataCleaning = NotionSyncDataCleaner.shared
     ) {
         self.authService = authService
         self.notionClient = notionClient
         self.mappingStore = mappingStore
         self.initializationStore = initializationStore
+        self.syncConfigStore = syncConfigStore
+        self.syncDataCleaner = syncDataCleaner
         bindAuthState()
         refreshFromStorage()
     }
@@ -99,11 +105,23 @@ final class NotionSessionManager: ObservableObject {
     func disconnect() {
         let clearedMappingsCount = mappingStore.clearAllMappings()
         initializationStore.clear()
+        let cleanupResult: NotionLogoutCleanupResult
+        do {
+            cleanupResult = try syncDataCleaner.clearForLogout()
+        } catch {
+            cleanupResult = NotionLogoutCleanupResult(clearedBookMappingsCount: 0, removedQueueItemsCount: 0)
+            DebugLogger.error("Notion logout cleanup failed", error: error)
+        }
         notionDatabaseID = nil
         isInitialized = false
         authService.disconnect()
         if clearedMappingsCount > 0 {
             DebugLogger.info("Notion mapping store cleared count=\(clearedMappingsCount)")
+        }
+        if cleanupResult.clearedBookMappingsCount > 0 || cleanupResult.removedQueueItemsCount > 0 {
+            DebugLogger.info(
+                "Notion sync data cleared mappings=\(cleanupResult.clearedBookMappingsCount) queueItems=\(cleanupResult.removedQueueItemsCount)"
+            )
         }
     }
 
@@ -159,6 +177,12 @@ final class NotionSessionManager: ObservableObject {
             }
 
             initializationStore.save(databaseID: databaseID, workspaceID: authService.workspaceID)
+            try? syncConfigStore.save(
+                databaseId: databaseID,
+                containerPageId: parentPageID,
+                workspaceName: workspaceName ?? "",
+                lastSyncedAt: nil
+            )
             notionDatabaseID = databaseID
             isInitialized = true
             DebugLogger.success("Notion initialization completed databaseID=\(databaseID)")
@@ -215,6 +239,13 @@ final class NotionSessionManager: ObservableObject {
         guard isConnected else {
             notionDatabaseID = nil
             isInitialized = false
+            return
+        }
+
+        if let syncConfig = syncConfigStore.load(),
+           !syncConfig.databaseId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            notionDatabaseID = syncConfig.databaseId
+            isInitialized = true
             return
         }
 

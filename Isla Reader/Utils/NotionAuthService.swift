@@ -265,6 +265,7 @@ final class NotionAuthService: NSObject, ObservableObject {
                let newWorkspaceId = session.workspaceId,
                existingWorkspaceId != newWorkspaceId {
                 _ = NotionDatabaseMappingStore.shared.clearAllMappings()
+                _ = try? NotionSyncDataCleaner.shared.clearForLogout()
             }
 
             try secureStore.save(session)

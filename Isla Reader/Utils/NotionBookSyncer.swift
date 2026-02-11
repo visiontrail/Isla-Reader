@@ -52,31 +52,55 @@ final class CoreDataBookMappingStore: BookMappingStoring {
 
     func notionPageID(for bookID: String) throws -> String? {
         try performOnBackgroundContext { context in
-            let request = BookMapping.fetchRequest()
-            request.fetchLimit = 1
-            request.predicate = NSPredicate(format: "bookID == %@", bookID)
-            let mapping = try context.fetch(request).first
-            return mapping?.notionPageID.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let bookUUID = UUID(uuidString: bookID) else {
+                return nil
+            }
+
+            let bookRequest = Book.fetchRequest()
+            bookRequest.fetchLimit = 1
+            bookRequest.predicate = NSPredicate(format: "id == %@", bookUUID as CVarArg)
+
+            guard let book = try context.fetch(bookRequest).first else {
+                return nil
+            }
+
+            if let mappedPageID = book.notionPageId?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !mappedPageID.isEmpty {
+                return mappedPageID
+            }
+
+            let legacyRequest = BookMapping.fetchRequest()
+            legacyRequest.fetchLimit = 1
+            legacyRequest.predicate = NSPredicate(format: "bookID == %@", bookID)
+            let legacyMapping = try context.fetch(legacyRequest).first
+            guard let legacyPageID = legacyMapping?.notionPageID.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !legacyPageID.isEmpty else {
+                return nil
+            }
+
+            // 兼容老版本映射：命中后回填到 Book.notionPageId。
+            book.notionPageId = legacyPageID
+            if context.hasChanges {
+                try context.save()
+            }
+            return legacyPageID
         }
     }
 
     func saveMapping(bookID: String, notionPageID: String) throws {
         _ = try performOnBackgroundContext { context in
-            let request = BookMapping.fetchRequest()
-            request.predicate = NSPredicate(format: "bookID == %@", bookID)
-            let matches = try context.fetch(request)
-
-            let mapping = matches.first ?? BookMapping(context: context)
-            mapping.bookID = bookID
-            mapping.notionPageID = notionPageID
-            mapping.updatedAt = Date()
-
-            if matches.count > 1 {
-                for duplicate in matches.dropFirst() {
-                    context.delete(duplicate)
-                }
+            guard let bookUUID = UUID(uuidString: bookID) else {
+                return
             }
 
+            let request = Book.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "id == %@", bookUUID as CVarArg)
+            guard let book = try context.fetch(request).first else {
+                return
+            }
+
+            book.notionPageId = notionPageID
             if context.hasChanges {
                 try context.save()
             }
