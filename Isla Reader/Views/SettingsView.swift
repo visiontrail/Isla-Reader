@@ -83,19 +83,19 @@ struct SettingsView: View {
                 // Notifications
                 Section(NSLocalizedString("通知提醒", comment: "")) {
                     HStack {
-                        Label(NSLocalizedString("阅读提醒", comment: ""), systemImage: "bell")
+                        Label("Daily Reading Reminder", systemImage: "bell")
                         Spacer()
                         Toggle("", isOn: $appSettings.isReadingReminderEnabled)
                     }
                     
                     if appSettings.isReadingReminderEnabled {
-                        HStack {
-                            Text(NSLocalizedString("每日目标", comment: ""))
-                            Spacer()
-                            Stepper("\(appSettings.dailyReadingGoal) \(NSLocalizedString("分钟", comment: ""))", 
-                                   value: $appSettings.dailyReadingGoal, 
-                                   in: 10...180, 
-                                   step: 10)
+                        Stepper(value: $appSettings.dailyReadingGoal, in: 10...180, step: 5) {
+                            HStack {
+                                Text("Daily Goal Minutes")
+                                Spacer()
+                                Text("\(appSettings.dailyReadingGoal) min")
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                 }

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		B5C272E12F7F7E8C00F7B830 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = B5C272E22F7F7E8C00F7B830 /* GoogleMobileAds */; };
+		D10200022FABC00000000001 /* ReadingReminderLiveActivityExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = D10200012FABC00000000001 /* ReadingReminderLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,7 +26,28 @@
 			remoteGlobalIDString = CA285BAE2E714BCF008BE112;
 			remoteInfo = LanRead;
 		};
+		D102000A2FABC00000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CA285BA72E714BCF008BE112 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D10200062FABC00000000001;
+			remoteInfo = ReadingReminderLiveActivityExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D10200092FABC00000000001 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D10200022FABC00000000001 /* ReadingReminderLiveActivityExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		CA285BAF2E714BCF008BE112 /* LanRead.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LanRead.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -33,6 +55,7 @@
 		CA285BCD2E714BD2008BE112 /* LanReadUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LanReadUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CACEA1002F1A000100000001 /* AISecrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AISecrets.xcconfig; sourceTree = "<group>"; };
 		CACEA1012F1A000100000002 /* AISecrets.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AISecrets.xcconfig.example; sourceTree = "<group>"; };
+		D10200012FABC00000000001 /* ReadingReminderLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ReadingReminderLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -42,6 +65,13 @@
 				Info.plist,
 			);
 			target = CA285BAE2E714BCF008BE112 /* LanRead */;
+		};
+		D10200032FABC00000000001 /* Exceptions for "ReadingReminderLiveActivityExtension" folder in "ReadingReminderLiveActivityExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D10200062FABC00000000001 /* ReadingReminderLiveActivityExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -62,6 +92,14 @@
 		CA285BD02E714BD2008BE112 /* Isla ReaderUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Isla ReaderUITests";
+			sourceTree = "<group>";
+		};
+		D10200042FABC00000000001 /* ReadingReminderLiveActivityExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D10200032FABC00000000001 /* Exceptions for "ReadingReminderLiveActivityExtension" folder in "ReadingReminderLiveActivityExtension" target */,
+			);
+			path = ReadingReminderLiveActivityExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -89,6 +127,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D10200052FABC00000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -98,6 +143,7 @@
 				CA285BB12E714BCF008BE112 /* Isla Reader */,
 				CA285BC62E714BD2008BE112 /* Isla ReaderTests */,
 				CA285BD02E714BD2008BE112 /* Isla ReaderUITests */,
+				D10200042FABC00000000001 /* ReadingReminderLiveActivityExtension */,
 				CACEA1022F1A000100000003 /* Config */,
 				CA285BB02E714BCF008BE112 /* Products */,
 			);
@@ -109,6 +155,7 @@
 				CA285BAF2E714BCF008BE112 /* LanRead.app */,
 				CA285BC32E714BD2008BE112 /* LanReadTests.xctest */,
 				CA285BCD2E714BD2008BE112 /* LanReadUITests.xctest */,
+				D10200012FABC00000000001 /* ReadingReminderLiveActivityExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -132,10 +179,12 @@
 				CA285BAB2E714BCF008BE112 /* Sources */,
 				CA285BAC2E714BCF008BE112 /* Frameworks */,
 				CA285BAD2E714BCF008BE112 /* Resources */,
+				D10200092FABC00000000001 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				D102000B2FABC00000000001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CA285BB12E714BCF008BE112 /* Isla Reader */,
@@ -194,6 +243,28 @@
 			productReference = CA285BCD2E714BD2008BE112 /* LanReadUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		D10200062FABC00000000001 /* ReadingReminderLiveActivityExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D102000E2FABC00000000001 /* Build configuration list for PBXNativeTarget "ReadingReminderLiveActivityExtension" */;
+			buildPhases = (
+				D10200082FABC00000000001 /* Sources */,
+				D10200052FABC00000000001 /* Frameworks */,
+				D10200072FABC00000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D10200042FABC00000000001 /* ReadingReminderLiveActivityExtension */,
+			);
+			name = ReadingReminderLiveActivityExtension;
+			packageProductDependencies = (
+			);
+			productName = ReadingReminderLiveActivityExtension;
+			productReference = D10200012FABC00000000001 /* ReadingReminderLiveActivityExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -214,6 +285,9 @@
 					CA285BCC2E714BD2008BE112 = {
 						CreatedOnToolsVersion = 16.4;
 						TestTargetID = CA285BAE2E714BCF008BE112;
+					};
+					D10200062FABC00000000001 = {
+						CreatedOnToolsVersion = 16.4;
 					};
 				};
 			};
@@ -240,6 +314,7 @@
 				CA285BAE2E714BCF008BE112 /* LanRead */,
 				CA285BC22E714BD2008BE112 /* LanReadTests */,
 				CA285BCC2E714BD2008BE112 /* LanReadUITests */,
+				D10200062FABC00000000001 /* ReadingReminderLiveActivityExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -260,6 +335,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		CA285BCB2E714BD2008BE112 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D10200072FABC00000000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -290,6 +372,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D10200082FABC00000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -302,6 +391,11 @@
 			isa = PBXTargetDependency;
 			target = CA285BAE2E714BCF008BE112 /* LanRead */;
 			targetProxy = CA285BCE2E714BD2008BE112 /* PBXContainerItemProxy */;
+		};
+		D102000B2FABC00000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D10200062FABC00000000001 /* ReadingReminderLiveActivityExtension */;
+			targetProxy = D102000A2FABC00000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -569,6 +663,56 @@
 			};
 			name = Release;
 		};
+		D102000C2FABC00000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4V7BVL9CBT;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ReadingReminderLiveActivityExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "LeoGuo.Isla-Reader-Local.ReadingReminderLiveActivityExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D102000D2FABC00000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4V7BVL9CBT;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ReadingReminderLiveActivityExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "LeoGuo.Isla-Reader-Local.ReadingReminderLiveActivityExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -604,6 +748,15 @@
 			buildConfigurations = (
 				CA285BDF2E714BD2008BE112 /* Debug */,
 				CA285BE02E714BD2008BE112 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D102000E2FABC00000000001 /* Build configuration list for PBXNativeTarget "ReadingReminderLiveActivityExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D102000C2FABC00000000001 /* Debug */,
+				D102000D2FABC00000000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

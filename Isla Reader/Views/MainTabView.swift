@@ -8,8 +8,20 @@
 import SwiftUI
 
 struct MainTabView: View {
+    private enum PhoneTab: Hashable {
+        case library
+        case progress
+        case settings
+    }
+
     @StateObject private var appSettings = AppSettings.shared
+    @StateObject private var reminderCoordinator = ReadingReminderCoordinator.shared
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.scenePhase) private var scenePhase
+
+    @State private var selectedPhoneTab: PhoneTab = .library
+    @State private var handledContinueReadingRequestID = 0
+    @State private var handledReminderTapRequestID = 0
     
     var body: some View {
         Group {
@@ -22,20 +34,23 @@ struct MainTabView: View {
                 }
             } else {
                 // iPhone layout with tab bar
-                TabView {
+                TabView(selection: $selectedPhoneTab) {
                     LibraryView()
+                        .tag(PhoneTab.library)
                         .tabItem {
                             Image(systemName: "books.vertical")
                             Text(NSLocalizedString("书架", comment: ""))
                         }
                     
                     ReadingProgressView()
+                        .tag(PhoneTab.progress)
                         .tabItem {
                             Image(systemName: "chart.line.uptrend.xyaxis")
                             Text(NSLocalizedString("进度", comment: ""))
                         }
                     
                     SettingsView()
+                        .tag(PhoneTab.settings)
                         .tabItem {
                             Image(systemName: "gearshape")
                             Text(NSLocalizedString("设置", comment: ""))
@@ -45,6 +60,48 @@ struct MainTabView: View {
         }
         .tint(.blue)
         .preferredColorScheme(appSettings.theme.colorScheme)
+        .onChange(of: reminderCoordinator.continueReadingRequestID) { _ in
+            processPendingContinueReadingRequestIfNeeded()
+        }
+        .onChange(of: reminderCoordinator.reminderTapRequestID) { _ in
+            processPendingReminderTapIfNeeded()
+        }
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active else { return }
+            processPendingContinueReadingRequestIfNeeded()
+            processPendingReminderTapIfNeeded()
+        }
+        .onOpenURL { url in
+            guard ReadingReminderService.shared.isContinueReadingURL(url) else {
+                return
+            }
+            reminderCoordinator.requestContinueReading(triggeredByReminder: false)
+        }
+    }
+
+    private func processPendingContinueReadingRequestIfNeeded() {
+        guard scenePhase == .active else { return }
+        let requestID = reminderCoordinator.continueReadingRequestID
+        guard requestID > handledContinueReadingRequestID else { return }
+
+        handledContinueReadingRequestID = requestID
+        selectedPhoneTab = .library
+        DebugLogger.info("MainTabView: Handled continue reading request and navigated to library.")
+    }
+
+    private func processPendingReminderTapIfNeeded() {
+        guard scenePhase == .active else { return }
+        let requestID = reminderCoordinator.reminderTapRequestID
+        guard requestID > handledReminderTapRequestID else { return }
+
+        handledReminderTapRequestID = requestID
+        Task {
+            await ReadingLiveActivityManager.shared.startForTonightIfNeeded(
+                goalMinutes: appSettings.dailyReadingGoal,
+                minutesReadToday: 0,
+                deepLink: ReadingReminderConstants.defaultDeepLink
+            )
+        }
     }
 }
 

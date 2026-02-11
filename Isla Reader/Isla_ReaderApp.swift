@@ -8,11 +8,29 @@
 import SwiftUI
 import UIKit
 import GoogleMobileAds
+import UserNotifications
 
-final class AppDelegate: NSObject, UIApplicationDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         GADMobileAds.sharedInstance().start(completionHandler: nil)
+        UNUserNotificationCenter.current().delegate = self
         return true
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        defer { completionHandler() }
+
+        guard ReadingReminderService.shared.isReadingReminderNotification(response.notification.request) else {
+            return
+        }
+
+        Task { @MainActor in
+            ReadingReminderCoordinator.shared.requestContinueReading(triggeredByReminder: true)
+        }
     }
 }
 

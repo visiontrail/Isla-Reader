@@ -137,6 +137,11 @@ public enum AppLanguage: String, CaseIterable {
 
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
+    private static let readingReminderEnabledKey = "readingReminderEnabled"
+    private static let readingGoalMinutesKey = "readingGoalMinutes"
+    private static let legacyReadingReminderEnabledKey = "reading_reminder_enabled"
+    private static let legacyReadingGoalMinutesKey = "daily_reading_goal"
+
     static let persistedKeys = [
         "app_language",
         "translation_language",
@@ -145,8 +150,10 @@ class AppSettings: ObservableObject {
         "reading_font",
         "line_spacing",
         "page_margins",
-        "reading_reminder_enabled",
-        "daily_reading_goal"
+        readingReminderEnabledKey,
+        readingGoalMinutesKey,
+        legacyReadingReminderEnabledKey,
+        legacyReadingGoalMinutesKey
     ]
     
     @Published var language: AppLanguage {
@@ -195,13 +202,17 @@ class AppSettings: ObservableObject {
     
     @Published var isReadingReminderEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(isReadingReminderEnabled, forKey: "reading_reminder_enabled")
+            let defaults = UserDefaults.standard
+            defaults.set(isReadingReminderEnabled, forKey: AppSettings.readingReminderEnabledKey)
+            defaults.set(isReadingReminderEnabled, forKey: AppSettings.legacyReadingReminderEnabledKey)
         }
     }
     
     @Published var dailyReadingGoal: Int {
         didSet {
-            UserDefaults.standard.set(dailyReadingGoal, forKey: "daily_reading_goal")
+            let defaults = UserDefaults.standard
+            defaults.set(dailyReadingGoal, forKey: AppSettings.readingGoalMinutesKey)
+            defaults.set(dailyReadingGoal, forKey: AppSettings.legacyReadingGoalMinutesKey)
         }
     }
     
@@ -216,8 +227,13 @@ class AppSettings: ObservableObject {
         self.readingFont = ReadingFont(rawValue: UserDefaults.standard.string(forKey: "reading_font") ?? "") ?? .system
         self.lineSpacing = UserDefaults.standard.object(forKey: "line_spacing") as? Double ?? 1.2
         self.pageMargins = UserDefaults.standard.object(forKey: "page_margins") as? Double ?? 20.0
-        self.isReadingReminderEnabled = UserDefaults.standard.object(forKey: "reading_reminder_enabled") as? Bool ?? false
-        self.dailyReadingGoal = UserDefaults.standard.object(forKey: "daily_reading_goal") as? Int ?? 30
+        let defaults = UserDefaults.standard
+        self.isReadingReminderEnabled = defaults.object(forKey: AppSettings.readingReminderEnabledKey) as? Bool
+            ?? defaults.object(forKey: AppSettings.legacyReadingReminderEnabledKey) as? Bool
+            ?? false
+        self.dailyReadingGoal = defaults.object(forKey: AppSettings.readingGoalMinutesKey) as? Int
+            ?? defaults.object(forKey: AppSettings.legacyReadingGoalMinutesKey) as? Int
+            ?? 20
     }
     
     @MainActor
@@ -235,6 +251,6 @@ class AppSettings: ObservableObject {
         lineSpacing = 1.2
         pageMargins = 20.0
         isReadingReminderEnabled = false
-        dailyReadingGoal = 30
+        dailyReadingGoal = 20
     }
 }

@@ -46,9 +46,12 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>lanread</string>
+				<string>isla-reader</string>
 			</array>
 		</dict>
 	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-5587239366359667~6499097766</string>
 	<key>NOTION_CLIENT_ID</key>
