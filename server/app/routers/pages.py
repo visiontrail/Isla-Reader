@@ -229,6 +229,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
         <a class="pill" id="footer-terms" href="/terms">Terms</a>
         <a class="pill" id="footer-changelog" href="changelog.html">Changelog</a>
         <a class="pill" id="footer-support" href="support.html">Support</a>
+        <a class="pill" id="footer-github" href="https://github.com/visiontrail/Isla-Reader" target="_blank" rel="noopener noreferrer">GitHub</a>
       </span>
     </div>
   </footer>
@@ -319,7 +320,8 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           home: 'Home',
           terms: 'Terms',
           changelog: 'Changelog',
-          support: 'Support'
+          support: 'Support',
+          github: 'GitHub'
         }
       },
       zh: {
@@ -393,7 +395,8 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           home: '主页',
           terms: '条款',
           changelog: '更新日志',
-          support: '支持'
+          support: '支持',
+          github: 'GitHub'
         }
       },
       ja: {
@@ -467,7 +470,8 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           home: 'ホーム',
           terms: '規約',
           changelog: '更新履歴',
-          support: 'サポート'
+          support: 'サポート',
+          github: 'GitHub'
         }
       },
       ko: {
@@ -541,7 +545,8 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           home: '홈',
           terms: '약관',
           changelog: '변경 로그',
-          support: '지원'
+          support: '지원',
+          github: 'GitHub'
         }
       }
     };
@@ -592,6 +597,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       setText('footer-terms', t.footer.terms);
       setText('footer-changelog', t.footer.changelog);
       setText('footer-support', t.footer.support);
+      setText('footer-github', t.footer.github);
 
       localStorage.setItem('lanread-privacy-lang', chosen);
     };

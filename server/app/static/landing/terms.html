@@ -351,6 +351,7 @@
         <a class="pill" id="footer-terms" href="/terms">Terms</a>
         <a class="pill" id="footer-changelog" href="changelog.html">Changelog</a>
         <a class="pill" id="footer-support" href="support.html">Support</a>
+        <a class="pill" id="footer-github" href="https://github.com/visiontrail/Isla-Reader" target="_blank" rel="noopener noreferrer">GitHub</a>
       </span>
     </div>
   </footer>
@@ -448,7 +449,8 @@
           home: 'Home',
           privacy: 'Privacy',
           changelog: 'Changelog',
-          support: 'Support'
+          support: 'Support',
+          github: 'GitHub'
         }
       },
       zh: {
@@ -529,7 +531,8 @@
           home: '主页',
           privacy: '隐私',
           changelog: '更新日志',
-          support: '支持'
+          support: '支持',
+          github: 'GitHub'
         }
       },
       ja: {
@@ -610,7 +613,8 @@
           home: 'ホーム',
           privacy: 'プライバシー',
           changelog: '更新履歴',
-          support: 'サポート'
+          support: 'サポート',
+          github: 'GitHub'
         }
       },
       ko: {
@@ -691,7 +695,8 @@
           home: '홈',
           privacy: '개인정보',
           changelog: '변경 로그',
-          support: '지원'
+          support: '지원',
+          github: 'GitHub'
         }
       }
     };
@@ -745,6 +750,7 @@
       setText('footer-terms', t.nav.terms);
       setText('footer-changelog', t.footer.changelog);
       setText('footer-support', t.footer.support);
+      setText('footer-github', t.footer.github);
 
       localStorage.setItem('lanread-terms-lang', chosen);
     };

@@ -1,14 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lan Read · Changelog</title>
+  <meta name="description" content="Lan Read changelog and release notes." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,700&display=swap" rel="stylesheet">
   <style>
-    :root { --bg: #f3f1eb; --line: rgba(20,20,20,0.12); --text: #14110f; --muted: #5a5d61; --panel: #fffdf8; }
-    body { margin: 0; font-family: "Epilogue", -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+    :root {
+      --bg: #f3f1eb;
+      --panel: #fffdf8;
+      --paper-edge: #e8e1d5;
+      --line: rgba(20,20,20,0.12);
+      --text: #14110f;
+      --muted: #5a5d61;
+      --accent: #14110f;
+      --radius: 18px;
+      --grid: 120px;
+      --paper-shadow: 0 20px 60px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 16%, rgba(0,0,0,0.025), transparent 32%),
+        radial-gradient(circle at 78% 8%, rgba(0,0,0,0.018), transparent 30%),
+        var(--bg);
+      font-family: "Epilogue", "DM Mono", system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.12;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+      mix-blend-mode: multiply;
+      z-index: 5;
+    }
+    .grid {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: var(--grid) var(--grid);
+      mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 42%, rgba(0,0,0,0) 70%);
+    }
     header {
       position: sticky;
       top: 0;
@@ -18,81 +61,571 @@
       border-bottom: 1px solid var(--line);
     }
     nav {
-      max-width: 720px;
+      max-width: 1180px;
       margin: 0 auto;
-      padding: 12px 28px;
+      padding: 14px 28px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 18px;
+      font-size: 14px;
+      letter-spacing: 0.03em;
       flex-wrap: wrap;
     }
-    .logo { font-size: 13px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
-    .nav-links { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-family: "Newsreader", "Epilogue", serif;
+    }
+    .logo .dot {
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 0 6px rgba(0,0,0,0.05);
+    }
+    .nav-links { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .lang-switch {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .lang-switch select {
+      padding: 7px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 13px;
+    }
     .pill {
-      padding: 7px 12px;
+      padding: 8px 14px;
       border: 1px solid var(--line);
       border-radius: 999px;
       color: var(--text);
       text-decoration: none;
-      font-size: 13px;
-      line-height: 1;
-      background: var(--panel);
+      transition: border .3s, color .3s, background .3s;
     }
-    main { max-width: 720px; margin: 44px auto; padding: 0 28px 80px; }
-    h1 { font-size: 28px; letter-spacing: 0.02em; }
-    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); }
-    p { color: var(--muted); line-height: 1.6; }
-    a { color: inherit; text-decoration: underline; }
+    .pill:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0,0,0,0.03);
+    }
+    .pill.active { background: rgba(0,0,0,0.04); }
+    .section {
+      max-width: 1180px;
+      margin: 0 auto 120px;
+      padding: 0 28px;
+      position: relative;
+      z-index: 2;
+    }
+    h1 {
+      font-size: clamp(32px, 4vw, 48px);
+      line-height: 1.1;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+      font-family: "Newsreader", "Epilogue", serif;
+    }
+    .lead {
+      color: var(--muted);
+      max-width: 820px;
+      font-size: 17px;
+      line-height: 1.7;
+      margin: 0 0 18px;
+    }
+    .meta-line {
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .meta-line .dot {
+      width: 7px;
+      height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .paper-sheet {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 28px 26px 30px;
+      box-shadow: var(--paper-shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .paper-sheet::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(20,20,20,0.06);
+      pointer-events: none;
+    }
+    .paper-sheet.ruled {
+      background-image: linear-gradient(rgba(20,20,20,0.04) 1px, transparent 1px);
+      background-size: 100% 46px;
+    }
+    .paper-sheet .note-tab {
+      position: absolute;
+      left: -12px;
+      top: 22px;
+      width: 22px;
+      height: 82px;
+      background: linear-gradient(180deg, #d5c9b1, #e7dbc5);
+      border: 1px solid rgba(20,20,20,0.15);
+      border-radius: 10px 6px 6px 10px;
+      box-shadow: 6px 12px 20px rgba(0,0,0,0.10);
+    }
+    .paper-sheet .paper-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(0,0,0,0.02);
+    }
+    .paper-sheet .paper-label::before {
+      content: "§";
+      font-family: "DM Mono", monospace;
+      color: var(--accent);
+      font-size: 12px;
+    }
+    .stack {
+      display: grid;
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px 18px 20px;
+      background: linear-gradient(120deg, rgba(0,0,0,0.02), rgba(0,0,0,0));
+      box-shadow: 0 16px 40px rgba(0,0,0,0.06);
+      position: relative;
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      opacity: 0.6;
+    }
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      letter-spacing: 0.01em;
+    }
+    .info-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .info-list a { color: inherit; }
+    .paper-edge {
+      position: absolute;
+      inset: 18px -18px auto auto;
+      height: 20px;
+      background:
+        linear-gradient(90deg, rgba(20,20,20,0.10) 32%, transparent 32%),
+        var(--paper-edge);
+      border-radius: 999px;
+      opacity: 0.65;
+    }
     footer {
       border-top: 1px solid var(--line);
-      padding: 24px 28px 44px;
+      padding: 30px 28px 60px;
+      color: var(--muted);
       background: rgba(247,248,250,0.8);
+      position: relative;
+      z-index: 2;
     }
-    .footer-inner {
-      max-width: 720px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
+    @media (max-width: 900px) {
+      nav { padding: 12px 18px; }
+      .lang-switch { width: 100%; justify-content: flex-end; }
     }
-    .footer-links { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   </style>
 </head>
 <body>
+  <div class="grid"></div>
+  <div class="grain"></div>
+
   <header>
     <nav>
-      <div class="logo">Lan Read · 澜悦</div>
+      <div class="logo"><div class="dot"></div><span>Lan Read · 澜悦</span></div>
       <div class="nav-links">
-        <a class="pill" href="/">Home</a>
-        <a class="pill" href="/privacy">Privacy</a>
-        <a class="pill" href="/terms">Terms</a>
+        <a class="pill" id="nav-home" href="/">Home</a>
+        <a class="pill" id="nav-privacy" href="/privacy">Privacy</a>
+        <a class="pill" id="nav-terms" href="/terms">Terms</a>
+        <a class="pill active" id="nav-changelog" href="changelog.html">Changelog</a>
+        <a class="pill" id="nav-support" href="support.html">Support</a>
+      </div>
+      <div class="lang-switch">
+        <label for="language" id="nav-language">Language</label>
+        <select id="language" aria-label="Language selector">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+        </select>
       </div>
     </nav>
   </header>
 
-  <main>
-    <h1>Changelog · 更新记录</h1>
-    <div class="card">
-      <p>Release notes live with the codebase. See <code>CHANGELOG.md</code> in the repository for version history.</p>
-      <p>发布记录与代码一同维护，请查看仓库中的 <code>CHANGELOG.md</code> 获取版本变更。</p>
-      <p><a href="/">Back to home</a></p>
+  <section class="section" style="margin-top:64px;">
+    <div class="paper-sheet ruled">
+      <div class="note-tab" aria-hidden="true"></div>
+      <div class="paper-label" id="changelog-label">Changelog</div>
+      <h1 id="changelog-title">Release Notes</h1>
+      <p class="lead" id="changelog-lead">Track product updates, fixes, and behavior changes for Lan Read across app and backend workflows.</p>
+      <div class="meta-line"><span class="dot"></span><span id="changelog-updated">Updated: 2026-02-12</span></div>
+
+      <div class="stack">
+        <div class="card">
+          <h3 id="overview-title">Where Release Notes Live</h3>
+          <ul class="info-list" id="overview-list"></ul>
+        </div>
+
+        <div class="card">
+          <h3 id="latest-title">Recent Highlights</h3>
+          <ul class="info-list" id="latest-list"></ul>
+        </div>
+
+        <div class="card">
+          <h3 id="follow-title">How to Follow Updates</h3>
+          <ul class="info-list" id="follow-list"></ul>
+        </div>
+      </div>
+
+      <div class="paper-edge" aria-hidden="true"></div>
     </div>
-  </main>
+  </section>
 
   <footer>
-    <div class="footer-inner">
-      <span>© 2026 Lan Read · 澜悦</span>
-      <span class="footer-links">
-        <a class="pill" href="/">Home</a>
-        <a class="pill" href="/privacy">Privacy</a>
-        <a class="pill" href="/terms">Terms</a>
-        <a class="pill" href="changelog.html">Changelog</a>
-        <a class="pill" href="support.html">Support</a>
+    <div style="max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <span id="footer-note">© 2026 Lan Read · 澜悦 — Release notes.</span>
+      <span style="display:flex; gap:12px; flex-wrap:wrap;">
+        <a class="pill" id="footer-home" href="/">Home</a>
+        <a class="pill" id="footer-privacy" href="/privacy">Privacy</a>
+        <a class="pill" id="footer-terms" href="/terms">Terms</a>
+        <a class="pill" id="footer-changelog" href="changelog.html">Changelog</a>
+        <a class="pill" id="footer-support" href="support.html">Support</a>
+        <a class="pill" id="footer-github" href="https://github.com/visiontrail/Isla-Reader" target="_blank" rel="noopener noreferrer">GitHub</a>
       </span>
     </div>
   </footer>
+
+  <script>
+    const languageSelect = document.getElementById('language');
+
+    const setText = (id, value) => {
+      const node = document.getElementById(id);
+      if (node && value) node.textContent = value;
+    };
+
+    const setList = (id, items) => {
+      const node = document.getElementById(id);
+      if (!node) return;
+      node.innerHTML = (items || []).map(item => `<li>${item}</li>`).join('');
+    };
+
+    const copy = {
+      en: {
+        meta: {
+          title: 'Lan Read · Changelog',
+          description: 'Lan Read changelog and release notes.'
+        },
+        nav: {
+          home: 'Home',
+          privacy: 'Privacy',
+          terms: 'Terms',
+          changelog: 'Changelog',
+          support: 'Support',
+          language: 'Language'
+        },
+        header: {
+          label: 'Changelog',
+          title: 'Release Notes',
+          lead: 'Track product updates, fixes, and behavior changes for Lan Read across app and backend workflows.',
+          updated: 'Updated: 2026-02-12'
+        },
+        sections: {
+          overview: {
+            title: 'Where Release Notes Live',
+            items: [
+              'Primary history is maintained in <a href="https://github.com/visiontrail/Isla-Reader/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">CHANGELOG.md</a>.',
+              'Website wording and policy page updates are published with each server deployment.',
+              'For exact code deltas, compare commits in the <a href="https://github.com/visiontrail/Isla-Reader/commits/main" target="_blank" rel="noopener noreferrer">main branch history</a>.'
+            ]
+          },
+          latest: {
+            title: 'Recent Highlights',
+            items: [
+              '2026-02: Landing pages unified with multilingual footer navigation and consistent support/changelog layouts.',
+              '2026-02: Privacy, Terms, and landing localization copy refined for Chinese/Japanese/Korean labels.',
+              '2026-02: Footer links now include direct GitHub access for faster issue and release tracking.'
+            ]
+          },
+          follow: {
+            title: 'How to Follow Updates',
+            items: [
+              'Watch the repository at <a href="https://github.com/visiontrail/Isla-Reader" target="_blank" rel="noopener noreferrer">visiontrail/Isla-Reader</a>.',
+              'Use <a href="support.html">Support</a> to report regressions with reproducible steps.',
+              'For legal or data policy changes, check <a href="/terms">Terms</a> and <a href="/privacy">Privacy</a>.'
+            ]
+          }
+        },
+        footer: {
+          note: '© 2026 Lan Read · 澜悦 — Release notes.',
+          home: 'Home',
+          privacy: 'Privacy',
+          terms: 'Terms',
+          changelog: 'Changelog',
+          support: 'Support',
+          github: 'GitHub'
+        }
+      },
+      zh: {
+        meta: {
+          title: 'Lan Read · 更新日志',
+          description: 'Lan Read 更新日志与版本说明。'
+        },
+        nav: {
+          home: '主页',
+          privacy: '隐私',
+          terms: '条款',
+          changelog: '更新日志',
+          support: '支持',
+          language: '语言'
+        },
+        header: {
+          label: '更新日志',
+          title: '版本说明',
+          lead: '在这里查看 Lan Read 应用与后端相关的功能更新、修复和行为变化。',
+          updated: '更新日期：2026-02-12'
+        },
+        sections: {
+          overview: {
+            title: '发布记录位置',
+            items: [
+              '主要版本历史维护在 <a href="https://github.com/visiontrail/Isla-Reader/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">CHANGELOG.md</a>。',
+              '网站文案与政策页面更新会随每次服务端部署发布。',
+              '如需查看精确代码差异，请查看 <a href="https://github.com/visiontrail/Isla-Reader/commits/main" target="_blank" rel="noopener noreferrer">main 分支提交历史</a>。'
+            ]
+          },
+          latest: {
+            title: '近期重点',
+            items: [
+              '2026-02：落地页统一为多语言页脚导航，并使 Support/Changelog 结构一致。',
+              '2026-02：优化 Privacy、Terms 与首页在中/日/韩文案上的一致性。',
+              '2026-02：页脚新增 GitHub 直达入口，便于追踪 issue 与版本。'
+            ]
+          },
+          follow: {
+            title: '如何跟进更新',
+            items: [
+              '关注仓库 <a href="https://github.com/visiontrail/Isla-Reader" target="_blank" rel="noopener noreferrer">visiontrail/Isla-Reader</a>。',
+              '发现回归问题可在 <a href="support.html">支持页面</a> 提交可复现信息。',
+              '如涉及法律与数据政策变更，请同时查看 <a href="/terms">条款</a> 与 <a href="/privacy">隐私</a>。'
+            ]
+          }
+        },
+        footer: {
+          note: '© 2026 Lan Read · 澜悦 — 版本说明。',
+          home: '主页',
+          privacy: '隐私',
+          terms: '条款',
+          changelog: '更新日志',
+          support: '支持',
+          github: 'GitHub'
+        }
+      },
+      ja: {
+        meta: {
+          title: 'Lan Read · 更新履歴',
+          description: 'Lan Read の更新履歴とリリースノート。'
+        },
+        nav: {
+          home: 'ホーム',
+          privacy: 'プライバシー',
+          terms: '規約',
+          changelog: '更新履歴',
+          support: 'サポート',
+          language: '言語'
+        },
+        header: {
+          label: '更新履歴',
+          title: 'リリースノート',
+          lead: 'Lan Read のアプリ/バックエンドに関する機能追加、修正、挙動変更を確認できます。',
+          updated: '更新日：2026-02-12'
+        },
+        sections: {
+          overview: {
+            title: '公開場所',
+            items: [
+              '主要な履歴は <a href="https://github.com/visiontrail/Isla-Reader/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">CHANGELOG.md</a> で管理しています。',
+              'サイト文言やポリシーページ更新はサーバーデプロイごとに反映されます。',
+              '正確なコード差分は <a href="https://github.com/visiontrail/Isla-Reader/commits/main" target="_blank" rel="noopener noreferrer">main ブランチのコミット履歴</a> を参照してください。'
+            ]
+          },
+          latest: {
+            title: '最近のハイライト',
+            items: [
+              '2026-02: ランディングページのフッターナビを多言語で統一し、Support/Changelog の構成を合わせました。',
+              '2026-02: Privacy・Terms・ホームの中日韓ラベルを整合しました。',
+              '2026-02: フッターに GitHub 直リンクを追加し、Issue/更新追跡を簡素化しました。'
+            ]
+          },
+          follow: {
+            title: '更新の追跡方法',
+            items: [
+              'リポジトリ <a href="https://github.com/visiontrail/Isla-Reader" target="_blank" rel="noopener noreferrer">visiontrail/Isla-Reader</a> をウォッチしてください。',
+              '不具合は <a href="support.html">サポートページ</a> から再現手順付きで報告してください。',
+              '法務/データ方針の変更は <a href="/terms">規約</a> と <a href="/privacy">プライバシー</a> を確認してください。'
+            ]
+          }
+        },
+        footer: {
+          note: '© 2026 Lan Read · 澜悦 — リリースノート。',
+          home: 'ホーム',
+          privacy: 'プライバシー',
+          terms: '規約',
+          changelog: '更新履歴',
+          support: 'サポート',
+          github: 'GitHub'
+        }
+      },
+      ko: {
+        meta: {
+          title: 'Lan Read · 변경 로그',
+          description: 'Lan Read 변경 로그 및 릴리스 노트.'
+        },
+        nav: {
+          home: '홈',
+          privacy: '개인정보',
+          terms: '약관',
+          changelog: '변경 로그',
+          support: '지원',
+          language: '언어'
+        },
+        header: {
+          label: '변경 로그',
+          title: '릴리스 노트',
+          lead: 'Lan Read 앱과 백엔드 전반의 기능 업데이트, 수정, 동작 변경 사항을 확인할 수 있습니다.',
+          updated: '업데이트: 2026-02-12'
+        },
+        sections: {
+          overview: {
+            title: '릴리스 노트 위치',
+            items: [
+              '주요 이력은 <a href="https://github.com/visiontrail/Isla-Reader/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">CHANGELOG.md</a>에서 관리됩니다.',
+              '웹 문구 및 정책 페이지 수정은 서버 배포 시 함께 반영됩니다.',
+              '정확한 코드 변경은 <a href="https://github.com/visiontrail/Isla-Reader/commits/main" target="_blank" rel="noopener noreferrer">main 브랜치 커밋 이력</a>을 확인하세요.'
+            ]
+          },
+          latest: {
+            title: '최근 하이라이트',
+            items: [
+              '2026-02: 랜딩 페이지 푸터 네비게이션을 다국어로 통합하고 Support/Changelog 레이아웃을 정렬했습니다.',
+              '2026-02: Privacy, Terms, 홈의 중/일/한 라벨 일관성을 개선했습니다.',
+              '2026-02: 푸터에 GitHub 바로가기를 추가해 이슈/릴리스 추적을 단순화했습니다.'
+            ]
+          },
+          follow: {
+            title: '업데이트 추적 방법',
+            items: [
+              '저장소 <a href="https://github.com/visiontrail/Isla-Reader" target="_blank" rel="noopener noreferrer">visiontrail/Isla-Reader</a>를 확인하세요.',
+              '회귀 이슈는 <a href="support.html">지원 페이지</a>에서 재현 절차와 함께 제보해 주세요.',
+              '법률/데이터 정책 변경은 <a href="/terms">약관</a>과 <a href="/privacy">개인정보</a>를 함께 확인하세요.'
+            ]
+          }
+        },
+        footer: {
+          note: '© 2026 Lan Read · 澜悦 — 릴리스 노트.',
+          home: '홈',
+          privacy: '개인정보',
+          terms: '약관',
+          changelog: '변경 로그',
+          support: '지원',
+          github: 'GitHub'
+        }
+      }
+    };
+
+    const applyLanguage = (lang) => {
+      const chosen = copy[lang] ? lang : 'en';
+      const t = copy[chosen];
+
+      if (document.documentElement) {
+        document.documentElement.lang = chosen === 'zh' ? 'zh-Hans' : chosen;
+      }
+      if (languageSelect) languageSelect.value = chosen;
+
+      document.title = t.meta.title;
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute('content', t.meta.description);
+
+      setText('nav-home', t.nav.home);
+      setText('nav-privacy', t.nav.privacy);
+      setText('nav-terms', t.nav.terms);
+      setText('nav-changelog', t.nav.changelog);
+      setText('nav-support', t.nav.support);
+      setText('nav-language', t.nav.language);
+
+      setText('changelog-label', t.header.label);
+      setText('changelog-title', t.header.title);
+      setText('changelog-lead', t.header.lead);
+      setText('changelog-updated', t.header.updated);
+
+      setText('overview-title', t.sections.overview.title);
+      setList('overview-list', t.sections.overview.items);
+
+      setText('latest-title', t.sections.latest.title);
+      setList('latest-list', t.sections.latest.items);
+
+      setText('follow-title', t.sections.follow.title);
+      setList('follow-list', t.sections.follow.items);
+
+      setText('footer-note', t.footer.note);
+      setText('footer-home', t.footer.home);
+      setText('footer-privacy', t.footer.privacy);
+      setText('footer-terms', t.footer.terms);
+      setText('footer-changelog', t.footer.changelog);
+      setText('footer-support', t.footer.support);
+      setText('footer-github', t.footer.github);
+
+      localStorage.setItem('lanread-changelog-lang', chosen);
+    };
+
+    const storedLang = localStorage.getItem('lanread-changelog-lang');
+    applyLanguage(copy[storedLang] ? storedLang : 'en');
+
+    if (languageSelect) {
+      languageSelect.addEventListener('change', (e) => applyLanguage(e.target.value));
+    }
+  </script>
 </body>
 </html>
