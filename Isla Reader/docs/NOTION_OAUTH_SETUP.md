@@ -33,6 +33,12 @@ LanRead 当前使用以下安全闭环：
 
 注意：`lanread://...` 不是 Notion 的 redirect URI，它是后端处理完后的二次跳转目标。
 
+## 权限最小化（合规）
+
+1. 当前 Notion OAuth 授权 URL 不携带 `scope` 参数；权限由 Notion integration capabilities 控制（与官方示例一致）。
+2. 请仅开启同步所需的最小 capabilities（读取/写入页面、数据库与区块内容，以及显示工作区/用户信息所需的默认权限）。
+3. 不要在客户端拼接任何额外 scope，避免过度请求权限。
+
 ## iOS 配置
 
 ### 1. Info.plist

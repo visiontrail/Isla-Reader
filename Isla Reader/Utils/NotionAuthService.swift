@@ -160,6 +160,8 @@ final class NotionAuthService: NSObject, ObservableObject {
         }
 
         var components = URLComponents(string: "https://api.notion.com/v1/oauth/authorize")
+        // Notion OAuth permissions come from integration capabilities in Notion dashboard.
+        // Keep the authorize URL scope-free to avoid requesting extra permissions.
         components?.queryItems = [
             URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "response_type", value: "code"),

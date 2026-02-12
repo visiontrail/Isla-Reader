@@ -979,7 +979,7 @@ private struct NotionWorkspaceIconView: View {
 struct NotionAuthView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var notionSessionManager: NotionSessionManager
-    @State private var alertItem: DataAlert?
+    @State private var alertContext: NotionAuthAlertContext?
     @State private var parentPageOptions: [NotionParentPageOption] = []
     @State private var showingPagePicker = false
     @State private var isLoadingParentPages = false
@@ -1008,7 +1008,7 @@ struct NotionAuthView: View {
 
                 statusContent
 
-                Button(action: startAuthorization) {
+                Button(action: requestAuthorizationConsent) {
                     HStack {
                         Image(systemName: "key.fill")
                         Text(authorizationButtonTitle)
@@ -1024,7 +1024,7 @@ struct NotionAuthView: View {
                 .padding(.horizontal)
 
                 if notionSessionManager.isConnected {
-                    Button(role: .destructive, action: disconnectNotion) {
+                    Button(role: .destructive, action: requestDisconnectConfirmation) {
                         Text(NSLocalizedString("notion.connection.disconnect", comment: ""))
                             .font(.subheadline)
                     }
@@ -1036,6 +1036,12 @@ struct NotionAuthView: View {
                         .font(.footnote)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
+
+                    Link(destination: privacyPolicyURL) {
+                        Text(NSLocalizedString("隐私政策", comment: ""))
+                            .font(.footnote)
+                            .fontWeight(.semibold)
+                    }
                 }
                 .padding(.horizontal)
 
@@ -1062,20 +1068,37 @@ struct NotionAuthView: View {
                     }
                 }
             }
-            .alert(item: $alertItem) { alert in
-                Alert(
-                    title: Text(alert.title),
-                    message: Text(alert.message),
-                    dismissButton: .default(Text(NSLocalizedString("确定", comment: "")))
-                )
+            .alert(item: $alertContext) { context in
+                switch context {
+                case .info(let alert):
+                    return Alert(
+                        title: Text(alert.title),
+                        message: Text(alert.message),
+                        dismissButton: .default(Text(NSLocalizedString("确定", comment: "")))
+                    )
+                case .preAuthorizationNotice:
+                    return Alert(
+                        title: Text(NSLocalizedString("notion.auth.preflight.title", comment: "")),
+                        message: Text(NSLocalizedString("notion.auth.preflight.message", comment: "")),
+                        primaryButton: .default(Text(NSLocalizedString("notion.auth.preflight.confirm", comment: "")), action: startAuthorization),
+                        secondaryButton: .cancel(Text(NSLocalizedString("notion.auth.preflight.cancel", comment: "")))
+                    )
+                case .disconnectConfirmation:
+                    return Alert(
+                        title: Text(NSLocalizedString("notion.disconnect.confirm.title", comment: "")),
+                        message: Text(NSLocalizedString("notion.disconnect.confirm.message", comment: "")),
+                        primaryButton: .destructive(Text(NSLocalizedString("notion.connection.disconnect", comment: "")), action: disconnectNotion),
+                        secondaryButton: .cancel(Text(NSLocalizedString("取消", comment: "")))
+                    )
+                }
             }
             .onChange(of: notionSessionManager.connectionState) { state in
                 switch state {
                 case .error(let message):
-                    alertItem = DataAlert(
+                    alertContext = .info(DataAlert(
                         title: NSLocalizedString("授权失败", comment: ""),
                         message: message
-                    )
+                    ))
                 case .connected:
                     triggerInitializationIfNeeded(force: true)
                 case .connecting, .disconnected:
@@ -1203,11 +1226,26 @@ struct NotionAuthView: View {
         notionSessionManager.isConnecting || isLoadingParentPages || isCreatingDatabase
     }
 
+    private var privacyPolicyURL: URL {
+        URL(string: "https://isla-reader.top/privacy")!
+    }
+
+    private func requestAuthorizationConsent() {
+        guard !isAuthorizationButtonDisabled else {
+            return
+        }
+        alertContext = .preAuthorizationNotice
+    }
+
     private func startAuthorization() {
         hasAutoStartedInitialization = false
         parentPageOptions = []
         showingPagePicker = false
         notionSessionManager.startAuthorization()
+    }
+
+    private func requestDisconnectConfirmation() {
+        alertContext = .disconnectConfirmation
     }
 
     private func disconnectNotion() {
@@ -1267,10 +1305,10 @@ struct NotionAuthView: View {
             } catch {
                 await MainActor.run {
                     isLoadingParentPages = false
-                    alertItem = DataAlert(
+                    alertContext = .info(DataAlert(
                         title: NSLocalizedString("notion.init.error.title", comment: ""),
                         message: error.localizedDescription
-                    )
+                    ))
                 }
             }
         }
@@ -1298,15 +1336,15 @@ struct NotionAuthView: View {
                     selectedParentPageID = nil
 
                     if error == .permissionDenied {
-                        alertItem = DataAlert(
+                        alertContext = .info(DataAlert(
                             title: NSLocalizedString("notion.init.error.permission_denied", comment: ""),
                             message: NSLocalizedString("notion.init.error.permission_denied.detail", comment: "")
-                        )
+                        ))
                     } else {
-                        alertItem = DataAlert(
+                        alertContext = .info(DataAlert(
                             title: NSLocalizedString("notion.init.error.title", comment: ""),
                             message: error.localizedDescription
-                        )
+                        ))
                     }
 
                     showingPagePicker = true
@@ -1315,13 +1353,30 @@ struct NotionAuthView: View {
                 await MainActor.run {
                     isCreatingDatabase = false
                     selectedParentPageID = nil
-                    alertItem = DataAlert(
+                    alertContext = .info(DataAlert(
                         title: NSLocalizedString("notion.init.error.title", comment: ""),
                         message: error.localizedDescription
-                    )
+                    ))
                     showingPagePicker = true
                 }
             }
+        }
+    }
+}
+
+private enum NotionAuthAlertContext: Identifiable {
+    case info(DataAlert)
+    case preAuthorizationNotice
+    case disconnectConfirmation
+
+    var id: String {
+        switch self {
+        case .info(let alert):
+            return "info-\(alert.id.uuidString)"
+        case .preAuthorizationNotice:
+            return "pre-authorization-notice"
+        case .disconnectConfirmation:
+            return "disconnect-confirmation"
         }
     }
 }

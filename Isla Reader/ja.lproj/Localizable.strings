@@ -309,6 +309,12 @@
 "授权失败" = "認証に失敗しました";
 "取消" = "キャンセル";
 "notion.auth.privacy_notice" = "許可したコンテンツのみにアクセスし、その他のデータにはアクセスしません。";
+"notion.auth.preflight.title" = "Notion 連携前の確認";
+"notion.auth.preflight.message" = "アプリはあなたの Notion ワークスペースへのアクセス許可を求めます。選択したページ配下に「LanRead Library」データベースを作成します。読書記録はこのデータベースへ一方向で同期され、アプリが Notion 内の他データを読み取ったり変更したりすることはありません。";
+"notion.auth.preflight.confirm" = "同意して続行";
+"notion.auth.preflight.cancel" = "キャンセル";
+"notion.disconnect.confirm.title" = "連携を解除しますか？";
+"notion.disconnect.confirm.message" = "解除後は新しい内容の同期が停止します。Notion に既に保存されたデータは削除されません。";
 "Notion OAuth 配置无效，请检查 Client ID" = "Notion OAuth の設定が無効です。Client ID を確認してください。";
 "授权流程已在进行中" = "認証処理はすでに進行中です。";
 "无法启动授权会话" = "認証セッションを開始できませんでした。";

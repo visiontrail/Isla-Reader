@@ -309,6 +309,12 @@
 "授权失败" = "Authorization Failed";
 "取消" = "Cancel";
 "notion.auth.privacy_notice" = "We will only access the content you authorize, and won't access any other data.";
+"notion.auth.preflight.title" = "Before connecting Notion";
+"notion.auth.preflight.message" = "The app will request access to your Notion workspace. We will create a 'LanRead Library' database under the page you choose. Your reading records are only synced one-way to that database. The app will not read or modify any other data in your Notion workspace.";
+"notion.auth.preflight.confirm" = "Agree and Continue";
+"notion.auth.preflight.cancel" = "Cancel";
+"notion.disconnect.confirm.title" = "Disconnect Notion?";
+"notion.disconnect.confirm.message" = "After disconnecting, new content will no longer sync. Data already stored in Notion will not be deleted.";
 "Notion OAuth 配置无效，请检查 Client ID" = "Invalid Notion OAuth configuration. Please check your Client ID.";
 "授权流程已在进行中" = "Authorization is already in progress.";
 "无法启动授权会话" = "Unable to start authorization session.";

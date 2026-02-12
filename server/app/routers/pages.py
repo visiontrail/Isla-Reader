@@ -167,10 +167,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       <div class="logo"><div class="dot"></div><span>Lan Read · 澜悦</span></div>
       <div class="nav-links">
         <a class="pill" id="nav-home" href="/">Home</a>
-        <a class="pill" id="nav-changelog" href="changelog.html">Changelog</a>
-        <a class="pill" id="nav-support" href="support.html">Support</a>
         <a class="pill" id="nav-terms" href="/terms">Terms</a>
-        <span class="pill active" id="nav-privacy" style="background:rgba(0,0,0,0.02);">Privacy</span>
       </div>
       <div class="lang-switch">
         <label for="language" id="nav-language">Language</label>

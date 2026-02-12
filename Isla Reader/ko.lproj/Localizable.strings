@@ -309,6 +309,12 @@
 "授权失败" = "인증 실패";
 "取消" = "취소";
 "notion.auth.privacy_notice" = "허용한 콘텐츠에만 접근하며, 다른 데이터에는 접근하지 않습니다.";
+"notion.auth.preflight.title" = "Notion 연결 전 안내";
+"notion.auth.preflight.message" = "앱이 Notion 워크스페이스 접근 권한을 요청합니다. 사용자가 선택한 페이지 아래에 'LanRead Library' 데이터베이스를 생성합니다. 독서 기록은 해당 데이터베이스로만 단방향 동기화되며, 앱은 Notion의 다른 데이터를 읽거나 수정하지 않습니다.";
+"notion.auth.preflight.confirm" = "동의하고 계속";
+"notion.auth.preflight.cancel" = "취소";
+"notion.disconnect.confirm.title" = "연결을 해제할까요?";
+"notion.disconnect.confirm.message" = "해제 후에는 새 콘텐츠 동기화가 중단됩니다. Notion에 이미 저장된 데이터는 삭제되지 않습니다.";
 "Notion OAuth 配置无效，请检查 Client ID" = "Notion OAuth 설정이 올바르지 않습니다. Client ID를 확인하세요.";
 "授权流程已在进行中" = "인증 절차가 이미 진행 중입니다.";
 "无法启动授权会话" = "인증 세션을 시작할 수 없습니다.";
