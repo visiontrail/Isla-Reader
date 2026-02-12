@@ -225,6 +225,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       <span id="footer-note">© 2026 Lan Read · 澜悦 — Privacy &amp; data use.</span>
       <span style="display:flex; gap:12px; flex-wrap:wrap;">
         <a class="pill" id="footer-home" href="/">Home</a>
+        <a class="pill" id="footer-privacy" href="/privacy">Privacy</a>
         <a class="pill" id="footer-terms" href="/terms">Terms</a>
         <a class="pill" id="footer-changelog" href="changelog.html">Changelog</a>
         <a class="pill" id="footer-support" href="support.html">Support</a>
@@ -587,6 +588,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 
       setText('footer-note', t.footer.note);
       setText('footer-home', t.footer.home);
+      setText('footer-privacy', t.nav.privacy);
       setText('footer-terms', t.footer.terms);
       setText('footer-changelog', t.footer.changelog);
       setText('footer-support', t.footer.support);

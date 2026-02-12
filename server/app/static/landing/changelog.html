@@ -9,14 +9,70 @@
   <style>
     :root { --bg: #f3f1eb; --line: rgba(20,20,20,0.12); --text: #14110f; --muted: #5a5d61; --panel: #fffdf8; }
     body { margin: 0; font-family: "Epilogue", -apple-system, sans-serif; background: var(--bg); color: var(--text); }
-    main { max-width: 720px; margin: 60px auto; padding: 0 28px 80px; }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(14px);
+      background: rgba(255,253,248,0.90);
+      border-bottom: 1px solid var(--line);
+    }
+    nav {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 12px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .logo { font-size: 13px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+    .nav-links { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .pill {
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      line-height: 1;
+      background: var(--panel);
+    }
+    main { max-width: 720px; margin: 44px auto; padding: 0 28px 80px; }
     h1 { font-size: 28px; letter-spacing: 0.02em; }
     .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); }
     p { color: var(--muted); line-height: 1.6; }
     a { color: inherit; text-decoration: underline; }
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 24px 28px 44px;
+      background: rgba(247,248,250,0.8);
+    }
+    .footer-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .footer-links { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   </style>
 </head>
 <body>
+  <header>
+    <nav>
+      <div class="logo">Lan Read · 澜悦</div>
+      <div class="nav-links">
+        <a class="pill" href="/">Home</a>
+        <a class="pill" href="/privacy">Privacy</a>
+        <a class="pill" href="/terms">Terms</a>
+      </div>
+    </nav>
+  </header>
+
   <main>
     <h1>Changelog · 更新记录</h1>
     <div class="card">
@@ -25,5 +81,18 @@
       <p><a href="/">Back to home</a></p>
     </div>
   </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>© 2026 Lan Read · 澜悦</span>
+      <span class="footer-links">
+        <a class="pill" href="/">Home</a>
+        <a class="pill" href="/privacy">Privacy</a>
+        <a class="pill" href="/terms">Terms</a>
+        <a class="pill" href="changelog.html">Changelog</a>
+        <a class="pill" href="support.html">Support</a>
+      </span>
+    </div>
+  </footer>
 </body>
 </html>
