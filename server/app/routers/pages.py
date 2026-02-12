@@ -82,6 +82,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       background: var(--panel); color: var(--text); font-size: 13px;
     }
     .pill {
+      display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; line-height: 1;
       padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); text-decoration: none; transition: border .3s, color .3s, background .3s;
     }
     .pill:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,0,0,0.03); }
@@ -223,7 +224,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
   <footer>
     <div style="max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
       <span id="footer-note">© 2026 Lan Read · 澜悦 — Privacy &amp; data use.</span>
-      <span style="display:flex; gap:12px; flex-wrap:wrap;">
+      <span style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
         <a class="pill" id="footer-home" href="/">Home</a>
         <a class="pill" id="footer-privacy" href="/privacy">Privacy</a>
         <a class="pill" id="footer-terms" href="/terms">Terms</a>

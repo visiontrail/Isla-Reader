@@ -107,6 +107,11 @@
       font-size: 13px;
     }
     .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1;
       padding: 8px 14px;
       border: 1px solid var(--line);
       border-radius: 999px;
@@ -229,6 +234,7 @@
       border: 1px dashed var(--line);
       border-radius: var(--radius);
       opacity: 0.6;
+      pointer-events: none;
     }
     .card h3 {
       margin: 0 0 10px;
@@ -278,9 +284,6 @@
       <div class="logo"><div class="dot"></div><span>Lan Read · 澜悦</span></div>
       <div class="nav-links">
         <a class="pill" id="nav-home" href="/">Home</a>
-        <a class="pill" id="nav-privacy" href="/privacy">Privacy</a>
-        <a class="pill" id="nav-terms" href="/terms">Terms</a>
-        <a class="pill active" id="nav-changelog" href="changelog.html">Changelog</a>
         <a class="pill" id="nav-support" href="support.html">Support</a>
       </div>
       <div class="lang-switch">
@@ -327,7 +330,7 @@
   <footer>
     <div style="max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
       <span id="footer-note">© 2026 Lan Read · 澜悦 — Release notes.</span>
-      <span style="display:flex; gap:12px; flex-wrap:wrap;">
+      <span style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
         <a class="pill" id="footer-home" href="/">Home</a>
         <a class="pill" id="footer-privacy" href="/privacy">Privacy</a>
         <a class="pill" id="footer-terms" href="/terms">Terms</a>
