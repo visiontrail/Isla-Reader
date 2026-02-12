@@ -412,17 +412,6 @@
       margin-left: 3px;
       animation: blinkCursor 0.8s steps(1, end) infinite;
     }
-    .summary-points {
-      margin: 12px 0 0;
-      padding-left: 18px;
-      color: #4b463e;
-      display: grid;
-      gap: 5px;
-      font-size: 14px;
-      line-height: 1.5;
-      position: relative;
-      z-index: 1;
-    }
     .page-pill-list {
       display: grid;
       gap: 8px;
@@ -791,7 +780,6 @@
               <div class="streaming-block">
                 <p class="streaming-text" id="summary-stream"></p>
               </div>
-              <ul class="summary-points" id="summary-points"></ul>
             </article>
             <article class="book-page" data-page-index="1">
               <div class="book-page-head">
@@ -934,7 +922,6 @@
     const summaryMeta = document.getElementById('summary-meta');
     const summaryTitle = document.getElementById('summary-title');
     const summaryStream = document.getElementById('summary-stream');
-    const summaryPoints = document.getElementById('summary-points');
     const skimTag = document.getElementById('skim-tag');
     const skimMeta = document.getElementById('skim-meta');
     const skimTitle = document.getElementById('skim-title');
@@ -1192,11 +1179,6 @@
           summaryMeta: '流式输出',
           summaryTitle: '这本 App 做了什么',
           summaryStream: `Lan Read 把你的 ePub / txt 书库变成一个可对话阅读伙伴。\n\n它会在你打开书时给出 AI 摘要，帮助你先建立整体脉络；你可以用 Skim read 快速扫章节，再按需深入；同时支持可选 iCloud 同步与 Notion 导出，让阅读记录在“默认本地优先”的前提下按你的节奏流动。`,
-          summaryPoints: [
-            '打开即看摘要，减少进入成本',
-            'Skim read 先抓骨架，再深入细读',
-            '同步与导出都是可选，不打断本地阅读'
-          ],
           skimTag: 'Skim read',
           skimMeta: '章节骨架',
           skimTitle: '先看全貌，再决定读哪里',
@@ -1234,11 +1216,6 @@
           summaryMeta: 'ストリーミング',
           summaryTitle: 'このアプリでできること',
           summaryStream: `Lan Read は、あなたの ePub / txt ライブラリを会話できる読書パートナーに変えます。\n\n本を開くと AI 要約で全体像を素早く把握でき、Skim read で章の骨格を短時間で確認できます。さらに、必要なときだけ iCloud 同期や Notion エクスポートを使えるため、ローカルファーストの読書体験を崩しません。`,
-          summaryPoints: [
-            'AI要約ですぐに全体像を把握',
-            '章の骨格を先に見てから深読み',
-            '同期とエクスポートは必要時のみ有効化'
-          ],
           skimTag: 'Skim read',
           skimMeta: '章の骨格',
           skimTitle: '全体を先に把握して、読む場所を決める',
@@ -1276,11 +1253,6 @@
           summaryMeta: '스트리밍',
           summaryTitle: '이 앱이 하는 일',
           summaryStream: `Lan Read는 당신의 ePub / txt 라이브러리를 대화형 읽기 파트너로 바꿉니다.\n\n책을 열면 AI 요약으로 먼저 큰 흐름을 파악하고, Skim read로 장별 구조를 빠르게 훑을 수 있습니다. 필요할 때만 iCloud 동기화와 Notion 내보내기를 켤 수 있어 로컬 우선 경험을 유지합니다.`,
-          summaryPoints: [
-            'AI 요약으로 빠른 전체 파악',
-            '장 구조를 먼저 보고 필요한 부분만 깊게 읽기',
-            '동기화와 내보내기는 선택적으로 사용'
-          ],
           skimTag: 'Skim read',
           skimMeta: '챕터 골격',
           skimTitle: '먼저 전체를 보고, 읽을 위치를 결정',
@@ -1317,11 +1289,6 @@
         summaryMeta: 'Streaming',
         summaryTitle: 'What this app does',
         summaryStream: `Lan Read turns your ePub / txt library into a conversational reading companion.\n\nOpen a title and it generates an AI summary so you get orientation before deep reading. Then Skim read helps you scan chapter skeletons fast, while optional iCloud sync and Notion export keep your reading flow portable without breaking a local-first default.`,
-        summaryPoints: [
-          'Instant orientation from AI summaries',
-          'Skim chapter skeletons before diving in',
-          'Sync and export stay optional by design'
-        ],
         skimTag: 'Skim read',
         skimMeta: 'Chapter skeleton',
         skimTitle: 'Map quickly, then dive where it matters',
@@ -1416,10 +1383,6 @@
       if (summaryTag) summaryTag.textContent = b.summaryTag;
       if (summaryMeta) summaryMeta.textContent = b.summaryMeta;
       if (summaryTitle) summaryTitle.textContent = b.summaryTitle;
-      if (summaryPoints) {
-        summaryPoints.innerHTML = b.summaryPoints.map(line => `<li>${line}</li>`).join('');
-      }
-
       if (skimTag) skimTag.textContent = b.skimTag;
       if (skimMeta) skimMeta.textContent = b.skimMeta;
       if (skimTitle) skimTitle.textContent = b.skimTitle;
