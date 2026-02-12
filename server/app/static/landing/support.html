@@ -355,6 +355,55 @@
       node.innerHTML = (items || []).map(item => `<li>${item}</li>`).join('');
     };
 
+    const supportedLanguages = ['en', 'zh', 'ja', 'ko'];
+    const globalLanguageKey = 'lanread-lang';
+
+    const isSupportedLanguage = (lang) => supportedLanguages.includes(lang);
+
+    const languageFromQuery = () => {
+      const value = new URLSearchParams(window.location.search).get('lang');
+      return isSupportedLanguage(value) ? value : null;
+    };
+
+    const syncInternalLinks = (lang) => {
+      document.querySelectorAll('a[href]').forEach((anchor) => {
+        const rawHref = anchor.getAttribute('href');
+        if (!rawHref || rawHref.startsWith('#')) return;
+
+        let parsed;
+        try {
+          parsed = new URL(rawHref, window.location.origin);
+        } catch {
+          return;
+        }
+
+        if (parsed.origin !== window.location.origin) return;
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return;
+
+        parsed.searchParams.set('lang', lang);
+        anchor.setAttribute('href', `${parsed.pathname}${parsed.search}${parsed.hash}`);
+      });
+    };
+
+    const persistLanguage = (lang) => {
+      localStorage.setItem(globalLanguageKey, lang);
+      const currentURL = new URL(window.location.href);
+      currentURL.searchParams.set('lang', lang);
+      window.history.replaceState(null, '', `${currentURL.pathname}${currentURL.search}${currentURL.hash}`);
+      syncInternalLinks(lang);
+    };
+
+    const initialLanguage = (legacyKey) => {
+      const queryLang = languageFromQuery();
+      if (queryLang) return queryLang;
+
+      const sharedLang = localStorage.getItem(globalLanguageKey);
+      if (isSupportedLanguage(sharedLang)) return sharedLang;
+
+      const legacyLang = localStorage.getItem(legacyKey);
+      return isSupportedLanguage(legacyLang) ? legacyLang : 'en';
+    };
+
     const copy = {
       en: {
         meta: {
@@ -620,11 +669,10 @@
       setText('footer-support', t.footer.support);
       setText('footer-github', t.footer.github);
 
-      localStorage.setItem('lanread-support-lang', chosen);
+      persistLanguage(chosen);
     };
 
-    const storedLang = localStorage.getItem('lanread-support-lang');
-    applyLanguage(copy[storedLang] ? storedLang : 'en');
+    applyLanguage(initialLanguage('lanread-support-lang'));
 
     if (languageSelect) {
       languageSelect.addEventListener('change', (e) => applyLanguage(e.target.value));

@@ -971,6 +971,52 @@
       if (node && value) node.textContent = value;
     };
 
+    const supportedLanguages = ['en', 'zh', 'ja', 'ko'];
+    const globalLanguageKey = 'lanread-lang';
+
+    const isSupportedLanguage = (lang) => supportedLanguages.includes(lang);
+
+    const languageFromQuery = () => {
+      const value = new URLSearchParams(window.location.search).get('lang');
+      return isSupportedLanguage(value) ? value : null;
+    };
+
+    const syncInternalLinks = (lang) => {
+      document.querySelectorAll('a[href]').forEach((anchor) => {
+        const rawHref = anchor.getAttribute('href');
+        if (!rawHref || rawHref.startsWith('#')) return;
+
+        let parsed;
+        try {
+          parsed = new URL(rawHref, window.location.origin);
+        } catch {
+          return;
+        }
+
+        if (parsed.origin !== window.location.origin) return;
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return;
+
+        parsed.searchParams.set('lang', lang);
+        anchor.setAttribute('href', `${parsed.pathname}${parsed.search}${parsed.hash}`);
+      });
+    };
+
+    const persistLanguage = (lang) => {
+      localStorage.setItem(globalLanguageKey, lang);
+      const currentURL = new URL(window.location.href);
+      currentURL.searchParams.set('lang', lang);
+      window.history.replaceState(null, '', `${currentURL.pathname}${currentURL.search}${currentURL.hash}`);
+      syncInternalLinks(lang);
+    };
+
+    const initialLanguage = () => {
+      const queryLang = languageFromQuery();
+      if (queryLang) return queryLang;
+
+      const sharedLang = localStorage.getItem(globalLanguageKey);
+      return isSupportedLanguage(sharedLang) ? sharedLang : 'en';
+    };
+
     const cjkPattern = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af]/;
     const latinPattern = /[A-Za-z]/;
 
@@ -1525,12 +1571,12 @@
       setText('[data-key="footer.support"]', t.footer?.support);
       setText('[data-key="footer.github"]', t.footer?.github);
 
-      localStorage.setItem('lanread-lang', chosen);
+      persistLanguage(chosen);
     };
 
     (async () => {
       await Promise.all([loadLanguageFile('en'), loadLanguageFile('zh'), loadLanguageFile('ja'), loadLanguageFile('ko')]);
-      applyLanguage(localStorage.getItem('lanread-lang') || 'en');
+      applyLanguage(initialLanguage());
       setBookPage(0);
     })();
 
