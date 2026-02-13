@@ -355,7 +355,12 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         }
 
         guard let jsonString = String(data: data, encoding: .utf8) else { return }
-        let js = "applyNativeHighlights(\(jsonString))"
+        let js = """
+        (function() {
+            applyNativeHighlights(\(jsonString));
+            return true;
+        })();
+        """
         webView.evaluateJavaScript(js) { _, error in
             if let error {
                 DebugLogger.error("ReaderWebView: 同步高亮失败 - \(error.localizedDescription)")
@@ -750,7 +755,9 @@ struct ReaderWebView: UIViewRepresentable {
         mark.reader-highlight {
             background-color: \(isDarkMode ? "#3d2e12" : "#fff4b3");
             border-radius: 3px;
-            padding: 0 2px;
+            padding: 0 2px !important;
+            padding-left: 2px !important;
+            padding-right: 2px !important;
         }
         
         /* iframe 优化 */
@@ -970,23 +977,138 @@ struct ReaderWebView: UIViewRepresentable {
         
         window.addEventListener('resize', handleResize);
 
-        // 高亮：选区内包裹 mark
+        function findHighlightAncestor(node) {
+            let current = node;
+            while (current) {
+                if (current.nodeType === Node.ELEMENT_NODE && current.classList && current.classList.contains('reader-highlight')) {
+                    return current;
+                }
+                current = current.parentNode;
+            }
+            return null;
+        }
+
+        function normalizeRangeToTextNodeBoundaries(range) {
+            if (!range || range.collapsed) { return range; }
+
+            const startContainer = range.startContainer;
+            const endContainer = range.endContainer;
+            const startOffset = range.startOffset;
+            const endOffset = range.endOffset;
+
+            if (startContainer === endContainer && startContainer.nodeType === Node.TEXT_NODE) {
+                let textNode = startContainer;
+                const length = textNode.length;
+                if (length === 0 || startOffset >= endOffset) { return range; }
+
+                if (endOffset > 0 && endOffset < length) {
+                    textNode.splitText(endOffset);
+                }
+
+                if (startOffset > 0 && startOffset < textNode.length) {
+                    textNode = textNode.splitText(startOffset);
+                }
+
+                range.setStart(textNode, 0);
+                range.setEnd(textNode, textNode.length);
+                return range;
+            }
+
+            if (endContainer.nodeType === Node.TEXT_NODE) {
+                const endLength = endContainer.length;
+                if (endOffset > 0 && endOffset < endLength) {
+                    endContainer.splitText(endOffset);
+                    range.setEnd(endContainer, endContainer.length);
+                } else if (endOffset === endLength) {
+                    range.setEnd(endContainer, endLength);
+                }
+            }
+
+            if (startContainer.nodeType === Node.TEXT_NODE) {
+                if (startOffset > 0 && startOffset < startContainer.length) {
+                    const splitStart = startContainer.splitText(startOffset);
+                    range.setStart(splitStart, 0);
+                } else if (startOffset === 0) {
+                    range.setStart(startContainer, 0);
+                }
+            }
+
+            return range;
+        }
+
+        function collectTextNodesInRange(range) {
+            const nodes = [];
+            if (!range || range.collapsed) { return nodes; }
+
+            const root = range.commonAncestorContainer;
+            if (root.nodeType === Node.TEXT_NODE) {
+                if (range.intersectsNode(root) && !findHighlightAncestor(root)) {
+                    nodes.push(root);
+                }
+                return nodes;
+            }
+
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+            let node;
+            while ((node = walker.nextNode())) {
+                const content = node.textContent || '';
+                if (!content.length) { continue; }
+                if (findHighlightAncestor(node)) { continue; }
+                try {
+                    if (range.intersectsNode(node)) {
+                        nodes.push(node);
+                    }
+                } catch (e) {}
+            }
+
+            return nodes;
+        }
+
+        function wrapTextNodeWithHighlight(node, colorHex, highlightId) {
+            if (!node || !node.parentNode) { return false; }
+            const content = node.textContent || '';
+            if (!content.length || content.trim().length === 0) { return false; }
+
+            const wrapper = document.createElement('mark');
+            wrapper.className = 'reader-highlight';
+            wrapper.style.backgroundColor = normalizeColor(colorHex);
+            if (highlightId) {
+                wrapper.dataset.highlightId = highlightId;
+            }
+
+            node.parentNode.insertBefore(wrapper, node);
+            wrapper.appendChild(node);
+            return true;
+        }
+
+        function wrapRangeWithHighlights(range, colorHex, highlightId) {
+            if (!range || range.collapsed) { return false; }
+            const workingRange = range.cloneRange();
+            normalizeRangeToTextNodeBoundaries(workingRange);
+            const textNodes = collectTextNodesInRange(workingRange);
+            if (textNodes.length === 0) { return false; }
+
+            let wrappedCount = 0;
+            textNodes.forEach(node => {
+                if (wrapTextNodeWithHighlight(node, colorHex, highlightId)) {
+                    wrappedCount += 1;
+                }
+            });
+            return wrappedCount > 0;
+        }
+
+        // 高亮：选区内按文本节点包裹 mark，避免跨段落时只高亮边界
         function applyHighlightForSelection(colorHex) {
             const selection = window.getSelection();
             if (!selection || selection.rangeCount === 0 || !selection.toString()) {
                 return false;
             }
-            const range = selection.getRangeAt(0);
-            const wrapper = document.createElement('mark');
-            wrapper.className = 'reader-highlight';
-            wrapper.style.backgroundColor = normalizeColor(colorHex);
+            const range = selection.getRangeAt(0).cloneRange();
 
             try {
-                const extracted = range.extractContents();
-                wrapper.appendChild(extracted);
-                range.insertNode(wrapper);
+                const applied = wrapRangeWithHighlights(range, colorHex, '');
+                if (!applied) { return false; }
                 selection.removeAllRanges();
-                selection.addRange(range);
             } catch (e) {
                 console.error('applyHighlightForSelection error', e);
                 return false;
@@ -1042,16 +1164,7 @@ struct ReaderWebView: UIViewRepresentable {
             const range = document.createRange();
             range.setStart(rangeStartNode, rangeStartOffset);
             range.setEnd(rangeEndNode, rangeEndOffset);
-
-            const wrapper = document.createElement('mark');
-            wrapper.className = 'reader-highlight';
-            if (highlightId) {
-                wrapper.dataset.highlightId = highlightId;
-            }
-            wrapper.style.backgroundColor = normalizeColor(colorHex);
-
-            wrapper.appendChild(range.extractContents());
-            range.insertNode(wrapper);
+            wrapRangeWithHighlights(range, colorHex, highlightId);
             range.detach();
         }
 
@@ -1080,6 +1193,11 @@ struct ReaderWebView: UIViewRepresentable {
                 var highlightId = (targetHighlight.dataset && targetHighlight.dataset.highlightId) ? targetHighlight.dataset.highlightId : '';
                 if (!highlightId) { return; }
                 var text = targetHighlight.textContent || '';
+                var groupedHighlights = document.querySelectorAll('mark.reader-highlight[data-highlight-id="' + highlightId + '"]');
+                if (groupedHighlights && groupedHighlights.length > 1) {
+                    // 多节点高亮时由 Swift 侧回退到持久化全文，避免只拿到局部片段。
+                    text = '';
+                }
                 try { 
                     window.webkit.messageHandlers.highlightTap.postMessage({ id: highlightId, text: text });
                     if (event && event.preventDefault) { event.preventDefault(); }
