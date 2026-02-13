@@ -1999,7 +1999,11 @@ struct ReaderSettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         
-                        Slider(value: $appSettings.lineSpacing, in: 1.0...2.0, step: 0.1)
+                        Slider(
+                            value: $appSettings.lineSpacing,
+                            in: AppSettings.lineSpacingRange,
+                            step: AppSettings.lineSpacingStep
+                        )
                             .accentColor(.blue)
                     }
                     
@@ -2011,7 +2015,11 @@ struct ReaderSettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         
-                        Slider(value: $appSettings.pageMargins, in: 10...40, step: 5)
+                        Slider(
+                            value: $appSettings.pageMargins,
+                            in: AppSettings.pageMarginsRange,
+                            step: AppSettings.pageMarginsStep
+                        )
                             .accentColor(.blue)
                     }
                 }

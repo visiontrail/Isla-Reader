@@ -510,7 +510,13 @@ struct ReaderWebView: UIViewRepresentable {
     private func getMobileOptimizedCSS() -> String {
         // 根据用户设置和主题生成CSS
         let fontSize = appSettings.readingFontSize.fontSize
-        let lineHeight = 1.6 + (appSettings.lineSpacing * 0.2)
+        let lineHeight: Double
+        if appSettings.lineSpacing <= 1.0 {
+            // Increase sensitivity below 1.0 so each slider step has clearer visual impact.
+            lineHeight = 0.9 + (appSettings.lineSpacing * 0.55)
+        } else {
+            lineHeight = 1.45 + ((appSettings.lineSpacing - 1.0) * 0.34)
+        }
         let backgroundColor = isDarkMode ? "#0d0d12" : "#fafafa"
         let textColor = isDarkMode ? "rgba(255, 255, 255, 0.87)" : "rgba(0, 0, 0, 0.87)"
         let linkColor = isDarkMode ? "#64b5f6" : "#1976d2"

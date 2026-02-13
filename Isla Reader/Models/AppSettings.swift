@@ -141,6 +141,12 @@ class AppSettings: ObservableObject {
     private static let readingGoalMinutesKey = "readingGoalMinutes"
     private static let legacyReadingReminderEnabledKey = "reading_reminder_enabled"
     private static let legacyReadingGoalMinutesKey = "daily_reading_goal"
+    static let lineSpacingRange: ClosedRange<Double> = 0.6...2.4
+    static let lineSpacingStep: Double = 0.1
+    static let defaultLineSpacing: Double = 1.0
+    static let pageMarginsRange: ClosedRange<Double> = 20...50
+    static let pageMarginsStep: Double = 5
+    static let defaultPageMargins: Double = 35
 
     static let persistedKeys = [
         "app_language",
@@ -225,8 +231,11 @@ class AppSettings: ObservableObject {
         self.theme = AppTheme(rawValue: UserDefaults.standard.string(forKey: "app_theme") ?? "") ?? .system
         self.readingFontSize = ReadingFontSize(rawValue: UserDefaults.standard.string(forKey: "reading_font_size") ?? "") ?? .medium
         self.readingFont = ReadingFont(rawValue: UserDefaults.standard.string(forKey: "reading_font") ?? "") ?? .system
-        self.lineSpacing = UserDefaults.standard.object(forKey: "line_spacing") as? Double ?? 1.2
-        self.pageMargins = UserDefaults.standard.object(forKey: "page_margins") as? Double ?? 20.0
+        let storedLineSpacing = UserDefaults.standard.object(forKey: "line_spacing") as? Double ?? AppSettings.defaultLineSpacing
+        self.lineSpacing = min(max(storedLineSpacing, AppSettings.lineSpacingRange.lowerBound), AppSettings.lineSpacingRange.upperBound)
+
+        let storedPageMargins = UserDefaults.standard.object(forKey: "page_margins") as? Double ?? AppSettings.defaultPageMargins
+        self.pageMargins = min(max(storedPageMargins, AppSettings.pageMarginsRange.lowerBound), AppSettings.pageMarginsRange.upperBound)
         let defaults = UserDefaults.standard
         self.isReadingReminderEnabled = defaults.object(forKey: AppSettings.readingReminderEnabledKey) as? Bool
             ?? defaults.object(forKey: AppSettings.legacyReadingReminderEnabledKey) as? Bool
@@ -248,8 +257,8 @@ class AppSettings: ObservableObject {
         theme = .system
         readingFontSize = .medium
         readingFont = .system
-        lineSpacing = 1.2
-        pageMargins = 20.0
+        lineSpacing = AppSettings.defaultLineSpacing
+        pageMargins = AppSettings.defaultPageMargins
         isReadingReminderEnabled = false
         dailyReadingGoal = 20
     }
