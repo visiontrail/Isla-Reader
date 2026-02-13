@@ -78,6 +78,7 @@ struct ReaderView: View {
     @State private var lastWebContentTapTime: Date?
     private let swipePagingEnabled = true
     private let tapNavigationEdgeRatio: CGFloat = 0.24
+    @State private var pageTurnAnimationStyle: PageTurnAnimationStyle = .fade
     
     private var effectiveColorScheme: ColorScheme {
         appSettings.theme.colorScheme ?? systemColorScheme
@@ -296,6 +297,7 @@ struct ReaderView: View {
                 ),
                 selectionAction: $selectionAction,
                 highlights: highlightsForChapter(index),
+                pageTurnStyle: pageTurnAnimationStyle,
                 onToolbarToggle: {
                     handleTap()
                 },
@@ -1423,6 +1425,9 @@ struct ReaderView: View {
         ensurePageArrays()
         var didMove = false
         
+        // 在修改页码之前设置动画风格，确保 SwiftUI 在同一更新周期传递给 Coordinator
+        pageTurnAnimationStyle = (source == .tap) ? .fade : .slide
+        
         switch direction {
         case .next:
             let total = safeChapterTotalPages(currentChapterIndex)
@@ -1584,7 +1589,25 @@ struct ReaderView: View {
         if shouldIgnoreNavigationTap() {
             return
         }
-        // 减少双击检测延迟以提升响应速度
+        guard selectedTextInfo == nil else { return }
+
+        let width = max(geometry.size.width, 1)
+        let normalizedX = location.x / width
+
+        // 边缘点击（翻页）：立即执行，零延迟，最大化响应速度
+        if normalizedX < tapNavigationEdgeRatio {
+            pendingTapWorkItem?.cancel()
+            pendingTapWorkItem = nil
+            _ = previousPageOrChapter(source: .tap)
+            return
+        } else if normalizedX > (1 - tapNavigationEdgeRatio) {
+            pendingTapWorkItem?.cancel()
+            pendingTapWorkItem = nil
+            _ = nextPageOrChapter(source: .tap)
+            return
+        }
+
+        // 中间区域（工具栏切换）：保留双击检测防止误触
         let doubleTapInterval: TimeInterval = 0.18
         let now = Date()
         if let lastTap = lastNavigationTapTime, now.timeIntervalSince(lastTap) < doubleTapInterval {
@@ -1596,22 +1619,9 @@ struct ReaderView: View {
 
         lastNavigationTapTime = now
         pendingTapWorkItem?.cancel()
-        let width = max(geometry.size.width, 1)
         let workItem = DispatchWorkItem {
-            if shouldIgnoreNavigationTap() {
-                return
-            }
-            guard selectedTextInfo == nil else { return }
-            guard !isAnimatingPageTurn else { return }
-            let normalizedX = location.x / width
-
-            if normalizedX < tapNavigationEdgeRatio {
-                _ = previousPageOrChapter(source: .tap)
-            } else if normalizedX > (1 - tapNavigationEdgeRatio) {
-                _ = nextPageOrChapter(source: .tap)
-            } else {
-                handleTap()
-            }
+            if self.shouldIgnoreNavigationTap() { return }
+            self.handleTap()
         }
         pendingTapWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + doubleTapInterval, execute: workItem)

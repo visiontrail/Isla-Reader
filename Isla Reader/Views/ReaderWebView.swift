@@ -37,6 +37,12 @@ struct ReaderSelectionAction: Identifiable, Equatable {
     let type: ActionType
 }
 
+// MARK: - Page Turn Animation Style
+enum PageTurnAnimationStyle {
+    case fade   // Tap-based: instant jump + crossfade (120-150ms)
+    case slide  // Swipe-based: horizontal scroll animation
+}
+
 // MARK: - WebView Coordinator
 class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, UIScrollViewDelegate {
     var parent: ReaderWebView
@@ -156,12 +162,18 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         }
     }
     
-    func scrollToCurrentPage(on webView: WKWebView, animated: Bool = false) {
-        let page = max(0, min(parent.currentPageIndex, max(parent.totalPages - 1, 0)))
-        // Always perform JS jump without animation; we animate natively for smoothness
+    /// 通过 JS 通知 Web 进程渲染目标页内容（WKWebView 在 isScrollEnabled=false 时
+    /// 不会将原生 contentOffset 变化同步给 Web 渲染进程，必须走 JS）。
+    private func jsScrollToPage(_ page: Int, on webView: WKWebView) {
         let js = "scrollToPage(\(page), false)"
         webView.evaluateJavaScript(js, completionHandler: nil)
-        // Native fallback to ensure position updates even if JS scrolling is ignored
+    }
+
+    func scrollToCurrentPage(on webView: WKWebView, animated: Bool = false) {
+        let page = max(0, min(parent.currentPageIndex, max(parent.totalPages - 1, 0)))
+        // JS 通知 Web 进程渲染目标区域（必须）
+        jsScrollToPage(page, on: webView)
+        // 原生 scrollView 同步位置（兜底 + 保证视觉对齐）
         let applyOffset = {
             let pageWidth = webView.scrollView.bounds.width
             guard pageWidth > 0 else { return }
@@ -197,36 +209,90 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             return true
         }
         
-        performSlideTransition(to: newIndex, on: webView)
+        // 根据翻页来源选择动画方式
+        switch parent.pageTurnStyle {
+        case .fade:
+            performFadeTransition(to: newIndex, on: webView)
+        case .slide:
+            performSlideTransition(to: newIndex, on: webView)
+        }
         return true
     }
     
-    // MARK: - Lightweight page-turn animation
-    private func performSlideTransition(to newIndex: Int, on webView: WKWebView) {
-        guard let container = containerView else {
-            scrollToCurrentPage(on: webView, animated: true)
+    // MARK: - Tap page-turn: snapshot crossfade (120-150ms)
+    private func performFadeTransition(to newIndex: Int, on webView: WKWebView) {
+        let pageWidth = webView.scrollView.bounds.width
+        guard pageWidth > 0 else {
             lastDisplayedPageIndex = newIndex
-            return
-        }
-
-        let bounds = container.bounds
-        guard bounds.width > 0 else {
             scrollToCurrentPage(on: webView, animated: false)
-            lastDisplayedPageIndex = newIndex
             return
         }
 
         isAnimatingSlide = true
 
-        // 使用轻量级的动画：直接通过 scrollView 的原生动画
-        let pageWidth = bounds.width
+        // 1. 截取当前页面快照（不等待屏幕更新，保证速度）
+        let snapshot = webView.snapshotView(afterScreenUpdates: false)
+
+        if let snapshot = snapshot {
+            snapshot.frame = webView.frame
+            // 插入到 webView 上方，盖住旧内容
+            if let container = containerView {
+                container.addSubview(snapshot)
+            } else {
+                webView.superview?.insertSubview(snapshot, aboveSubview: webView)
+            }
+        }
+
+        // 2. 通过 JS 告知 Web 进程渲染目标页，同时设置原生 offset
+        //    快照覆盖在上层，所以 JS 异步延迟不会被用户看到
+        jsScrollToPage(newIndex, on: webView)
+        let targetX = CGFloat(newIndex) * pageWidth
+        webView.scrollView.setContentOffset(CGPoint(x: targetX, y: 0), animated: false)
+
+        // 3. 淡出快照，露出新页面内容（150ms，克制、不喧宾夺主）
+        UIView.animate(
+            withDuration: 0.15,
+            delay: 0,
+            options: [.curveEaseOut, .beginFromCurrentState, .allowUserInteraction]
+        ) {
+            snapshot?.alpha = 0
+        } completion: { [weak self] _ in
+            snapshot?.removeFromSuperview()
+            guard let self = self else { return }
+            self.lastDisplayedPageIndex = newIndex
+            self.isAnimatingSlide = false
+
+            // 处理快速连点积压的翻页请求
+            if let pending = self.pendingPageIndex, pending != newIndex {
+                self.pendingPageIndex = nil
+                self.performFadeTransition(to: pending, on: webView)
+            } else {
+                self.pendingPageIndex = nil
+            }
+        }
+    }
+    
+    // MARK: - Swipe page-turn: horizontal slide animation
+    private func performSlideTransition(to newIndex: Int, on webView: WKWebView) {
+        let pageWidth = webView.scrollView.bounds.width
+        guard pageWidth > 0 else {
+            lastDisplayedPageIndex = newIndex
+            scrollToCurrentPage(on: webView, animated: false)
+            return
+        }
+
+        isAnimatingSlide = true
+
         let targetOffset = CGFloat(newIndex) * pageWidth
 
-        // 使用 CATransaction 实现更流畅的动画
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(0.25)
-        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
-        CATransaction.setCompletionBlock { [weak self] in
+        // JS 通知 Web 进程渲染目标页区域
+        jsScrollToPage(newIndex, on: webView)
+        // 原生动画滑动（setContentOffset(animated:true) 会持续通知 WKWebView 渲染中间帧）
+        webView.scrollView.setContentOffset(CGPoint(x: targetOffset, y: 0), animated: true)
+
+        // 通过短延时检测动画完成（UIScrollView animated scroll 通常 ~0.25s）
+        // 使用 DispatchQueue 而非 CATransaction 确保可靠回调
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) { [weak self] in
             guard let self = self else { return }
             self.lastDisplayedPageIndex = newIndex
             self.isAnimatingSlide = false
@@ -236,15 +302,8 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                 self.performSlideTransition(to: pending, on: webView)
             } else {
                 self.pendingPageIndex = nil
-                // 确保最终位置准确
-                self.scrollToCurrentPage(on: webView, animated: false)
             }
         }
-
-        // 直接设置 scrollView 的 contentOffset
-        webView.scrollView.setContentOffset(CGPoint(x: targetOffset, y: 0), animated: true)
-
-        CATransaction.commit()
     }
 
     // Sync latest SwiftUI state to coordinator
@@ -314,6 +373,7 @@ struct ReaderWebView: UIViewRepresentable {
     @Binding var totalPages: Int
     @Binding var selectionAction: ReaderSelectionAction?
     var highlights: [ReaderHighlight]
+    var pageTurnStyle: PageTurnAnimationStyle = .fade
     
     var onToolbarToggle: (() -> Void)?
     var onTextSelection: ((SelectedTextInfo) -> Void)?
