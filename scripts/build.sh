@@ -83,6 +83,83 @@ if [ "$CLEAN" == true ]; then
     echo ""
 fi
 
+# 检查并修复由于项目目录变更导致的 DerivedData/SwiftPM 缓存路径失效问题
+PROJECT_ROOT_MARKER="$BUILD_DIR/.project-root"
+WORKSPACE_STATE="$BUILD_DIR/SourcePackages/workspace-state.json"
+NEEDS_PACKAGE_RESOLVE=false
+BUILD_CACHE_RESET=false
+
+if [ -f "$PROJECT_ROOT_MARKER" ]; then
+    LAST_PROJECT_DIR="$(cat "$PROJECT_ROOT_MARKER")"
+    if [ "$LAST_PROJECT_DIR" != "$PROJECT_DIR" ]; then
+        echo -e "${YELLOW}🔄 检测到项目目录变更，正在重建本地编译缓存...${NC}"
+        rm -rf "$BUILD_DIR"
+        BUILD_CACHE_RESET=true
+        NEEDS_PACKAGE_RESOLVE=true
+    fi
+elif [ -d "$BUILD_DIR/Build" ] || [ -d "$BUILD_DIR/ModuleCache.noindex" ] || [ -d "$BUILD_DIR/SourcePackages" ]; then
+    echo -e "${YELLOW}🔄 检测到旧版构建缓存，正在执行一次兼容性重建...${NC}"
+    rm -rf "$BUILD_DIR"
+    BUILD_CACHE_RESET=true
+    NEEDS_PACKAGE_RESOLVE=true
+fi
+
+mkdir -p "$BUILD_DIR"
+echo "$PROJECT_DIR" > "$PROJECT_ROOT_MARKER"
+
+if [ "$BUILD_CACHE_RESET" != true ] && [ -f "$WORKSPACE_STATE" ]; then
+    EXPECTED_ARTIFACT_ROOT="$PROJECT_DIR/build/SourcePackages/artifacts/"
+    STALE_SPM_CACHE=false
+    ARTIFACT_PATH_MISMATCH=false
+
+    while IFS= read -r ARTIFACT_PATH; do
+        [ -z "$ARTIFACT_PATH" ] && continue
+
+        if [ ! -e "$ARTIFACT_PATH" ]; then
+            STALE_SPM_CACHE=true
+            break
+        fi
+
+        case "$ARTIFACT_PATH" in
+            "$EXPECTED_ARTIFACT_ROOT"*) ;;
+            *)
+                STALE_SPM_CACHE=true
+                ARTIFACT_PATH_MISMATCH=true
+                break
+                ;;
+        esac
+    done < <(sed -n 's/.*"path" : "\(.*\)",*/\1/p' "$WORKSPACE_STATE")
+
+    if [ "$STALE_SPM_CACHE" == true ]; then
+        if [ "$ARTIFACT_PATH_MISMATCH" == true ]; then
+            echo -e "${YELLOW}🔄 检测到旧目录残留路径，正在重建本地编译缓存...${NC}"
+            rm -rf "$BUILD_DIR"
+            mkdir -p "$BUILD_DIR"
+            echo "$PROJECT_DIR" > "$PROJECT_ROOT_MARKER"
+            BUILD_CACHE_RESET=true
+        else
+            echo -e "${YELLOW}🔄 检测到过期的 SwiftPM 缓存路径，正在重建 SourcePackages...${NC}"
+            rm -rf "$BUILD_DIR/SourcePackages"
+        fi
+        NEEDS_PACKAGE_RESOLVE=true
+    fi
+fi
+
+# 当 SourcePackages 不存在时，先显式解析依赖，避免首次构建直接失败
+if [ ! -d "$BUILD_DIR/SourcePackages" ]; then
+    NEEDS_PACKAGE_RESOLVE=true
+fi
+
+if [ "$NEEDS_PACKAGE_RESOLVE" == true ]; then
+    echo -e "${YELLOW}📦 解析 Swift Package 依赖...${NC}"
+    xcodebuild -resolvePackageDependencies \
+        -project "$PROJECT_FILE" \
+        -scheme "$SCHEME" \
+        -derivedDataPath "$BUILD_DIR" \
+        -quiet
+    echo ""
+fi
+
 # 开始编译
 echo -e "${GREEN}⚙️  开始编译项目...${NC}"
 echo -e "${BLUE}配置: ${NC}$CONFIGURATION"
@@ -132,4 +209,3 @@ else
 fi
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
