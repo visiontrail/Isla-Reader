@@ -553,13 +553,25 @@ struct ReaderView: View {
 
     private func selectionToolbar(for info: SelectedTextInfo, in geometry: GeometryProxy) -> some View {
         let safeTop = geometry.safeAreaInsets.top + 12
+        let safeBottom = geometry.size.height - geometry.safeAreaInsets.bottom - 16
         let fallbackRect = CGRect(x: geometry.size.width / 2, y: geometry.size.height * 0.25, width: 0, height: 0)
         let rect = info.rect == .zero ? fallbackRect : info.rect
         let toolbarHeight: CGFloat = 64
+        let spacingAboveSelection: CGFloat = 12
+        let spacingBelowSelection = dynamicSpacingBelowSelection
+        let upperRegionThreshold = geometry.size.height * 0.45
         let horizontalPadding = min(120, geometry.size.width / 2)
         let clampedX = min(max(rect.midX, horizontalPadding), geometry.size.width - horizontalPadding)
-        let preferredY = rect.minY - toolbarHeight / 2
-        let clampedY = min(max(preferredY, safeTop), geometry.size.height - toolbarHeight - 16)
+        let minCenterY = safeTop + toolbarHeight / 2
+        let maxCenterY = safeBottom - toolbarHeight / 2
+        let preferBelow = rect.midY <= upperRegionThreshold
+        let aboveY = rect.minY - toolbarHeight / 2 - spacingAboveSelection
+        let belowY = rect.maxY + toolbarHeight / 2 + spacingBelowSelection
+        var preferredY = preferBelow ? belowY : aboveY
+        if preferredY < minCenterY || preferredY > maxCenterY {
+            preferredY = preferBelow ? aboveY : belowY
+        }
+        let clampedY = min(max(preferredY, minCenterY), maxCenterY)
 
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
@@ -609,6 +621,20 @@ struct ReaderView: View {
         .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 8)
         .position(x: clampedX, y: clampedY)
         .animation(.spring(response: 0.32, dampingFraction: 0.85), value: selectedTextInfo)
+    }
+    
+    private var dynamicSpacingBelowSelection: CGFloat {
+        let estimatedLineHeight = appSettings.readingFontSize.fontSize * webLineHeightMultiplier
+        let spacing = 18 + (estimatedLineHeight * 0.75)
+        return min(max(spacing, 34), 56)
+    }
+    
+    private var webLineHeightMultiplier: CGFloat {
+        let lineSpacing = appSettings.lineSpacing
+        if lineSpacing <= 1.0 {
+            return 0.9 + CGFloat(lineSpacing * 0.55)
+        }
+        return 1.45 + CGFloat((lineSpacing - 1.0) * 0.34)
     }
 
     private func selectionActionButton(title: String, systemImage: String, tint: Color, action: @escaping () -> Void) -> some View {
