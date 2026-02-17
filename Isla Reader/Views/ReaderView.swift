@@ -1483,6 +1483,12 @@ struct ReaderView: View {
             provideBoundaryFeedback(for: direction)
             return false
         }
+
+        if source == .tap && showingToolbar {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                showingToolbar = false
+            }
+        }
         
         saveReadingProgress()
         selectedTextInfo = nil
