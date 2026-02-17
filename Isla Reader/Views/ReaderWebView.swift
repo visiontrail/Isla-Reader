@@ -1218,7 +1218,7 @@ struct ReaderWebView: UIViewRepresentable {
             const textNodes = collectTextNodesInRange(workingRange);
             if (textNodes.length === 0) { return false; }
 
-            let wrappedCount = 0;
+            var wrappedCount = 0;
             textNodes.forEach(node => {
                 if (wrapTextNodeWithHighlight(node, colorHex, highlightId)) {
                     wrappedCount += 1;
@@ -1233,10 +1233,10 @@ struct ReaderWebView: UIViewRepresentable {
             if (!selection || selection.rangeCount === 0 || !selection.toString()) {
                 return false;
             }
-            const range = selection.getRangeAt(0).cloneRange();
-
             try {
-                const applied = wrapRangeWithHighlights(range, colorHex, '');
+                const payload = serializeSelection();
+                if (!payload) { return false; }
+                const applied = highlightByOffsets(payload.start, payload.end, colorHex, '');
                 if (!applied) { return false; }
                 selection.removeAllRanges();
             } catch (e) {
@@ -1260,42 +1260,63 @@ struct ReaderWebView: UIViewRepresentable {
             });
         }
 
-        function highlightByOffsets(start, end, colorHex, highlightId) {
-            if (typeof start !== 'number' || typeof end !== 'number' || start >= end) { return; }
+        function buildTextSegments() {
+            const segments = [];
             const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
             let current = 0;
-            let rangeStartNode = null;
-            let rangeStartOffset = 0;
-            let rangeEndNode = null;
-            let rangeEndOffset = 0;
             let node;
 
             while ((node = walker.nextNode())) {
                 const textLength = (node.textContent || '').length;
+                if (textLength <= 0) { continue; }
                 const nodeStart = current;
                 const nodeEnd = current + textLength;
-
-                if (!rangeStartNode && start >= nodeStart && start <= nodeEnd) {
-                    rangeStartNode = node;
-                    rangeStartOffset = start - nodeStart;
-                }
-
-                if (!rangeEndNode && end >= nodeStart && end <= nodeEnd) {
-                    rangeEndNode = node;
-                    rangeEndOffset = end - nodeStart;
-                    break;
-                }
-
+                segments.push({ node: node, start: nodeStart, end: nodeEnd, length: textLength });
                 current = nodeEnd;
             }
 
-            if (!rangeStartNode || !rangeEndNode) { return; }
+            return segments;
+        }
+
+        function locateOffsetBoundary(offset, segments, preferNextOnBoundary) {
+            if (!segments || segments.length === 0) { return null; }
+            const target = Math.max(0, offset);
+
+            for (let i = 0; i < segments.length; i += 1) {
+                const segment = segments[i];
+                if (target < segment.end) {
+                    return { node: segment.node, offset: Math.max(0, target - segment.start) };
+                }
+                if (target === segment.end) {
+                    if (preferNextOnBoundary && i + 1 < segments.length) {
+                        return { node: segments[i + 1].node, offset: 0 };
+                    }
+                    return { node: segment.node, offset: segment.length };
+                }
+            }
+
+            const last = segments[segments.length - 1];
+            return { node: last.node, offset: last.length };
+        }
+
+        function highlightByOffsets(start, end, colorHex, highlightId) {
+            if (typeof start !== 'number' || typeof end !== 'number' || start >= end) { return false; }
+            const segments = buildTextSegments();
+            if (segments.length === 0) { return false; }
+
+            const startBoundary = locateOffsetBoundary(start, segments, true);
+            const endBoundary = locateOffsetBoundary(end, segments, false);
+            if (!startBoundary || !endBoundary) { return false; }
+            if (startBoundary.node === endBoundary.node && startBoundary.offset >= endBoundary.offset) {
+                return false;
+            }
 
             const range = document.createRange();
-            range.setStart(rangeStartNode, rangeStartOffset);
-            range.setEnd(rangeEndNode, rangeEndOffset);
-            wrapRangeWithHighlights(range, colorHex, highlightId);
+            range.setStart(startBoundary.node, startBoundary.offset);
+            range.setEnd(endBoundary.node, endBoundary.offset);
+            const applied = wrapRangeWithHighlights(range, colorHex, highlightId);
             range.detach();
+            return applied;
         }
 
         function applyNativeHighlights(items) {
