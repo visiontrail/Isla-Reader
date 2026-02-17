@@ -140,6 +140,8 @@ struct LibraryView: View {
                                 }, onShowInfo: {
                                     DebugLogger.info("LibraryView: 查看书籍信息 - \(item.book.displayTitle)")
                                     libraryItemForInfo = item
+                                }, onContinueReading: {
+                                    continueReading(item.book)
                                 }, onToggleFavorite: {
                                     toggleFavorite(for: item)
                                 })
@@ -277,6 +279,11 @@ struct LibraryView: View {
             DebugLogger.error("LibraryView: 收藏状态保存失败", error: error)
         }
     }
+    
+    private func continueReading(_ book: Book) {
+        DebugLogger.info("LibraryView: 继续阅读 - \(book.displayTitle)")
+        readerLaunchTarget = ReaderLaunchTarget(book: book)
+    }
 }
 
 struct BookCardView: View {
@@ -286,6 +293,7 @@ struct BookCardView: View {
     var onShowBookmarks: (() -> Void)? = nil
     var onShowHighlights: (() -> Void)? = nil
     var onShowInfo: (() -> Void)? = nil
+    var onContinueReading: (() -> Void)? = nil
     var onToggleFavorite: (() -> Void)? = nil
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
@@ -365,6 +373,7 @@ struct BookCardView: View {
             }
             BookContextMenu(
                 libraryItem: libraryItem,
+                onContinueReading: onContinueReading,
                 onShowBookmarks: onShowBookmarks,
                 onShowHighlights: onShowHighlights,
                 onShowInfo: onShowInfo,
@@ -479,13 +488,14 @@ struct ProgressBar: View {
 
 struct BookContextMenu: View {
     let libraryItem: LibraryItem
+    var onContinueReading: (() -> Void)? = nil
     var onShowBookmarks: (() -> Void)? = nil
     var onShowHighlights: (() -> Void)? = nil
     var onShowInfo: (() -> Void)? = nil
     var onToggleFavorite: (() -> Void)? = nil
     
     var body: some View {
-        Button(action: {}) {
+        Button(action: { onContinueReading?() }) {
             Label(NSLocalizedString("继续阅读", comment: ""), systemImage: "book.open")
         }
         
@@ -684,7 +694,12 @@ struct BookInfoRow: View {
 struct ReaderLaunchTarget: Identifiable {
     let id = UUID()
     let book: Book
-    let location: BookmarkLocation
+    let location: BookmarkLocation?
+    
+    init(book: Book, location: BookmarkLocation? = nil) {
+        self.book = book
+        self.location = location
+    }
 }
 
 struct BookmarkListSheet: View {

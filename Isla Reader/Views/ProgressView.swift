@@ -18,6 +18,7 @@ struct ReadingProgressView: View {
     private var readingProgresses: FetchedResults<ReadingProgress>
     
     @State private var selectedTimeRange: TimeRange = .week
+    @State private var readerLaunchTarget: ReaderLaunchTarget? = nil
     
     enum TimeRange: String, CaseIterable {
         case week = "week"
@@ -130,7 +131,12 @@ struct ReadingProgressView: View {
                             .padding(.horizontal)
                             
                             ForEach(recentlyReadBooks.prefix(5)) { progress in
-                                RecentReadingCard(progress: progress)
+                                RecentReadingCard(
+                                    progress: progress,
+                                    onContinueReading: {
+                                        continueReading(progress.book)
+                                    }
+                                )
                                     .padding(.horizontal)
                             }
                         }
@@ -144,6 +150,13 @@ struct ReadingProgressView: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
             #endif
+            .fullScreenCover(item: $readerLaunchTarget) { target in
+                NavigationStack {
+                    ReaderView(book: target.book, initialLocation: target.location)
+                        .navigationBarHidden(true)
+                }
+                .environment(\.managedObjectContext, viewContext)
+            }
         }
     }
     
@@ -179,6 +192,11 @@ struct ReadingProgressView: View {
         } else {
             return "\(minutes)m"
         }
+    }
+    
+    private func continueReading(_ book: Book) {
+        DebugLogger.info("ReadingProgressView: 继续阅读 - \(book.displayTitle)")
+        readerLaunchTarget = ReaderLaunchTarget(book: book)
     }
 }
 
@@ -312,53 +330,69 @@ struct ReadingGoalCard: View {
 
 struct RecentReadingCard: View {
     let progress: ReadingProgress
+    var onContinueReading: (() -> Void)? = nil
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Book Cover Placeholder
-            RoundedRectangle(cornerRadius: 8)
-                .fill(LinearGradient(
-                    gradient: Gradient(colors: [.blue.opacity(0.6), .purple.opacity(0.8)]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
-                .frame(width: 50, height: 70)
-                .overlay(
-                    Image(systemName: "book.closed")
-                        .font(.title3)
-                        .foregroundColor(.white)
-                )
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(progress.book.displayTitle)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .lineLimit(2)
+        Button(action: {
+            onContinueReading?()
+        }) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(LinearGradient(
+                            gradient: Gradient(colors: [.blue.opacity(0.6), .purple.opacity(0.8)]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ))
+                        .frame(width: 50, height: 70)
+                    
+                    if let coverImage = progress.book.coverImage {
+                        coverImage
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 50, height: 70)
+                            .clipped()
+                            .cornerRadius(8)
+                    } else {
+                        Image(systemName: "book.closed")
+                            .font(.title3)
+                            .foregroundColor(.white)
+                    }
+                }
                 
-                Text(progress.book.displayAuthor)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                
-                HStack {
-                    Text(progress.formattedProgress)
-                        .font(.caption)
-                        .foregroundColor(.blue)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(progress.book.displayTitle)
+                        .font(.subheadline)
                         .fontWeight(.medium)
+                        .lineLimit(2)
                     
-                    Spacer()
-                    
-                    Text(formatLastRead(progress.lastReadAt))
+                    Text(progress.book.displayAuthor)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
+                    
+                    HStack {
+                        Text(progress.formattedProgress)
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                            .fontWeight(.medium)
+                        
+                        Spacer()
+                        
+                        Text(formatLastRead(progress.lastReadAt))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
+                
+                Spacer()
             }
-            
-            Spacer()
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+            .contentShape(RoundedRectangle(cornerRadius: 12))
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .buttonStyle(.plain)
     }
     
     private func formatLastRead(_ date: Date) -> String {
