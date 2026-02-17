@@ -555,23 +555,31 @@ struct ReaderView: View {
         let safeTop = geometry.safeAreaInsets.top + 12
         let safeBottom = geometry.size.height - geometry.safeAreaInsets.bottom - 16
         let fallbackRect = CGRect(x: geometry.size.width / 2, y: geometry.size.height * 0.25, width: 0, height: 0)
-        let rect = info.rect == .zero ? fallbackRect : info.rect
+        let hasFiniteRect =
+            info.rect.minX.isFinite &&
+            info.rect.minY.isFinite &&
+            info.rect.width.isFinite &&
+            info.rect.height.isFinite
+        let sourceRect = (hasFiniteRect && info.rect != .zero) ? info.rect : fallbackRect
         let toolbarHeight: CGFloat = 64
         let spacingAboveSelection: CGFloat = 12
         let spacingBelowSelection = dynamicSpacingBelowSelection
         let upperRegionThreshold = geometry.size.height * 0.45
-        let horizontalPadding = min(120, geometry.size.width / 2)
-        let clampedX = min(max(rect.midX, horizontalPadding), geometry.size.width - horizontalPadding)
+        let normalizedMinY = min(max(sourceRect.minY, safeTop), safeBottom)
+        let normalizedMaxY = min(max(sourceRect.maxY, safeTop), safeBottom)
+        let normalizedMidY = min(max(sourceRect.midY, safeTop), safeBottom)
         let minCenterY = safeTop + toolbarHeight / 2
         let maxCenterY = safeBottom - toolbarHeight / 2
-        let preferBelow = rect.midY <= upperRegionThreshold
-        let aboveY = rect.minY - toolbarHeight / 2 - spacingAboveSelection
-        let belowY = rect.maxY + toolbarHeight / 2 + spacingBelowSelection
+        let validMaxCenterY = max(maxCenterY, minCenterY)
+        let preferBelow = normalizedMidY <= upperRegionThreshold
+        let aboveY = normalizedMinY - toolbarHeight / 2 - spacingAboveSelection
+        let belowY = normalizedMaxY + toolbarHeight / 2 + spacingBelowSelection
         var preferredY = preferBelow ? belowY : aboveY
         if preferredY < minCenterY || preferredY > maxCenterY {
             preferredY = preferBelow ? aboveY : belowY
         }
-        let clampedY = min(max(preferredY, minCenterY), maxCenterY)
+        let clampedY = min(max(preferredY, minCenterY), validMaxCenterY)
+        let toolbarWidth = min(max(geometry.size.width - 24, 260), 760)
 
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
@@ -613,13 +621,13 @@ struct ReaderView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
         }
-        .frame(maxWidth: min(geometry.size.width - 32, geometry.size.width))
+        .frame(width: toolbarWidth)
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 8)
-        .position(x: clampedX, y: clampedY)
+        .position(x: geometry.size.width / 2, y: clampedY)
         .animation(.spring(response: 0.32, dampingFraction: 0.85), value: selectedTextInfo)
     }
     

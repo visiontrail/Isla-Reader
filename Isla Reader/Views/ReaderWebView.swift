@@ -55,6 +55,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private var lastDisplayedPageIndex: Int = 0
     private var pendingHighlights: [ReaderHighlight] = []
     private var isTouchingContent = false
+    private var isResolvingInteractionPage = false
     
     init(_ parent: ReaderWebView) {
         self.parent = parent
@@ -148,8 +149,80 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         isTouchingContent = isActive
         parent.onInteractionChange?(isActive)
         if !isActive, let webView {
-            scrollToCurrentPage(on: webView, animated: false)
+            isResolvingInteractionPage = true
+            syncCurrentPageFromWebView(webView)
         }
+    }
+
+    private func syncCurrentPageFromWebView(_ webView: WKWebView) {
+        let js = """
+        (function() {
+            try {
+                var perPage = Math.max(1, (typeof getPerPage === 'function' ? getPerPage() : (window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 1)));
+                var scrollLeft = (typeof getScrollLeft === 'function' ? getScrollLeft() : (window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0));
+                var selection = window.getSelection ? window.getSelection() : null;
+                var selectedText = '';
+                if (selection && selection.rangeCount > 0) {
+                    selectedText = selection.toString ? selection.toString() : '';
+                }
+                var hasSelection = !!selectedText && selectedText.trim().length > 0;
+                return {
+                    pageIndex: Math.max(0, Math.round(scrollLeft / perPage)),
+                    hasSelection: hasSelection
+                };
+            } catch (e) {
+                return null;
+            }
+        })();
+        """
+
+        webView.evaluateJavaScript(js) { [weak self] value, error in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                self.isResolvingInteractionPage = false
+
+                if let snapshot = Self.parseInteractionSnapshot(from: value), snapshot.hasSelection {
+                    let maxPage = max(self.parent.totalPages - 1, 0)
+                    let clamped = max(0, min(snapshot.pageIndex, maxPage))
+                    self.pendingPageIndex = nil
+                    self.lastDisplayedPageIndex = clamped
+                    if self.parent.currentPageIndex != clamped {
+                        self.parent.currentPageIndex = clamped
+                    }
+                    return
+                }
+
+                if let error {
+                    DebugLogger.error("ReaderWebView: 同步交互后页码失败 - \(error.localizedDescription)")
+                }
+                _ = self.animateToCurrentPageIfChanged(on: webView)
+            }
+        }
+    }
+
+    private static func parseInteractionSnapshot(from value: Any?) -> (pageIndex: Int, hasSelection: Bool)? {
+        if let dict = value as? [String: Any] {
+            var pageIndex: Int?
+            if let index = dict["pageIndex"] as? Int {
+                pageIndex = index
+            } else if let number = dict["pageIndex"] as? NSNumber {
+                pageIndex = number.intValue
+            } else if let string = dict["pageIndex"] as? String, let index = Int(string) {
+                pageIndex = index
+            }
+
+            guard let parsedPage = pageIndex else { return nil }
+            let hasSelection: Bool
+            if let value = dict["hasSelection"] as? Bool {
+                hasSelection = value
+            } else if let value = dict["hasSelection"] as? NSNumber {
+                hasSelection = value.boolValue
+            } else {
+                hasSelection = false
+            }
+            return (parsedPage, hasSelection)
+        }
+        return nil
     }
     
     private func applyPagination(on webView: WKWebView) {
@@ -190,7 +263,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     // Animate to the latest SwiftUI-bound page if it differs from what is currently displayed
     @discardableResult
     func animateToCurrentPageIfChanged(on webView: WKWebView) -> Bool {
-        if isTouchingContent {
+        if isTouchingContent || isResolvingInteractionPage {
             return true
         }
         let newIndex = max(0, min(parent.currentPageIndex, max(parent.totalPages - 1, 0)))
@@ -316,6 +389,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         self.didApplyPagination = false
         self.isLoaded = false
         self.isAnimatingSlide = false
+        self.isResolvingInteractionPage = false
         self.pendingPageIndex = nil
         if isTouchingContent {
             isTouchingContent = false
@@ -820,6 +894,55 @@ struct ReaderWebView: UIViewRepresentable {
             }
         }
 
+        function safeNumber(value, fallback) {
+            return Number.isFinite(value) ? value : fallback;
+        }
+
+        function resolveSelectionRect(range) {
+            if (!range) {
+                return { x: 0, y: 0, width: 0, height: 0 };
+            }
+
+            const viewportWidth = Math.max(1, window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 1);
+            const viewportHeight = Math.max(1, window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 1);
+            const viewportTop = 0;
+            const viewportLeft = 0;
+            const viewportBottom = viewportHeight;
+            const viewportRight = viewportWidth;
+
+            let bestRect = null;
+            let bestScore = -1;
+            const rectList = range.getClientRects ? Array.from(range.getClientRects()) : [];
+
+            rectList.forEach(function(rect) {
+                if (!rect) { return; }
+                const width = safeNumber(rect.width, 0);
+                const height = safeNumber(rect.height, 0);
+                const x = safeNumber(rect.x, 0);
+                const y = safeNumber(rect.y, 0);
+                const visibleWidth = Math.max(0, Math.min(x + width, viewportRight) - Math.max(x, viewportLeft));
+                const visibleHeight = Math.max(0, Math.min(y + height, viewportBottom) - Math.max(y, viewportTop));
+                const score = visibleWidth * visibleHeight;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestRect = { x: x, y: y, width: width, height: height };
+                }
+            });
+
+            if (!bestRect) {
+                const fallbackRect = range.getBoundingClientRect();
+                bestRect = fallbackRect ? {
+                    x: safeNumber(fallbackRect.x, 0),
+                    y: safeNumber(fallbackRect.y, 0),
+                    width: safeNumber(fallbackRect.width, 0),
+                    height: safeNumber(fallbackRect.height, 0)
+                } : { x: 0, y: 0, width: 0, height: 0 };
+            }
+
+            return bestRect;
+        }
+
         function serializeSelection() {
             const selection = window.getSelection();
             if (!selection || selection.rangeCount === 0) {
@@ -828,7 +951,7 @@ struct ReaderWebView: UIViewRepresentable {
 
             const text = selection.toString();
             const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
+            const rect = resolveSelectionRect(range);
             const start = measureOffset(range.startContainer, range.startOffset);
             const end = measureOffset(range.endContainer, range.endOffset);
             const safeStart = Math.min(start, end);
@@ -851,6 +974,7 @@ struct ReaderWebView: UIViewRepresentable {
 
         function notifySelectionChange() {
             const payload = serializeSelection();
+            const pageIndex = Math.max(0, Math.round(getScrollLeft() / getPerPage()));
             try {
                 if (payload) {
                     window.webkit.messageHandlers.textSelection.postMessage(payload);
@@ -859,7 +983,7 @@ struct ReaderWebView: UIViewRepresentable {
                         text: "",
                         start: 0,
                         end: 0,
-                        pageIndex: 0,
+                        pageIndex: pageIndex,
                         rect: { x: 0, y: 0, width: 0, height: 0 }
                     });
                 }
