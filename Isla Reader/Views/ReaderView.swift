@@ -62,6 +62,7 @@ struct ReaderView: View {
     @State private var showingDeleteConfirmation = false
     @State private var hintMessage: String?
     @State private var showingAISummary = false
+    @State private var showingHighlightsList = false
     @State private var isFirstOpen = true
     @State private var didApplyInitialLocation = false
     
@@ -134,6 +135,9 @@ struct ReaderView: View {
         }
         .sheet(isPresented: $showingHighlightActions) {
             highlightActionSheet
+        }
+        .sheet(isPresented: $showingHighlightsList) {
+            HighlightListSheet(book: book)
         }
         .overlay(alignment: .top) {
             if let hintMessage {
@@ -523,7 +527,7 @@ struct ReaderView: View {
             // Action buttons
             HStack(spacing: 0) {
                 toolbarButton(icon: currentBookmark == nil ? "bookmark" : "bookmark.fill", action: { toggleBookmark() }, isActive: currentBookmark != nil)
-                toolbarButton(icon: "highlighter", action: { handleQuickHighlight() })
+                toolbarButton(icon: "highlighter", action: { openHighlightsAndNotes() })
                 toolbarButton(icon: "square.and.arrow.up", action: {})
             }
             .padding(.horizontal, 8)
@@ -688,12 +692,8 @@ struct ReaderView: View {
         showingNoteEditor = true
     }
 
-    private func handleQuickHighlight() {
-        guard selectedTextInfo != nil else {
-            showHint(NSLocalizedString("长按文字后再高亮", comment: ""))
-            return
-        }
-        commitHighlight(note: nil)
+    private func openHighlightsAndNotes() {
+        showingHighlightsList = true
     }
 
     private func handleCopySelectedText() {
