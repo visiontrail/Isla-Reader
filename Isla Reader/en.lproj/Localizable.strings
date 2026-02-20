@@ -22,6 +22,7 @@
 "隐私政策" = "Privacy Policy";
 "服务条款" = "Terms of Service";
 "完成" = "Done";
+"common.close" = "Close";
 
 "主要文本颜色" = "Primary Text Color";
 "次要文本颜色" = "Secondary Text Color";
@@ -104,6 +105,7 @@
 "从文件 App 选择" = "Choose from Files app";
 "从 iCloud Drive 导入" = "Import from iCloud Drive";
 "取消" = "Cancel";
+"保存" = "Save";
 
 // ReaderView keys
 "第 %d 页 / 共 %d 页" = "Page %d of %d";
@@ -135,6 +137,7 @@
 "highlight.action.delete_highlight_success" = "Highlight deleted";
 "highlight.list.title" = "Highlights & Notes";
 "highlight.list.empty" = "No highlights or notes yet";
+"highlight.list.edit_note" = "Edit Note";
 "highlight.list.unknown_chapter" = "Unknown chapter";
 "reader.page_turn.reached_start" = "You're at the beginning of this chapter";
 "reader.page_turn.reached_end" = "You've reached the end of this chapter";

@@ -145,7 +145,7 @@ struct ReaderView: View {
         .sheet(isPresented: $showingHighlightActions) {
             highlightActionSheet
         }
-        .sheet(isPresented: $showingHighlightsList) {
+        .fullScreenCover(isPresented: $showingHighlightsList) {
             HighlightListSheet(book: book)
         }
         .overlay(alignment: .top) {
@@ -1000,8 +1000,7 @@ struct ReaderView: View {
                             .foregroundColor(.secondary)
                         if let note = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
                             ScrollView {
-                                Text(note)
-                                    .font(.system(size: 15, design: .serif))
+                                MarkdownText(note, lineSpacing: 5)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(12)
                             }
@@ -1077,7 +1076,7 @@ struct ReaderView: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(NSLocalizedString("关闭", comment: "")) {
+                    Button(NSLocalizedString("common.close", comment: "")) {
                         showingHighlightActions = false
                         activeHighlight = nil
                     }
@@ -1134,7 +1133,7 @@ struct ReaderView: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(NSLocalizedString("关闭", comment: "")) {
+                    Button(NSLocalizedString("common.close", comment: "")) {
                         showingAIResponse = false
                         aiInsertionTarget = nil
                         aiActionInFlight = nil

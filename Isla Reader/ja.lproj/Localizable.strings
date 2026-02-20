@@ -22,6 +22,7 @@
 "隐私政策" = "プライバシーポリシー";
 "服务条款" = "利用規約";
 "完成" = "完了";
+"common.close" = "閉じる";
 
 "主要文本颜色" = "主要テキスト色";
 "次要文本颜色" = "補助テキスト色";
@@ -104,6 +105,7 @@
 "从文件 App 选择" = "ファイルAppから選択";
 "从 iCloud Drive 导入" = "iCloud Drive からインポート";
 "取消" = "キャンセル";
+"保存" = "保存";
 
 // ReaderView keys
 "第 %d 页 / 共 %d 页" = "%d ページ / 全 %d ページ";
@@ -135,6 +137,7 @@
 "highlight.action.delete_highlight_success" = "ハイライトを削除しました";
 "highlight.list.title" = "ハイライトとノート";
 "highlight.list.empty" = "ハイライトやノートはまだありません";
+"highlight.list.edit_note" = "ノートを編集";
 "highlight.list.unknown_chapter" = "不明な章";
 "reader.page_turn.reached_start" = "この章の先頭です";
 "reader.page_turn.reached_end" = "この章の末尾です";

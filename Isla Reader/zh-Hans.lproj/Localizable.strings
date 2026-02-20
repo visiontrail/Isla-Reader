@@ -22,6 +22,7 @@
 "隐私政策" = "隐私政策";
 "服务条款" = "服务条款";
 "完成" = "完成";
+"common.close" = "关闭";
 
 "主要文本颜色" = "主要文本颜色";
 "次要文本颜色" = "次要文本颜色";
@@ -104,6 +105,7 @@
 "从文件 App 选择" = "从文件 App 选择";
 "从 iCloud Drive 导入" = "从 iCloud Drive 导入";
 "取消" = "取消";
+"保存" = "保存";
 
 // ReaderView keys
 "第 %d 页 / 共 %d 页" = "第 %d 页 / 共 %d 页";
@@ -135,6 +137,7 @@
 "highlight.action.delete_highlight_success" = "已删除高亮";
 "highlight.list.title" = "高亮与笔记";
 "highlight.list.empty" = "暂无高亮或笔记";
+"highlight.list.edit_note" = "编辑笔记";
 "highlight.list.unknown_chapter" = "未知章节";
 "reader.page_turn.reached_start" = "已经是本章第一页";
 "reader.page_turn.reached_end" = "已经是本章最后一页";

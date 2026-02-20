@@ -232,7 +232,7 @@ struct LibraryView: View {
                 }
                 .environment(\.managedObjectContext, viewContext)
             }
-            .sheet(item: $bookForHighlights) { book in
+            .fullScreenCover(item: $bookForHighlights) { book in
                 HighlightListSheet(book: book)
                     .environment(\.managedObjectContext, viewContext)
             }
@@ -831,6 +831,9 @@ struct HighlightListSheet: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
     @FetchRequest private var highlights: FetchedResults<Highlight>
+    @State private var editingHighlight: Highlight?
+    @State private var noteDraft = ""
+    @State private var showingNoteSaveError = false
     
     init(book: Book) {
         self.book = book
@@ -855,12 +858,23 @@ struct HighlightListSheet: View {
             .navigationTitle(NSLocalizedString("highlight.list.title", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(NSLocalizedString("完成", comment: "")) {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
                         dismiss()
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                            Text(NSLocalizedString("返回", comment: ""))
+                        }
                     }
                 }
             }
+        }
+        .sheet(item: $editingHighlight) { highlight in
+            noteEditorSheet(for: highlight)
+        }
+        .alert(NSLocalizedString("保存高亮失败", comment: ""), isPresented: $showingNoteSaveError) {
+            Button(NSLocalizedString("确定", comment: "")) { }
         }
         .onAppear {
             DebugLogger.info("HighlightListSheet: 显示书籍高亮/笔记列表 - \(book.displayTitle)")
@@ -905,9 +919,13 @@ struct HighlightListSheet: View {
                 .foregroundColor(.primary)
             
             if let noteText = noteText(for: highlight) {
-                Label(noteText, systemImage: "note.text")
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "note.text")
+                        .foregroundColor(.secondary)
+                        .padding(.top, 2)
+                    MarkdownText(noteText, lineSpacing: 4)
+                        .foregroundColor(.primary)
+                }
             } else {
                 Label(NSLocalizedString("highlight.action.no_note", comment: ""), systemImage: "note.text")
                     .font(.footnote)
@@ -916,7 +934,11 @@ struct HighlightListSheet: View {
             
             HStack(spacing: 12) {
                 Label(chapterLabel(for: highlight), systemImage: "text.book.closed")
+                    .lineLimit(1)
                 Label(pageLabel(for: highlight), systemImage: "rectangle.and.pencil.and.ellipsis")
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                inlineNoteActionButton(for: highlight)
             }
             .font(.caption)
             .foregroundColor(.secondary)
@@ -941,6 +963,98 @@ struct HighlightListSheet: View {
             return nil
         }
         return note
+    }
+
+    private func noteActionTitle(for highlight: Highlight) -> String {
+        noteText(for: highlight) == nil
+            ? NSLocalizedString("添加笔记", comment: "")
+            : NSLocalizedString("highlight.list.edit_note", comment: "")
+    }
+
+    @ViewBuilder
+    private func inlineNoteActionButton(for highlight: Highlight) -> some View {
+        ViewThatFits(in: .horizontal) {
+            Button(action: { openNoteEditor(for: highlight) }) {
+                Label(noteActionTitle(for: highlight), systemImage: "square.and.pencil")
+                    .labelStyle(.titleAndIcon)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .fixedSize(horizontal: true, vertical: false)
+
+            Button(action: { openNoteEditor(for: highlight) }) {
+                Image(systemName: "square.and.pencil")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    private func openNoteEditor(for highlight: Highlight) {
+        noteDraft = highlight.note ?? ""
+        editingHighlight = highlight
+    }
+
+    private func saveEditedNote() {
+        guard let highlight = editingHighlight else { return }
+
+        let trimmedNote = noteDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        highlight.note = trimmedNote.isEmpty ? nil : trimmedNote
+        highlight.updatedAt = Date()
+
+        do {
+            try viewContext.save()
+            DebugLogger.info("HighlightListSheet: 笔记保存成功 - \(book.displayTitle)")
+            editingHighlight = nil
+        } catch {
+            DebugLogger.error("HighlightListSheet: 笔记保存失败", error: error)
+            showingNoteSaveError = true
+        }
+    }
+
+    private func noteEditorSheet(for highlight: Highlight) -> some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(highlight.displayText)
+                    .font(.system(size: 15, design: .serif))
+                    .foregroundColor(.secondary)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.primary.opacity(0.05))
+                    .cornerRadius(12)
+
+                TextEditor(text: $noteDraft)
+                    .frame(minHeight: 220)
+                    .padding(8)
+                    .background(Color.primary.opacity(0.05))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.primary.opacity(0.08))
+                    )
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle(noteText(for: highlight) == nil ? NSLocalizedString("添加笔记", comment: "") : NSLocalizedString("highlight.list.edit_note", comment: ""))
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(NSLocalizedString("取消", comment: "")) {
+                        editingHighlight = nil
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(NSLocalizedString("保存", comment: "")) {
+                        saveEditedNote()
+                    }
+                }
+            }
+        }
     }
 }
 
