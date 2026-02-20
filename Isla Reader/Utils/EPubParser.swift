@@ -31,6 +31,13 @@ struct TOCItem {
     let href: String
     let level: Int
     let chapterIndex: Int
+
+    var fragment: String? {
+        let components = href.components(separatedBy: "#")
+        guard components.count > 1 else { return nil }
+        let rawFragment = components.dropFirst().joined(separator: "#").trimmingCharacters(in: .whitespacesAndNewlines)
+        return rawFragment.isEmpty ? nil : rawFragment
+    }
 }
 
 struct OPFInfo {
@@ -428,6 +435,14 @@ class EPubParser {
     private static func shouldIgnoreTOCEntry(title: String, href: String) -> Bool {
         return isCoverLikeTitle(title) || isCoverLikeHref(href)
     }
+
+    private static func decodeTOCHref(_ href: String) -> String {
+        href.removingPercentEncoding ?? href
+    }
+
+    private static func normalizeTOCHrefPath(_ href: String) -> String {
+        decodeTOCHref(href).components(separatedBy: "#").first ?? decodeTOCHref(href)
+    }
     
     private static func shouldSkipChapter(title: String?, href: String, idref: String, coverId: String?) -> Bool {
         if let title = title, isCoverLikeTitle(title) {
@@ -450,13 +465,14 @@ class EPubParser {
         var items: [TOCItem] = []
         
         for entry in tocEntries {
-            let normalizedHref = entry.href.components(separatedBy: "#").first ?? entry.href
-            let decodedHref = normalizedHref.removingPercentEncoding ?? normalizedHref
+            let decodedHref = decodeTOCHref(entry.href)
+            let normalizedHref = normalizeTOCHrefPath(decodedHref)
             let fileName = (decodedHref as NSString).lastPathComponent
+            let normalizedFileName = (normalizedHref as NSString).lastPathComponent
             
             var matchedIndex: Int?
             
-            for candidate in [decodedHref, fileName] {
+            for candidate in [normalizedHref, normalizedFileName, decodedHref, fileName] {
                 if let idx = hrefToChapterIndex[candidate] {
                     matchedIndex = idx
                     break
@@ -465,7 +481,7 @@ class EPubParser {
             
             if matchedIndex == nil {
                 for (href, idx) in hrefToChapterIndex {
-                    if href.hasSuffix(fileName) {
+                    if href.hasSuffix(normalizedFileName) || href.hasSuffix(fileName) {
                         matchedIndex = idx
                         break
                     }
@@ -547,11 +563,11 @@ class EPubParser {
                 if let contentRange = navPointContent.range(of: "<content\\s+src=\"([^\"]+)\"", options: .regularExpression) {
                     let contentTag = String(navPointContent[contentRange])
                     if let href = extractAttribute(from: contentTag, attribute: "src") {
-                        let normalizedHref = href.components(separatedBy: "#").first ?? href
-                        let decodedHref = normalizedHref.removingPercentEncoding ?? normalizedHref
+                        let decodedHref = decodeTOCHref(href)
+                        let normalizedHref = normalizeTOCHrefPath(decodedHref)
                         
-                        if shouldIgnoreTOCEntry(title: title, href: decodedHref) {
-                            DebugLogger.info("EPubParser: 跳过封面类NCX条目 - \(title) -> \(decodedHref)")
+                        if shouldIgnoreTOCEntry(title: title, href: normalizedHref) {
+                            DebugLogger.info("EPubParser: 跳过封面类NCX条目 - \(title) -> \(normalizedHref)")
                             continue
                         }
                         
@@ -603,11 +619,11 @@ class EPubParser {
                     title = title.replacingOccurrences(of: "<", with: "")
                     title = title.trimmingCharacters(in: .whitespacesAndNewlines)
                     
-                    let normalizedHref = href.components(separatedBy: "#").first ?? href
-                    let decodedHref = normalizedHref.removingPercentEncoding ?? normalizedHref
+                    let decodedHref = EPubParser.decodeTOCHref(href)
+                    let normalizedHref = EPubParser.normalizeTOCHrefPath(decodedHref)
                     
-                    if shouldIgnoreTOCEntry(title: title, href: decodedHref) {
-                        DebugLogger.info("EPubParser: 跳过封面类NAV条目 - \(title) -> \(decodedHref)")
+                    if shouldIgnoreTOCEntry(title: title, href: normalizedHref) {
+                        DebugLogger.info("EPubParser: 跳过封面类NAV条目 - \(title) -> \(normalizedHref)")
                         continue
                     }
                     
@@ -678,11 +694,11 @@ class EPubParser {
                         return
                     }
                     
-                    let normalizedHref = href.components(separatedBy: "#").first ?? href
-                    let decodedHref = normalizedHref.removingPercentEncoding ?? normalizedHref
+                    let decodedHref = EPubParser.decodeTOCHref(href)
+                    let normalizedHref = EPubParser.normalizeTOCHrefPath(decodedHref)
                     
-                    if EPubParser.shouldIgnoreTOCEntry(title: rawTitle, href: decodedHref) {
-                        DebugLogger.info("EPubParser: 跳过封面类NCX条目(XML) - \(rawTitle) -> \(decodedHref)")
+                    if EPubParser.shouldIgnoreTOCEntry(title: rawTitle, href: normalizedHref) {
+                        DebugLogger.info("EPubParser: 跳过封面类NCX条目(XML) - \(rawTitle) -> \(normalizedHref)")
                     } else {
                         let entry = TOCEntry(title: rawTitle, href: decodedHref, order: context.startIndex, level: context.level)
                         entries.insert(entry, at: context.startIndex)
@@ -767,10 +783,10 @@ class EPubParser {
                     
                     guard !title.isEmpty, let href = href else { return }
                     
-                    let normalizedHref = href.components(separatedBy: "#").first ?? href
-                    let decodedHref = normalizedHref.removingPercentEncoding ?? normalizedHref
-                    if EPubParser.shouldIgnoreTOCEntry(title: title, href: decodedHref) {
-                        DebugLogger.info("EPubParser: 跳过封面类NAV条目(XML) - \(title) -> \(decodedHref)")
+                    let decodedHref = EPubParser.decodeTOCHref(href)
+                    let normalizedHref = EPubParser.normalizeTOCHrefPath(decodedHref)
+                    if EPubParser.shouldIgnoreTOCEntry(title: title, href: normalizedHref) {
+                        DebugLogger.info("EPubParser: 跳过封面类NAV条目(XML) - \(title) -> \(normalizedHref)")
                     } else {
                         let level = max(listDepth - 1, 0)
                         let order = entries.count
@@ -818,7 +834,14 @@ class EPubParser {
         // 创建 href -> title 的映射
         var hrefToTitle: [String: String] = [:]
         for entry in tocEntries {
-            hrefToTitle[entry.href] = entry.title
+            let normalizedHref = normalizeTOCHrefPath(entry.href)
+            if hrefToTitle[normalizedHref] == nil {
+                hrefToTitle[normalizedHref] = entry.title
+            }
+            let fileName = (normalizedHref as NSString).lastPathComponent
+            if hrefToTitle[fileName] == nil {
+                hrefToTitle[fileName] = entry.title
+            }
         }
         
         var chapters: [Chapter] = []

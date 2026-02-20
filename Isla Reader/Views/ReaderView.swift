@@ -36,6 +36,9 @@ struct ReaderView: View {
     @State private var chapters: [Chapter] = []
     @State private var tocItems: [TOCItem] = []
     @State private var currentChapterIndex = 0
+    @State private var currentTOCFragment: String?
+    @State private var tocNavigationToken: Int = 0
+    @State private var pendingTOCNavigation: TOCNavigationRequest?
     @State private var isLoading = true
     @State private var loadError: String?
     
@@ -122,7 +125,13 @@ struct ReaderView: View {
         .preferredColorScheme(appSettings.theme.colorScheme)
         .statusBar(hidden: !showingToolbar)
         .sheet(isPresented: $showingTableOfContents) {
-            TableOfContentsView(tocItems: tocItems, chapters: chapters, currentChapterIndex: $currentChapterIndex)
+            TableOfContentsView(
+                tocItems: tocItems,
+                chapters: chapters,
+                currentChapterIndex: $currentChapterIndex,
+                currentTOCFragment: $currentTOCFragment,
+                onSelectTOCItem: handleTOCSelection
+            )
         }
         .sheet(isPresented: $showingSettings) {
             ReaderSettingsView()
@@ -164,6 +173,9 @@ struct ReaderView: View {
             // Save progress when chapter changes
             saveReadingProgress()
             selectedTextInfo = nil
+            if pendingTOCNavigation?.chapterIndex != currentChapterIndex {
+                currentTOCFragment = nil
+            }
         }
         .confirmationDialog(
             deletingNoteOnly ? NSLocalizedString("highlight.action.delete_note_confirm", comment: "") : NSLocalizedString("highlight.action.delete_highlight_confirm", comment: ""),
@@ -286,6 +298,7 @@ struct ReaderView: View {
             // 为页码显示预留空间：页码高度约50px（包括padding和背景）
             let pageIndicatorHeight: CGFloat = 50
             let webViewHeight = geometry.size.height - pageIndicatorHeight
+            let activeTOCNavigation = pendingTOCNavigation?.chapterIndex == index ? pendingTOCNavigation : nil
             
             ReaderWebView(
                 htmlContent: chapter.htmlContent,
@@ -301,6 +314,8 @@ struct ReaderView: View {
                 ),
                 selectionAction: $selectionAction,
                 highlights: highlightsForChapter(index),
+                tocNavigationFragment: activeTOCNavigation?.fragment,
+                tocNavigationToken: activeTOCNavigation?.token ?? 0,
                 pageTurnStyle: pageTurnAnimationStyle,
                 onToolbarToggle: {
                     handleTap()
@@ -415,6 +430,26 @@ struct ReaderView: View {
         } else {
             return max(appSettings.pageMargins, 24) // iPhone
         }
+    }
+
+    private func normalizeTOCFragment(_ fragment: String?) -> String? {
+        guard let fragment else { return nil }
+        let cleaned = fragment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return nil }
+        return cleaned.hasPrefix("#") ? String(cleaned.dropFirst()) : cleaned
+    }
+
+    private func handleTOCSelection(chapterIndex: Int, fragment: String?) {
+        let normalizedFragment = normalizeTOCFragment(fragment)
+        currentChapterIndex = chapterIndex
+        currentTOCFragment = normalizedFragment
+
+        tocNavigationToken += 1
+        pendingTOCNavigation = TOCNavigationRequest(
+            chapterIndex: chapterIndex,
+            fragment: normalizedFragment,
+            token: tocNavigationToken
+        )
     }
     
     private var topToolbar: some View {
@@ -1896,10 +1931,18 @@ private struct SelectionAnchor: Codable {
     let offset: Int
 }
 
+private struct TOCNavigationRequest: Equatable {
+    let chapterIndex: Int
+    let fragment: String?
+    let token: Int
+}
+
 struct TableOfContentsView: View {
     let tocItems: [TOCItem]
     let chapters: [Chapter]
     @Binding var currentChapterIndex: Int
+    @Binding var currentTOCFragment: String?
+    var onSelectTOCItem: ((Int, String?) -> Void)?
     @Environment(\.dismiss) private var dismiss
     
     private struct DisplayItem: Identifiable {
@@ -1907,18 +1950,68 @@ struct TableOfContentsView: View {
         let title: String
         let chapterIndex: Int
         let level: Int
+        let fragment: String?
+    }
+
+    private func normalizedFragment(_ fragment: String?) -> String? {
+        guard let fragment else { return nil }
+        let cleaned = fragment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return nil }
+        return cleaned.hasPrefix("#") ? String(cleaned.dropFirst()) : cleaned
     }
     
     private var displayItems: [DisplayItem] {
         if !tocItems.isEmpty {
             return tocItems.enumerated().map { index, item in
-                DisplayItem(id: index, title: item.title, chapterIndex: item.chapterIndex, level: item.level)
+                DisplayItem(
+                    id: index,
+                    title: item.title,
+                    chapterIndex: item.chapterIndex,
+                    level: item.level,
+                    fragment: item.fragment
+                )
             }
         }
         
         return chapters.enumerated().map { index, chapter in
-            DisplayItem(id: index, title: chapter.title, chapterIndex: index, level: 0)
+            DisplayItem(id: index, title: chapter.title, chapterIndex: index, level: 0, fragment: nil)
         }
+    }
+
+    private var primaryItemIDByChapter: [Int: Int] {
+        var preferred: [Int: Int] = [:]
+        var fallback: [Int: Int] = [:]
+
+        for item in displayItems {
+            if fallback[item.chapterIndex] == nil {
+                fallback[item.chapterIndex] = item.id
+            }
+            if preferred[item.chapterIndex] == nil, normalizedFragment(item.fragment) == nil {
+                preferred[item.chapterIndex] = item.id
+            }
+        }
+
+        for (chapterIndex, fallbackID) in fallback where preferred[chapterIndex] == nil {
+            preferred[chapterIndex] = fallbackID
+        }
+
+        return preferred
+    }
+
+    private var currentDisplayItemID: Int? {
+        if let activeFragment = normalizedFragment(currentTOCFragment) {
+            if let matchedID = displayItems.first(where: {
+                $0.chapterIndex == currentChapterIndex &&
+                normalizedFragment($0.fragment) == activeFragment
+            })?.id {
+                return matchedID
+            }
+        }
+        return primaryItemIDByChapter[currentChapterIndex]
+    }
+
+    private func isCurrent(_ item: DisplayItem) -> Bool {
+        item.id == currentDisplayItemID
     }
     
     var body: some View {
@@ -1927,14 +2020,20 @@ struct TableOfContentsView: View {
                 List {
                     ForEach(displayItems) { item in
                         Button(action: {
-                            currentChapterIndex = item.chapterIndex
+                            let fragment = normalizedFragment(item.fragment)
+                            if let onSelectTOCItem {
+                                onSelectTOCItem(item.chapterIndex, fragment)
+                            } else {
+                                currentChapterIndex = item.chapterIndex
+                                currentTOCFragment = fragment
+                            }
                             dismiss()
                         }) {
                             HStack(spacing: 12) {
                                 // Chapter number indicator
                                 ZStack {
                                     Circle()
-                                        .fill(item.chapterIndex == currentChapterIndex ?
+                                        .fill(isCurrent(item) ?
                                               LinearGradient(gradient: Gradient(colors: [.blue, .blue.opacity(0.7)]), 
                                                            startPoint: .topLeading, 
                                                            endPoint: .bottomTrailing) :
@@ -1945,7 +2044,7 @@ struct TableOfContentsView: View {
                                     
                                     Text("\(item.id + 1)")
                                         .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                        .foregroundColor(item.chapterIndex == currentChapterIndex ? .white : .secondary)
+                                        .foregroundColor(isCurrent(item) ? .white : .secondary)
                                 }
                                 
                                 // Chapter title
@@ -1956,7 +2055,7 @@ struct TableOfContentsView: View {
                                         .lineLimit(2)
                                         .multilineTextAlignment(.leading)
                                     
-                                    if item.chapterIndex == currentChapterIndex {
+                                    if isCurrent(item) {
                                         Text(NSLocalizedString("当前章节", comment: ""))
                                             .font(.system(size: 12, weight: .medium, design: .rounded))
                                             .foregroundColor(.blue)
@@ -1965,7 +2064,7 @@ struct TableOfContentsView: View {
                                 
                                 Spacer()
                                 
-                                if item.chapterIndex == currentChapterIndex {
+                                if isCurrent(item) {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.system(size: 20))
                                         .foregroundColor(.blue)
@@ -2003,9 +2102,9 @@ struct TableOfContentsView: View {
     }
     
     private func scrollToCurrent(in proxy: ScrollViewProxy) {
-        guard let target = displayItems.first(where: { $0.chapterIndex == currentChapterIndex }) else { return }
+        guard let targetID = currentDisplayItemID else { return }
         withAnimation {
-            proxy.scrollTo(target.id, anchor: .center)
+            proxy.scrollTo(targetID, anchor: .center)
         }
     }
 }

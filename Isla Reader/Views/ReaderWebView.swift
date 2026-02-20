@@ -56,6 +56,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private var pendingHighlights: [ReaderHighlight] = []
     private var isTouchingContent = false
     private var isResolvingInteractionPage = false
+    private var lastAppliedTOCNavigationToken: Int = -1
     
     init(_ parent: ReaderWebView) {
         self.parent = parent
@@ -232,6 +233,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         webView.evaluateJavaScript(js) { [weak self] _, _ in
             guard let self = self else { return }
             self.scrollToCurrentPage(on: webView, animated: false)
+            self.applyTOCNavigationIfNeeded(on: webView)
         }
     }
     
@@ -402,6 +404,107 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         applyHighlightsIfReady(on: webView)
     }
 
+    func applyTOCNavigationIfNeeded(on webView: WKWebView?) {
+        guard let webView else { return }
+        guard isLoaded else { return }
+        guard parent.tocNavigationToken != lastAppliedTOCNavigationToken else { return }
+
+        // Mark this token as consumed even when fragment is empty to avoid repeated checks.
+        lastAppliedTOCNavigationToken = parent.tocNavigationToken
+
+        guard let fragment = normalizedFragment(parent.tocNavigationFragment) else { return }
+        navigateToTOCFragment(fragment, on: webView)
+    }
+
+    private func normalizedFragment(_ fragment: String?) -> String? {
+        guard let fragment else { return nil }
+        let cleaned = fragment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return nil }
+        return cleaned.hasPrefix("#") ? String(cleaned.dropFirst()) : cleaned
+    }
+
+    private func navigateToTOCFragment(_ fragment: String, on webView: WKWebView) {
+        let escapedFragment = Self.escapeJavaScriptString(fragment)
+        let js = """
+        (function() {
+            try {
+                var fragment = "\(escapedFragment)";
+                if (!fragment) { return null; }
+
+                function findTarget(key) {
+                    if (!key) { return null; }
+                    return document.getElementById(key) || document.getElementsByName(key)[0] || null;
+                }
+
+                var target = findTarget(fragment);
+                if (!target) {
+                    try { target = findTarget(decodeURIComponent(fragment)); } catch (e) {}
+                }
+                if (!target) { return null; }
+
+                var rect = target.getBoundingClientRect();
+                var scrollLeft = (typeof getScrollLeft === 'function')
+                    ? getScrollLeft()
+                    : (window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0);
+                var perPage = Math.max(
+                    1,
+                    (typeof getPerPage === 'function')
+                        ? getPerPage()
+                        : (window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 1)
+                );
+                var absoluteX = Math.max(0, rect.left + scrollLeft);
+                var page = Math.max(0, Math.floor(absoluteX / perPage));
+                if (typeof scrollToPage === 'function') {
+                    scrollToPage(page, false);
+                } else {
+                    window.scrollTo(absoluteX, 0);
+                }
+                return page;
+            } catch (e) {
+                return null;
+            }
+        })();
+        """
+
+        webView.evaluateJavaScript(js) { [weak self] value, error in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                if let error {
+                    DebugLogger.warning("ReaderWebView: TOC锚点导航失败 - \(error.localizedDescription)")
+                    return
+                }
+
+                let pageIndex: Int?
+                if let page = value as? Int {
+                    pageIndex = page
+                } else if let number = value as? NSNumber {
+                    pageIndex = number.intValue
+                } else {
+                    pageIndex = nil
+                }
+
+                guard let pageIndex else { return }
+                let clamped: Int
+                if self.parent.totalPages > 0 {
+                    let maxPage = max(self.parent.totalPages - 1, 0)
+                    clamped = max(0, min(pageIndex, maxPage))
+                } else {
+                    clamped = max(0, pageIndex)
+                }
+                self.lastDisplayedPageIndex = clamped
+                self.parent.currentPageIndex = clamped
+            }
+        }
+    }
+
+    private static func escapeJavaScriptString(_ raw: String) -> String {
+        raw
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+    }
+
     func performSelectionAction(_ action: ReaderSelectionAction, on webView: WKWebView) {
         switch action.type {
         case .highlight(let colorHex):
@@ -452,6 +555,8 @@ struct ReaderWebView: UIViewRepresentable {
     @Binding var totalPages: Int
     @Binding var selectionAction: ReaderSelectionAction?
     var highlights: [ReaderHighlight]
+    var tocNavigationFragment: String?
+    var tocNavigationToken: Int = 0
     var pageTurnStyle: PageTurnAnimationStyle = .fade
     
     var onToolbarToggle: (() -> Void)?
@@ -549,6 +654,7 @@ struct ReaderWebView: UIViewRepresentable {
             if !animated {
                 context.coordinator.scrollToCurrentPage(on: webView, animated: false)
             }
+            context.coordinator.applyTOCNavigationIfNeeded(on: webView)
         }
 
         if let action = selectionAction {
