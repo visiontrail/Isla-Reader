@@ -83,17 +83,28 @@ struct SettingsView: View {
                 // Notifications
                 Section(NSLocalizedString("通知提醒", comment: "")) {
                     HStack {
-                        Label("Daily Reading Reminder", systemImage: "bell")
+                        Label(NSLocalizedString("reading_reminder.daily", comment: ""), systemImage: "bell")
                         Spacer()
                         Toggle("", isOn: $appSettings.isReadingReminderEnabled)
                     }
                     
                     if appSettings.isReadingReminderEnabled {
+                        HStack {
+                            Text(NSLocalizedString("reading_reminder.time", comment: ""))
+                            Spacer()
+                            DatePicker(
+                                "",
+                                selection: reminderTimeBinding,
+                                displayedComponents: [.hourAndMinute]
+                            )
+                            .labelsHidden()
+                        }
+
                         Stepper(value: $appSettings.dailyReadingGoal, in: 10...180, step: 5) {
                             HStack {
-                                Text("Daily Goal Minutes")
+                                Text(NSLocalizedString("每日目标", comment: ""))
                                 Spacer()
-                                Text("\(appSettings.dailyReadingGoal) min")
+                                Text("\(appSettings.dailyReadingGoal) \(NSLocalizedString("分钟", comment: ""))")
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -150,7 +161,9 @@ struct SettingsView: View {
                 Task {
                     let hasPermission = await ReadingReminderService.shared.refreshReminderIfNeeded(
                         isEnabled: appSettings.isReadingReminderEnabled,
-                        goalMinutes: appSettings.dailyReadingGoal
+                        goalMinutes: appSettings.dailyReadingGoal,
+                        hour: appSettings.readingReminderHour,
+                        minute: appSettings.readingReminderMinute
                     )
                     
                     if !hasPermission && appSettings.isReadingReminderEnabled {
@@ -168,7 +181,9 @@ struct SettingsView: View {
                 Task {
                     if isEnabled {
                         let granted = await ReadingReminderService.shared.enableDailyReminder(
-                            goalMinutes: appSettings.dailyReadingGoal
+                            goalMinutes: appSettings.dailyReadingGoal,
+                            hour: appSettings.readingReminderHour,
+                            minute: appSettings.readingReminderMinute
                         )
                         
                         if !granted {
@@ -189,7 +204,9 @@ struct SettingsView: View {
                 Task {
                     let hasPermission = await ReadingReminderService.shared.refreshReminderIfNeeded(
                         isEnabled: appSettings.isReadingReminderEnabled,
-                        goalMinutes: newGoal
+                        goalMinutes: newGoal,
+                        hour: appSettings.readingReminderHour,
+                        minute: appSettings.readingReminderMinute
                     )
                     
                     if !hasPermission && appSettings.isReadingReminderEnabled {
@@ -203,7 +220,34 @@ struct SettingsView: View {
                     }
                 }
             }
+            .onChange(of: appSettings.readingReminderMinutesSinceMidnight) { _ in
+                Task {
+                    let hasPermission = await ReadingReminderService.shared.refreshReminderIfNeeded(
+                        isEnabled: appSettings.isReadingReminderEnabled,
+                        goalMinutes: appSettings.dailyReadingGoal,
+                        hour: appSettings.readingReminderHour,
+                        minute: appSettings.readingReminderMinute
+                    )
+
+                    if !hasPermission && appSettings.isReadingReminderEnabled {
+                        await MainActor.run {
+                            appSettings.isReadingReminderEnabled = false
+                            reminderAlert = DataAlert(
+                                title: NSLocalizedString("阅读提醒", comment: ""),
+                                message: NSLocalizedString("reading_reminder.permission_denied", comment: "")
+                            )
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    private var reminderTimeBinding: Binding<Date> {
+        Binding(
+            get: { appSettings.readingReminderTime },
+            set: { appSettings.setReadingReminderTime($0) }
+        )
     }
 
     @ViewBuilder

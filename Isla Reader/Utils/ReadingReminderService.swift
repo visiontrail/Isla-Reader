@@ -15,19 +15,24 @@ final class ReadingReminderService {
     
     private init() {}
     
-    func enableDailyReminder(goalMinutes: Int) async -> Bool {
+    func enableDailyReminder(goalMinutes: Int, hour: Int, minute: Int) async -> Bool {
         let granted = await requestAuthorization()
         guard granted else {
             DebugLogger.warning("Notification authorization was not granted for reading reminder.")
             return false
         }
         
-        await scheduleDailyReminder(goalMinutes: goalMinutes)
+        await scheduleDailyReminder(goalMinutes: goalMinutes, hour: hour, minute: minute)
         return true
     }
     
     @discardableResult
-    func refreshReminderIfNeeded(isEnabled: Bool, goalMinutes: Int) async -> Bool {
+    func refreshReminderIfNeeded(
+        isEnabled: Bool,
+        goalMinutes: Int,
+        hour: Int,
+        minute: Int
+    ) async -> Bool {
         let authorizationStatus = await currentAuthorizationStatus()
         
         guard isEnabled else {
@@ -37,14 +42,14 @@ final class ReadingReminderService {
         
         switch authorizationStatus {
         case .authorized, .provisional, .ephemeral:
-            await scheduleDailyReminder(goalMinutes: goalMinutes)
+            await scheduleDailyReminder(goalMinutes: goalMinutes, hour: hour, minute: minute)
             return true
         case .denied:
             cancelReminder()
             DebugLogger.warning("Notification authorization denied; reading reminder cancelled.")
             return false
         case .notDetermined:
-            return await enableDailyReminder(goalMinutes: goalMinutes)
+            return await enableDailyReminder(goalMinutes: goalMinutes, hour: hour, minute: minute)
         @unknown default:
             DebugLogger.warning("Unknown notification authorization status; skipping reminder scheduling.")
             return false
@@ -101,13 +106,16 @@ final class ReadingReminderService {
         }
     }
     
-    private func scheduleDailyReminder(goalMinutes: Int) async {
+    private func scheduleDailyReminder(goalMinutes: Int, hour: Int, minute: Int) async {
         notificationCenter.removePendingNotificationRequests(withIdentifiers: [ReadingReminderConstants.notificationIdentifier])
+
+        let normalizedHour = min(max(hour, 0), 23)
+        let normalizedMinute = min(max(minute, 0), 59)
         
         let content = buildContent(goalMinutes: goalMinutes)
         var dateComponents = DateComponents()
-        dateComponents.hour = ReadingReminderConstants.reminderHour
-        dateComponents.minute = ReadingReminderConstants.reminderMinute
+        dateComponents.hour = normalizedHour
+        dateComponents.minute = normalizedMinute
         dateComponents.calendar = Calendar.current
         
         let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
@@ -122,7 +130,8 @@ final class ReadingReminderService {
                 if let error = error {
                     DebugLogger.error("Failed to schedule reading reminder", error: error)
                 } else {
-                    DebugLogger.info("Scheduled reading reminder at 20:00 local time.")
+                    let scheduledTime = self.formattedTime(hour: normalizedHour, minute: normalizedMinute)
+                    DebugLogger.info("Scheduled reading reminder at \(scheduledTime) local time.")
                 }
                 continuation.resume()
             }
@@ -131,8 +140,11 @@ final class ReadingReminderService {
     
     private func buildContent(goalMinutes: Int) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
-        content.title = "Start Reading"
-        content.body = "Give yourself \(max(1, goalMinutes)) minutes."
+        content.title = NSLocalizedString("reading_reminder.title", comment: "")
+        content.body = String(
+            format: NSLocalizedString("reading_reminder.body", comment: ""),
+            max(1, goalMinutes)
+        )
         content.sound = .default
         content.userInfo = [
             ReadingReminderConstants.userInfoOpenKey: ReadingReminderConstants.userInfoOpenContinueReadingValue,
@@ -145,5 +157,9 @@ final class ReadingReminderService {
         }
         
         return content
+    }
+
+    private func formattedTime(hour: Int, minute: Int) -> String {
+        String(format: "%02d:%02d", hour, minute)
     }
 }

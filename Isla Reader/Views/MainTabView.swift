@@ -99,6 +99,8 @@ struct MainTabView: View {
             await ReadingLiveActivityManager.shared.startForTonightIfNeeded(
                 goalMinutes: appSettings.dailyReadingGoal,
                 minutesReadToday: 0,
+                reminderHour: appSettings.readingReminderHour,
+                reminderMinute: appSettings.readingReminderMinute,
                 deepLink: ReadingReminderConstants.defaultDeepLink
             )
         }

@@ -139,14 +139,18 @@ class AppSettings: ObservableObject {
     static let shared = AppSettings()
     private static let readingReminderEnabledKey = "readingReminderEnabled"
     private static let readingGoalMinutesKey = "readingGoalMinutes"
+    private static let readingReminderTimeMinutesKey = "readingReminderTimeMinutes"
     private static let legacyReadingReminderEnabledKey = "reading_reminder_enabled"
     private static let legacyReadingGoalMinutesKey = "daily_reading_goal"
+    private static let minutesPerDay = 24 * 60
     static let lineSpacingRange: ClosedRange<Double> = 0.6...2.4
     static let lineSpacingStep: Double = 0.1
     static let defaultLineSpacing: Double = 1.0
     static let pageMarginsRange: ClosedRange<Double> = 20...50
     static let pageMarginsStep: Double = 5
     static let defaultPageMargins: Double = 35
+    static let defaultReadingReminderMinutesSinceMidnight =
+        ReadingReminderConstants.defaultReminderHour * 60 + ReadingReminderConstants.defaultReminderMinute
 
     static let persistedKeys = [
         "app_language",
@@ -158,6 +162,7 @@ class AppSettings: ObservableObject {
         "page_margins",
         readingReminderEnabledKey,
         readingGoalMinutesKey,
+        readingReminderTimeMinutesKey,
         legacyReadingReminderEnabledKey,
         legacyReadingGoalMinutesKey
     ]
@@ -221,6 +226,44 @@ class AppSettings: ObservableObject {
             defaults.set(dailyReadingGoal, forKey: AppSettings.legacyReadingGoalMinutesKey)
         }
     }
+
+    @Published var readingReminderMinutesSinceMidnight: Int {
+        didSet {
+            let normalizedValue = AppSettings.normalizedReminderMinutes(readingReminderMinutesSinceMidnight)
+            if normalizedValue != readingReminderMinutesSinceMidnight {
+                readingReminderMinutesSinceMidnight = normalizedValue
+                return
+            }
+            UserDefaults.standard.set(
+                readingReminderMinutesSinceMidnight,
+                forKey: AppSettings.readingReminderTimeMinutesKey
+            )
+        }
+    }
+
+    var readingReminderHour: Int {
+        readingReminderMinutesSinceMidnight / 60
+    }
+
+    var readingReminderMinute: Int {
+        readingReminderMinutesSinceMidnight % 60
+    }
+
+    var readingReminderTime: Date {
+        let now = Date()
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: now)
+        components.hour = readingReminderHour
+        components.minute = readingReminderMinute
+        components.second = 0
+        return Calendar.current.date(from: components) ?? now
+    }
+
+    func setReadingReminderTime(_ date: Date) {
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: date)
+        let minute = calendar.component(.minute, from: date)
+        readingReminderMinutesSinceMidnight = hour * 60 + minute
+    }
     
     private init() {
         let storedLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language") ?? "") ?? .en
@@ -243,6 +286,10 @@ class AppSettings: ObservableObject {
         self.dailyReadingGoal = defaults.object(forKey: AppSettings.readingGoalMinutesKey) as? Int
             ?? defaults.object(forKey: AppSettings.legacyReadingGoalMinutesKey) as? Int
             ?? 20
+        self.readingReminderMinutesSinceMidnight = AppSettings.normalizedReminderMinutes(
+            defaults.object(forKey: AppSettings.readingReminderTimeMinutesKey) as? Int
+                ?? AppSettings.defaultReadingReminderMinutesSinceMidnight
+        )
     }
     
     @MainActor
@@ -261,5 +308,11 @@ class AppSettings: ObservableObject {
         pageMargins = AppSettings.defaultPageMargins
         isReadingReminderEnabled = false
         dailyReadingGoal = 20
+        readingReminderMinutesSinceMidnight = AppSettings.defaultReadingReminderMinutesSinceMidnight
+    }
+
+    private static func normalizedReminderMinutes(_ minutes: Int) -> Int {
+        let normalized = minutes % minutesPerDay
+        return normalized >= 0 ? normalized : normalized + minutesPerDay
     }
 }

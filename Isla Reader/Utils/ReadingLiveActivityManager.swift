@@ -20,6 +20,8 @@ final class ReadingLiveActivityManager {
     func startForTonightIfNeeded(
         goalMinutes: Int,
         minutesReadToday: Int = 0,
+        reminderHour: Int = ReadingReminderConstants.defaultReminderHour,
+        reminderMinute: Int = ReadingReminderConstants.defaultReminderMinute,
         deepLink: String = ReadingReminderConstants.defaultDeepLink
     ) async {
         guard #available(iOS 16.1, *) else {
@@ -28,8 +30,9 @@ final class ReadingLiveActivityManager {
         }
 
         let now = Date()
-        guard isWithinTonightWindow(now) else {
-            DebugLogger.info("ReadingLiveActivityManager: Skipped start, current time is outside 20:00~23:59 window.")
+        guard isWithinTonightWindow(now, reminderHour: reminderHour, reminderMinute: reminderMinute) else {
+            let startTime = String(format: "%02d:%02d", min(max(reminderHour, 0), 23), min(max(reminderMinute, 0), 59))
+            DebugLogger.info("ReadingLiveActivityManager: Skipped start, current time is outside \(startTime)~23:59 window.")
             return
         }
 
@@ -112,11 +115,14 @@ final class ReadingLiveActivityManager {
         }
     }
 
-    private func isWithinTonightWindow(_ date: Date) -> Bool {
+    private func isWithinTonightWindow(_ date: Date, reminderHour: Int, reminderMinute: Int) -> Bool {
+        let safeHour = min(max(reminderHour, 0), 23)
+        let safeMinute = min(max(reminderMinute, 0), 59)
+
         guard
             let start = calendar.date(
-                bySettingHour: ReadingReminderConstants.reminderHour,
-                minute: ReadingReminderConstants.reminderMinute,
+                bySettingHour: safeHour,
+                minute: safeMinute,
                 second: 0,
                 of: date
             ),

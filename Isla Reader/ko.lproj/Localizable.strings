@@ -11,10 +11,12 @@
 "数据管理" = "데이터 관리";
 "阅读提醒" = "읽기 알림";
 "每日目标" = "일일 목표";
-"reading_reminder.title" = "오늘 밤 8시 읽기 알림";
-"reading_reminder.body" = "퇴근 후 %d분만 책을 읽어보세요.";
+"reading_reminder.daily" = "매일 읽기 알림";
+"reading_reminder.time" = "알림 시간";
+"reading_reminder.title" = "읽기 시간";
+"reading_reminder.body" = "%d분만 읽는 시간을 가져보세요.";
 "reading_reminder.action.open" = "읽기 시작";
-"reading_reminder.permission_denied" = "저녁 8시 읽기 알림을 받으려면 설정에서 알림을 허용해주세요.";
+"reading_reminder.permission_denied" = "읽기 알림을 받으려면 설정에서 알림을 허용해주세요.";
 "app.name" = "LanRead";
 "app.about.title" = "LanRead 정보";
 "版本" = "버전";
