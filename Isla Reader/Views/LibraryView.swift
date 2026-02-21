@@ -233,7 +233,9 @@ struct LibraryView: View {
                 .environment(\.managedObjectContext, viewContext)
             }
             .fullScreenCover(item: $bookForHighlights) { book in
-                HighlightListSheet(book: book)
+                HighlightListSheet(book: book) { location in
+                    readerLaunchTarget = ReaderLaunchTarget(book: book, location: location)
+                }
                     .environment(\.managedObjectContext, viewContext)
             }
             .sheet(item: $libraryItemForInfo) { libraryItem in
@@ -827,6 +829,7 @@ struct BookmarkListSheet: View {
 
 struct HighlightListSheet: View {
     let book: Book
+    var onSelect: ((BookmarkLocation) -> Void)? = nil
     
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
@@ -835,8 +838,9 @@ struct HighlightListSheet: View {
     @State private var noteDraft = ""
     @State private var showingNoteSaveError = false
     
-    init(book: Book) {
+    init(book: Book, onSelect: ((BookmarkLocation) -> Void)? = nil) {
         self.book = book
+        self.onSelect = onSelect
         _highlights = FetchRequest(
             sortDescriptors: [NSSortDescriptor(keyPath: \Highlight.updatedAt, ascending: false)],
             predicate: NSPredicate(format: "book == %@", book)
@@ -914,9 +918,19 @@ struct HighlightListSheet: View {
                     .foregroundColor(.secondary)
             }
             
-            Text(highlight.displayText)
-                .font(.body)
-                .foregroundColor(.primary)
+            if onSelect != nil, highlight.readingLocation != nil {
+                Button(action: { openHighlightLocation(for: highlight) }) {
+                    Text(highlight.displayText)
+                        .font(.body)
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Text(highlight.displayText)
+                    .font(.body)
+                    .foregroundColor(.primary)
+            }
             
             if let noteText = noteText(for: highlight) {
                 HStack(alignment: .top, spacing: 8) {
@@ -994,6 +1008,18 @@ struct HighlightListSheet: View {
     private func openNoteEditor(for highlight: Highlight) {
         noteDraft = highlight.note ?? ""
         editingHighlight = highlight
+    }
+
+    private func openHighlightLocation(for highlight: Highlight) {
+        guard let location = highlight.readingLocation else {
+            DebugLogger.info("HighlightListSheet: 跳转失败，定位信息缺失")
+            return
+        }
+
+        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            onSelect?(location)
+        }
     }
 
     private func saveEditedNote() {

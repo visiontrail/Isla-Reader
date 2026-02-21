@@ -146,7 +146,9 @@ struct ReaderView: View {
             highlightActionSheet
         }
         .fullScreenCover(isPresented: $showingHighlightsList) {
-            HighlightListSheet(book: book)
+            HighlightListSheet(book: book) { location in
+                navigateTo(location: location)
+            }
         }
         .overlay(alignment: .top) {
             if let hintMessage {
@@ -729,6 +731,17 @@ struct ReaderView: View {
 
     private func openHighlightsAndNotes() {
         showingHighlightsList = true
+    }
+
+    private func navigateTo(location: BookmarkLocation) {
+        guard !chapters.isEmpty else { return }
+
+        let targetChapter = min(max(location.chapterIndex, 0), chapters.count - 1)
+        ensurePageArrays()
+        currentChapterIndex = targetChapter
+        setChapterPageIndex(targetChapter, max(0, location.pageIndex))
+        currentTOCFragment = nil
+        DebugLogger.info("ReaderView: 跳转到高亮位置 - 章节 \(targetChapter + 1)，页码 \(safeChapterPageIndex(targetChapter) + 1)")
     }
 
     private func handleCopySelectedText() {

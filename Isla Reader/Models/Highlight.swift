@@ -14,6 +14,12 @@ public class Highlight: NSManagedObject {
     
 }
 
+private struct HighlightSelectionAnchor: Codable {
+    let chapterIndex: Int
+    let pageIndex: Int
+    let offset: Int?
+}
+
 extension Highlight {
     
     @nonobjc public class func fetchRequest() -> NSFetchRequest<Highlight> {
@@ -47,11 +53,31 @@ extension Highlight: Identifiable {
     }
     
     var displayText: String {
-        let maxLength = 100
-        if selectedText.count > maxLength {
-            return String(selectedText.prefix(maxLength)) + "..."
-        }
         return selectedText
+    }
+
+    var readingLocation: BookmarkLocation? {
+        guard let data = startPosition.data(using: .utf8) else { return nil }
+
+        if let anchor = try? JSONDecoder().decode(HighlightSelectionAnchor.self, from: data) {
+            return BookmarkLocation(
+                chapterIndex: max(anchor.chapterIndex, 0),
+                pageIndex: max(anchor.pageIndex, 0),
+                chapterTitle: chapter
+            )
+        }
+
+        if let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let chapterValue = payload["chapterIndex"] as? NSNumber,
+           let pageValue = payload["pageIndex"] as? NSNumber {
+            return BookmarkLocation(
+                chapterIndex: max(chapterValue.intValue, 0),
+                pageIndex: max(pageValue.intValue, 0),
+                chapterTitle: chapter
+            )
+        }
+
+        return nil
     }
     
     var formattedDate: String {
