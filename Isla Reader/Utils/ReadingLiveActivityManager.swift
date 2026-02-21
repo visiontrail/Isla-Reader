@@ -24,23 +24,39 @@ final class ReadingLiveActivityManager {
         reminderMinute: Int = ReadingReminderConstants.defaultReminderMinute,
         deepLink: String = ReadingReminderConstants.defaultDeepLink
     ) async {
+        let now = Date()
+        let normalizedHour = min(max(reminderHour, 0), 23)
+        let normalizedMinute = min(max(reminderMinute, 0), 59)
+        DebugLogger.info(
+            "[LiveActivityFlow] startForTonightIfNeeded invoked. " +
+            "now=\(now), goalMinutes=\(goalMinutes), minutesReadToday=\(minutesReadToday), " +
+            "reminder=\(String(format: "%02d:%02d", normalizedHour, normalizedMinute)), deepLink=\(deepLink)"
+        )
+
         guard #available(iOS 16.1, *) else {
             DebugLogger.warning("ReadingLiveActivityManager: ActivityKit is unavailable on this iOS version.")
             return
         }
 
-        let now = Date()
         guard isWithinTonightWindow(now, reminderHour: reminderHour, reminderMinute: reminderMinute) else {
-            let startTime = String(format: "%02d:%02d", min(max(reminderHour, 0), 23), min(max(reminderMinute, 0), 59))
-            DebugLogger.info("ReadingLiveActivityManager: Skipped start, current time is outside \(startTime)~23:59 window.")
+            let startTime = String(format: "%02d:%02d", normalizedHour, normalizedMinute)
+            DebugLogger.info(
+                "[LiveActivityFlow] Skipped start because current time is outside today's start window. " +
+                "now=\(now), allowedWindow=\(startTime)~23:59"
+            )
             return
         }
 
         guard !hasLiveActivityForTonight(now: now) else {
-            DebugLogger.info("ReadingLiveActivityManager: Existing activity found for tonight, skip duplicate start.")
+            let activeCount = Activity<ReadingReminderAttributes>.activities.count
+            DebugLogger.info(
+                "[LiveActivityFlow] Skipped start because an activity for tonight already exists. " +
+                "activeCount=\(activeCount)"
+            )
             return
         }
 
+        DebugLogger.info("[LiveActivityFlow] Conditions passed. Starting Live Activity request.")
         await start(
             goalMinutes: goalMinutes,
             minutesReadToday: minutesReadToday,
@@ -55,8 +71,14 @@ final class ReadingLiveActivityManager {
     ) async {
         guard #available(iOS 16.1, *) else { return }
 
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            DebugLogger.warning("ReadingLiveActivityManager: Live Activities are disabled by system settings.")
+        let areActivitiesEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
+        let existingCount = Activity<ReadingReminderAttributes>.activities.count
+        DebugLogger.info(
+            "[LiveActivityFlow] start invoked. areActivitiesEnabled=\(areActivitiesEnabled), existingCount=\(existingCount)"
+        )
+
+        guard areActivitiesEnabled else {
+            DebugLogger.warning("[LiveActivityFlow] Live Activities are disabled by system settings.")
             return
         }
 
@@ -71,24 +93,28 @@ final class ReadingLiveActivityManager {
         )
 
         do {
+            let activity: Activity<ReadingReminderAttributes>
             if #available(iOS 16.2, *) {
                 let content = ActivityContent(state: contentState, staleDate: staleDate)
-                _ = try Activity.request(
+                activity = try Activity.request(
                     attributes: attributes,
                     content: content,
                     pushType: nil
                 )
             } else {
-                _ = try Activity.request(
+                activity = try Activity.request(
                     attributes: attributes,
                     contentState: contentState,
                     pushType: nil
                 )
                 scheduleLegacyAutoEndIfNeeded(staleDate: staleDate)
             }
-            DebugLogger.info("ReadingLiveActivityManager: Live Activity started successfully.")
+            DebugLogger.info(
+                "[LiveActivityFlow] Live Activity started successfully. " +
+                "activityID=\(activity.id), goalMinutes=\(safeGoalMinutes), minutesReadToday=\(safeMinutesReadToday), staleDate=\(String(describing: staleDate))"
+            )
         } catch {
-            DebugLogger.error("ReadingLiveActivityManager: Failed to start Live Activity.", error: error)
+            DebugLogger.error("[LiveActivityFlow] Failed to start Live Activity.", error: error)
         }
     }
 
@@ -98,14 +124,17 @@ final class ReadingLiveActivityManager {
         legacyAutoEndTask?.cancel()
         legacyAutoEndTask = nil
 
-        for activity in Activity<ReadingReminderAttributes>.activities {
+        let activities = Activity<ReadingReminderAttributes>.activities
+        DebugLogger.info("[LiveActivityFlow] endAll invoked. activeCountBeforeEnd=\(activities.count)")
+        for activity in activities {
             if #available(iOS 16.2, *) {
                 await activity.end(nil, dismissalPolicy: .immediate)
             } else {
                 await activity.end(dismissalPolicy: .immediate)
             }
+            DebugLogger.info("[LiveActivityFlow] Ended Live Activity. activityID=\(activity.id)")
         }
-        DebugLogger.info("ReadingLiveActivityManager: Ended all reading reminder Live Activities.")
+        DebugLogger.info("[LiveActivityFlow] Completed endAll for reading reminder Live Activities.")
     }
 
     @available(iOS 16.1, *)

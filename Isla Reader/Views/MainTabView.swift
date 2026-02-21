@@ -80,21 +80,39 @@ struct MainTabView: View {
     }
 
     private func processPendingContinueReadingRequestIfNeeded() {
-        guard scenePhase == .active else { return }
+        guard scenePhase == .active else {
+            DebugLogger.info("[LiveActivityFlow] Skipped continue reading handling because scene is not active.")
+            return
+        }
         let requestID = reminderCoordinator.continueReadingRequestID
-        guard requestID > handledContinueReadingRequestID else { return }
+        guard requestID > handledContinueReadingRequestID else {
+            return
+        }
 
         handledContinueReadingRequestID = requestID
         selectedPhoneTab = .library
-        DebugLogger.info("MainTabView: Handled continue reading request and navigated to library.")
+        DebugLogger.info(
+            "[LiveActivityFlow] Handled continue reading request and navigated to library. " +
+            "requestID=\(requestID)"
+        )
     }
 
     private func processPendingReminderTapIfNeeded() {
-        guard scenePhase == .active else { return }
+        guard scenePhase == .active else {
+            DebugLogger.info("[LiveActivityFlow] Skipped reminder tap handling because scene is not active.")
+            return
+        }
         let requestID = reminderCoordinator.reminderTapRequestID
-        guard requestID > handledReminderTapRequestID else { return }
+        guard requestID > handledReminderTapRequestID else {
+            return
+        }
 
         handledReminderTapRequestID = requestID
+        DebugLogger.info(
+            "[LiveActivityFlow] Reminder tap request accepted. Preparing to start Live Activity. " +
+            "requestID=\(requestID), goalMinutes=\(appSettings.dailyReadingGoal), " +
+            "reminder=\(appSettings.readingReminderHour):\(String(format: "%02d", appSettings.readingReminderMinute))"
+        )
         Task {
             await ReadingLiveActivityManager.shared.startForTonightIfNeeded(
                 goalMinutes: appSettings.dailyReadingGoal,

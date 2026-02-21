@@ -24,10 +24,20 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) {
         defer { completionHandler() }
 
-        guard ReadingReminderService.shared.isReadingReminderNotification(response.notification.request) else {
+        let request = response.notification.request
+        let isReadingReminder = ReadingReminderService.shared.isReadingReminderNotification(request)
+        DebugLogger.info(
+            "[LiveActivityFlow] Notification response received. " +
+            "identifier=\(request.identifier), actionIdentifier=\(response.actionIdentifier), " +
+            "isReadingReminder=\(isReadingReminder)"
+        )
+
+        guard isReadingReminder else {
+            DebugLogger.info("[LiveActivityFlow] Ignored notification response because it is not a reading reminder.")
             return
         }
 
+        DebugLogger.info("[LiveActivityFlow] Dispatching reminder tap event to ReadingReminderCoordinator.")
         Task { @MainActor in
             ReadingReminderCoordinator.shared.requestContinueReading(triggeredByReminder: true)
         }

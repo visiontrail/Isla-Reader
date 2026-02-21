@@ -22,7 +22,7 @@ final class ReadingReminderCoordinator: ObservableObject {
             reminderTapRequestID += 1
         }
         DebugLogger.info(
-            "ReadingReminderCoordinator: continue reading requested. " +
+            "[LiveActivityFlow] ReadingReminderCoordinator received continue reading request. " +
             "triggeredByReminder=\(triggeredByReminder), continueReadingRequestID=\(continueReadingRequestID), reminderTapRequestID=\(reminderTapRequestID)"
         )
     }
