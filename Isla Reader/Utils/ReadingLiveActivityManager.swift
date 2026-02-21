@@ -14,12 +14,13 @@ final class ReadingLiveActivityManager {
 
     private let calendar = Calendar.current
     private var legacyAutoEndTask: Task<Void, Never>?
+    private var lastPublishedContentState: ReadingReminderAttributes.ContentState?
 
     private init() {}
 
     func startForTonightIfNeeded(
         goalMinutes: Int,
-        minutesReadToday: Int = 0,
+        minutesReadToday: Int = ReadingDailyStatsStore.shared.todayReadingMinutes(),
         reminderHour: Int = ReadingReminderConstants.defaultReminderHour,
         reminderMinute: Int = ReadingReminderConstants.defaultReminderMinute,
         deepLink: String = ReadingReminderConstants.defaultDeepLink
@@ -62,6 +63,51 @@ final class ReadingLiveActivityManager {
             minutesReadToday: minutesReadToday,
             deepLink: deepLink
         )
+    }
+
+    func updateIfNeeded(
+        goalMinutes: Int,
+        minutesReadToday: Int,
+        deepLink: String = ReadingReminderConstants.defaultDeepLink
+    ) async {
+        guard #available(iOS 16.1, *) else { return }
+
+        let safeGoalMinutes = max(1, goalMinutes)
+        let safeMinutesReadToday = max(0, minutesReadToday)
+        let contentState = ReadingReminderAttributes.ContentState(
+            goalMinutes: safeGoalMinutes,
+            minutesReadToday: safeMinutesReadToday,
+            deepLink: deepLink
+        )
+
+        guard contentState != lastPublishedContentState else {
+            return
+        }
+
+        let activities = Activity<ReadingReminderAttributes>.activities
+        guard !activities.isEmpty else {
+            DebugLogger.info(
+                "[LiveActivityFlow] Skipped update because there is no active Live Activity. " +
+                "goalMinutes=\(safeGoalMinutes), minutesReadToday=\(safeMinutesReadToday)"
+            )
+            return
+        }
+
+        let staleDate = endOfToday()
+        for activity in activities {
+            if #available(iOS 16.2, *) {
+                let content = ActivityContent(state: contentState, staleDate: staleDate)
+                await activity.update(content)
+            } else {
+                await activity.update(using: contentState)
+            }
+            DebugLogger.info(
+                "[LiveActivityFlow] Updated Live Activity content. " +
+                "activityID=\(activity.id), goalMinutes=\(safeGoalMinutes), minutesReadToday=\(safeMinutesReadToday)"
+            )
+        }
+
+        lastPublishedContentState = contentState
     }
 
     func start(
@@ -113,6 +159,7 @@ final class ReadingLiveActivityManager {
                 "[LiveActivityFlow] Live Activity started successfully. " +
                 "activityID=\(activity.id), goalMinutes=\(safeGoalMinutes), minutesReadToday=\(safeMinutesReadToday), staleDate=\(String(describing: staleDate))"
             )
+            lastPublishedContentState = contentState
         } catch {
             DebugLogger.error("[LiveActivityFlow] Failed to start Live Activity.", error: error)
         }
@@ -134,6 +181,7 @@ final class ReadingLiveActivityManager {
             }
             DebugLogger.info("[LiveActivityFlow] Ended Live Activity. activityID=\(activity.id)")
         }
+        lastPublishedContentState = nil
         DebugLogger.info("[LiveActivityFlow] Completed endAll for reading reminder Live Activities.")
     }
 
@@ -181,6 +229,50 @@ final class ReadingLiveActivityManager {
                 return
             }
             await self?.endAll()
+        }
+    }
+}
+
+final class ReadingDailyStatsStore {
+    static let shared = ReadingDailyStatsStore()
+
+    private enum Keys {
+        static let todayStartTimestamp = "reading_daily_stats_today_start_timestamp"
+        static let todayReadingSeconds = "reading_daily_stats_today_reading_seconds"
+    }
+
+    private let defaults: UserDefaults
+    private let calendar: Calendar
+
+    init(defaults: UserDefaults = .standard, calendar: Calendar = .current) {
+        self.defaults = defaults
+        self.calendar = calendar
+    }
+
+    func todayReadingMinutes() -> Int {
+        todayReadingSeconds() / 60
+    }
+
+    func todayReadingSeconds() -> Int {
+        normalizeForToday()
+        return max(0, defaults.integer(forKey: Keys.todayReadingSeconds))
+    }
+
+    func addReadingSeconds(_ seconds: Int) {
+        guard seconds > 0 else { return }
+        normalizeForToday()
+        let current = max(0, defaults.integer(forKey: Keys.todayReadingSeconds))
+        defaults.set(current + seconds, forKey: Keys.todayReadingSeconds)
+    }
+
+    private func normalizeForToday() {
+        let todayStart = calendar.startOfDay(for: Date())
+        let storedTimestamp = defaults.double(forKey: Keys.todayStartTimestamp)
+        let storedDate = Date(timeIntervalSince1970: storedTimestamp)
+
+        if storedTimestamp <= 0 || !calendar.isDate(storedDate, inSameDayAs: todayStart) {
+            defaults.set(todayStart.timeIntervalSince1970, forKey: Keys.todayStartTimestamp)
+            defaults.set(0, forKey: Keys.todayReadingSeconds)
         }
     }
 }

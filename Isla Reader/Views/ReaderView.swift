@@ -105,6 +105,9 @@ struct ReaderView: View {
     // Reading time tracking
     @State private var readingStartTime: Date?
     @State private var isActivelyReading: Bool = false
+    @State private var readingHeartbeatTask: Task<Void, Never>?
+    @State private var lastPublishedLiveActivityMinute: Int = -1
+    private let readingHeartbeatIntervalNanoseconds: UInt64 = 15_000_000_000
     @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
@@ -161,9 +164,12 @@ struct ReaderView: View {
             loadBookContent()
             checkFirstTimeOpen()
             startReadingSession()
+            startReadingHeartbeat()
+            syncLiveActivityReadingProgressIfNeeded(reason: "onAppear")
         }
         .onDisappear {
             // Save reading progress when view disappears (e.g., user navigates back)
+            stopReadingHeartbeat()
             saveReadingProgress()
             endReadingSession()
             pendingTapWorkItem?.cancel()
@@ -1569,6 +1575,7 @@ struct ReaderView: View {
     private func startReadingSession() {
         readingStartTime = Date()
         isActivelyReading = true
+        syncLiveActivityReadingProgressIfNeeded(reason: "startReadingSession")
         
         // Update reading status to "reading" when user starts reading
         if let libraryItem = book.libraryItem {
@@ -1591,26 +1598,32 @@ struct ReaderView: View {
         updateReadingTime()
         readingStartTime = nil
         isActivelyReading = false
+        syncLiveActivityReadingProgressIfNeeded(reason: "endReadingSession")
     }
     
     private func pauseReadingSession() {
         updateReadingTime()
         readingStartTime = nil
         isActivelyReading = false
+        syncLiveActivityReadingProgressIfNeeded(reason: "pauseReadingSession")
     }
     
     private func resumeReadingSession() {
         readingStartTime = Date()
         isActivelyReading = true
+        syncLiveActivityReadingProgressIfNeeded(reason: "resumeReadingSession")
     }
     
-    private func updateReadingTime() {
+    private func updateReadingTime(resetStartTime: Bool = false) {
         guard let startTime = readingStartTime, isActivelyReading else { return }
         
-        let timeElapsed = Date().timeIntervalSince(startTime)
+        let now = Date()
+        let timeElapsed = now.timeIntervalSince(startTime)
         
         // Only count if the reading session is meaningful (more than 1 second)
         guard timeElapsed > 1 else { return }
+        let elapsedSeconds = Int(timeElapsed.rounded(.down))
+        guard elapsedSeconds > 0 else { return }
         
         // Create or get reading progress
         if book.readingProgress == nil {
@@ -1625,14 +1638,20 @@ struct ReaderView: View {
         
         if let progress = book.readingProgress {
             // Add elapsed time to total
-            progress.totalReadingTime += Int64(timeElapsed)
+            progress.totalReadingTime += Int64(elapsedSeconds)
             progress.updatedAt = Date()
             
             do {
                 try viewContext.save()
+                ReadingDailyStatsStore.shared.addReadingSeconds(elapsedSeconds)
+                syncLiveActivityReadingProgressIfNeeded(reason: "updateReadingTime")
             } catch {
                 print("Failed to save reading time: \(error)")
             }
+        }
+
+        if resetStartTime {
+            readingStartTime = now
         }
     }
     
@@ -1658,6 +1677,56 @@ struct ReaderView: View {
         @unknown default:
             break
         }
+    }
+
+    private func startReadingHeartbeat() {
+        readingHeartbeatTask?.cancel()
+        readingHeartbeatTask = Task { @MainActor in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: readingHeartbeatIntervalNanoseconds)
+                } catch {
+                    return
+                }
+                guard isActivelyReading else { continue }
+                updateReadingTime(resetStartTime: true)
+            }
+        }
+    }
+
+    private func stopReadingHeartbeat() {
+        readingHeartbeatTask?.cancel()
+        readingHeartbeatTask = nil
+    }
+
+    private func syncLiveActivityReadingProgressIfNeeded(reason: String) {
+        let minutesReadToday = currentLiveActivityMinutesReadToday()
+        guard minutesReadToday != lastPublishedLiveActivityMinute else {
+            return
+        }
+        lastPublishedLiveActivityMinute = minutesReadToday
+        DebugLogger.info(
+            "[LiveActivityFlow] Syncing Live Activity reading progress from ReaderView. " +
+            "reason=\(reason), minutesReadToday=\(minutesReadToday), goalMinutes=\(appSettings.dailyReadingGoal)"
+        )
+        Task {
+            await ReadingLiveActivityManager.shared.updateIfNeeded(
+                goalMinutes: appSettings.dailyReadingGoal,
+                minutesReadToday: minutesReadToday,
+                deepLink: ReadingReminderConstants.defaultDeepLink
+            )
+        }
+    }
+
+    private func currentLiveActivityMinutesReadToday() -> Int {
+        var totalSeconds = ReadingDailyStatsStore.shared.todayReadingSeconds()
+        if let startTime = readingStartTime, isActivelyReading {
+            let inFlightSeconds = Int(Date().timeIntervalSince(startTime).rounded(.down))
+            if inFlightSeconds > 0 {
+                totalSeconds += inFlightSeconds
+            }
+        }
+        return max(0, totalSeconds / 60)
     }
 
     private func clampCurrentPage(_ index: Int) {

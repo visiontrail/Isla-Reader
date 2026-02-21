@@ -61,15 +61,16 @@ struct MainTabView: View {
         .tint(.blue)
         .preferredColorScheme(appSettings.theme.colorScheme)
         .onChange(of: reminderCoordinator.continueReadingRequestID) { _ in
-            processPendingContinueReadingRequestIfNeeded()
+            processPendingContinueReadingRequestIfNeeded(isSceneActive: scenePhase == .active)
         }
         .onChange(of: reminderCoordinator.reminderTapRequestID) { _ in
-            processPendingReminderTapIfNeeded()
+            processPendingReminderTapIfNeeded(isSceneActive: scenePhase == .active)
         }
         .onChange(of: scenePhase) { phase in
-            guard phase == .active else { return }
-            processPendingContinueReadingRequestIfNeeded()
-            processPendingReminderTapIfNeeded()
+            let isSceneActive = phase == .active
+            DebugLogger.info("[LiveActivityFlow] scenePhase changed. phase=\(String(describing: phase)), isSceneActive=\(isSceneActive)")
+            processPendingContinueReadingRequestIfNeeded(isSceneActive: isSceneActive)
+            processPendingReminderTapIfNeeded(isSceneActive: isSceneActive)
         }
         .onOpenURL { url in
             guard ReadingReminderService.shared.isContinueReadingURL(url) else {
@@ -79,8 +80,8 @@ struct MainTabView: View {
         }
     }
 
-    private func processPendingContinueReadingRequestIfNeeded() {
-        guard scenePhase == .active else {
+    private func processPendingContinueReadingRequestIfNeeded(isSceneActive: Bool) {
+        guard isSceneActive else {
             DebugLogger.info("[LiveActivityFlow] Skipped continue reading handling because scene is not active.")
             return
         }
@@ -97,8 +98,8 @@ struct MainTabView: View {
         )
     }
 
-    private func processPendingReminderTapIfNeeded() {
-        guard scenePhase == .active else {
+    private func processPendingReminderTapIfNeeded(isSceneActive: Bool) {
+        guard isSceneActive else {
             DebugLogger.info("[LiveActivityFlow] Skipped reminder tap handling because scene is not active.")
             return
         }
@@ -108,15 +109,17 @@ struct MainTabView: View {
         }
 
         handledReminderTapRequestID = requestID
+        let minutesReadToday = ReadingDailyStatsStore.shared.todayReadingMinutes()
         DebugLogger.info(
             "[LiveActivityFlow] Reminder tap request accepted. Preparing to start Live Activity. " +
             "requestID=\(requestID), goalMinutes=\(appSettings.dailyReadingGoal), " +
+            "minutesReadToday=\(minutesReadToday), " +
             "reminder=\(appSettings.readingReminderHour):\(String(format: "%02d", appSettings.readingReminderMinute))"
         )
         Task {
             await ReadingLiveActivityManager.shared.startForTonightIfNeeded(
                 goalMinutes: appSettings.dailyReadingGoal,
-                minutesReadToday: 0,
+                minutesReadToday: minutesReadToday,
                 reminderHour: appSettings.readingReminderHour,
                 reminderMinute: appSettings.readingReminderMinute,
                 deepLink: ReadingReminderConstants.defaultDeepLink
