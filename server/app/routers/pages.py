@@ -361,7 +361,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
             title: 'Your Rights & Contact',
             items: [
               'You can export or erase local data anytime via "Data Management." All data stays on-device.',
-              'For questions about this policy or data handling, contact <a href="mailto:guoliang88925@icloud.com">guoliang88925@icloud.com</a>.'
+              'For questions about this policy or data handling, contact <a href="mailto:support@isla-reader.top">support@isla-reader.top</a>.'
             ]
           }
         },
@@ -436,7 +436,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
             title: '你的权利与联系',
             items: [
               '你可以随时在“数据管理”导出或清除本地数据；所有数据保留在设备上。',
-              '如对本政策或数据处理有疑问，请联系 <a href="mailto:guoliang88925@icloud.com">guoliang88925@icloud.com</a>。'
+              '如对本政策或数据处理有疑问，请联系 <a href="mailto:support@isla-reader.top">support@isla-reader.top</a>。'
             ]
           }
         },
@@ -511,7 +511,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
             title: '権利と連絡先',
             items: [
               '「データ管理」からいつでもエクスポート／消去できます。データは端末内に保持されます。',
-              '本ポリシーやデータ取り扱いについては <a href="mailto:guoliang88925@icloud.com">guoliang88925@icloud.com</a> までお問い合わせください。'
+              '本ポリシーやデータ取り扱いについては <a href="mailto:support@isla-reader.top">support@isla-reader.top</a> までお問い合わせください。'
             ]
           }
         },
@@ -586,7 +586,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
             title: '권리 및 문의',
             items: [
               '“데이터 관리”에서 언제든 내보내기/삭제할 수 있으며 모든 데이터는 기기에 남습니다.',
-              '정책 또는 데이터 처리 관련 문의는 <a href="mailto:guoliang88925@icloud.com">guoliang88925@icloud.com</a>으로 연락하세요.'
+              '정책 또는 데이터 처리 관련 문의는 <a href="mailto:support@isla-reader.top">support@isla-reader.top</a>으로 연락하세요.'
             ]
           }
         },
