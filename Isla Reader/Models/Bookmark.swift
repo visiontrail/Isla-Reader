@@ -34,6 +34,14 @@ struct BookmarkLocation: Hashable {
     let chapterIndex: Int
     let pageIndex: Int
     let chapterTitle: String?
+    let textOffset: Int?
+
+    init(chapterIndex: Int, pageIndex: Int, chapterTitle: String?, textOffset: Int? = nil) {
+        self.chapterIndex = chapterIndex
+        self.pageIndex = pageIndex
+        self.chapterTitle = chapterTitle
+        self.textOffset = textOffset
+    }
 }
 
 extension Bookmark: Identifiable {

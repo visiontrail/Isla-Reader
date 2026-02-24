@@ -1011,13 +1011,16 @@ struct HighlightListSheet: View {
     }
 
     private func openHighlightLocation(for highlight: Highlight) {
+        DebugLogger.info("[HighlightNav] openHighlightLocation: startPosition=\(highlight.startPosition), selectedText前20字=\(String(highlight.selectedText.prefix(20)))")
         guard let location = highlight.readingLocation else {
-            DebugLogger.info("HighlightListSheet: 跳转失败，定位信息缺失")
+            DebugLogger.info("[HighlightNav] 跳转失败，readingLocation 为 nil")
             return
         }
+        DebugLogger.info("[HighlightNav] 准备跳转: chapter=\(location.chapterIndex), page=\(location.pageIndex), textOffset=\(location.textOffset.map(String.init) ?? "nil"), onSelect=\(onSelect != nil ? "有" : "无")")
 
         dismiss()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            DebugLogger.info("[HighlightNav] 延迟回调触发，调用 onSelect")
             onSelect?(location)
         }
     }

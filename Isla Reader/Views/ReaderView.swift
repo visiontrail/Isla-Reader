@@ -39,6 +39,8 @@ struct ReaderView: View {
     @State private var currentTOCFragment: String?
     @State private var tocNavigationToken: Int = 0
     @State private var pendingTOCNavigation: TOCNavigationRequest?
+    @State private var highlightNavigationToken: Int = 0
+    @State private var pendingHighlightNavigation: HighlightNavigationRequest?
     @State private var isLoading = true
     @State private var loadError: String?
     
@@ -313,6 +315,7 @@ struct ReaderView: View {
             let pageIndicatorHeight: CGFloat = 50
             let webViewHeight = geometry.size.height - pageIndicatorHeight
             let activeTOCNavigation = pendingTOCNavigation?.chapterIndex == index ? pendingTOCNavigation : nil
+            let activeHighlightNavigation = pendingHighlightNavigation?.chapterIndex == index ? pendingHighlightNavigation : nil
             
             ReaderWebView(
                 htmlContent: chapter.htmlContent,
@@ -330,6 +333,8 @@ struct ReaderView: View {
                 highlights: highlightsForChapter(index),
                 tocNavigationFragment: activeTOCNavigation?.fragment,
                 tocNavigationToken: activeTOCNavigation?.token ?? 0,
+                highlightTextOffset: activeHighlightNavigation?.textOffset,
+                highlightNavigationToken: activeHighlightNavigation?.token ?? 0,
                 pageTurnStyle: pageTurnAnimationStyle,
                 onToolbarToggle: {
                     handleTap()
@@ -774,14 +779,30 @@ struct ReaderView: View {
     }
 
     private func navigateTo(location: BookmarkLocation) {
-        guard !chapters.isEmpty else { return }
+        guard !chapters.isEmpty else {
+            DebugLogger.warning("[HighlightNav] navigateTo: chapters 为空，跳过")
+            return
+        }
 
         let targetChapter = min(max(location.chapterIndex, 0), chapters.count - 1)
         ensurePageArrays()
         currentChapterIndex = targetChapter
         setChapterPageIndex(targetChapter, max(0, location.pageIndex))
+        DebugLogger.info("[HighlightNav] navigateTo: 设置 chapter=\(targetChapter), 初始page=\(location.pageIndex)")
+
+        if let textOffset = location.textOffset {
+            highlightNavigationToken += 1
+            pendingHighlightNavigation = HighlightNavigationRequest(
+                chapterIndex: targetChapter,
+                textOffset: textOffset,
+                token: highlightNavigationToken
+            )
+            DebugLogger.info("[HighlightNav] navigateTo: 已设置 pendingHighlightNavigation, token=\(highlightNavigationToken), textOffset=\(textOffset)")
+        } else {
+            DebugLogger.warning("[HighlightNav] navigateTo: textOffset 为 nil，仅使用 pageIndex=\(location.pageIndex) 回退定位")
+        }
+
         currentTOCFragment = nil
-        DebugLogger.info("ReaderView: 跳转到高亮位置 - 章节 \(targetChapter + 1)，页码 \(safeChapterPageIndex(targetChapter) + 1)")
     }
 
     private func handleCopySelectedText() {
@@ -1382,6 +1403,17 @@ struct ReaderView: View {
         currentChapterIndex = targetChapter
         setChapterPageIndex(targetChapter, max(0, location.pageIndex))
         DebugLogger.info("ReaderView: 应用书签定位到章节 \(targetChapter + 1)，页码 \(safeChapterPageIndex(targetChapter) + 1)")
+
+        if let textOffset = location.textOffset {
+            highlightNavigationToken += 1
+            pendingHighlightNavigation = HighlightNavigationRequest(
+                chapterIndex: targetChapter,
+                textOffset: textOffset,
+                token: highlightNavigationToken
+            )
+            DebugLogger.info("[HighlightNav] applyInitialLocationIfAvailable: 已设置 pendingHighlightNavigation, token=\(highlightNavigationToken), textOffset=\(textOffset)")
+        }
+
         return true
     }
     
@@ -2049,6 +2081,12 @@ private struct SelectionAnchor: Codable {
 private struct TOCNavigationRequest: Equatable {
     let chapterIndex: Int
     let fragment: String?
+    let token: Int
+}
+
+private struct HighlightNavigationRequest: Equatable {
+    let chapterIndex: Int
+    let textOffset: Int
     let token: Int
 }
 

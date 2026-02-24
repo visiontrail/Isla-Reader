@@ -57,26 +57,37 @@ extension Highlight: Identifiable {
     }
 
     var readingLocation: BookmarkLocation? {
-        guard let data = startPosition.data(using: .utf8) else { return nil }
+        guard let data = startPosition.data(using: .utf8) else {
+            DebugLogger.warning("[HighlightNav] readingLocation: startPosition 无法转为 data, startPosition=\(startPosition)")
+            return nil
+        }
 
         if let anchor = try? JSONDecoder().decode(HighlightSelectionAnchor.self, from: data) {
-            return BookmarkLocation(
+            let location = BookmarkLocation(
                 chapterIndex: max(anchor.chapterIndex, 0),
                 pageIndex: max(anchor.pageIndex, 0),
-                chapterTitle: chapter
+                chapterTitle: chapter,
+                textOffset: anchor.offset
             )
+            DebugLogger.info("[HighlightNav] readingLocation 解码成功: chapter=\(location.chapterIndex), page=\(location.pageIndex), textOffset=\(location.textOffset.map(String.init) ?? "nil")")
+            return location
         }
 
         if let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let chapterValue = payload["chapterIndex"] as? NSNumber,
            let pageValue = payload["pageIndex"] as? NSNumber {
-            return BookmarkLocation(
+            let offset = payload["offset"] as? Int
+            let location = BookmarkLocation(
                 chapterIndex: max(chapterValue.intValue, 0),
                 pageIndex: max(pageValue.intValue, 0),
-                chapterTitle: chapter
+                chapterTitle: chapter,
+                textOffset: offset
             )
+            DebugLogger.info("[HighlightNav] readingLocation fallback 解码: chapter=\(location.chapterIndex), page=\(location.pageIndex), textOffset=\(location.textOffset.map(String.init) ?? "nil")")
+            return location
         }
 
+        DebugLogger.warning("[HighlightNav] readingLocation 解码失败, startPosition=\(startPosition)")
         return nil
     }
     

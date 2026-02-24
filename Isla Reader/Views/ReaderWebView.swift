@@ -56,13 +56,16 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private var pendingHighlights: [ReaderHighlight] = []
     private var isTouchingContent = false
     private var isResolvingInteractionPage = false
+    private var isPaginationReady = false
     private var lastAppliedTOCNavigationToken: Int = -1
+    private var lastAppliedHighlightNavigationToken: Int = -1
     
     init(_ parent: ReaderWebView) {
         self.parent = parent
     }
     
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        DebugLogger.info("[HighlightNav] didFinish: 页面加载完成，准备 applyPagination, highlightToken=\(parent.highlightNavigationToken), highlightOffset=\(parent.highlightTextOffset.map(String.init) ?? "nil")")
         applyPagination(on: webView)
         isLoaded = true
         lastDisplayedPageIndex = parent.currentPageIndex
@@ -229,11 +232,15 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private func applyPagination(on webView: WKWebView) {
         guard !didApplyPagination else { return }
         didApplyPagination = true
+        isPaginationReady = false
         let js = "applyPagination()"
         webView.evaluateJavaScript(js) { [weak self] _, _ in
             guard let self = self else { return }
+            self.isPaginationReady = true
+            DebugLogger.info("[HighlightNav] applyPagination 完成，准备调用 applyHighlightNavigationIfNeeded")
             self.scrollToCurrentPage(on: webView, animated: false)
             self.applyTOCNavigationIfNeeded(on: webView)
+            self.applyHighlightNavigationIfNeeded(on: webView)
         }
     }
     
@@ -390,6 +397,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     func prepareForNewLoad() {
         self.didApplyPagination = false
         self.isLoaded = false
+        self.isPaginationReady = false
         self.isAnimatingSlide = false
         self.isResolvingInteractionPage = false
         self.pendingPageIndex = nil
@@ -407,6 +415,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     func applyTOCNavigationIfNeeded(on webView: WKWebView?) {
         guard let webView else { return }
         guard isLoaded else { return }
+        guard isPaginationReady else { return }
         guard parent.tocNavigationToken != lastAppliedTOCNavigationToken else { return }
 
         // Mark this token as consumed even when fragment is empty to avoid repeated checks.
@@ -414,6 +423,73 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
 
         guard let fragment = normalizedFragment(parent.tocNavigationFragment) else { return }
         navigateToTOCFragment(fragment, on: webView)
+    }
+
+    func applyHighlightNavigationIfNeeded(on webView: WKWebView?) {
+        DebugLogger.info("[HighlightNav] applyHighlightNavigationIfNeeded 进入: webView=\(webView != nil), isLoaded=\(isLoaded), paginationReady=\(isPaginationReady), parentToken=\(parent.highlightNavigationToken), lastAppliedToken=\(lastAppliedHighlightNavigationToken), parentOffset=\(parent.highlightTextOffset.map(String.init) ?? "nil")")
+        guard let webView else {
+            DebugLogger.warning("[HighlightNav] applyHighlightNavigationIfNeeded: webView 为 nil，跳过")
+            return
+        }
+        guard isLoaded else {
+            DebugLogger.info("[HighlightNav] applyHighlightNavigationIfNeeded: isLoaded=false，跳过（等待加载完成）")
+            return
+        }
+        guard isPaginationReady else {
+            DebugLogger.info("[HighlightNav] applyHighlightNavigationIfNeeded: paginationReady=false，跳过（等待分页完成）")
+            return
+        }
+        guard parent.highlightNavigationToken != lastAppliedHighlightNavigationToken else {
+            DebugLogger.info("[HighlightNav] applyHighlightNavigationIfNeeded: token 已消费 (\(parent.highlightNavigationToken))，跳过")
+            return
+        }
+        lastAppliedHighlightNavigationToken = parent.highlightNavigationToken
+        guard let offset = parent.highlightTextOffset else {
+            DebugLogger.warning("[HighlightNav] applyHighlightNavigationIfNeeded: highlightTextOffset 为 nil，跳过")
+            return
+        }
+        DebugLogger.info("[HighlightNav] 开始执行 navigateToTextOffset, offset=\(offset)")
+        navigateToTextOffset(offset, on: webView)
+    }
+
+    private func navigateToTextOffset(_ offset: Int, on webView: WKWebView) {
+        let js = "getPageForTextOffset(\(offset))"
+        DebugLogger.info("[HighlightNav] 执行 JS: \(js)")
+        webView.evaluateJavaScript(js) { [weak self] value, error in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                if let error {
+                    DebugLogger.error("[HighlightNav] JS 执行失败: \(error.localizedDescription)")
+                    return
+                }
+
+                DebugLogger.info("[HighlightNav] JS 返回值: \(String(describing: value)), 类型: \(type(of: value))")
+
+                let pageIndex: Int?
+                if let page = value as? Int {
+                    pageIndex = page
+                } else if let number = value as? NSNumber {
+                    pageIndex = number.intValue
+                } else {
+                    DebugLogger.warning("[HighlightNav] JS 返回值无法解析为页码")
+                    pageIndex = nil
+                }
+
+                guard let pageIndex else { return }
+                let clamped: Int
+                if self.parent.totalPages > 0 {
+                    let maxPage = max(self.parent.totalPages - 1, 0)
+                    clamped = max(0, min(pageIndex, maxPage))
+                } else {
+                    clamped = max(0, pageIndex)
+                }
+                DebugLogger.info("[HighlightNav] 导航结果: JS页码=\(pageIndex), clamped=\(clamped), totalPages=\(self.parent.totalPages), 之前页码=\(self.parent.currentPageIndex)")
+                self.lastDisplayedPageIndex = clamped
+                self.parent.currentPageIndex = clamped
+                self.scrollToCurrentPage(on: webView, animated: false)
+                DebugLogger.info("[HighlightNav] 页码已更新为 \(clamped)，scrollToCurrentPage 已调用")
+            }
+        }
     }
 
     private func normalizedFragment(_ fragment: String?) -> String? {
@@ -557,6 +633,8 @@ struct ReaderWebView: UIViewRepresentable {
     var highlights: [ReaderHighlight]
     var tocNavigationFragment: String?
     var tocNavigationToken: Int = 0
+    var highlightTextOffset: Int?
+    var highlightNavigationToken: Int = 0
     var pageTurnStyle: PageTurnAnimationStyle = .fade
     
     var onToolbarToggle: (() -> Void)?
@@ -644,17 +722,20 @@ struct ReaderWebView: UIViewRepresentable {
         // Compute a signature that represents the visual content (chapter html + typography settings + theme)
         let signature = "sig::\(htmlContent.hashValue):\(appSettings.readingFontSize.fontSize):\(appSettings.lineSpacing):\(isDarkMode ? "dark" : "light"):\(Int(appSettings.pageMargins))"
         if container.accessibilityHint != signature {
+            DebugLogger.info("[HighlightNav] updateUIView: 签名变化，重新加载 HTML, highlightToken=\(highlightNavigationToken), highlightOffset=\(highlightTextOffset.map(String.init) ?? "nil")")
             container.accessibilityHint = signature
             let html = generateFullHTML()
             context.coordinator.prepareForNewLoad()
             webView.loadHTMLString(html, baseURL: nil)
         } else {
+            DebugLogger.info("[HighlightNav] updateUIView: 签名未变，走 else 分支, highlightToken=\(highlightNavigationToken), highlightOffset=\(highlightTextOffset.map(String.init) ?? "nil")")
             // 内容未重载：若页码变化则执行滑动动画；若未变化则确保位置同步
             let animated = context.coordinator.animateToCurrentPageIfChanged(on: webView)
             if !animated {
                 context.coordinator.scrollToCurrentPage(on: webView, animated: false)
             }
             context.coordinator.applyTOCNavigationIfNeeded(on: webView)
+            context.coordinator.applyHighlightNavigationIfNeeded(on: webView)
         }
 
         if let action = selectionAction {
@@ -1403,6 +1484,54 @@ struct ReaderWebView: UIViewRepresentable {
 
             const last = segments[segments.length - 1];
             return { node: last.node, offset: last.length };
+        }
+
+        function getPageForTextOffset(offset) {
+            console.log('[HighlightNav JS] getPageForTextOffset called, offset=' + offset);
+            var segments = buildTextSegments();
+            console.log('[HighlightNav JS] segments count=' + segments.length + ', total chars=' + (segments.length > 0 ? segments[segments.length - 1].end : 0));
+            var boundary = locateOffsetBoundary(offset, segments, true);
+            if (!boundary) {
+                console.log('[HighlightNav JS] locateOffsetBoundary returned null, returning page 0');
+                return 0;
+            }
+            console.log('[HighlightNav JS] boundary found: nodeOffset=' + boundary.offset + ', nodeText=' + (boundary.node.textContent || '').substring(0, 30));
+
+            // In WebKit multi-column layout, geometry APIs can report column-local x.
+            // Use scrollIntoView to let the engine resolve the containing column, then
+            // convert the resulting scroll position back into page index.
+            var marker = document.createElement('span');
+            marker.style.cssText = 'display:inline;width:0;height:0;padding:0;margin:0;border:none;overflow:visible;font-size:0;line-height:0;vertical-align:baseline;';
+            var nodeLen = (boundary.node.textContent || '').length;
+            var insertOffset = Math.min(boundary.offset, nodeLen);
+            var originalScrollLeft = getScrollLeft();
+            var targetScrollLeft = originalScrollLeft;
+            try {
+                var insertRange = document.createRange();
+                insertRange.setStart(boundary.node, insertOffset);
+                insertRange.collapse(true);
+                insertRange.insertNode(marker);
+                insertRange.detach();
+                try {
+                    marker.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'start' });
+                } catch (e1) {
+                    try { marker.scrollIntoView(true); } catch (e2) {}
+                }
+                targetScrollLeft = getScrollLeft();
+            } catch (e) {
+                console.log('[HighlightNav JS] marker insertion/scroll failed: ' + e);
+            } finally {
+                if (marker.parentNode) {
+                    var p = marker.parentNode;
+                    p.removeChild(marker);
+                    try { p.normalize(); } catch (e2) {}
+                }
+                setScrollLeft(originalScrollLeft, false);
+            }
+            var perPage = getPerPage();
+            var page = Math.max(0, Math.round(Math.max(0, targetScrollLeft) / perPage));
+            console.log('[HighlightNav JS] originalScroll=' + originalScrollLeft + ', targetScroll=' + targetScrollLeft + ', perPage=' + perPage + ', resultPage=' + page);
+            return page;
         }
 
         function highlightByOffsets(start, end, colorHex, highlightId) {
