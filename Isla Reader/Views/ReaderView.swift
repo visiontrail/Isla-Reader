@@ -66,6 +66,7 @@ struct ReaderView: View {
     @State private var hintMessage: String?
     @State private var showingAISummary = false
     @State private var showingHighlightsList = false
+    @State private var showingBookmarksList = false
     @State private var isFirstOpen = true
     @State private var didApplyInitialLocation = false
     
@@ -150,6 +151,11 @@ struct ReaderView: View {
         }
         .fullScreenCover(isPresented: $showingHighlightsList) {
             HighlightListSheet(book: book) { location in
+                navigateTo(location: location)
+            }
+        }
+        .sheet(isPresented: $showingBookmarksList) {
+            BookmarkListSheet(book: book) { location in
                 navigateTo(location: location)
             }
         }
@@ -571,7 +577,7 @@ struct ReaderView: View {
             HStack(spacing: 0) {
                 toolbarButton(icon: currentBookmark == nil ? "bookmark" : "bookmark.fill", action: { toggleBookmark() }, isActive: currentBookmark != nil)
                 toolbarButton(icon: "highlighter", action: { openHighlightsAndNotes() })
-                toolbarButton(icon: "square.and.arrow.up", action: {})
+                bookmarkListToolbarButton
             }
             .padding(.horizontal, 8)
         }
@@ -593,6 +599,30 @@ struct ReaderView: View {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(isActive ? Color.blue.opacity(0.12) : Color.clear)
                 )
+        }
+    }
+
+    private var bookmarkListToolbarButton: some View {
+        Button(action: { openBookmarksList() }) {
+            ZStack {
+                Image(systemName: "bookmark")
+                    .font(.system(size: 17, weight: .light))
+                    .foregroundColor(.primary.opacity(0.25))
+                    .offset(x: -4, y: 3)
+                Image(systemName: "bookmark")
+                    .font(.system(size: 17, weight: .light))
+                    .foregroundColor(.primary.opacity(0.5))
+                    .offset(x: -2, y: 1.5)
+                Image(systemName: "bookmark.fill")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundColor(.primary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.clear)
+            )
         }
     }
 
@@ -737,6 +767,10 @@ struct ReaderView: View {
 
     private func openHighlightsAndNotes() {
         showingHighlightsList = true
+    }
+
+    private func openBookmarksList() {
+        showingBookmarksList = true
     }
 
     private func navigateTo(location: BookmarkLocation) {
