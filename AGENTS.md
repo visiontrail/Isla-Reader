@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-The SwiftUI app lives in `Isla Reader/`, with `Views/` for UI entry points, `Models/` for Core Data-backed entities, and `Utils/` for helpers like `AISummaryService.swift`, `LocalizationHelper.swift`, and `DebugLogger.swift`. Assets stay in `Assets.xcassets`, localizations in `*.lproj/`, and schema data in `Isla_Reader.xcdatamodeld`. Logic tests reside in `Isla ReaderTests/`, UI smoke tests in `Isla ReaderUITests/`, while `Test Files/` contains EPUB fixtures and `scripts/` holds reproducible workflows.
+The LanRead SwiftUI app lives in `Isla Reader/`, with `Views/` for UI entry points, `Models/` for Core Data-backed entities, and `Utils/` for helpers like `AISummaryService.swift`, `LocalizationHelper.swift`, and `DebugLogger.swift`. Assets stay in `Assets.xcassets`, localizations in `*.lproj/`, and schema data in `Isla_Reader.xcdatamodeld`. Logic tests reside in `Isla ReaderTests/`, UI smoke tests in `Isla ReaderUITests/`, while `Test Files/` contains EPUB fixtures and `scripts/` holds reproducible workflows.
 
 ## Build, Test, and Development Commands
 - `./scripts/dev.sh "iPhone 16"` — one-step debug build plus simulator run.

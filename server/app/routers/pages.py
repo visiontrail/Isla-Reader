@@ -165,7 +165,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 
   <header>
     <nav>
-      <div class="logo"><div class="dot"></div><span>Lan Read · 澜悦</span></div>
+      <div class="logo"><div class="dot"></div><span id="brand-name">Lan Read</span></div>
       <div class="nav-links">
         <a class="pill" id="nav-home" href="/">Home</a>
         <a class="pill" id="nav-terms" href="/terms">Terms</a>
@@ -609,6 +609,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
         document.documentElement.lang = chosen === 'zh' ? 'zh-Hans' : chosen;
       }
       if (languageSelect) languageSelect.value = chosen;
+      setText('brand-name', chosen === 'zh' ? 'Lan Read · 澜阅' : 'Lan Read');
 
       document.title = t.meta.title;
       const metaDesc = document.querySelector('meta[name="description"]');

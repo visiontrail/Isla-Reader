@@ -1,4 +1,4 @@
-# IslaBooks - AI 驱动的阅读助手
+# LanRead - AI 驱动的阅读助手
 
 [![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20iPadOS-lightgrey.svg)](https://developer.apple.com/ios/)
 [![Swift](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
@@ -9,7 +9,7 @@
 
 ## 概览
 
-IslaBooks 是一款面向 iOS 与 iPadOS 的智能电子书阅读应用，利用 AI 技术提升阅读体验。它聚焦数字阅读中的常见痛点：难以获取、理解门槛高、阅读不完整、记忆留存差、缺少讨论伙伴。
+LanRead 是一款面向 iOS 与 iPadOS 的智能电子书阅读应用，利用 AI 技术提升阅读体验。它聚焦数字阅读中的常见痛点：难以获取、理解门槛高、阅读不完整、记忆留存差、缺少讨论伙伴。
 
 ### 关键特性
 
@@ -27,7 +27,7 @@ IslaBooks 是一款面向 iOS 与 iPadOS 的智能电子书阅读应用，利用
 
 让每本书成为可对话的导师。
 
-IslaBooks 将传统电子阅读与 AI 理解工具结合，使读者不仅能高效获取内容，更能主动参与与深度理解复杂材料。
+LanRead 将传统电子阅读与 AI 理解工具结合，使读者不仅能高效获取内容，更能主动参与与深度理解复杂材料。
 
 ## 目标用户
 
@@ -126,8 +126,8 @@ IslaBooks 将传统电子阅读与 AI 理解工具结合，使读者不仅能高
 
 1. 克隆仓库
 ```bash
-git clone https://github.com/yourusername/IslaBooks-ios.git
-cd IslaBooks-ios/Isla\ Reader
+git clone https://github.com/yourusername/LanRead-ios.git
+cd LanRead-ios/Isla\ Reader
 ```
 
 2. 使用 Xcode 打开

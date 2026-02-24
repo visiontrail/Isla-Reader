@@ -282,7 +282,7 @@ logger.error("❌ 错误: \(error)")
 使用 `xcrun simctl spawn` 和 `log stream` 命令：
 ```bash
 xcrun simctl spawn "$UDID" log stream \
-    --predicate "processImagePath CONTAINS \"Isla Reader\"" \
+    --predicate "processImagePath CONTAINS \"LanRead\"" \
     --style compact \
     --color always
 ```

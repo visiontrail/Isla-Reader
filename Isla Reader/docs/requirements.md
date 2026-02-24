@@ -1,4 +1,4 @@
-### IslaBooks 需求规格说明书（Versioned Requirements）
+### LanRead 需求规格说明书（Versioned Requirements）
 
 #### 文档信息
 - 版本: v0.1.2
@@ -197,7 +197,7 @@
   - App Privacy Nutrition Label 准确申报数据类型/用途；最小化采集与存储周期。
   - ATT（AppTrackingTransparency）仅在确需跨 App 跟踪时申请，并清晰说明场景与价值。
   - 提供“隐私政策”“服务条款”链接；支持数据导出与删除。
-- IslaBooks 特定要求
+- LanRead 特定要求
   - 书源与版权：仅使用公共领域/合规来源，标注 Project Gutenberg 等出处与许可。
   - AI 回答：显示出处引用；未命中原文时标注“推断”。
 

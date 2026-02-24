@@ -98,7 +98,7 @@ xcrun simctl list devices available | grep iPhone
 
 2. **编译项目：**
    ```bash
-   cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios/Isla Reader"
+   cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/LanRead-ios/Isla Reader"
    ./scripts/build.sh
    ```
 
@@ -232,7 +232,7 @@ chmod +x ./scripts/*.sh
 ```
 ❌ 错误: 未找到模拟器 'iPhone 16'
 或
-App installation failed: "Isla Reader" Requires a Newer Version of iOS
+App installation failed: "LanRead" Requires a Newer Version of iOS
 ```
 
 **解决方案：**
@@ -401,9 +401,9 @@ fi
 在 `~/.zshrc` 或 `~/.bashrc` 中添加：
 
 ```bash
-alias isla-build='cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios/Isla Reader" && ./scripts/build.sh'
-alias isla-run='cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios/Isla Reader" && ./scripts/run.sh'
-alias isla-dev='cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios/Isla Reader" && ./scripts/dev.sh'
+alias isla-build='cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/LanRead-ios/Isla Reader" && ./scripts/build.sh'
+alias isla-run='cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/LanRead-ios/Isla Reader" && ./scripts/run.sh'
+alias isla-dev='cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/LanRead-ios/Isla Reader" && ./scripts/dev.sh'
 ```
 
 然后可以在任何目录直接运行：

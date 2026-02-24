@@ -23,7 +23,7 @@ scripts/
 ### 步骤 1：验证环境
 
 ```bash
-cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios/Isla Reader"
+cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/LanRead-ios/Isla Reader"
 
 # 测试环境是否正确配置
 ./scripts/test-scripts.sh
@@ -303,7 +303,7 @@ echo "✅ 完成"
 
 在 `~/.zshrc` 中添加：
 ```bash
-alias isla='cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios/Isla Reader"'
+alias isla='cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/LanRead-ios/Isla Reader"'
 alias isla-dev='isla && ./scripts/dev.sh'
 ```
 

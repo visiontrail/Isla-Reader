@@ -2,7 +2,7 @@
 
 - Scope: Covers book summary flow and skimming mode prompt construction.
 - Sources: Chapters prefer EPUB TOC assembly; fallback to stored `Book.metadata` JSON.
-- Skimming prompt role: IslaBooks inspectional reading coach (Adler skimming mindset), includes book title, chapter title/order, reading goal.
+- Skimming prompt role: LanRead inspectional reading coach (Adler skimming mindset), includes book title, chapter title/order, reading goal.
 - Content inclusion: Full assembled chapter content is embedded (previous 4,000-character clamp removed).
 - TOC-aware assembly: Top-level TOC nodes include all descendant chapters up to the next same-level entry to avoid empty parent chapters.
 - Output contract: Model must return JSON with `chapterTitle`, `readingGoal`, 3–5 `structure` items, 3 `keySentences`, 5 `keywords`, 2–3 `inspectionQuestions`, `aiNarrative` (<220 words), and `estimatedMinutes` (2–6).

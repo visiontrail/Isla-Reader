@@ -37,7 +37,7 @@ scripts/
 ### 1️⃣ 第一次使用：测试环境
 
 ```bash
-cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios/Isla Reader"
+cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/LanRead-ios/Isla Reader"
 ./scripts/test-scripts.sh
 ```
 
@@ -276,7 +276,7 @@ print("📚 你的调试信息")
 
 在 `~/.zshrc` 中添加：
 ```bash
-alias isla-dev='cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios/Isla Reader" && ./scripts/dev.sh'
+alias isla-dev='cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/LanRead-ios/Isla Reader" && ./scripts/dev.sh'
 ```
 
 然后可以在任何目录：
@@ -369,6 +369,6 @@ Happy Coding! 🚀📱✨
 ---
 
 **创建时间：** 2025-10-21  
-**项目：** Isla Reader  
+**项目：** LanRead  
 **作者：** AI Assistant
 

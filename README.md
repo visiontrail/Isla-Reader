@@ -1,4 +1,4 @@
-# IslaBooks - AI-Powered Reading Companion
+# LanRead - AI-Powered Reading Companion
 
 [![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20iPadOS-lightgrey.svg)](https://developer.apple.com/ios/)
 [![Swift](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
@@ -9,7 +9,7 @@
 
 ## Overview
 
-IslaBooks is an intelligent e-book reading application for iOS and iPadOS that leverages AI technology to enhance the reading experience. It addresses common challenges in digital reading: difficulty in acquisition, comprehension barriers, incomplete reading, poor retention, and lack of discussion partners.
+LanRead is an intelligent e-book reading application for iOS and iPadOS that leverages AI technology to enhance the reading experience. It addresses common challenges in digital reading: difficulty in acquisition, comprehension barriers, incomplete reading, poor retention, and lack of discussion partners.
 
 ### Key Features
 
@@ -27,7 +27,7 @@ IslaBooks is an intelligent e-book reading application for iOS and iPadOS that l
 
 **Make every book a conversational mentor.**
 
-IslaBooks reimagines the reading experience by combining traditional e-reading capabilities with AI-powered understanding tools, enabling readers to not just consume content, but actively engage with and comprehend complex materials.
+LanRead reimagines the reading experience by combining traditional e-reading capabilities with AI-powered understanding tools, enabling readers to not just consume content, but actively engage with and comprehend complex materials.
 
 ## Target Audience
 
@@ -126,8 +126,8 @@ IslaBooks reimagines the reading experience by combining traditional e-reading c
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/IslaBooks-ios.git
-cd IslaBooks-ios/Isla\ Reader
+git clone https://github.com/yourusername/LanRead-ios.git
+cd LanRead-ios/Isla\ Reader
 ```
 
 2. **Open in Xcode**

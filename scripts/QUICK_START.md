@@ -95,7 +95,7 @@
 ### 场景 1：第一次运行项目
 
 ```bash
-cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios/Isla Reader"
+cd "/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/LanRead-ios/Isla Reader"
 ./scripts/dev.sh
 ```
 
@@ -251,8 +251,8 @@ logger.error("❌ 错误: \(error)")
 在 `~/.zshrc` 或 `~/.bashrc` 中添加：
 
 ```bash
-# Isla Reader 别名
-ISLA_DIR="/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/IslaBooks-ios/Isla Reader"
+# LanRead 别名
+ISLA_DIR="/Users/guoliang/Desktop/workspace/code/SelfProject/IslaProject/LanRead-ios/Isla Reader"
 alias isla-dev='cd "$ISLA_DIR" && ./scripts/dev.sh'
 alias isla-build='cd "$ISLA_DIR" && ./scripts/build.sh'
 alias isla-run='cd "$ISLA_DIR" && ./scripts/run.sh'
