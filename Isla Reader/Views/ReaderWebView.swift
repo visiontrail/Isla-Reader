@@ -761,7 +761,9 @@ struct ReaderWebView: UIViewRepresentable {
         </head>
         <body>
             <div class="reader-content">
-                \(htmlContent)
+                <div class="reader-book-root">
+                    \(htmlContent)
+                </div>
             </div>
         </body>
         </html>
@@ -785,6 +787,10 @@ struct ReaderWebView: UIViewRepresentable {
         
         return """
         /* 基础样式 - 移动端优化 */
+        :root {
+            --reader-page-margin: \(pageMargin)px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -834,11 +840,34 @@ struct ReaderWebView: UIViewRepresentable {
             -webkit-column-fill: auto;
             column-fill: auto;
         }
+
+        /* 单一版心容器：仅在这里应用用户页边距，避免嵌套元素叠加造成正文过窄 */
+        .reader-book-root {
+            width: 100%;
+            max-width: 100%;
+            min-height: 100%;
+            margin: 0;
+            padding-left: var(--reader-page-margin);
+            padding-right: var(--reader-page-margin);
+        }
         
-        /* 为所有内容元素添加左右边距，确保文字不会贴到屏幕边缘 */
-        .reader-content * {
-            padding-left: \(pageMargin)px !important;
-            padding-right: \(pageMargin)px !important;
+        /* 清理由EPUB内容带入的横向布局限制，统一由用户页边距控制 */
+        .reader-book-root div,
+        .reader-book-root article,
+        .reader-book-root section,
+        .reader-book-root aside,
+        .reader-book-root nav,
+        .reader-book-root header,
+        .reader-book-root footer,
+        .reader-book-root main,
+        .reader-book-root figure,
+        .reader-book-root table {
+            width: auto;
+            max-width: 100%;
+            margin-left: 0;
+            margin-right: 0;
+            padding-left: 0;
+            padding-right: 0;
             box-sizing: border-box;
         }
         
@@ -903,7 +932,7 @@ struct ReaderWebView: UIViewRepresentable {
         /* 列表样式 */
         ul, ol {
             margin: 0.5em 0 0.5em 1.5em;
-            padding-left: 1em;
+            padding-left: 1em !important;
         }
         
         li {

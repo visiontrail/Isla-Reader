@@ -1041,6 +1041,7 @@ class EPubParser {
         // 移除脚本和样式标签
         cleanedHTML = cleanedHTML.replacingOccurrences(of: "<script[^>]*>[\\s\\S]*?</script>", with: "", options: .regularExpression)
         cleanedHTML = cleanedHTML.replacingOccurrences(of: "<style[^>]*>[\\s\\S]*?</style>", with: "", options: .regularExpression)
+        cleanedHTML = cleanedHTML.replacingOccurrences(of: "<link[^>]+rel=[\"']?stylesheet[\"']?[^>]*>", with: "", options: [.regularExpression, .caseInsensitive])
         
         // 移除注释
         cleanedHTML = cleanedHTML.replacingOccurrences(of: "<!--[\\s\\S]*?-->", with: "", options: .regularExpression)
@@ -1058,8 +1059,82 @@ class EPubParser {
             cleanedHTML = bodyContent.replacingOccurrences(of: "<body[^>]*>", with: "", options: .regularExpression)
             cleanedHTML = cleanedHTML.replacingOccurrences(of: "</body>", with: "")
         }
+
+        // 删除会干扰阅读器页边距控制的横向布局内联样式
+        cleanedHTML = sanitizeInlineStylesForReaderLayout(cleanedHTML)
         
         return cleanedHTML.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func sanitizeInlineStylesForReaderLayout(_ html: String) -> String {
+        guard let regex = try? NSRegularExpression(
+            pattern: "style\\s*=\\s*(['\"])(.*?)\\1",
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) else {
+            return html
+        }
+
+        let nsString = html as NSString
+        let matches = regex.matches(in: html, options: [], range: NSRange(location: 0, length: nsString.length))
+        let mutable = NSMutableString(string: html)
+
+        for match in matches.reversed() {
+            let originalStyle = nsString.substring(with: match.range(at: 2))
+            let sanitizedStyle = sanitizeInlineStyleDeclaration(originalStyle)
+
+            if sanitizedStyle.isEmpty {
+                mutable.replaceCharacters(in: match.range, with: "")
+            } else {
+                mutable.replaceCharacters(in: match.range, with: "style=\"\(sanitizedStyle)\"")
+            }
+        }
+
+        return String(mutable)
+    }
+
+    private static func sanitizeInlineStyleDeclaration(_ declaration: String) -> String {
+        let blockedProperties: Set<String> = [
+            "margin",
+            "margin-left",
+            "margin-right",
+            "margin-inline",
+            "margin-inline-start",
+            "margin-inline-end",
+            "padding",
+            "padding-left",
+            "padding-right",
+            "padding-inline",
+            "padding-inline-start",
+            "padding-inline-end",
+            "width",
+            "min-width",
+            "max-width",
+            "left",
+            "right",
+            "inset",
+            "inset-inline",
+            "inset-inline-start",
+            "inset-inline-end"
+        ]
+
+        let declarations = declaration.split(separator: ";", omittingEmptySubsequences: true)
+        var kept: [String] = []
+
+        for item in declarations {
+            let pair = item.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+            guard pair.count == 2 else { continue }
+
+            let propertyName = pair[0].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if blockedProperties.contains(propertyName) {
+                continue
+            }
+
+            let value = pair[1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !value.isEmpty else { continue }
+            kept.append("\(propertyName): \(value)")
+        }
+
+        return kept.joined(separator: "; ")
     }
     
     // 将HTML中的图片转换为base64嵌入

@@ -147,7 +147,7 @@ class AppSettings: ObservableObject {
     static let lineSpacingRange: ClosedRange<Double> = 0.6...2.4
     static let lineSpacingStep: Double = 0.1
     static let defaultLineSpacing: Double = 1.0
-    static let pageMarginsRange: ClosedRange<Double> = 20...50
+    static let pageMarginsRange: ClosedRange<Double> = 0...50
     static let pageMarginsStep: Double = 5
     static let defaultPageMargins: Double = 35
     static let defaultReadingReminderMinutesSinceMidnight =
