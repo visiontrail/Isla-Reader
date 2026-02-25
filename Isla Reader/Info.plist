@@ -12,6 +12,8 @@
 	<string>$(ADMOB_BANNER_AD_UNIT_ID)</string>
 	<key>AdMobRewardedInterstitialAdUnitID</key>
 	<string>$(ADMOB_REWARDED_INTERSTITIAL_AD_UNIT_ID)</string>
+	<key>AdMobInterstitialAdUnitID</key>
+	<string>$(ADMOB_INTERSTITIAL_AD_UNIT_ID)</string>
 	<key>CFBundleDisplayName</key>
 	<string>LanRead</string>
 	<key>CFBundleDocumentTypes</key>

@@ -106,6 +106,7 @@ private enum AdMobDiagnostics {
 private enum AdLoadPlacement: String {
     case banner = "admob_banner_load"
     case rewardedInterstitial = "admob_rewarded_interstitial_load"
+    case interstitial = "admob_interstitial_load"
 }
 
 private enum AdLoadMetricsRecorder {
@@ -157,6 +158,10 @@ enum AdMobAdUnitIDs {
 
     static var rewardedInterstitial: String? {
         resolvedID(for: "AdMobRewardedInterstitialAdUnitID")
+    }
+
+    static var interstitial: String? {
+        resolvedID(for: "AdMobInterstitialAdUnitID")
     }
 
     private static func resolvedID(for infoPlistKey: String) -> String? {
@@ -229,93 +234,197 @@ struct BannerAdView: UIViewRepresentable {
     }
 }
 
+enum RewardedInterstitialAvailability {
+    case ready
+    case loading
+    case notReady
+    case cooldown(secondsRemaining: TimeInterval)
+}
+
+enum RewardedInterstitialPresentationResult {
+    case presented
+    case skippedNotReady
+    case skippedCooldown
+    case skippedNoTopViewController
+}
+
 final class RewardedInterstitialAdManager: NSObject {
     static let shared = RewardedInterstitialAdManager()
 
     private var rewardedAd: GADRewardedInterstitialAd?
-    private var isLoading = false
-    private var pendingPresentation = false
+    private var interstitialAd: GADInterstitialAd?
+    private var isRewardedLoading = false
+    private var isInterstitialLoading = false
+    private var lastPresentationAt: Date?
+    private let minimumPresentationInterval: TimeInterval = 75
 
     private override init() {
         super.init()
     }
 
     func loadAd() {
-        guard let adUnitID = AdMobAdUnitIDs.rewardedInterstitial else {
-            DebugLogger.warning("AdMob: 未配置奖励插屏广告位，跳过加载")
-            pendingPresentation = false
+        if rewardedAd != nil || interstitialAd != nil {
             return
         }
 
-        guard !isLoading else { return }
-        isLoading = true
+        guard let rewardedAdUnitID = AdMobAdUnitIDs.rewardedInterstitial else {
+            DebugLogger.warning("AdMob: 未配置奖励插屏广告位，尝试使用插屏广告位兜底")
+            loadFallbackInterstitialIfNeeded(trigger: "rewarded_unconfigured")
+            return
+        }
+
+        guard !isRewardedLoading else { return }
+        isRewardedLoading = true
         DebugLogger.info("AdMob: Start loading rewarded interstitial")
 
         GADRewardedInterstitialAd.load(
-            withAdUnitID: adUnitID,
+            withAdUnitID: rewardedAdUnitID,
             request: GADRequest()
         ) { [weak self] ad, error in
             guard let self else { return }
-            self.isLoading = false
+            self.isRewardedLoading = false
             if let error {
                 DebugLogger.error("AdMob: Failed to load rewarded interstitial - \(error.localizedDescription)")
                 self.rewardedAd = nil
-                let errorCode = (error as NSError).code
-                AdLoadMetricsRecorder.record(.rewardedInterstitial, statusCode: errorCode, error: error)
+                let nsError = error as NSError
+                AdLoadMetricsRecorder.record(.rewardedInterstitial, statusCode: nsError.code, error: nsError)
+
+                if nsError.code == GADErrorCode.noFill.rawValue {
+                    DebugLogger.info("AdMob: Rewarded interstitial no-fill, trying interstitial fallback")
+                    self.loadFallbackInterstitialIfNeeded(trigger: "rewarded_nofill")
+                }
                 return
             }
 
             self.rewardedAd = ad
             self.rewardedAd?.fullScreenContentDelegate = self
+            self.interstitialAd = nil
             DebugLogger.success("AdMob: Rewarded interstitial is ready")
             AdLoadMetricsRecorder.record(.rewardedInterstitial, statusCode: 200)
-
-            if self.pendingPresentation {
-                Task { @MainActor in
-                    self.presentFromTopControllerIfAvailable()
-                }
-            }
         }
     }
 
+    func availabilityStatus(at now: Date = Date()) -> RewardedInterstitialAvailability {
+        if let lastPresentationAt {
+            let elapsed = now.timeIntervalSince(lastPresentationAt)
+            if elapsed < minimumPresentationInterval {
+                return .cooldown(secondsRemaining: minimumPresentationInterval - elapsed)
+            }
+        }
+
+        if rewardedAd != nil || interstitialAd != nil {
+            return .ready
+        }
+        if isRewardedLoading || isInterstitialLoading {
+            return .loading
+        }
+        return .notReady
+    }
+
     @MainActor
-    func presentFromTopControllerIfAvailable() {
+    @discardableResult
+    func presentFromTopControllerIfAvailable() -> RewardedInterstitialPresentationResult {
+        switch availabilityStatus() {
+        case .cooldown(let secondsRemaining):
+            DebugLogger.info("AdMob: Rewarded interstitial skipped due to cooldown (\(Int(secondsRemaining.rounded(.up)))s remaining)")
+            return .skippedCooldown
+        case .loading:
+            DebugLogger.info("AdMob: Rewarded interstitial is loading, skip current presentation")
+            return .skippedNotReady
+        case .notReady:
+            DebugLogger.warning("AdMob: Rewarded interstitial not ready, skip current presentation and reload")
+            loadAd()
+            return .skippedNotReady
+        case .ready:
+            break
+        }
+
         guard let controller = UIViewController.topMostViewController() else {
             DebugLogger.warning("AdMob: Unable to find top view controller to present rewarded interstitial")
-            return
+            return .skippedNoTopViewController
         }
-        present(from: controller, allowPending: true)
+        present(from: controller)
+        return .presented
     }
 
     @MainActor
-    private func present(from controller: UIViewController, allowPending: Bool = false) {
-        guard let rewardedAd else {
-            DebugLogger.warning("AdMob: Rewarded interstitial not ready, triggering reload")
-            if allowPending {
-                pendingPresentation = true
+    private func present(from controller: UIViewController) {
+        if let rewardedAd {
+            lastPresentationAt = Date()
+            rewardedAd.present(fromRootViewController: controller) { [weak self] in
+                DebugLogger.info("AdMob: User earned reward type=\(rewardedAd.adReward.type), amount=\(rewardedAd.adReward.amount)")
+                self?.rewardedAd = nil
             }
+            return
+        }
+
+        guard let interstitialAd else {
+            DebugLogger.warning("AdMob: Rewarded interstitial unexpectedly unavailable before presenting, triggering reload")
             loadAd()
             return
         }
 
-        pendingPresentation = false
-        rewardedAd.present(fromRootViewController: controller) { [weak self] in
-            DebugLogger.info("AdMob: User earned reward type=\(rewardedAd.adReward.type), amount=\(rewardedAd.adReward.amount)")
-            self?.rewardedAd = nil
+        lastPresentationAt = Date()
+        DebugLogger.info("AdMob: Presenting interstitial fallback ad")
+        interstitialAd.present(fromRootViewController: controller)
+    }
+
+    private func loadFallbackInterstitialIfNeeded(trigger: String) {
+        guard interstitialAd == nil else { return }
+        guard !isInterstitialLoading else { return }
+        guard let interstitialAdUnitID = AdMobAdUnitIDs.interstitial else {
+            DebugLogger.warning("AdMob: 未配置插屏广告位，无法执行兜底 (trigger=\(trigger))")
+            return
         }
+
+        isInterstitialLoading = true
+        DebugLogger.info("AdMob: Start loading interstitial fallback (trigger=\(trigger))")
+
+        GADInterstitialAd.load(withAdUnitID: interstitialAdUnitID, request: GADRequest()) { [weak self] ad, error in
+            guard let self else { return }
+            self.isInterstitialLoading = false
+
+            if let error {
+                DebugLogger.error("AdMob: Failed to load interstitial fallback - \(error.localizedDescription)")
+                self.interstitialAd = nil
+                let nsError = error as NSError
+                AdLoadMetricsRecorder.record(.interstitial, statusCode: nsError.code, error: nsError)
+                return
+            }
+
+            self.interstitialAd = ad
+            self.interstitialAd?.fullScreenContentDelegate = self
+            DebugLogger.success("AdMob: Interstitial fallback is ready")
+            AdLoadMetricsRecorder.record(.interstitial, statusCode: 200)
+        }
+    }
+
+    private static func adTypeDescription(for ad: GADFullScreenPresentingAd) -> String {
+        if ad is GADRewardedInterstitialAd {
+            return "rewarded interstitial"
+        }
+        if ad is GADInterstitialAd {
+            return "interstitial fallback"
+        }
+        return "full screen ad"
     }
 }
 
 extension RewardedInterstitialAdManager: GADFullScreenContentDelegate {
     func ad(_ ad: GADFullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: any Error) {
-        DebugLogger.error("AdMob: Rewarded interstitial failed to present - \(error.localizedDescription)")
+        let adType = Self.adTypeDescription(for: ad)
+        DebugLogger.error("AdMob: \(adType) failed to present - \(error.localizedDescription)")
+        lastPresentationAt = nil
         rewardedAd = nil
+        interstitialAd = nil
         loadAd()
     }
 
     func adDidDismissFullScreenContent(_ ad: GADFullScreenPresentingAd) {
-        DebugLogger.info("AdMob: Rewarded interstitial dismissed, preparing next load")
+        let adType = Self.adTypeDescription(for: ad)
+        DebugLogger.info("AdMob: \(adType) dismissed, preparing next load")
         rewardedAd = nil
+        interstitialAd = nil
         loadAd()
     }
 }

@@ -140,6 +140,7 @@ class AppSettings: ObservableObject {
     private static let readingReminderEnabledKey = "readingReminderEnabled"
     private static let readingGoalMinutesKey = "readingGoalMinutes"
     private static let readingReminderTimeMinutesKey = "readingReminderTimeMinutes"
+    private static let aiAdvanceAdNoticeEnabledKey = "aiAdvanceAdNoticeEnabled"
     private static let legacyReadingReminderEnabledKey = "reading_reminder_enabled"
     private static let legacyReadingGoalMinutesKey = "daily_reading_goal"
     private static let minutesPerDay = 24 * 60
@@ -160,6 +161,7 @@ class AppSettings: ObservableObject {
         "reading_font",
         "line_spacing",
         "page_margins",
+        aiAdvanceAdNoticeEnabledKey,
         readingReminderEnabledKey,
         readingGoalMinutesKey,
         readingReminderTimeMinutesKey,
@@ -208,6 +210,12 @@ class AppSettings: ObservableObject {
     @Published var pageMargins: Double {
         didSet {
             UserDefaults.standard.set(pageMargins, forKey: "page_margins")
+        }
+    }
+
+    @Published var isAIAdvanceAdNoticeEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(isAIAdvanceAdNoticeEnabled, forKey: AppSettings.aiAdvanceAdNoticeEnabledKey)
         }
     }
     
@@ -280,6 +288,7 @@ class AppSettings: ObservableObject {
         let storedPageMargins = UserDefaults.standard.object(forKey: "page_margins") as? Double ?? AppSettings.defaultPageMargins
         self.pageMargins = min(max(storedPageMargins, AppSettings.pageMarginsRange.lowerBound), AppSettings.pageMarginsRange.upperBound)
         let defaults = UserDefaults.standard
+        self.isAIAdvanceAdNoticeEnabled = defaults.object(forKey: AppSettings.aiAdvanceAdNoticeEnabledKey) as? Bool ?? true
         self.isReadingReminderEnabled = defaults.object(forKey: AppSettings.readingReminderEnabledKey) as? Bool
             ?? defaults.object(forKey: AppSettings.legacyReadingReminderEnabledKey) as? Bool
             ?? false
@@ -306,6 +315,7 @@ class AppSettings: ObservableObject {
         readingFont = .system
         lineSpacing = AppSettings.defaultLineSpacing
         pageMargins = AppSettings.defaultPageMargins
+        isAIAdvanceAdNoticeEnabled = true
         isReadingReminderEnabled = false
         dailyReadingGoal = 20
         readingReminderMinutesSinceMidnight = AppSettings.defaultReadingReminderMinutesSinceMidnight

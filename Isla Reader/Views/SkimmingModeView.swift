@@ -22,6 +22,11 @@ struct SkimmingModeView: View {
     @State private var showingTOC = false
     @State private var navigationPath = NavigationPath()
     @State private var skimmingAIRequestCount = 0
+    @State private var adNoticeMessage: String?
+    @State private var adNoticeDismissTask: Task<Void, Never>?
+    @State private var pendingInterstitialBeforeNextChapter = false
+    @State private var secondNoticeShownChapterIndices: Set<Int> = []
+    @State private var thirdNoticeShownChapterIndices: Set<Int> = []
     
     private let service = SkimmingModeService.shared
     
@@ -50,10 +55,21 @@ struct SkimmingModeView: View {
                 loadChapters()
                 RewardedInterstitialAdManager.shared.loadAd()
             }
+            .onDisappear {
+                adNoticeDismissTask?.cancel()
+            }
+            .overlay(alignment: .top) {
+                if let adNoticeMessage {
+                    adNoticeBanner(adNoticeMessage)
+                        .padding(.top, 10)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .allowsHitTesting(false)
+                }
+            }
             .sheet(isPresented: $showingTOC) {
                 SkimmingTableOfContentsView(
                     chapters: chapters,
-                    currentChapterIndex: $currentChapterIndex,
+                    currentChapterIndex: chapterSelectionBinding,
                     summaries: chapterSummaries
                 )
             }
@@ -144,7 +160,7 @@ struct SkimmingModeView: View {
     }
     
     private var chapterPager: some View {
-        TabView(selection: $currentChapterIndex) {
+        TabView(selection: chapterSelectionBinding) {
             ForEach(chapters.indices, id: \.self) { index in
                 SkimmingChapterPage(
                     chapter: chapters[index],
@@ -202,6 +218,22 @@ struct SkimmingModeView: View {
     private var progressRatio: CGFloat {
         guard !chapters.isEmpty else { return 0 }
         return CGFloat(currentChapterIndex + 1) / CGFloat(chapters.count)
+    }
+
+    private var chapterSelectionBinding: Binding<Int> {
+        Binding(
+            get: { currentChapterIndex },
+            set: { newValue in
+                guard chapters.indices.contains(newValue) else { return }
+                guard newValue != currentChapterIndex else { return }
+
+                let previousChapterIndex = currentChapterIndex
+                if newValue > previousChapterIndex {
+                    handlePendingInterstitialBeforeChapterAdvance()
+                }
+                currentChapterIndex = newValue
+            }
+        )
     }
     
     private func openReader(at index: Int) {
@@ -286,7 +318,7 @@ struct SkimmingModeView: View {
                 await MainActor.run {
                     self.chapterSummaries[index] = summary
                     self.loadingChapterIndices.remove(index)
-                    incrementSkimmingUsageAndShowAdIfNeeded()
+                    incrementSkimmingUsageAndPrepareAdIfNeeded(for: index)
                 }
             } catch {
                 await MainActor.run {
@@ -317,13 +349,102 @@ struct SkimmingModeView: View {
     }
     
     @MainActor
-    private func incrementSkimmingUsageAndShowAdIfNeeded() {
+    private func incrementSkimmingUsageAndPrepareAdIfNeeded(for chapterIndex: Int) {
         skimmingAIRequestCount += 1
         DebugLogger.info("SkimmingModeView: 略读AI调用计数 = \(skimmingAIRequestCount)")
-        
-        guard skimmingAIRequestCount.isMultiple(of: 3) else { return }
-        DebugLogger.info("SkimmingModeView: 达到展示奖励插页式广告的阈值")
-        RewardedInterstitialAdManager.shared.presentFromTopControllerIfAvailable()
+
+        let cycleProgress = skimmingAIRequestCount % 3
+        if cycleProgress == 2 {
+            maybeShowSecondAdvanceNotice(for: chapterIndex)
+            return
+        }
+
+        guard cycleProgress == 0 else { return }
+        pendingInterstitialBeforeNextChapter = true
+        DebugLogger.info("SkimmingModeView: 达到展示奖励插页式广告阈值，将在进入下一章前尝试展示")
+        maybeShowThirdAdvanceNotice(for: chapterIndex)
+    }
+
+    @MainActor
+    private func handlePendingInterstitialBeforeChapterAdvance() {
+        guard pendingInterstitialBeforeNextChapter else { return }
+        pendingInterstitialBeforeNextChapter = false
+
+        let result = RewardedInterstitialAdManager.shared.presentFromTopControllerIfAvailable()
+        switch result {
+        case .presented:
+            DebugLogger.info("SkimmingModeView: 已在章节切换前展示奖励插屏广告")
+        case .skippedNotReady:
+            showAdvanceNoticeIfEnabled("skimming.ad_notice.skipped_not_ready")
+        case .skippedCooldown:
+            showAdvanceNoticeIfEnabled("skimming.ad_notice.skipped_cooldown")
+        case .skippedNoTopViewController:
+            DebugLogger.warning("SkimmingModeView: 章节切换前未找到可展示广告的控制器，已跳过")
+        }
+    }
+
+    @MainActor
+    private func maybeShowSecondAdvanceNotice(for chapterIndex: Int) {
+        guard !secondNoticeShownChapterIndices.contains(chapterIndex) else { return }
+        secondNoticeShownChapterIndices.insert(chapterIndex)
+        showAdvanceNoticeIfEnabled("skimming.ad_notice.second")
+    }
+
+    @MainActor
+    private func maybeShowThirdAdvanceNotice(for chapterIndex: Int) {
+        guard !thirdNoticeShownChapterIndices.contains(chapterIndex) else { return }
+        thirdNoticeShownChapterIndices.insert(chapterIndex)
+
+        let availability = RewardedInterstitialAdManager.shared.availabilityStatus()
+        switch availability {
+        case .ready:
+            showAdvanceNoticeIfEnabled("skimming.ad_notice.third_ready")
+        case .loading, .notReady, .cooldown:
+            showAdvanceNoticeIfEnabled("skimming.ad_notice.third_maybe")
+        }
+    }
+
+    @MainActor
+    private func showAdvanceNoticeIfEnabled(_ key: String) {
+        guard appSettings.isAIAdvanceAdNoticeEnabled else { return }
+        showAdvanceNotice(NSLocalizedString(key, comment: ""))
+    }
+
+    @MainActor
+    private func showAdvanceNotice(_ message: String) {
+        let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedMessage.isEmpty else { return }
+
+        adNoticeDismissTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            adNoticeMessage = trimmedMessage
+        }
+
+        adNoticeDismissTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_400_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.2)) {
+                adNoticeMessage = nil
+            }
+        }
+    }
+
+    private func adNoticeBanner(_ message: String) -> some View {
+        Text(message)
+            .font(.footnote.weight(.medium))
+            .foregroundColor(Color(uiColor: .label))
+            .lineLimit(2)
+            .multilineTextAlignment(.leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(uiColor: .secondarySystemBackground).opacity(0.94))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
+            )
+            .padding(.horizontal, 16)
     }
 }
 

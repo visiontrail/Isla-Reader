@@ -254,6 +254,13 @@
 "skimming.fallback.key_sentence" = "AI couldn't extract highlights yet. Please retry.";
 "skimming.fallback.keyword" = "Structure";
 "skimming.fallback.question" = "What core question is this chapter answering?";
+"skimming.ad_notice.second" = "After one more AI request, a short ad may appear before the next chapter.";
+"skimming.ad_notice.third_ready" = "Before the next chapter, a short ad will appear to support AI costs.";
+"skimming.ad_notice.third_maybe" = "Before the next chapter, a short ad may appear if ready, to support AI costs.";
+"skimming.ad_notice.skipped_not_ready" = "Short ad wasn't ready this time, so it was skipped.";
+"skimming.ad_notice.skipped_cooldown" = "Short ad is on cooldown and was skipped this time.";
+"settings.ai_ad_notice" = "Pre-notice for chapter ads";
+"settings.ai_ad_notice.description" = "Show lightweight reminders before short ads between chapters.";
 "ai.summary.error.title" = "Error Generating Summary";
 "ai.summary.error.retry" = "Retry";
 "ai.summary.no_content" = "No content to display";

@@ -261,6 +261,13 @@
 "skimming.fallback.key_sentence" = "AIがまだキーセンテンスを抽出できませんでした。再試行してください。";
 "skimming.fallback.keyword" = "構造";
 "skimming.fallback.question" = "この章が答えようとしている核心的な質問は何か？";
+"skimming.ad_notice.second" = "あと1回AIを使うと、次の章の前に短い広告が表示される場合があります。";
+"skimming.ad_notice.third_ready" = "次の章の前に、AIコストを支えるための短い広告が表示されます。";
+"skimming.ad_notice.third_maybe" = "次の章の前に、準備できていればAIコストを支える短い広告が表示される場合があります。";
+"skimming.ad_notice.skipped_not_ready" = "短い広告はまだ準備できていないため、今回はスキップしました。";
+"skimming.ad_notice.skipped_cooldown" = "短い広告はクールダウン中のため、今回はスキップしました。";
+"settings.ai_ad_notice" = "章間広告の事前通知";
+"settings.ai_ad_notice.description" = "章間の短い広告の前に軽いリマインダーを表示します。";
 
 // Additional UI strings
 "app.copyright" = "© 2025 LanRead";

@@ -261,6 +261,13 @@
 "skimming.fallback.key_sentence" = "AI가 아직 핵심 문장을 추출할 수 없습니다. 재시도해 주세요.";
 "skimming.fallback.keyword" = "구조";
 "skimming.fallback.question" = "이 챕터가 답하려는 핵심 질문은 무엇인가?";
+"skimming.ad_notice.second" = "AI를 한 번 더 사용하면 다음 챕터 전에 짧은 광고가 나올 수 있어요.";
+"skimming.ad_notice.third_ready" = "다음 챕터 전에 AI 비용 지원을 위한 짧은 광고가 표시됩니다.";
+"skimming.ad_notice.third_maybe" = "다음 챕터 전에(준비된 경우) AI 비용 지원을 위한 짧은 광고가 나올 수 있어요.";
+"skimming.ad_notice.skipped_not_ready" = "짧은 광고가 아직 준비되지 않아 이번에는 건너뛰었어요.";
+"skimming.ad_notice.skipped_cooldown" = "짧은 광고가 쿨다운 중이라 이번에는 건너뛰었어요.";
+"settings.ai_ad_notice" = "챕터 광고 사전 안내";
+"settings.ai_ad_notice.description" = "챕터 사이 짧은 광고 전에 가벼운 안내를 표시합니다.";
 
 // Additional UI strings
 "app.copyright" = "© 2025 LanRead";
