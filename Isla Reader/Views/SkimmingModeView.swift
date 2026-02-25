@@ -481,18 +481,21 @@ struct SkimmingModeView: View {
     @MainActor
     private func handlePendingInterstitialBeforeChapterAdvance() {
         guard pendingInterstitialBeforeNextChapter else { return }
+        Task { @MainActor in
+            await Task.yield()
 
-        let result = RewardedInterstitialAdManager.shared.presentFromTopControllerIfAvailable()
-        switch result {
-        case .presented:
-            pendingInterstitialBeforeNextChapter = false
-            interstitialPresentedCount += 1
-            DebugLogger.info("SkimmingModeView: 已在章节切换前展示奖励插屏广告")
-            updateInterstitialReadinessIfNeeded(for: currentChapterIndex)
-        case .skippedNotReady:
-            showAdvanceNoticeIfEnabled("skimming.ad_notice.skipped_not_ready")
-        case .skippedNoTopViewController:
-            DebugLogger.warning("SkimmingModeView: 章节切换前未找到可展示广告的控制器，已跳过")
+            let result = RewardedInterstitialAdManager.shared.presentFromTopControllerIfAvailable()
+            switch result {
+            case .presented:
+                pendingInterstitialBeforeNextChapter = false
+                interstitialPresentedCount += 1
+                DebugLogger.info("SkimmingModeView: 已在章节切换前展示奖励插屏广告")
+                updateInterstitialReadinessIfNeeded(for: currentChapterIndex)
+            case .skippedNotReady:
+                showAdvanceNoticeIfEnabled("skimming.ad_notice.skipped_not_ready")
+            case .skippedNoTopViewController:
+                DebugLogger.warning("SkimmingModeView: 章节切换前未找到可展示广告的控制器，已跳过")
+            }
         }
     }
 

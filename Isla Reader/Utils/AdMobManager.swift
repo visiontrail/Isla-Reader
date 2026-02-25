@@ -302,12 +302,32 @@ final class RewardedInterstitialAdManager: NSObject {
     @MainActor
     private func present(from controller: UIViewController) {
         if let interstitialAd {
+            do {
+                try interstitialAd.canPresent(fromRootViewController: controller)
+            } catch {
+                let nsError = error as NSError
+                DebugLogger.error("AdMob: Primary interstitial failed canPresent check - \(nsError.localizedDescription)")
+                self.interstitialAd = nil
+                loadAd()
+                return
+            }
+
             DebugLogger.info("AdMob: Presenting primary interstitial ad")
             interstitialAd.present(fromRootViewController: controller)
             return
         }
 
         if let rewardedAd {
+            do {
+                try rewardedAd.canPresent(fromRootViewController: controller)
+            } catch {
+                let nsError = error as NSError
+                DebugLogger.error("AdMob: Rewarded interstitial failed canPresent check - \(nsError.localizedDescription)")
+                self.rewardedAd = nil
+                loadAd()
+                return
+            }
+
             rewardedAd.present(fromRootViewController: controller) { [weak self] in
                 DebugLogger.info("AdMob: User earned reward type=\(rewardedAd.adReward.type), amount=\(rewardedAd.adReward.amount)")
                 self?.rewardedAd = nil
