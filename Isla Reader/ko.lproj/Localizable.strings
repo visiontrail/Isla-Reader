@@ -96,6 +96,11 @@
 "取消收藏" = "즐겨찾기에서 제거";
 "收藏" = "즐겨찾기";
 "从书架移除" = "서가에서 제거";
+"library.remove.confirm.title" = "제거 확인";
+"library.remove.confirm.message" = "\"%@\"을(를) 서가에서 제거하시겠어요? 이 책의 로컬 파일, 읽기 진행, 북마크, 메모가 삭제됩니다.";
+"library.remove.confirm.action" = "제거";
+"library.remove.failure.title" = "제거 실패";
+"library.remove.failure.not_found" = "제거할 책을 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.";
 "书架空空如也" = "서가가 비어 있습니다";
 "导入您的第一本电子书开始阅读之旅" = "첫 전자책을 가져와 읽기를 시작하세요";
 "导入书籍" = "책 가져오기";

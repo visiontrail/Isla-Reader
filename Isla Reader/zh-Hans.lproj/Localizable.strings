@@ -96,6 +96,11 @@
 "取消收藏" = "取消收藏";
 "收藏" = "收藏";
 "从书架移除" = "从书架移除";
+"library.remove.confirm.title" = "确认移除";
+"library.remove.confirm.message" = "确定将《%@》从书架移除吗？这会删除该书的本地文件、阅读进度、书签和笔记。";
+"library.remove.confirm.action" = "移除";
+"library.remove.failure.title" = "移除失败";
+"library.remove.failure.not_found" = "未找到要移除的书籍，请刷新后重试。";
 "书架空空如也" = "书架空空如也";
 "导入您的第一本电子书开始阅读之旅" = "导入您的第一本电子书开始阅读之旅";
 "导入书籍" = "导入书籍";

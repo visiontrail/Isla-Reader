@@ -96,6 +96,11 @@
 "取消收藏" = "Remove from Favorites";
 "收藏" = "Favorites";
 "从书架移除" = "Remove from Library";
+"library.remove.confirm.title" = "Remove Book";
+"library.remove.confirm.message" = "Remove \"%@\" from your library? This deletes the local file, reading progress, bookmarks, and notes for this book.";
+"library.remove.confirm.action" = "Remove";
+"library.remove.failure.title" = "Remove Failed";
+"library.remove.failure.not_found" = "The selected book was not found. Please refresh and try again.";
 "书架空空如也" = "Your library is empty";
 "导入您的第一本电子书开始阅读之旅" = "Import your first eBook to start reading";
 "导入书籍" = "Import Books";

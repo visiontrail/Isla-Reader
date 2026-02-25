@@ -96,6 +96,11 @@
 "取消收藏" = "お気に入りから削除";
 "收藏" = "お気に入り";
 "从书架移除" = "ライブラリから削除";
+"library.remove.confirm.title" = "削除を確認";
+"library.remove.confirm.message" = "「%@」をライブラリから削除しますか？この本のローカルファイル、読書進捗、ブックマーク、メモが削除されます。";
+"library.remove.confirm.action" = "削除";
+"library.remove.failure.title" = "削除に失敗しました";
+"library.remove.failure.not_found" = "削除対象の本が見つかりません。更新してから再試行してください。";
 "书架空空如也" = "ライブラリが空です";
 "导入您的第一本电子书开始阅读之旅" = "最初の電子書籍をインポートして読書を始めましょう";
 "导入书籍" = "本をインポート";

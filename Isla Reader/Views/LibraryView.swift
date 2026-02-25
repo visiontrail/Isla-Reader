@@ -60,6 +60,9 @@ struct LibraryView: View {
     @State private var bookForHighlights: Book? = nil
     @State private var libraryItemForInfo: LibraryItem? = nil
     @State private var readerLaunchTarget: ReaderLaunchTarget? = nil
+    @State private var pendingLibraryRemoval: PendingLibraryRemoval? = nil
+    @State private var showingRemovalErrorAlert = false
+    @State private var removalErrorMessage = ""
     
     private var filteredBooks: [LibraryItem] {
         var items = Array(libraryItems)
@@ -124,26 +127,48 @@ struct LibraryView: View {
                         LazyVGrid(columns: columns, spacing: 20) {
                             ForEach(filteredBooks) { item in
                                 BookCardView(libraryItem: item, onTap: {
-                                    DebugLogger.info("LibraryView: 书籍卡片点击")
-                                    DebugLogger.info("LibraryView: 点击的书籍 = \(item.book.displayTitle)")
-                                    bookToShowAISummary = item.book
-                                    DebugLogger.info("LibraryView: 设置 bookToShowAISummary")
+                                    withResolvedBook(from: item, actionName: "书籍卡片点击") { book in
+                                        DebugLogger.info("LibraryView: 书籍卡片点击")
+                                        DebugLogger.info("LibraryView: 点击的书籍 = \(book.displayTitle)")
+                                        bookToShowAISummary = book
+                                        DebugLogger.info("LibraryView: 设置 bookToShowAISummary")
+                                    }
                                 }, onSkim: {
-                                    DebugLogger.info("LibraryView: 进入略读模式 - \(item.book.displayTitle)")
-                                    bookForSkimming = item.book
+                                    withResolvedBook(from: item, actionName: "进入略读模式") { book in
+                                        DebugLogger.info("LibraryView: 进入略读模式 - \(book.displayTitle)")
+                                        bookForSkimming = book
+                                    }
                                 }, onShowBookmarks: {
-                                    DebugLogger.info("LibraryView: 查看书签 - \(item.book.displayTitle)")
-                                    bookForBookmarks = item.book
+                                    withResolvedBook(from: item, actionName: "查看书签") { book in
+                                        DebugLogger.info("LibraryView: 查看书签 - \(book.displayTitle)")
+                                        bookForBookmarks = book
+                                    }
                                 }, onShowHighlights: {
-                                    DebugLogger.info("LibraryView: 查看高亮与笔记 - \(item.book.displayTitle)")
-                                    bookForHighlights = item.book
+                                    withResolvedBook(from: item, actionName: "查看高亮与笔记") { book in
+                                        DebugLogger.info("LibraryView: 查看高亮与笔记 - \(book.displayTitle)")
+                                        bookForHighlights = book
+                                    }
                                 }, onShowInfo: {
-                                    DebugLogger.info("LibraryView: 查看书籍信息 - \(item.book.displayTitle)")
-                                    libraryItemForInfo = item
+                                    guard let libraryItem = resolveLibraryItem(by: item.objectID) else {
+                                        DebugLogger.warning("LibraryView: 查看书籍信息失败，LibraryItem 已失效，刷新列表")
+                                        refreshData()
+                                        return
+                                    }
+                                    DebugLogger.info("LibraryView: 查看书籍信息 - \(libraryItem.book.displayTitle)")
+                                    libraryItemForInfo = libraryItem
                                 }, onContinueReading: {
-                                    continueReading(item.book)
+                                    withResolvedBook(from: item, actionName: "继续阅读") { book in
+                                        continueReading(book)
+                                    }
                                 }, onToggleFavorite: {
                                     toggleFavorite(for: item)
+                                }, onRemoveFromLibrary: {
+                                    let title = resolveBook(from: item, actionName: "准备移除书籍")?.displayTitle
+                                        ?? NSLocalizedString("book.info.unknown", comment: "")
+                                    pendingLibraryRemoval = PendingLibraryRemoval(
+                                        id: item.objectID,
+                                        title: title
+                                    )
                                 })
                             }
                         }
@@ -242,6 +267,43 @@ struct LibraryView: View {
                 BookInfoSheet(libraryItem: libraryItem)
                     .environment(\.managedObjectContext, viewContext)
             }
+            .confirmationDialog(
+                NSLocalizedString("library.remove.confirm.title", comment: ""),
+                isPresented: Binding(
+                    get: { pendingLibraryRemoval != nil },
+                    set: { isPresented in
+                        if !isPresented {
+                            pendingLibraryRemoval = nil
+                        }
+                    }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button(NSLocalizedString("library.remove.confirm.action", comment: ""), role: .destructive) {
+                    guard let pending = pendingLibraryRemoval else { return }
+                    removeFromLibrary(itemID: pending.id, title: pending.title)
+                    pendingLibraryRemoval = nil
+                }
+                Button(NSLocalizedString("取消", comment: ""), role: .cancel) {
+                    pendingLibraryRemoval = nil
+                }
+            } message: {
+                if let pending = pendingLibraryRemoval {
+                    Text(
+                        String(
+                            format: NSLocalizedString("library.remove.confirm.message", comment: ""),
+                            pending.title
+                        )
+                    )
+                }
+            }
+            .alert(NSLocalizedString("library.remove.failure.title", comment: ""), isPresented: $showingRemovalErrorAlert) {
+                Button(NSLocalizedString("确定", comment: "")) {
+                    removalErrorMessage = ""
+                }
+            } message: {
+                Text(removalErrorMessage)
+            }
             .fullScreenCover(item: $readerLaunchTarget) { target in
                 NavigationStack {
                     ReaderView(book: target.book, initialLocation: target.location)
@@ -286,6 +348,55 @@ struct LibraryView: View {
         DebugLogger.info("LibraryView: 继续阅读 - \(book.displayTitle)")
         readerLaunchTarget = ReaderLaunchTarget(book: book)
     }
+
+    private func removeFromLibrary(itemID: NSManagedObjectID, title: String) {
+        do {
+            _ = try LibraryRemovalService.shared.remove(libraryItemID: itemID, in: viewContext)
+            DebugLogger.success("LibraryView: 从书架移除成功 - \(title)")
+            refreshData()
+        } catch {
+            DebugLogger.error("LibraryView: 从书架移除失败 - \(title)", error: error)
+            removalErrorMessage = error.localizedDescription
+            showingRemovalErrorAlert = true
+        }
+    }
+
+    private func resolveLibraryItem(by objectID: NSManagedObjectID) -> LibraryItem? {
+        do {
+            guard let item = try viewContext.existingObject(with: objectID) as? LibraryItem, !item.isDeleted else {
+                return nil
+            }
+            return item
+        } catch {
+            DebugLogger.error("LibraryView: 解析 LibraryItem 失败", error: error)
+            return nil
+        }
+    }
+
+    private func resolveBook(from item: LibraryItem, actionName: String) -> Book? {
+        guard let currentItem = resolveLibraryItem(by: item.objectID) else {
+            DebugLogger.warning("LibraryView: \(actionName) 失败，LibraryItem 不存在")
+            return nil
+        }
+
+        let book = currentItem.book
+        if book.isDeleted {
+            DebugLogger.warning("LibraryView: \(actionName) 失败，Book 已删除")
+            return nil
+        }
+
+        return book
+    }
+
+    private func withResolvedBook(from item: LibraryItem, actionName: String, perform action: (Book) -> Void) {
+        guard let book = resolveBook(from: item, actionName: actionName) else {
+            DebugLogger.warning("LibraryView: \(actionName) 终止，触发数据刷新")
+            refreshData()
+            return
+        }
+
+        action(book)
+    }
 }
 
 struct BookCardView: View {
@@ -297,6 +408,7 @@ struct BookCardView: View {
     var onShowInfo: (() -> Void)? = nil
     var onContinueReading: (() -> Void)? = nil
     var onToggleFavorite: (() -> Void)? = nil
+    var onRemoveFromLibrary: (() -> Void)? = nil
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     private var cardWidth: CGFloat {
@@ -379,7 +491,8 @@ struct BookCardView: View {
                 onShowBookmarks: onShowBookmarks,
                 onShowHighlights: onShowHighlights,
                 onShowInfo: onShowInfo,
-                onToggleFavorite: onToggleFavorite
+                onToggleFavorite: onToggleFavorite,
+                onRemoveFromLibrary: onRemoveFromLibrary
             )
         }
         .onAppear {
@@ -495,6 +608,7 @@ struct BookContextMenu: View {
     var onShowHighlights: (() -> Void)? = nil
     var onShowInfo: (() -> Void)? = nil
     var onToggleFavorite: (() -> Void)? = nil
+    var onRemoveFromLibrary: (() -> Void)? = nil
     
     var body: some View {
         Button(action: { onContinueReading?() }) {
@@ -527,10 +641,17 @@ struct BookContextMenu: View {
         
         Divider()
         
-        Button(role: .destructive, action: {}) {
+        Button(role: .destructive, action: {
+            onRemoveFromLibrary?()
+        }) {
             Label(NSLocalizedString("从书架移除", comment: ""), systemImage: "trash")
         }
     }
+}
+
+private struct PendingLibraryRemoval: Identifiable {
+    let id: NSManagedObjectID
+    let title: String
 }
 
 struct BookInfoSheet: View {
