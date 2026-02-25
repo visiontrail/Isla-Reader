@@ -127,6 +127,36 @@ struct LibraryRemovalServiceTests {
         #expect(try fetchCount(Book.self, predicate: NSPredicate(format: "id == %@", targetBookID as CVarArg), context: context) == 0)
         #expect(try fetchCount(LibraryItem.self, predicate: NSPredicate(format: "id == %@", libraryItem.id as CVarArg), context: context) == 0)
     }
+
+    @Test
+    @MainActor
+    func removesReadingProgressWhenBookProgressInverseIsBroken() throws {
+        let persistence = PersistenceController(inMemory: true)
+        let context = persistence.container.viewContext
+        let service = LibraryRemovalService(
+            fileManager: .default,
+            notionMappingStore: InMemoryNotionMappingStore(),
+            skimmingProgressCleaner: MockSkimmingProgressCleaner()
+        )
+
+        let targetBookID = UUID()
+        let fileURL = try makeTemporaryBookFile()
+        let libraryItem = makeLibraryItem(
+            bookID: targetBookID,
+            title: "Broken Progress Inverse Book",
+            filePath: fileURL.path,
+            context: context
+        )
+
+        let book = libraryItem.book
+        #expect(book.readingProgress != nil)
+        book.setPrimitiveValue(nil, forKey: #keyPath(Book.readingProgress))
+        try context.save()
+
+        _ = try service.remove(libraryItemID: libraryItem.objectID, in: context)
+
+        #expect(try fetchCount(ReadingProgress.self, context: context) == 0)
+    }
 }
 
 private extension LibraryRemovalServiceTests {

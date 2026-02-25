@@ -19,6 +19,13 @@ struct ReadingProgressView: View {
     
     @State private var selectedTimeRange: TimeRange = .week
     @State private var readerLaunchTarget: ReaderLaunchTarget? = nil
+
+    private struct RecentlyReadEntry: Identifiable {
+        let progress: ReadingProgress
+        let book: Book
+
+        var id: NSManagedObjectID { progress.objectID }
+    }
     
     enum TimeRange: String, CaseIterable {
         case week = "week"
@@ -37,30 +44,42 @@ struct ReadingProgressView: View {
         }
     }
     
-    private var recentlyReadBooks: [ReadingProgress] {
+    private var recentlyReadEntries: [RecentlyReadEntry] {
         let calendar = Calendar.current
         let now = Date()
-        
-        return readingProgresses.filter { progress in
+
+        return readingProgresses.compactMap { progress in
+            guard let book = resolvedBook(for: progress) else {
+                return nil
+            }
+
             switch selectedTimeRange {
             case .week:
-                return calendar.isDate(progress.lastReadAt, equalTo: now, toGranularity: .weekOfYear)
+                guard calendar.isDate(progress.lastReadAt, equalTo: now, toGranularity: .weekOfYear) else {
+                    return nil
+                }
             case .month:
-                return calendar.isDate(progress.lastReadAt, equalTo: now, toGranularity: .month)
+                guard calendar.isDate(progress.lastReadAt, equalTo: now, toGranularity: .month) else {
+                    return nil
+                }
             case .year:
-                return calendar.isDate(progress.lastReadAt, equalTo: now, toGranularity: .year)
+                guard calendar.isDate(progress.lastReadAt, equalTo: now, toGranularity: .year) else {
+                    return nil
+                }
             }
+
+            return RecentlyReadEntry(progress: progress, book: book)
         }
     }
     
     private var totalReadingTime: Int64 {
-        recentlyReadBooks.reduce(0) { $0 + $1.totalReadingTime }
+        recentlyReadEntries.reduce(0) { $0 + $1.progress.totalReadingTime }
     }
     
     private var averageProgress: Double {
-        guard !recentlyReadBooks.isEmpty else { return 0 }
-        let total = recentlyReadBooks.reduce(0.0) { $0 + $1.progressPercentage }
-        return total / Double(recentlyReadBooks.count)
+        guard !recentlyReadEntries.isEmpty else { return 0 }
+        let total = recentlyReadEntries.reduce(0.0) { $0 + $1.progress.progressPercentage }
+        return total / Double(recentlyReadEntries.count)
     }
     
     var body: some View {
@@ -97,7 +116,7 @@ struct ReadingProgressView: View {
                         
                         StatCard(
                             title: "阅读书籍",
-                            value: "\(recentlyReadBooks.count)",
+                            value: "\(recentlyReadEntries.count)",
                             icon: "books.vertical",
                             color: .orange
                         )
@@ -120,7 +139,7 @@ struct ReadingProgressView: View {
                     .padding(.horizontal)
                     
                     // Recent Reading Activity
-                    if !recentlyReadBooks.isEmpty {
+                    if !recentlyReadEntries.isEmpty {
                         VStack(alignment: .leading, spacing: 16) {
                             HStack {
                                 Text(NSLocalizedString("最近阅读", comment: ""))
@@ -130,11 +149,12 @@ struct ReadingProgressView: View {
                             }
                             .padding(.horizontal)
                             
-                            ForEach(recentlyReadBooks.prefix(5)) { progress in
+                            ForEach(recentlyReadEntries.prefix(5)) { entry in
                                 RecentReadingCard(
-                                    progress: progress,
+                                    progress: entry.progress,
+                                    book: entry.book,
                                     onContinueReading: {
-                                        continueReading(progress.book)
+                                        continueReading(entry.book)
                                     }
                                 )
                                     .padding(.horizontal)
@@ -156,6 +176,9 @@ struct ReadingProgressView: View {
                         .navigationBarHidden(true)
                 }
                 .environment(\.managedObjectContext, viewContext)
+            }
+            .onAppear {
+                cleanupInvalidReadingProgresses()
             }
         }
     }
@@ -197,6 +220,38 @@ struct ReadingProgressView: View {
     private func continueReading(_ book: Book) {
         DebugLogger.info("ReadingProgressView: 继续阅读 - \(book.displayTitle)")
         readerLaunchTarget = ReaderLaunchTarget(book: book)
+    }
+
+    private func resolvedBook(for progress: ReadingProgress) -> Book? {
+        guard let rawBook = progress.primitiveValue(forKey: #keyPath(ReadingProgress.book)) as? Book else {
+            return nil
+        }
+
+        do {
+            guard let existingBook = try viewContext.existingObject(with: rawBook.objectID) as? Book,
+                  !existingBook.isDeleted else {
+                return nil
+            }
+            return existingBook
+        } catch {
+            DebugLogger.warning("ReadingProgressView: 跳过失效的阅读记录，无法解析 Book - \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func cleanupInvalidReadingProgresses() {
+        let invalidProgresses = readingProgresses.filter { resolvedBook(for: $0) == nil }
+        guard !invalidProgresses.isEmpty else { return }
+
+        invalidProgresses.forEach(viewContext.delete)
+
+        do {
+            try viewContext.save()
+            DebugLogger.info("ReadingProgressView: 已清理 \(invalidProgresses.count) 条失效阅读记录")
+        } catch {
+            DebugLogger.error("ReadingProgressView: 清理失效阅读记录失败", error: error)
+            viewContext.rollback()
+        }
     }
 }
 
@@ -330,6 +385,7 @@ struct ReadingGoalCard: View {
 
 struct RecentReadingCard: View {
     let progress: ReadingProgress
+    let book: Book
     var onContinueReading: (() -> Void)? = nil
     
     var body: some View {
@@ -346,7 +402,7 @@ struct RecentReadingCard: View {
                         ))
                         .frame(width: 50, height: 70)
                     
-                    if let coverImage = progress.book.coverImage {
+                    if let coverImage = book.coverImage {
                         coverImage
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -361,12 +417,12 @@ struct RecentReadingCard: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(progress.book.displayTitle)
+                    Text(book.displayTitle)
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .lineLimit(2)
                     
-                    Text(progress.book.displayAuthor)
+                    Text(book.displayAuthor)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)

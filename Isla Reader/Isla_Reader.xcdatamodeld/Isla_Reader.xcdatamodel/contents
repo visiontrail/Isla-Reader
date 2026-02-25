@@ -58,7 +58,7 @@
         <attribute name="pageIndex" optional="NO" attributeType="Integer 32" usesScalarValueType="YES"/>
         <attribute name="chapterTitle" optional="YES" attributeType="String"/>
         <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
-        <relationship name="book" destinationEntity="Book" inverseName="bookmarks" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Nullify" optional="NO" toMany="NO"/>
+        <relationship name="book" destinationEntity="Book" inverseName="bookmarks" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Cascade" optional="NO" toMany="NO"/>
     </entity>
 
     <entity name="Highlight" representedClassName="Highlight" syncable="YES" codeGenerationType="none">
@@ -72,7 +72,7 @@
         <attribute name="note" optional="YES" attributeType="String"/>
         <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
-        <relationship name="book" destinationEntity="Book" inverseName="highlights" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Nullify" optional="NO" toMany="NO"/>
+        <relationship name="book" destinationEntity="Book" inverseName="highlights" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Cascade" optional="NO" toMany="NO"/>
     </entity>
 
     <entity name="Annotation" representedClassName="Annotation" syncable="YES" codeGenerationType="none">
@@ -84,7 +84,7 @@
         <attribute name="associatedText" optional="YES" attributeType="String"/>
         <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
-        <relationship name="book" destinationEntity="Book" inverseName="annotations" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Nullify" optional="NO" toMany="NO"/>
+        <relationship name="book" destinationEntity="Book" inverseName="annotations" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Cascade" optional="NO" toMany="NO"/>
     </entity>
 
     <entity name="ReadingProgress" representedClassName="ReadingProgress" syncable="YES" codeGenerationType="none">
@@ -97,7 +97,7 @@
         <attribute name="totalReadingTime" optional="NO" attributeType="Integer 64" usesScalarValueType="YES"/>
         <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
-        <relationship name="book" destinationEntity="Book" inverseName="readingProgress" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Nullify" optional="NO" toMany="NO"/>
+        <relationship name="book" destinationEntity="Book" inverseName="readingProgress" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Cascade" optional="NO" toMany="NO"/>
     </entity>
 
     <entity name="SyncQueue" representedClassName="SyncQueue" syncable="YES" codeGenerationType="none">

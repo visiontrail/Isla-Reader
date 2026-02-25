@@ -84,6 +84,7 @@ final class LibraryRemovalService {
                 let fileURL = BookFileLocator.resolveFileURL(from: book.filePath, fileManager: fileManager)?.url
 
                 try removeNotionSyncArtifacts(for: bookID, in: context)
+                try removeBookScopedArtifacts(for: book, in: context)
 
                 // 显式删除书架条目，避免依赖反向关系级联导致残留空壳 LibraryItem。
                 context.delete(libraryItem)
@@ -118,6 +119,30 @@ final class LibraryRemovalService {
         legacyMappingRequest.predicate = NSPredicate(format: "bookID == %@", bookIDString)
         let legacyMappings = try context.fetch(legacyMappingRequest)
         legacyMappings.forEach(context.delete)
+    }
+
+    private func removeBookScopedArtifacts(for book: Book, in context: NSManagedObjectContext) throws {
+        let bookPredicate = NSPredicate(format: "book == %@", book)
+
+        let progressRequest = ReadingProgress.fetchRequest()
+        progressRequest.predicate = bookPredicate
+        let progresses = try context.fetch(progressRequest)
+        progresses.forEach(context.delete)
+
+        let bookmarkRequest = Bookmark.fetchRequest()
+        bookmarkRequest.predicate = bookPredicate
+        let bookmarks = try context.fetch(bookmarkRequest)
+        bookmarks.forEach(context.delete)
+
+        let highlightRequest = Highlight.fetchRequest()
+        highlightRequest.predicate = bookPredicate
+        let highlights = try context.fetch(highlightRequest)
+        highlights.forEach(context.delete)
+
+        let annotationRequest = Annotation.fetchRequest()
+        annotationRequest.predicate = bookPredicate
+        let annotations = try context.fetch(annotationRequest)
+        annotations.forEach(context.delete)
     }
 
     private func removeBookFileIfNeeded(url: URL?) -> (freedBytes: Int64, didRemove: Bool) {
