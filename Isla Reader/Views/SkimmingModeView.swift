@@ -27,7 +27,7 @@ struct SkimmingModeView: View {
     @State private var adNoticeMessage: String?
     @State private var adNoticeDismissTask: Task<Void, Never>?
     @State private var pendingInterstitialBeforeNextChapter = false
-    @State private var thirdNoticeShownChapterIndices: Set<Int> = []
+    @State private var thirdNoticeShownTriggerCounts: Set<Int> = []
     @State private var lastChapterLoadingNoticeAt: Date?
     @State private var loadingSwipeOffset: CGFloat = 0
     @State private var didShowLoadingNoticeInCurrentDrag = false
@@ -475,7 +475,7 @@ struct SkimmingModeView: View {
         DebugLogger.info(
             "SkimmingModeView: 满足插屏阈值，准备在下一次进入新章节前展示。AI计数=\(skimmingAIRequestCount), 滑动计数=\(forwardChapterSwipeCount), 已展示=\(interstitialPresentedCount)"
         )
-        maybeShowThirdAdvanceNotice(for: chapterIndex)
+        maybeShowThirdAdvanceNotice(forTriggerCount: completedTriggerCount)
     }
 
     @MainActor
@@ -497,9 +497,9 @@ struct SkimmingModeView: View {
     }
 
     @MainActor
-    private func maybeShowThirdAdvanceNotice(for chapterIndex: Int) {
-        guard !thirdNoticeShownChapterIndices.contains(chapterIndex) else { return }
-        thirdNoticeShownChapterIndices.insert(chapterIndex)
+    private func maybeShowThirdAdvanceNotice(forTriggerCount triggerCount: Int) {
+        guard !thirdNoticeShownTriggerCounts.contains(triggerCount) else { return }
+        thirdNoticeShownTriggerCounts.insert(triggerCount)
 
         let availability = RewardedInterstitialAdManager.shared.availabilityStatus()
         switch availability {
@@ -520,6 +520,9 @@ struct SkimmingModeView: View {
     private func showAdvanceNotice(_ message: String) {
         let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedMessage.isEmpty else { return }
+        if adNoticeMessage == trimmedMessage, adNoticeDismissTask != nil {
+            return
+        }
 
         adNoticeDismissTask?.cancel()
         withAnimation(.easeInOut(duration: 0.2)) {
@@ -527,11 +530,12 @@ struct SkimmingModeView: View {
         }
 
         adNoticeDismissTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_400_000_000)
+            try? await Task.sleep(nanoseconds: 5_400_000_000)
             guard !Task.isCancelled else { return }
             withAnimation(.easeInOut(duration: 0.2)) {
                 adNoticeMessage = nil
             }
+            adNoticeDismissTask = nil
         }
     }
 
