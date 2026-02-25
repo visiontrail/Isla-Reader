@@ -22,13 +22,20 @@ struct SkimmingModeView: View {
     @State private var showingTOC = false
     @State private var navigationPath = NavigationPath()
     @State private var skimmingAIRequestCount = 0
+    @State private var forwardChapterSwipeCount = 0
+    @State private var interstitialPresentedCount = 0
     @State private var adNoticeMessage: String?
     @State private var adNoticeDismissTask: Task<Void, Never>?
     @State private var pendingInterstitialBeforeNextChapter = false
-    @State private var secondNoticeShownChapterIndices: Set<Int> = []
     @State private var thirdNoticeShownChapterIndices: Set<Int> = []
+    @State private var lastChapterLoadingNoticeAt: Date?
+    @State private var loadingSwipeOffset: CGFloat = 0
+    @State private var didShowLoadingNoticeInCurrentDrag = false
+    @State private var didNavigateBackwardInCurrentDrag = false
     
     private let service = SkimmingModeService.shared
+    private let preloadAheadChapterCount = 3
+    private let chapterLoadingNoticeCooldown: TimeInterval = 1.5
     
     private enum NavigationTarget: Hashable {
         case startFromChapter(BookmarkLocation)
@@ -174,11 +181,61 @@ struct SkimmingModeView: View {
                 .tag(index)
             }
         }
+        .offset(x: loadingSwipeOffset)
+        .background(
+            SkimmingPagerSwipeLockConfigurator(isLocked: isCurrentChapterLoading)
+        )
+        .overlay {
+            if isCurrentChapterLoading {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(
+                        DragGesture(minimumDistance: 8)
+                            .onChanged { value in
+                                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+
+                                if value.translation.width > 56,
+                                   !didNavigateBackwardInCurrentDrag {
+                                    didNavigateBackwardInCurrentDrag = true
+                                    loadingSwipeOffset = 0
+                                    navigateToPreviousChapterFromLoadingDrag()
+                                    return
+                                }
+
+                                let dampedOffset = max(-36, min(36, value.translation.width * 0.28))
+                                loadingSwipeOffset = dampedOffset
+
+                                if abs(value.translation.width) > 20,
+                                   value.translation.width < 0,
+                                   !didShowLoadingNoticeInCurrentDrag {
+                                    didShowLoadingNoticeInCurrentDrag = true
+                                    maybeShowChapterLoadingNotice()
+                                }
+                            }
+                            .onEnded { _ in
+                                didShowLoadingNoticeInCurrentDrag = false
+                                didNavigateBackwardInCurrentDrag = false
+                                withAnimation(.interpolatingSpring(stiffness: 360, damping: 28)) {
+                                    loadingSwipeOffset = 0
+                                }
+                            }
+                    )
+            }
+        }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .onChange(of: currentChapterIndex) { newValue in
             guard chapters.indices.contains(newValue) else { return }
             service.storeLastVisitedChapterIndex(newValue, for: book)
-            requestSummary(for: newValue)
+            preloadSummaries(from: newValue)
+        }
+        .onChange(of: isCurrentChapterLoading) { newValue in
+            if !newValue {
+                didShowLoadingNoticeInCurrentDrag = false
+                didNavigateBackwardInCurrentDrag = false
+                withAnimation(.easeOut(duration: 0.16)) {
+                    loadingSwipeOffset = 0
+                }
+            }
         }
     }
     
@@ -229,6 +286,12 @@ struct SkimmingModeView: View {
 
                 let previousChapterIndex = currentChapterIndex
                 if newValue > previousChapterIndex {
+                    guard !shouldBlockForwardNavigation(from: previousChapterIndex) else {
+                        preloadSummaries(from: previousChapterIndex)
+                        maybeShowChapterLoadingNotice()
+                        return
+                    }
+                    incrementForwardChapterSwipeCountAndPrepareAdIfNeeded(for: previousChapterIndex)
                     handlePendingInterstitialBeforeChapterAdvance()
                 }
                 currentChapterIndex = newValue
@@ -275,16 +338,13 @@ struct SkimmingModeView: View {
             do {
                 let metadata = try service.chapters(from: book)
                 await MainActor.run {
-                    let previousIndex = self.currentChapterIndex
                     self.chapters = metadata
                     self.isLoadingChapters = false
                     let restoredIndex = self.initialChapterIndex(for: metadata.count)
                     self.currentChapterIndex = restoredIndex
                     // 从缓存中恢复已生成的摘要
                     self.restoreCachedSummaries()
-                    if previousIndex == restoredIndex {
-                        self.requestSummary(for: restoredIndex)
-                    }
+                    self.preloadSummaries(from: restoredIndex)
                 }
             } catch {
                 await MainActor.run {
@@ -328,6 +388,50 @@ struct SkimmingModeView: View {
             }
         }
     }
+
+    @MainActor
+    private func preloadSummaries(from index: Int) {
+        guard chapters.indices.contains(index) else { return }
+        let upperBound = min(chapters.count - 1, index + preloadAheadChapterCount)
+        for chapterIndex in index...upperBound {
+            requestSummary(for: chapterIndex)
+        }
+    }
+
+    private func shouldBlockForwardNavigation(from index: Int) -> Bool {
+        guard chapters.indices.contains(index) else { return false }
+        guard chapterSummaries[index] == nil else { return false }
+        return loadingChapterIndices.contains(index)
+    }
+
+    private func shouldPromptWaitForCurrentChapter(at index: Int) -> Bool {
+        guard chapters.indices.contains(index) else { return false }
+        guard chapterSummaries[index] == nil else { return false }
+        return loadingChapterIndices.contains(index)
+    }
+
+    private var isCurrentChapterLoading: Bool {
+        shouldPromptWaitForCurrentChapter(at: currentChapterIndex)
+    }
+
+    @MainActor
+    private func maybeShowChapterLoadingNotice() {
+        let now = Date()
+        if let lastShown = lastChapterLoadingNoticeAt,
+           now.timeIntervalSince(lastShown) < chapterLoadingNoticeCooldown {
+            return
+        }
+        lastChapterLoadingNoticeAt = now
+        showAdvanceNotice(NSLocalizedString("skimming.wait_for_chapter_loading", comment: ""))
+    }
+
+    @MainActor
+    private func navigateToPreviousChapterFromLoadingDrag() {
+        guard currentChapterIndex > 0 else { return }
+        withAnimation(.easeOut(duration: 0.22)) {
+            currentChapterIndex -= 1
+        }
+    }
     
     private func errorView(_ message: String, retry: @escaping () -> Void) -> some View {
         VStack(spacing: 16) {
@@ -352,42 +456,44 @@ struct SkimmingModeView: View {
     private func incrementSkimmingUsageAndPrepareAdIfNeeded(for chapterIndex: Int) {
         skimmingAIRequestCount += 1
         DebugLogger.info("SkimmingModeView: 略读AI调用计数 = \(skimmingAIRequestCount)")
+        updateInterstitialReadinessIfNeeded(for: chapterIndex)
+    }
 
-        let cycleProgress = skimmingAIRequestCount % 3
-        if cycleProgress == 2 {
-            maybeShowSecondAdvanceNotice(for: chapterIndex)
-            return
-        }
+    @MainActor
+    private func incrementForwardChapterSwipeCountAndPrepareAdIfNeeded(for chapterIndex: Int) {
+        forwardChapterSwipeCount += 1
+        DebugLogger.info("SkimmingModeView: 前进滑动章节计数 = \(forwardChapterSwipeCount)")
+        updateInterstitialReadinessIfNeeded(for: chapterIndex)
+    }
 
-        guard cycleProgress == 0 else { return }
+    @MainActor
+    private func updateInterstitialReadinessIfNeeded(for chapterIndex: Int) {
+        let completedTriggerCount = min(skimmingAIRequestCount / 3, forwardChapterSwipeCount / 3)
+        guard completedTriggerCount > interstitialPresentedCount else { return }
         pendingInterstitialBeforeNextChapter = true
-        DebugLogger.info("SkimmingModeView: 达到展示奖励插页式广告阈值，将在进入下一章前尝试展示")
+        RewardedInterstitialAdManager.shared.loadAd()
+        DebugLogger.info(
+            "SkimmingModeView: 满足插屏阈值，准备在下一次进入新章节前展示。AI计数=\(skimmingAIRequestCount), 滑动计数=\(forwardChapterSwipeCount), 已展示=\(interstitialPresentedCount)"
+        )
         maybeShowThirdAdvanceNotice(for: chapterIndex)
     }
 
     @MainActor
     private func handlePendingInterstitialBeforeChapterAdvance() {
         guard pendingInterstitialBeforeNextChapter else { return }
-        pendingInterstitialBeforeNextChapter = false
 
         let result = RewardedInterstitialAdManager.shared.presentFromTopControllerIfAvailable()
         switch result {
         case .presented:
+            pendingInterstitialBeforeNextChapter = false
+            interstitialPresentedCount += 1
             DebugLogger.info("SkimmingModeView: 已在章节切换前展示奖励插屏广告")
+            updateInterstitialReadinessIfNeeded(for: currentChapterIndex)
         case .skippedNotReady:
             showAdvanceNoticeIfEnabled("skimming.ad_notice.skipped_not_ready")
-        case .skippedCooldown:
-            showAdvanceNoticeIfEnabled("skimming.ad_notice.skipped_cooldown")
         case .skippedNoTopViewController:
             DebugLogger.warning("SkimmingModeView: 章节切换前未找到可展示广告的控制器，已跳过")
         }
-    }
-
-    @MainActor
-    private func maybeShowSecondAdvanceNotice(for chapterIndex: Int) {
-        guard !secondNoticeShownChapterIndices.contains(chapterIndex) else { return }
-        secondNoticeShownChapterIndices.insert(chapterIndex)
-        showAdvanceNoticeIfEnabled("skimming.ad_notice.second")
     }
 
     @MainActor
@@ -399,7 +505,7 @@ struct SkimmingModeView: View {
         switch availability {
         case .ready:
             showAdvanceNoticeIfEnabled("skimming.ad_notice.third_ready")
-        case .loading, .notReady, .cooldown:
+        case .loading, .notReady:
             showAdvanceNoticeIfEnabled("skimming.ad_notice.third_maybe")
         }
     }
@@ -445,6 +551,48 @@ struct SkimmingModeView: View {
                     .stroke(Color.white.opacity(0.16), lineWidth: 1)
             )
             .padding(.horizontal, 16)
+    }
+}
+
+private struct SkimmingPagerSwipeLockConfigurator: UIViewRepresentable {
+    let isLocked: Bool
+
+    func makeUIView(context: Context) -> UIView {
+        UIView(frame: .zero)
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        DispatchQueue.main.async {
+            guard let pagingScrollView = findPagingScrollView(from: uiView) else { return }
+            let shouldEnableScroll = !isLocked
+            if pagingScrollView.isScrollEnabled != shouldEnableScroll {
+                pagingScrollView.isScrollEnabled = shouldEnableScroll
+            }
+        }
+    }
+
+    private func findPagingScrollView(from anchorView: UIView) -> UIScrollView? {
+        var current: UIView? = anchorView
+        while let view = current {
+            if let found = searchPagingScrollView(in: view) {
+                return found
+            }
+            current = view.superview
+        }
+        return nil
+    }
+
+    private func searchPagingScrollView(in root: UIView) -> UIScrollView? {
+        if let scrollView = root as? UIScrollView, scrollView.isPagingEnabled {
+            return scrollView
+        }
+
+        for subview in root.subviews {
+            if let found = searchPagingScrollView(in: subview) {
+                return found
+            }
+        }
+        return nil
     }
 }
 
