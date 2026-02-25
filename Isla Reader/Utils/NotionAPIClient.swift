@@ -100,29 +100,29 @@ enum NotionAPIError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .missingAccessToken:
-            return NSLocalizedString("Notion token 不存在，请先完成授权", comment: "")
+            return NSLocalizedString("notion.api.error.token_missing", comment: "")
         case .invalidHTTPResponse:
-            return NSLocalizedString("Notion 响应无效", comment: "")
+            return NSLocalizedString("notion.api.error.invalid_response", comment: "")
         case .unauthorized:
-            return NSLocalizedString("Notion token 已失效，请重新登录", comment: "")
+            return NSLocalizedString("notion.api.error.token_expired", comment: "")
         case .rateLimited(let retryAfter):
             if let retryAfter {
-                return String(format: NSLocalizedString("Notion 请求过快，请在 %.0f 秒后重试", comment: ""), retryAfter)
+                return String(format: NSLocalizedString("notion.api.error.rate_limited_retry_after_format", comment: ""), retryAfter)
             }
-            return NSLocalizedString("Notion 请求过快，请稍后重试", comment: "")
+            return NSLocalizedString("notion.api.error.rate_limited", comment: "")
         case .serverError(let statusCode, let message):
             if let message, !message.isEmpty {
                 return "Notion API Error (\(statusCode)): \(message)"
             }
             return "Notion API Error (\(statusCode))"
         case .invalidPayload:
-            return NSLocalizedString("Notion 返回数据格式不正确", comment: "")
+            return NSLocalizedString("notion.api.error.invalid_data_format", comment: "")
         case .transportFailure(let reason):
-            return String(format: NSLocalizedString("Notion 网络错误: %@", comment: ""), reason)
+            return String(format: NSLocalizedString("notion.api.error.network_format", comment: ""), reason)
         case .encodingFailure:
-            return NSLocalizedString("Notion 请求编码失败", comment: "")
+            return NSLocalizedString("notion.api.error.request_encoding", comment: "")
         case .tokenReadFailure(let reason):
-            return String(format: NSLocalizedString("Notion token 读取失败: %@", comment: ""), reason)
+            return String(format: NSLocalizedString("notion.api.error.token_read_format", comment: ""), reason)
         }
     }
 }

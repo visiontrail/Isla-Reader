@@ -20,7 +20,7 @@ struct AISummaryView: View {
                 summaryContent
                     .transition(.opacity.combined(with: .move(edge: .top)))
             } else {
-                Text(NSLocalizedString("加载中...", comment: "Loading"))
+                Text(NSLocalizedString("common.loading", comment: "Loading"))
                     .foregroundColor(.secondary)
             }
         }

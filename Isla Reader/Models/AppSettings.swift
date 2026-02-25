@@ -16,11 +16,11 @@ public enum AppTheme: String, CaseIterable {
     var displayName: String {
         switch self {
         case .system:
-            return NSLocalizedString("跟随系统", comment: "Follow system theme")
+            return NSLocalizedString("settings.theme.mode.system", comment: "Follow system theme")
         case .light:
-            return NSLocalizedString("始终使用浅色主题", comment: "Always use light theme")
+            return NSLocalizedString("settings.theme.mode.always_light", comment: "Always use light theme")
         case .dark:
-            return NSLocalizedString("始终使用深色主题", comment: "Always use dark theme")
+            return NSLocalizedString("settings.theme.mode.always_dark", comment: "Always use dark theme")
         }
     }
     
@@ -45,13 +45,13 @@ public enum ReadingFontSize: String, CaseIterable {
     var displayName: String {
         switch self {
         case .small:
-            return NSLocalizedString("小", comment: "Small font size")
+            return NSLocalizedString("settings.font.size.small", comment: "Small font size")
         case .medium:
-            return NSLocalizedString("中", comment: "Medium font size")
+            return NSLocalizedString("settings.font.size.medium", comment: "Medium font size")
         case .large:
-            return NSLocalizedString("大", comment: "Large font size")
+            return NSLocalizedString("settings.font.size.large", comment: "Large font size")
         case .extraLarge:
-            return NSLocalizedString("特大", comment: "Extra large font size")
+            return NSLocalizedString("settings.font.size.extra_large", comment: "Extra large font size")
         }
     }
     
@@ -77,11 +77,11 @@ public enum ReadingFont: String, CaseIterable {
     var displayName: String {
         switch self {
         case .system:
-            return NSLocalizedString("系统字体", comment: "System font")
+            return NSLocalizedString("settings.font.family.system", comment: "System font")
         case .serif:
-            return NSLocalizedString("衬线字体", comment: "Serif font")
+            return NSLocalizedString("settings.font.family.serif", comment: "Serif font")
         case .monospace:
-            return NSLocalizedString("等宽字体", comment: "Monospace font")
+            return NSLocalizedString("settings.font.family.monospace", comment: "Monospace font")
         }
     }
     
@@ -107,7 +107,7 @@ public enum AppLanguage: String, CaseIterable {
     var displayName: String {
         switch self {
         case .system:
-            return NSLocalizedString("跟随系统", comment: "Follow system language")
+            return NSLocalizedString("settings.language.follow_system", comment: "Follow system language")
         case .en:
             return "English"
         case .zhHans:

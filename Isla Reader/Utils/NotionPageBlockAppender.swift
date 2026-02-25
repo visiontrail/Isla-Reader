@@ -11,7 +11,7 @@ enum NotionPageBlockAppendError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidPageID:
-            return NSLocalizedString("Notion 页面 ID 无效", comment: "")
+            return NSLocalizedString("notion.page.error.invalid_page_id", comment: "")
         }
     }
 }

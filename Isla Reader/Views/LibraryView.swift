@@ -18,9 +18,9 @@ enum LibraryFilterType: Equatable {
     var displayName: String {
         switch self {
         case .all:
-            return NSLocalizedString("全部", comment: "")
+            return NSLocalizedString("common.all", comment: "")
         case .favorites:
-            return NSLocalizedString("收藏", comment: "")
+            return NSLocalizedString("library.favorite.title", comment: "")
         case .status(let status):
             return status.displayName
         }
@@ -29,9 +29,9 @@ enum LibraryFilterType: Equatable {
     var displayNameKey: LocalizedStringKey {
         switch self {
         case .all:
-            return LocalizedStringKey("全部")
+            return LocalizedStringKey("common.all")
         case .favorites:
-            return LocalizedStringKey("收藏")
+            return LocalizedStringKey("library.favorite.title")
         case .status(let status):
             return status.displayNameKey
         }
@@ -102,7 +102,7 @@ struct LibraryView: View {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.secondary)
-                        TextField(NSLocalizedString("搜索书籍或作者", comment: ""), text: $searchText)
+                        TextField(NSLocalizedString("library.search.placeholder", comment: ""), text: $searchText)
                             .textFieldStyle(PlainTextFieldStyle())
                     }
                     .padding(.horizontal, 12)
@@ -177,7 +177,7 @@ struct LibraryView: View {
                     }
                 }
             }
-            .navigationTitle(NSLocalizedString("我的书架", comment: ""))
+            .navigationTitle(NSLocalizedString("library.title", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
             #endif
@@ -284,7 +284,7 @@ struct LibraryView: View {
                     removeFromLibrary(itemID: pending.id, title: pending.title)
                     pendingLibraryRemoval = nil
                 }
-                Button(NSLocalizedString("取消", comment: ""), role: .cancel) {
+                Button(NSLocalizedString("common.cancel", comment: ""), role: .cancel) {
                     pendingLibraryRemoval = nil
                 }
             } message: {
@@ -298,7 +298,7 @@ struct LibraryView: View {
                 }
             }
             .alert(NSLocalizedString("library.remove.failure.title", comment: ""), isPresented: $showingRemovalErrorAlert) {
-                Button(NSLocalizedString("确定", comment: "")) {
+                Button(NSLocalizedString("common.confirm", comment: "")) {
                     removalErrorMessage = ""
                 }
             } message: {
@@ -483,7 +483,7 @@ struct BookCardView: View {
         }
         .contextMenu {
             Button(action: { onSkim?() }) {
-                Label(NSLocalizedString("略读模式", comment: ""), systemImage: "sparkles.rectangle.stack")
+                Label(NSLocalizedString("skimming.mode.title", comment: ""), systemImage: "sparkles.rectangle.stack")
             }
             BookContextMenu(
                 libraryItem: libraryItem,
@@ -612,7 +612,7 @@ struct BookContextMenu: View {
     
     var body: some View {
         Button(action: { onContinueReading?() }) {
-            Label(NSLocalizedString("继续阅读", comment: ""), systemImage: "book.open")
+            Label(NSLocalizedString("library.continue_reading", comment: ""), systemImage: "book.open")
         }
         
         if let onShowBookmarks = onShowBookmarks {
@@ -628,14 +628,14 @@ struct BookContextMenu: View {
         }
         
         Button(action: { onShowInfo?() }) {
-            Label(NSLocalizedString("书籍信息", comment: ""), systemImage: "info.circle")
+            Label(NSLocalizedString("library.book_info.title", comment: ""), systemImage: "info.circle")
         }
         
         Button(action: { onToggleFavorite?() }) {
             if libraryItem.isFavorite {
-                Label(NSLocalizedString("取消收藏", comment: ""), systemImage: "heart.slash")
+                Label(NSLocalizedString("library.favorite.remove", comment: ""), systemImage: "heart.slash")
             } else {
-                Label(NSLocalizedString("添加到收藏", comment: ""), systemImage: "heart")
+                Label(NSLocalizedString("library.favorite.add", comment: ""), systemImage: "heart")
             }
         }
         
@@ -644,7 +644,7 @@ struct BookContextMenu: View {
         Button(role: .destructive, action: {
             onRemoveFromLibrary?()
         }) {
-            Label(NSLocalizedString("从书架移除", comment: ""), systemImage: "trash")
+            Label(NSLocalizedString("library.remove.action", comment: ""), systemImage: "trash")
         }
     }
 }
@@ -687,11 +687,11 @@ struct BookInfoSheet: View {
                 }
                 .padding()
             }
-            .navigationTitle(NSLocalizedString("书籍信息", comment: ""))
+            .navigationTitle(NSLocalizedString("library.book_info.title", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(NSLocalizedString("完成", comment: "")) {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         dismiss()
                     }
                 }
@@ -870,7 +870,7 @@ struct BookmarkListSheet: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(NSLocalizedString("完成", comment: "")) {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         dismiss()
                     }
                 }
@@ -989,7 +989,7 @@ struct HighlightListSheet: View {
                     }) {
                         HStack(spacing: 6) {
                             Image(systemName: "chevron.left")
-                            Text(NSLocalizedString("返回", comment: ""))
+                            Text(NSLocalizedString("common.back", comment: ""))
                         }
                     }
                 }
@@ -998,8 +998,8 @@ struct HighlightListSheet: View {
         .sheet(item: $editingHighlight) { highlight in
             noteEditorSheet(for: highlight)
         }
-        .alert(NSLocalizedString("保存高亮失败", comment: ""), isPresented: $showingNoteSaveError) {
-            Button(NSLocalizedString("确定", comment: "")) { }
+        .alert(NSLocalizedString("reader.highlight.save_failed", comment: ""), isPresented: $showingNoteSaveError) {
+            Button(NSLocalizedString("common.confirm", comment: "")) { }
         }
         .onAppear {
             DebugLogger.info("HighlightListSheet: 显示书籍高亮/笔记列表 - \(book.displayTitle)")
@@ -1102,7 +1102,7 @@ struct HighlightListSheet: View {
 
     private func noteActionTitle(for highlight: Highlight) -> String {
         noteText(for: highlight) == nil
-            ? NSLocalizedString("添加笔记", comment: "")
+            ? NSLocalizedString("reader.note.add", comment: "")
             : NSLocalizedString("highlight.list.edit_note", comment: "")
     }
 
@@ -1187,19 +1187,19 @@ struct HighlightListSheet: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle(noteText(for: highlight) == nil ? NSLocalizedString("添加笔记", comment: "") : NSLocalizedString("highlight.list.edit_note", comment: ""))
+            .navigationTitle(noteText(for: highlight) == nil ? NSLocalizedString("reader.note.add", comment: "") : NSLocalizedString("highlight.list.edit_note", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(NSLocalizedString("取消", comment: "")) {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         editingHighlight = nil
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(NSLocalizedString("保存", comment: "")) {
+                    Button(NSLocalizedString("common.save", comment: "")) {
                         saveEditedNote()
                     }
                 }
@@ -1220,11 +1220,11 @@ struct EmptyLibraryView: View {
                 .foregroundColor(.secondary)
             
             VStack(spacing: 8) {
-                Text(NSLocalizedString("书架空空如也", comment: ""))
+                Text(NSLocalizedString("library.empty.title", comment: ""))
                     .font(.title2)
                     .fontWeight(.medium)
                 
-                Text(NSLocalizedString("导入您的第一本电子书开始阅读之旅", comment: ""))
+                Text(NSLocalizedString("library.empty.subtitle", comment: ""))
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -1233,7 +1233,7 @@ struct EmptyLibraryView: View {
             Button(action: { showingImportSheet = true }) {
                 HStack {
                     Image(systemName: "plus")
-                    Text(NSLocalizedString("导入书籍", comment: ""))
+                    Text(NSLocalizedString("library.import.title", comment: ""))
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -1263,24 +1263,24 @@ struct FilterSheetView: View {
                 }
                 
                 // Reading Status section
-                Section(NSLocalizedString("阅读状态", comment: "")) {
+                Section(NSLocalizedString("library.filter.reading_status", comment: "")) {
                     ForEach(ReadingStatus.allCases, id: \.rawValue) { status in
                         filterButton(for: .status(status))
                     }
                 }
             }
-            .navigationTitle(NSLocalizedString("筛选", comment: ""))
+            .navigationTitle(NSLocalizedString("library.filter.title", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(NSLocalizedString("完成", comment: "")) {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         dismiss()
                     }
                 }
                 #else
                 ToolbarItem(placement: .primaryAction) {
-                    Button(NSLocalizedString("完成", comment: "")) {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         dismiss()
                     }
                 }
@@ -1337,7 +1337,7 @@ struct ImportBookView: View {
                             .progressViewStyle(LinearProgressViewStyle())
                             .frame(maxWidth: 200)
                         
-                        Text(NSLocalizedString("正在导入书籍...", comment: ""))
+                        Text(NSLocalizedString("library.import.in_progress", comment: ""))
                             .font(.headline)
                         
                         Text("\(Int(importService.importProgress * 100))%")
@@ -1350,11 +1350,11 @@ struct ImportBookView: View {
                         .foregroundColor(.accentColor)
                     
                     VStack(spacing: 16) {
-                        Text(NSLocalizedString("导入电子书", comment: ""))
+                        Text(NSLocalizedString("library.import.sheet.title", comment: ""))
                             .font(.title)
                             .fontWeight(.bold)
                         
-                        Text(NSLocalizedString("支持 ePub、TXT 等格式\n从文件 App 或其他应用导入", comment: ""))
+                        Text(NSLocalizedString("library.import.sheet.description", comment: ""))
                             .font(.body)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -1364,7 +1364,7 @@ struct ImportBookView: View {
                         Button(action: { showingFilePicker = true }) {
                             HStack {
                                 Image(systemName: "folder")
-                                Text(NSLocalizedString("从文件 App 选择", comment: ""))
+                                Text(NSLocalizedString("library.import.source.files_app", comment: ""))
                             }
                             .font(.headline)
                             .foregroundColor(.white)
@@ -1377,7 +1377,7 @@ struct ImportBookView: View {
                         Button(action: { showingFilePicker = true }) {
                             HStack {
                                 Image(systemName: "icloud")
-                                Text(NSLocalizedString("从 iCloud Drive 导入", comment: ""))
+                                Text(NSLocalizedString("library.import.source.icloud", comment: ""))
                             }
                             .font(.headline)
                             .foregroundColor(.accentColor)
@@ -1392,11 +1392,11 @@ struct ImportBookView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle(NSLocalizedString("导入书籍", comment: ""))
+            .navigationTitle(NSLocalizedString("library.import.title", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(NSLocalizedString("取消", comment: "")) {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         dismiss()
                     }
                     .disabled(importService.isImporting)
@@ -1409,8 +1409,8 @@ struct ImportBookView: View {
             ) { result in
                 handleFileImport(result: result)
             }
-            .alert(NSLocalizedString("导入结果", comment: ""), isPresented: $showingAlert) {
-                Button(NSLocalizedString("确定", comment: "")) {
+            .alert(NSLocalizedString("library.import.result.title", comment: ""), isPresented: $showingAlert) {
+                Button(NSLocalizedString("common.confirm", comment: "")) {
                     if importedBook != nil {
                         dismiss()
                     }

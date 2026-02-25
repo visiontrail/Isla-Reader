@@ -20,11 +20,11 @@ enum NotionBookSyncError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .missingDatabaseID:
-            return NSLocalizedString("Notion 数据库未初始化，请先在设置中完成初始化", comment: "")
+            return NSLocalizedString("notion.sync.error.database_not_initialized", comment: "")
         case .invalidBookID:
-            return NSLocalizedString("书籍 ID 无效", comment: "")
+            return NSLocalizedString("library.book.error.invalid_id", comment: "")
         case .invalidCreatePageResponse:
-            return NSLocalizedString("Notion 创建页面失败：响应中缺少页面 ID", comment: "")
+            return NSLocalizedString("notion.page.error.missing_page_id", comment: "")
         }
     }
 }

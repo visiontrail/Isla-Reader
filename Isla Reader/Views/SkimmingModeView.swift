@@ -133,7 +133,7 @@ struct SkimmingModeView: View {
                 Spacer()
                 
                 Button(action: { showingTOC = true }) {
-                    Label(NSLocalizedString("目录", comment: ""), systemImage: "list.bullet")
+                    Label(NSLocalizedString("reader.toc.title", comment: ""), systemImage: "list.bullet")
                         .labelStyle(.iconOnly)
                         .font(.title3)
                         .foregroundColor(.white.opacity(0.9))
@@ -926,10 +926,10 @@ private struct SkimmingTableOfContentsView: View {
                     }
                 }
             }
-            .navigationTitle(NSLocalizedString("目录", comment: ""))
+            .navigationTitle(NSLocalizedString("reader.toc.title", comment: ""))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(NSLocalizedString("取消", comment: "")) {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         dismiss()
                     }
                 }

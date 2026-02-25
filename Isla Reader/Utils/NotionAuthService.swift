@@ -443,19 +443,19 @@ enum NotionAuthError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidConfiguration:
-            return NSLocalizedString("Notion OAuth 配置无效，请检查 Client ID", comment: "")
+            return NSLocalizedString("notion.auth.error.invalid_oauth_config", comment: "")
         case .alreadyInProgress:
-            return NSLocalizedString("授权流程已在进行中", comment: "")
+            return NSLocalizedString("notion.auth.error.already_in_progress", comment: "")
         case .sessionFailedToStart:
-            return NSLocalizedString("无法启动授权会话", comment: "")
+            return NSLocalizedString("notion.auth.error.session_start_failed", comment: "")
         case .userCancelled:
-            return NSLocalizedString("用户取消了授权", comment: "")
+            return NSLocalizedString("notion.auth.error.user_cancelled", comment: "")
         case .authSessionFailed(let description):
-            return String(format: NSLocalizedString("授权失败: %@", comment: ""), description)
+            return String(format: NSLocalizedString("notion.auth.error.failed_format", comment: ""), description)
         case .invalidCallback:
-            return NSLocalizedString("无效的回调 URL", comment: "")
+            return NSLocalizedString("notion.auth.error.invalid_callback_url", comment: "")
         case .stateMismatch:
-            return NSLocalizedString("State 验证失败，可能存在 CSRF 攻击", comment: "")
+            return NSLocalizedString("notion.auth.error.state_verification_failed", comment: "")
         case .missingSessionID:
             return NSLocalizedString("notion.auth.error.missing_session", comment: "")
         case .finalizeFailed(let message):

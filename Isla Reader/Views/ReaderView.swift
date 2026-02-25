@@ -204,7 +204,7 @@ struct ReaderView: View {
             ) {
                 handleHighlightDeletion()
             }
-            Button(NSLocalizedString("取消", comment: ""), role: .cancel) {
+            Button(NSLocalizedString("common.cancel", comment: ""), role: .cancel) {
                 pendingDeleteHighlight = nil
                 deletingNoteOnly = false
             }
@@ -245,7 +245,7 @@ struct ReaderView: View {
                 .scaleEffect(1.2)
                 .tint(.primary.opacity(0.6))
             
-            Text(NSLocalizedString("正在加载书籍...", comment: ""))
+            Text(NSLocalizedString("reader.loading_book", comment: ""))
                 .font(.system(.body, design: .rounded))
                 .foregroundColor(.secondary)
         }
@@ -257,7 +257,7 @@ struct ReaderView: View {
                 .font(.system(size: 50))
                 .foregroundColor(.orange)
             
-            Text(NSLocalizedString("加载失败", comment: ""))
+            Text(NSLocalizedString("reader.load_failed", comment: ""))
                 .font(.system(.title2, design: .rounded))
                 .fontWeight(.semibold)
             
@@ -268,7 +268,7 @@ struct ReaderView: View {
                 .padding(.horizontal, 40)
             
             Button(action: { dismiss() }) {
-                Text(NSLocalizedString("返回", comment: ""))
+                Text(NSLocalizedString("common.back", comment: ""))
                     .font(.system(.body, design: .rounded))
                     .fontWeight(.medium)
                     .foregroundColor(.white)
@@ -666,35 +666,35 @@ struct ReaderView: View {
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
                 selectionActionButton(
-                    title: NSLocalizedString("高亮标记", comment: ""),
+                    title: NSLocalizedString("reader.highlight.action", comment: ""),
                     systemImage: "highlighter",
                     tint: .yellow.opacity(0.9),
                     action: { commitHighlight(note: nil) }
                 )
 
                 selectionActionButton(
-                    title: NSLocalizedString("添加笔记", comment: ""),
+                    title: NSLocalizedString("reader.note.add", comment: ""),
                     systemImage: "note.text",
                     tint: .blue.opacity(0.9),
                     action: { prepareNoteEditor() }
                 )
 
                 selectionActionButton(
-                    title: NSLocalizedString("复制", comment: ""),
+                    title: NSLocalizedString("common.copy", comment: ""),
                     systemImage: "doc.on.doc",
                     tint: .secondary,
                     action: { handleCopySelectedText() }
                 )
 
                 selectionActionButton(
-                    title: NSLocalizedString("翻译", comment: ""),
+                    title: NSLocalizedString("reader.ai.translate", comment: ""),
                     systemImage: "globe",
                     tint: .green,
                     action: { startAIRequest(.translate) }
                 )
 
                 selectionActionButton(
-                    title: NSLocalizedString("AI 解释", comment: ""),
+                    title: NSLocalizedString("reader.ai.explain", comment: ""),
                     systemImage: "brain.head.profile",
                     tint: .purple,
                     action: { startAIRequest(.explain) }
@@ -763,7 +763,7 @@ struct ReaderView: View {
 
     private func prepareNoteEditor() {
         guard selectedTextInfo != nil else {
-            showHint(NSLocalizedString("请先长按选择文字", comment: ""))
+            showHint(NSLocalizedString("reader.selection.required", comment: ""))
             return
         }
         noteDraft = ""
@@ -807,13 +807,13 @@ struct ReaderView: View {
 
     private func handleCopySelectedText() {
         guard let info = selectedTextInfo else {
-            showHint(NSLocalizedString("请选择要复制的内容", comment: ""))
+            showHint(NSLocalizedString("reader.copy.selection_required", comment: ""))
             return
         }
         UIPasteboard.general.string = info.text
         let feedback = UINotificationFeedbackGenerator()
         feedback.notificationOccurred(.success)
-        showHint(NSLocalizedString("已复制到剪贴板", comment: ""))
+        showHint(NSLocalizedString("reader.copy.success", comment: ""))
     }
 
     private func startAIRequest(_ action: AIAction, sourceText: String? = nil, targetHighlight: Highlight? = nil) {
@@ -826,14 +826,14 @@ struct ReaderView: View {
         }
 
         guard !resolvedText.isEmpty else {
-            showHint(NSLocalizedString("请选择文字后使用 AI", comment: ""))
+            showHint(NSLocalizedString("reader.ai.selection_required", comment: ""))
             return
         }
         guard !isLoadingAIResponse else { return }
 
         aiActionInFlight = action
         aiInsertionTarget = targetHighlight != nil ? .highlight(targetHighlight!) : (selectedTextInfo != nil ? .selection : nil)
-        aiResponseTitle = action == .translate ? NSLocalizedString("翻译", comment: "") : NSLocalizedString("AI 解释", comment: "")
+        aiResponseTitle = action == .translate ? NSLocalizedString("reader.ai.translate", comment: "") : NSLocalizedString("reader.ai.explain", comment: "")
         aiResponseContent = ""
         aiErrorMessage = nil
         showingAIResponse = true
@@ -890,7 +890,7 @@ struct ReaderView: View {
                 showHint(NSLocalizedString("highlight.action.insert_success", comment: ""))
             } catch {
                 DebugLogger.error("ReaderView: 保存AI笔记失败", error: error)
-                showHint(NSLocalizedString("保存高亮失败", comment: ""))
+                showHint(NSLocalizedString("reader.highlight.save_failed", comment: ""))
             }
         case .selection:
             commitHighlight(note: content)
@@ -914,7 +914,7 @@ struct ReaderView: View {
 
     private func commitHighlight(note: String?) {
         guard let info = selectedTextInfo else {
-            showHint(NSLocalizedString("请先长按选择文字", comment: ""))
+            showHint(NSLocalizedString("reader.selection.required", comment: ""))
             return
         }
 
@@ -934,7 +934,7 @@ struct ReaderView: View {
             pageIndex: info.pageIndex,
             offset: end
         ) else {
-            showHint(NSLocalizedString("标记失败，请重试", comment: ""))
+            showHint(NSLocalizedString("reader.highlight.failed", comment: ""))
             return
         }
 
@@ -962,11 +962,11 @@ struct ReaderView: View {
             selectionAction = ReaderSelectionAction(type: .highlight(colorHex: colorHex))
             let feedback = UINotificationFeedbackGenerator()
             feedback.notificationOccurred(.success)
-            showHint(trimmedNote.isEmpty ? NSLocalizedString("已高亮所选内容", comment: "") : NSLocalizedString("已添加带笔记的高亮", comment: ""))
+            showHint(trimmedNote.isEmpty ? NSLocalizedString("reader.highlight.saved", comment: "") : NSLocalizedString("reader.highlight.saved_with_note", comment: ""))
             selectedTextInfo = nil
         } catch {
             DebugLogger.error("ReaderView: 保存高亮失败", error: error)
-            showHint(NSLocalizedString("保存高亮失败", comment: ""))
+            showHint(NSLocalizedString("reader.highlight.save_failed", comment: ""))
         }
     }
 
@@ -1005,7 +1005,7 @@ struct ReaderView: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let text = selectedTextInfo?.text {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(NSLocalizedString("选中文本", comment: ""))
+                        Text(NSLocalizedString("reader.selection.title", comment: ""))
                             .font(.footnote)
                             .foregroundColor(.secondary)
                         Text(text)
@@ -1030,19 +1030,19 @@ struct ReaderView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle(NSLocalizedString("添加笔记", comment: ""))
+            .navigationTitle(NSLocalizedString("reader.note.add", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(NSLocalizedString("取消", comment: "")) {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         showingNoteEditor = false
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(NSLocalizedString("保存", comment: "")) {
+                    Button(NSLocalizedString("common.save", comment: "")) {
                         commitHighlight(note: noteDraft)
                         showingNoteEditor = false
                     }
@@ -1096,7 +1096,7 @@ struct ReaderView: View {
                             showingHighlightActions = false
                             startAIRequest(.translate, sourceText: highlight.selectedText, targetHighlight: highlight)
                         } label: {
-                            Label(NSLocalizedString("翻译", comment: ""), systemImage: "globe")
+                            Label(NSLocalizedString("reader.ai.translate", comment: ""), systemImage: "globe")
                                 .font(.system(size: 15, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                         }
@@ -1106,7 +1106,7 @@ struct ReaderView: View {
                             showingHighlightActions = false
                             startAIRequest(.explain, sourceText: highlight.selectedText, targetHighlight: highlight)
                         } label: {
-                            Label(NSLocalizedString("AI 解释", comment: ""), systemImage: "brain.head.profile")
+                            Label(NSLocalizedString("reader.ai.explain", comment: ""), systemImage: "brain.head.profile")
                                 .font(.system(size: 15, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                         }
@@ -1133,7 +1133,7 @@ struct ReaderView: View {
                         .buttonStyle(.bordered)
                     }
                 } else {
-                    Text(NSLocalizedString("暂无内容", comment: ""))
+                    Text(NSLocalizedString("common.no_content", comment: ""))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -1166,7 +1166,7 @@ struct ReaderView: View {
                     VStack(spacing: 12) {
                         ProgressView()
                             .progressViewStyle(.circular)
-                        Text(NSLocalizedString("AI 正在生成...", comment: ""))
+                        Text(NSLocalizedString("ai.generating", comment: ""))
                             .font(.footnote)
                             .foregroundColor(.secondary)
                     }
@@ -1180,7 +1180,7 @@ struct ReaderView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     ScrollView {
-                        Text(aiResponseContent.isEmpty ? NSLocalizedString("暂无内容", comment: "") : aiResponseContent)
+                        Text(aiResponseContent.isEmpty ? NSLocalizedString("common.no_content", comment: "") : aiResponseContent)
                             .font(.system(size: 16, design: .serif))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 4)
@@ -1247,7 +1247,7 @@ struct ReaderView: View {
             }
         } catch {
             DebugLogger.error("ReaderView: 删除高亮/笔记失败", error: error)
-            showHint(NSLocalizedString("保存高亮失败", comment: ""))
+            showHint(NSLocalizedString("reader.highlight.save_failed", comment: ""))
         }
 
         pendingDeleteHighlight = nil
@@ -1261,7 +1261,7 @@ struct ReaderView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 60)
             } else {
-                Text(NSLocalizedString("广告位未配置", comment: ""))
+                Text(NSLocalizedString("ads.slot_not_configured", comment: ""))
                     .font(.footnote)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity)
@@ -2209,7 +2209,7 @@ struct TableOfContentsView: View {
                                         .multilineTextAlignment(.leading)
                                     
                                     if isCurrent(item) {
-                                        Text(NSLocalizedString("当前章节", comment: ""))
+                                        Text(NSLocalizedString("reader.current_chapter", comment: ""))
                                             .font(.system(size: 12, weight: .medium, design: .rounded))
                                             .foregroundColor(.blue)
                                     }
@@ -2238,14 +2238,14 @@ struct TableOfContentsView: View {
                     }
                 }
             }
-            .navigationTitle(NSLocalizedString("目录", comment: ""))
+            .navigationTitle(NSLocalizedString("reader.toc.title", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { dismiss() }) {
-                        Text(NSLocalizedString("完成", comment: ""))
+                        Text(NSLocalizedString("common.done", comment: ""))
                             .font(.system(.body, design: .rounded))
                             .fontWeight(.medium)
                     }
@@ -2269,11 +2269,11 @@ struct ReaderSettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(NSLocalizedString("字体设置", comment: "")) {
+                Section(NSLocalizedString("settings.font.title", comment: "")) {
                     HStack {
-                        Text(NSLocalizedString("字体大小", comment: ""))
+                        Text(NSLocalizedString("settings.font.size", comment: ""))
                         Spacer()
-                        Picker(NSLocalizedString("字体大小", comment: ""), selection: $appSettings.readingFontSize) {
+                        Picker(NSLocalizedString("settings.font.size", comment: ""), selection: $appSettings.readingFontSize) {
                             ForEach(ReadingFontSize.allCases, id: \.rawValue) { size in
                                 Text(size.displayName).tag(size)
                             }
@@ -2282,10 +2282,10 @@ struct ReaderSettingsView: View {
                     }
                 }
                 
-                Section(NSLocalizedString("排版设置", comment: "")) {
+                Section(NSLocalizedString("settings.typography.title", comment: "")) {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text(NSLocalizedString("行间距", comment: ""))
+                            Text(NSLocalizedString("settings.typography.line_spacing", comment: ""))
                             Spacer()
                             Text(String(format: "%.1f", appSettings.lineSpacing))
                                 .foregroundColor(.secondary)
@@ -2301,7 +2301,7 @@ struct ReaderSettingsView: View {
                     
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text(NSLocalizedString("页面边距", comment: ""))
+                            Text(NSLocalizedString("settings.typography.page_margins", comment: ""))
                             Spacer()
                             Text("\(Int(appSettings.pageMargins))pt")
                                 .foregroundColor(.secondary)
@@ -2316,8 +2316,8 @@ struct ReaderSettingsView: View {
                     }
                 }
                 
-                Section(NSLocalizedString("主题", comment: "")) {
-                    Picker(NSLocalizedString("主题", comment: ""), selection: $appSettings.theme) {
+                Section(NSLocalizedString("settings.theme.title", comment: "")) {
+                    Picker(NSLocalizedString("settings.theme.title", comment: ""), selection: $appSettings.theme) {
                         ForEach(AppTheme.allCases, id: \.rawValue) { theme in
                             Text(theme.displayName).tag(theme)
                         }
@@ -2325,7 +2325,7 @@ struct ReaderSettingsView: View {
                     .pickerStyle(SegmentedPickerStyle())
                 }
             }
-            .navigationTitle(NSLocalizedString("阅读设置", comment: ""))
+            .navigationTitle(NSLocalizedString("reading.settings.title", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -2333,7 +2333,7 @@ struct ReaderSettingsView: View {
                 #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { dismiss() }) {
-                        Text(NSLocalizedString("完成", comment: ""))
+                        Text(NSLocalizedString("common.done", comment: ""))
                             .font(.system(.body, design: .rounded))
                             .fontWeight(.medium)
                     }
@@ -2341,7 +2341,7 @@ struct ReaderSettingsView: View {
                 #else
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { dismiss() }) {
-                        Text(NSLocalizedString("完成", comment: ""))
+                        Text(NSLocalizedString("common.done", comment: ""))
                             .font(.system(.body, design: .rounded))
                             .fontWeight(.medium)
                     }

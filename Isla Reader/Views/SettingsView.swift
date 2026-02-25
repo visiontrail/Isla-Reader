@@ -20,10 +20,10 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 // Language
-                Section(NSLocalizedString("语言", comment: "")) {
+                Section(NSLocalizedString("settings.language", comment: "")) {
                     HStack {
                         Label("", systemImage: "globe")
-                        Text(NSLocalizedString("语言", comment: ""))
+                        Text(NSLocalizedString("settings.language", comment: ""))
                         Spacer()
                         Picker("", selection: $appSettings.language) {
                             ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
@@ -35,7 +35,7 @@ struct SettingsView: View {
                     
                     HStack {
                         Label("", systemImage: "character.bubble")
-                        Text(NSLocalizedString("翻译目标语言", comment: ""))
+                        Text(NSLocalizedString("settings.translation.target_language", comment: ""))
                         Spacer()
                         Picker("", selection: $appSettings.translationLanguage) {
                             ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
@@ -47,13 +47,13 @@ struct SettingsView: View {
                 }
                 
                 // Reading Settings
-                Section(NSLocalizedString("阅读设置", comment: "")) {
+                Section(NSLocalizedString("reading.settings.title", comment: "")) {
                     NavigationLink(destination: ReadingSettingsView()) {
-                        Label(NSLocalizedString("阅读偏好", comment: ""), systemImage: "textformat")
+                        Label(NSLocalizedString("settings.reading_preferences", comment: ""), systemImage: "textformat")
                     }
                     
                     NavigationLink(destination: ThemeSettingsView()) {
-                        Label(NSLocalizedString("主题外观", comment: ""), systemImage: "paintbrush")
+                        Label(NSLocalizedString("settings.theme.appearance", comment: ""), systemImage: "paintbrush")
                     }
 
                     Toggle(isOn: $appSettings.isAIAdvanceAdNoticeEnabled) {
@@ -67,13 +67,13 @@ struct SettingsView: View {
                 }
                 
                 // Data & Sync
-                Section(NSLocalizedString("数据与同步", comment: "")) {
+                Section(NSLocalizedString("settings.data_and_sync", comment: "")) {
                     Button(action: { showingNotionAuth = true }) {
                         HStack(spacing: 12) {
                             NotionWorkspaceIconView(iconValue: notionSessionManager.workspaceIcon, size: 20)
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(NSLocalizedString("连接 Notion", comment: ""))
+                                Text(NSLocalizedString("notion.connect", comment: ""))
                                     .foregroundColor(.primary)
                                 notionConnectionSubtitle
                             }
@@ -84,13 +84,13 @@ struct SettingsView: View {
                     }
 
                     Button(action: { showingDataManagement = true }) {
-                        Label(NSLocalizedString("数据管理", comment: ""), systemImage: "externaldrive")
+                        Label(NSLocalizedString("settings.data_management", comment: ""), systemImage: "externaldrive")
                             .foregroundColor(.primary)
                     }
                 }
                 
                 // Notifications
-                Section(NSLocalizedString("通知提醒", comment: "")) {
+                Section(NSLocalizedString("settings.notifications", comment: "")) {
                     HStack {
                         Label(NSLocalizedString("reading_reminder.daily", comment: ""), systemImage: "bell")
                         Spacer()
@@ -111,9 +111,9 @@ struct SettingsView: View {
 
                         Stepper(value: $appSettings.dailyReadingGoal, in: 10...180, step: 5) {
                             HStack {
-                                Text(NSLocalizedString("每日目标", comment: ""))
+                                Text(NSLocalizedString("settings.daily_goal", comment: ""))
                                 Spacer()
-                                Text("\(appSettings.dailyReadingGoal) \(NSLocalizedString("分钟", comment: ""))")
+                                Text("\(appSettings.dailyReadingGoal) \(NSLocalizedString("common.minutes", comment: ""))")
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -121,14 +121,14 @@ struct SettingsView: View {
                 }
                 
                 // About
-                Section(NSLocalizedString("关于", comment: "")) {
+                Section(NSLocalizedString("settings.about", comment: "")) {
                     Button(action: { showingAbout = true }) {
                         Label(NSLocalizedString("app.about.title", comment: ""), systemImage: "info.circle")
                             .foregroundColor(.primary)
                     }
                     
                     HStack {
-                        Label(NSLocalizedString("版本", comment: ""), systemImage: "number")
+                        Label(NSLocalizedString("app.version", comment: ""), systemImage: "number")
                         Spacer()
                         Text("1.0.0")
                             .foregroundColor(.secondary)
@@ -136,17 +136,17 @@ struct SettingsView: View {
                 }
                 
                 // Support
-                Section(NSLocalizedString("支持", comment: "")) {
+                Section(NSLocalizedString("settings.support", comment: "")) {
                     Link(destination: URL(string: "mailto:support@isla-reader.top")!) {
-                        Label(NSLocalizedString("联系我们", comment: ""), systemImage: "envelope")
+                        Label(NSLocalizedString("app.contact_us", comment: ""), systemImage: "envelope")
                     }
                     
                     Link(destination: URL(string: "https://isla-reader.top/privacy")!) {
-                        Label(NSLocalizedString("隐私政策", comment: ""), systemImage: "hand.raised")
+                        Label(NSLocalizedString("app.privacy_policy", comment: ""), systemImage: "hand.raised")
                     }
                 }
             }
-            .navigationTitle(NSLocalizedString("设置", comment: ""))
+            .navigationTitle(NSLocalizedString("tab.settings", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
             #endif
@@ -163,7 +163,7 @@ struct SettingsView: View {
                 Alert(
                     title: Text(alert.title),
                     message: Text(alert.message),
-                    dismissButton: .default(Text(NSLocalizedString("完成", comment: "")))
+                    dismissButton: .default(Text(NSLocalizedString("common.done", comment: "")))
                 )
             }
             .onAppear {
@@ -179,7 +179,7 @@ struct SettingsView: View {
                         await MainActor.run {
                             appSettings.isReadingReminderEnabled = false
                             reminderAlert = DataAlert(
-                                title: NSLocalizedString("阅读提醒", comment: ""),
+                                title: NSLocalizedString("settings.reading_reminder", comment: ""),
                                 message: NSLocalizedString("reading_reminder.permission_denied", comment: "")
                             )
                         }
@@ -199,7 +199,7 @@ struct SettingsView: View {
                             await MainActor.run {
                                 appSettings.isReadingReminderEnabled = false
                                 reminderAlert = DataAlert(
-                                    title: NSLocalizedString("阅读提醒", comment: ""),
+                                    title: NSLocalizedString("settings.reading_reminder", comment: ""),
                                     message: NSLocalizedString("reading_reminder.permission_denied", comment: "")
                                 )
                             }
@@ -222,7 +222,7 @@ struct SettingsView: View {
                         await MainActor.run {
                             appSettings.isReadingReminderEnabled = false
                             reminderAlert = DataAlert(
-                                title: NSLocalizedString("阅读提醒", comment: ""),
+                                title: NSLocalizedString("settings.reading_reminder", comment: ""),
                                 message: NSLocalizedString("reading_reminder.permission_denied", comment: "")
                             )
                         }
@@ -242,7 +242,7 @@ struct SettingsView: View {
                         await MainActor.run {
                             appSettings.isReadingReminderEnabled = false
                             reminderAlert = DataAlert(
-                                title: NSLocalizedString("阅读提醒", comment: ""),
+                                title: NSLocalizedString("settings.reading_reminder", comment: ""),
                                 message: NSLocalizedString("reading_reminder.permission_denied", comment: "")
                             )
                         }
@@ -311,9 +311,9 @@ enum ExportCategory: String, Identifiable {
     var title: String {
         switch self {
         case .readingData:
-            return NSLocalizedString("导出阅读数据", comment: "")
+            return NSLocalizedString("settings.export.reading_data_button", comment: "")
         case .notesAndHighlights:
-            return NSLocalizedString("导出笔记和高亮", comment: "")
+            return NSLocalizedString("settings.export.notes_button", comment: "")
         }
     }
     
@@ -338,11 +338,11 @@ struct ReadingSettingsView: View {
     
     var body: some View {
         List {
-            Section(NSLocalizedString("字体设置", comment: "")) {
+            Section(NSLocalizedString("settings.font.title", comment: "")) {
                 HStack {
-                    Text(NSLocalizedString("字体大小", comment: ""))
+                    Text(NSLocalizedString("settings.font.size", comment: ""))
                     Spacer()
-                    Picker(NSLocalizedString("字体大小", comment: ""), selection: $appSettings.readingFontSize) {
+                    Picker(NSLocalizedString("settings.font.size", comment: ""), selection: $appSettings.readingFontSize) {
                         ForEach(ReadingFontSize.allCases, id: \.rawValue) { size in
                             Text(size.displayName).tag(size)
                         }
@@ -351,9 +351,9 @@ struct ReadingSettingsView: View {
                 }
                 
                 HStack {
-                    Text(NSLocalizedString("字体类型", comment: ""))
+                    Text(NSLocalizedString("settings.font.type", comment: ""))
                     Spacer()
-                    Picker(NSLocalizedString("字体类型", comment: ""), selection: $appSettings.readingFont) {
+                    Picker(NSLocalizedString("settings.font.type", comment: ""), selection: $appSettings.readingFont) {
                         ForEach(ReadingFont.allCases, id: \.rawValue) { font in
                             Text(font.displayName).tag(font)
                         }
@@ -362,10 +362,10 @@ struct ReadingSettingsView: View {
                 }
             }
             
-            Section(NSLocalizedString("排版设置", comment: "")) {
+            Section(NSLocalizedString("settings.typography.title", comment: "")) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(NSLocalizedString("行间距", comment: ""))
+                        Text(NSLocalizedString("settings.typography.line_spacing", comment: ""))
                         Spacer()
                         Text(String(format: "%.1f", appSettings.lineSpacing))
                             .foregroundColor(.secondary)
@@ -381,7 +381,7 @@ struct ReadingSettingsView: View {
                 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(NSLocalizedString("页面边距", comment: ""))
+                        Text(NSLocalizedString("settings.typography.page_margins", comment: ""))
                         Spacer()
                         Text("\(Int(appSettings.pageMargins))pt")
                             .foregroundColor(.secondary)
@@ -396,12 +396,12 @@ struct ReadingSettingsView: View {
                 }
             }
             
-            Section(NSLocalizedString("预览", comment: "")) {
+            Section(NSLocalizedString("settings.preview", comment: "")) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(NSLocalizedString("示例文本", comment: ""))
+                    Text(NSLocalizedString("settings.sample_text.label", comment: ""))
                         .font(.headline)
                     
-                    Text(NSLocalizedString("这是一段示例文本，用于预览当前的字体和排版设置效果。您可以调整上面的设置来获得最佳的阅读体验。", comment: ""))
+                    Text(NSLocalizedString("settings.sample_text.content", comment: ""))
                         .font(.system(size: appSettings.readingFontSize.fontSize))
                         .lineSpacing(appSettings.lineSpacing * 4)
                         .padding(.horizontal, appSettings.pageMargins / 2)
@@ -411,7 +411,7 @@ struct ReadingSettingsView: View {
                 }
             }
         }
-        .navigationTitle(NSLocalizedString("阅读偏好", comment: ""))
+        .navigationTitle(NSLocalizedString("settings.reading_preferences", comment: ""))
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -423,7 +423,7 @@ struct ThemeSettingsView: View {
     
     var body: some View {
         List {
-            Section(NSLocalizedString("主题选择", comment: "")) {
+            Section(NSLocalizedString("settings.theme.selection", comment: "")) {
                 ForEach(AppTheme.allCases, id: \.rawValue) { theme in
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -450,14 +450,14 @@ struct ThemeSettingsView: View {
                 }
             }
             
-            Section(NSLocalizedString("主题预览", comment: "")) {
+            Section(NSLocalizedString("settings.theme.preview", comment: "")) {
                 VStack(spacing: 16) {
                     HStack {
                         Circle()
                             .fill(Color.primary)
                             .frame(width: 20, height: 20)
                         
-                        Text(NSLocalizedString("主要文本颜色", comment: ""))
+                        Text(NSLocalizedString("settings.theme.primary_text_color", comment: ""))
                             .font(.body)
                         
                         Spacer()
@@ -468,7 +468,7 @@ struct ThemeSettingsView: View {
                             .fill(Color.secondary)
                             .frame(width: 20, height: 20)
                         
-                        Text(NSLocalizedString("次要文本颜色", comment: ""))
+                        Text(NSLocalizedString("settings.theme.secondary_text_color", comment: ""))
                             .font(.body)
                             .foregroundColor(.secondary)
                         
@@ -480,7 +480,7 @@ struct ThemeSettingsView: View {
                             .fill(Color.accentColor)
                             .frame(width: 20, height: 20)
                         
-                        Text(NSLocalizedString("强调色", comment: ""))
+                        Text(NSLocalizedString("settings.theme.accent_color", comment: ""))
                             .font(.body)
                             .foregroundColor(.accentColor)
                         
@@ -492,7 +492,7 @@ struct ThemeSettingsView: View {
                 .cornerRadius(12)
             }
         }
-        .navigationTitle(NSLocalizedString("主题外观", comment: ""))
+        .navigationTitle(NSLocalizedString("settings.theme.appearance", comment: ""))
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -501,11 +501,11 @@ struct ThemeSettingsView: View {
     private func themeDescription(_ theme: AppTheme) -> String {
         switch theme {
         case .system:
-            return NSLocalizedString("根据系统设置自动切换", comment: "")
+            return NSLocalizedString("settings.theme.mode.follow_system", comment: "")
         case .light:
-            return NSLocalizedString("始终使用浅色主题", comment: "")
+            return NSLocalizedString("settings.theme.mode.always_light", comment: "")
         case .dark:
-            return NSLocalizedString("始终使用深色主题", comment: "")
+            return NSLocalizedString("settings.theme.mode.always_dark", comment: "")
         }
     }
 }
@@ -527,14 +527,14 @@ struct DataManagementView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(NSLocalizedString("数据导出", comment: "")) {
+                Section(NSLocalizedString("settings.data.export_section", comment: "")) {
                     Button(action: { exportMode = .readingData }) {
-                        Label(NSLocalizedString("导出阅读数据", comment: ""), systemImage: "square.and.arrow.up")
+                        Label(NSLocalizedString("settings.export.reading_data_button", comment: ""), systemImage: "square.and.arrow.up")
                             .foregroundColor(.blue)
                     }
                     
                     Button(action: { exportMode = .notesAndHighlights }) {
-                        Label(NSLocalizedString("导出笔记和高亮", comment: ""), systemImage: "note.text")
+                        Label(NSLocalizedString("settings.export.notes_button", comment: ""), systemImage: "note.text")
                             .foregroundColor(.blue)
                     }
                     
@@ -544,9 +544,9 @@ struct DataManagementView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 
-                Section(NSLocalizedString("数据导入", comment: "")) {
+                Section(NSLocalizedString("settings.data.import_section", comment: "")) {
                     Button(action: { showingImportPicker = true }) {
-                        Label(NSLocalizedString("导入阅读数据", comment: ""), systemImage: "square.and.arrow.down")
+                        Label(NSLocalizedString("settings.import.reading_data", comment: ""), systemImage: "square.and.arrow.down")
                             .foregroundColor(.blue)
                     }
                     .disabled(isImporting)
@@ -562,9 +562,9 @@ struct DataManagementView: View {
                     }
                 }
                 
-                Section(NSLocalizedString("存储管理", comment: "")) {
+                Section(NSLocalizedString("settings.storage_management", comment: "")) {
                     HStack {
-                        Label(NSLocalizedString("缓存大小", comment: ""), systemImage: "internaldrive")
+                        Label(NSLocalizedString("settings.cache.size", comment: ""), systemImage: "internaldrive")
                         Spacer()
                         if isClearingCache {
                             HStack(spacing: 8) {
@@ -580,7 +580,7 @@ struct DataManagementView: View {
                     
                     Button(action: clearCache) {
                         HStack {
-                            Label(NSLocalizedString("清理缓存", comment: ""), systemImage: "trash")
+                            Label(NSLocalizedString("settings.cache.clear", comment: ""), systemImage: "trash")
                                 .foregroundColor(.orange)
                             if isClearingCache {
                                 Spacer()
@@ -591,10 +591,10 @@ struct DataManagementView: View {
                     .disabled(isClearingCache || isCalculatingCache)
                 }
                 
-                Section(NSLocalizedString("危险操作", comment: "")) {
+                Section(NSLocalizedString("settings.danger_zone", comment: "")) {
                     Button(action: { showingClearDataAlert = true }) {
                         HStack {
-                            Label(NSLocalizedString("清除所有数据", comment: ""), systemImage: "exclamationmark.triangle")
+                            Label(NSLocalizedString("settings.data.clear_all", comment: ""), systemImage: "exclamationmark.triangle")
                                 .foregroundColor(.red)
                             if isClearingAllData {
                                 Spacer()
@@ -605,32 +605,32 @@ struct DataManagementView: View {
                     .disabled(isClearingAllData || isClearingCache || isCalculatingCache || isImporting)
                 }
             }
-            .navigationTitle(NSLocalizedString("数据管理", comment: ""))
+            .navigationTitle(NSLocalizedString("settings.data_management", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(NSLocalizedString("完成", comment: "")) {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         dismiss()
                     }
                 }
                 #else
                 ToolbarItem(placement: .primaryAction) {
-                    Button(NSLocalizedString("完成", comment: "")) {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         dismiss()
                     }
                 }
                 #endif
             }
-            .confirmationDialog(NSLocalizedString("清除所有数据", comment: ""), isPresented: $showingClearDataAlert, titleVisibility: .visible) {
-                Button(NSLocalizedString("确认清除", comment: ""), role: .destructive) {
+            .confirmationDialog(NSLocalizedString("settings.data.clear_all", comment: ""), isPresented: $showingClearDataAlert, titleVisibility: .visible) {
+                Button(NSLocalizedString("settings.data.clear_confirm", comment: ""), role: .destructive) {
                     performClearAllData()
                 }
-                Button(NSLocalizedString("取消", comment: ""), role: .cancel) { }
+                Button(NSLocalizedString("common.cancel", comment: ""), role: .cancel) { }
             } message: {
-                Text(NSLocalizedString("此操作将删除所有书籍、阅读进度、笔记和设置。此操作不可撤销。", comment: ""))
+                Text(NSLocalizedString("settings.data.clear_warning", comment: ""))
             }
             .sheet(item: $exportMode) { mode in
                 ExportDataView(mode: mode)
@@ -639,7 +639,7 @@ struct DataManagementView: View {
                 Alert(
                     title: Text(alert.title),
                     message: Text(alert.message),
-                    dismissButton: .default(Text(NSLocalizedString("确定", comment: "")))
+                    dismissButton: .default(Text(NSLocalizedString("common.confirm", comment: "")))
                 )
             }
             .fileImporter(isPresented: $showingImportPicker, allowedContentTypes: [.json]) { result in
@@ -648,7 +648,7 @@ struct DataManagementView: View {
                     handleImport(url)
                 case .failure(let error):
                     alertItem = DataAlert(
-                        title: NSLocalizedString("导入失败", comment: ""),
+                        title: NSLocalizedString("settings.import.failed", comment: ""),
                         message: error.localizedDescription
                     )
                 }
@@ -689,7 +689,7 @@ struct DataManagementView: View {
                 await MainActor.run {
                     importSummary = summary
                     alertItem = DataAlert(
-                        title: NSLocalizedString("导入结果", comment: ""),
+                        title: NSLocalizedString("library.import.result.title", comment: ""),
                         message: summary
                     )
                     isImporting = false
@@ -697,7 +697,7 @@ struct DataManagementView: View {
             } catch {
                 await MainActor.run {
                     alertItem = DataAlert(
-                        title: NSLocalizedString("导入失败", comment: ""),
+                        title: NSLocalizedString("settings.import.failed", comment: ""),
                         message: error.localizedDescription
                     )
                     isImporting = false
@@ -735,7 +735,7 @@ struct DataManagementView: View {
                 await MainActor.run {
                     cacheUsage = usage
                     alertItem = DataAlert(
-                        title: NSLocalizedString("缓存已清理", comment: ""),
+                        title: NSLocalizedString("settings.cache.cleared", comment: ""),
                         message: message
                     )
                     isClearingCache = false
@@ -744,7 +744,7 @@ struct DataManagementView: View {
             } catch {
                 await MainActor.run {
                     alertItem = DataAlert(
-                        title: NSLocalizedString("清理失败", comment: ""),
+                        title: NSLocalizedString("settings.cache.clear_failed", comment: ""),
                         message: error.localizedDescription
                     )
                     isClearingCache = false
@@ -860,7 +860,7 @@ struct ExportDataView: View {
                 }
                 
                 Button(action: startExport) {
-                    Text(NSLocalizedString("开始导出", comment: ""))
+                    Text(NSLocalizedString("settings.export.start", comment: ""))
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -879,7 +879,7 @@ struct ExportDataView: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(NSLocalizedString("取消", comment: "")) {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         dismiss()
                     }
                 }
@@ -888,7 +888,7 @@ struct ExportDataView: View {
                 Alert(
                     title: Text(alert.title),
                     message: Text(alert.message),
-                    dismissButton: .default(Text(NSLocalizedString("确定", comment: "")))
+                    dismissButton: .default(Text(NSLocalizedString("common.confirm", comment: "")))
                 )
             }
         }
@@ -914,7 +914,7 @@ struct ExportDataView: View {
             } catch {
                 await MainActor.run {
                     let message = error.localizedDescription
-                    exportAlert = DataAlert(title: NSLocalizedString("导出失败", comment: ""), message: message)
+                    exportAlert = DataAlert(title: NSLocalizedString("settings.export.failed", comment: ""), message: message)
                 }
             }
             
@@ -946,12 +946,12 @@ struct AboutView: View {
                         .font(.title)
                         .fontWeight(.bold)
                     
-                    Text("\(NSLocalizedString("版本", comment: "")) 1.0.0")
+                    Text("\(NSLocalizedString("app.version", comment: "")) 1.0.0")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
                 
-                Text(NSLocalizedString("把每本书变成一位可对话的导师：获取、阅读、理解与交流，一站式完成。", comment: ""))
+                Text(NSLocalizedString("app.tagline", comment: ""))
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
@@ -962,7 +962,7 @@ struct AboutView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    Text(NSLocalizedString("用心打造的阅读体验", comment: ""))
+                    Text(NSLocalizedString("app.about.subtitle", comment: ""))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -970,20 +970,20 @@ struct AboutView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle(NSLocalizedString("关于", comment: ""))
+            .navigationTitle(NSLocalizedString("settings.about", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(NSLocalizedString("完成", comment: "")) {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         dismiss()
                     }
                 }
                 #else
                 ToolbarItem(placement: .primaryAction) {
-                    Button(NSLocalizedString("完成", comment: "")) {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         dismiss()
                     }
                 }
@@ -1056,11 +1056,11 @@ struct NotionAuthView: View {
                 NotionWorkspaceIconView(iconValue: notionSessionManager.workspaceIcon, size: 60)
 
                 VStack(spacing: 8) {
-                    Text(NSLocalizedString("连接到 Notion", comment: ""))
+                    Text(NSLocalizedString("notion.connect_to", comment: ""))
                         .font(.title)
                         .fontWeight(.bold)
 
-                    Text(NSLocalizedString("授权 LanRead 访问你的 Notion 工作区，以便同步你的阅读笔记和高亮。", comment: ""))
+                    Text(NSLocalizedString("notion.auth.description", comment: ""))
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -1099,7 +1099,7 @@ struct NotionAuthView: View {
                         .multilineTextAlignment(.center)
 
                     Link(destination: privacyPolicyURL) {
-                        Text(NSLocalizedString("隐私政策", comment: ""))
+                        Text(NSLocalizedString("app.privacy_policy", comment: ""))
                             .font(.footnote)
                             .fontWeight(.semibold)
                     }
@@ -1109,20 +1109,20 @@ struct NotionAuthView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle(NSLocalizedString("Notion 同步", comment: ""))
+            .navigationTitle(NSLocalizedString("notion.sync.title", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(NSLocalizedString("取消", comment: "")) {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         dismiss()
                     }
                 }
 
                 if notionSessionManager.isConnected {
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(NSLocalizedString("完成", comment: "")) {
+                        Button(NSLocalizedString("common.done", comment: "")) {
                             dismiss()
                         }
                         .fontWeight(.semibold)
@@ -1135,7 +1135,7 @@ struct NotionAuthView: View {
                     return Alert(
                         title: Text(alert.title),
                         message: Text(alert.message),
-                        dismissButton: .default(Text(NSLocalizedString("确定", comment: "")))
+                        dismissButton: .default(Text(NSLocalizedString("common.confirm", comment: "")))
                     )
                 case .preAuthorizationNotice:
                     return Alert(
@@ -1149,7 +1149,7 @@ struct NotionAuthView: View {
                         title: Text(NSLocalizedString("notion.disconnect.confirm.title", comment: "")),
                         message: Text(NSLocalizedString("notion.disconnect.confirm.message", comment: "")),
                         primaryButton: .destructive(Text(NSLocalizedString("notion.connection.disconnect", comment: "")), action: disconnectNotion),
-                        secondaryButton: .cancel(Text(NSLocalizedString("取消", comment: "")))
+                        secondaryButton: .cancel(Text(NSLocalizedString("common.cancel", comment: "")))
                     )
                 }
             }
@@ -1157,7 +1157,7 @@ struct NotionAuthView: View {
                 switch state {
                 case .error(let message):
                     alertContext = .info(DataAlert(
-                        title: NSLocalizedString("授权失败", comment: ""),
+                        title: NSLocalizedString("notion.auth.failed", comment: ""),
                         message: message
                     ))
                 case .connected:
@@ -1277,9 +1277,9 @@ struct NotionAuthView: View {
     private var authorizationButtonTitle: String {
         switch notionSessionManager.connectionState {
         case .connected:
-            return NSLocalizedString("重新授权", comment: "")
+            return NSLocalizedString("notion.auth.reauthorize", comment: "")
         default:
-            return NSLocalizedString("开始授权", comment: "")
+            return NSLocalizedString("notion.auth.start", comment: "")
         }
     }
 
@@ -1509,7 +1509,7 @@ private struct NotionParentPagePickerView: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(NSLocalizedString("取消", comment: "")) {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         onClose()
                     }
                     .disabled(isSubmitting)

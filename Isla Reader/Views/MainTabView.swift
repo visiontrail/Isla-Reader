@@ -39,21 +39,21 @@ struct MainTabView: View {
                         .tag(PhoneTab.library)
                         .tabItem {
                             Image(systemName: "books.vertical")
-                            Text(NSLocalizedString("书架", comment: ""))
+                            Text(NSLocalizedString("tab.library", comment: ""))
                         }
                     
                     ReadingProgressView()
                         .tag(PhoneTab.progress)
                         .tabItem {
                             Image(systemName: "chart.line.uptrend.xyaxis")
-                            Text(NSLocalizedString("进度", comment: ""))
+                            Text(NSLocalizedString("tab.progress", comment: ""))
                         }
                     
                     SettingsView()
                         .tag(PhoneTab.settings)
                         .tabItem {
                             Image(systemName: "gearshape")
-                            Text(NSLocalizedString("设置", comment: ""))
+                            Text(NSLocalizedString("tab.settings", comment: ""))
                         }
                 }
             }
@@ -139,11 +139,11 @@ struct SidebarView: View {
         var titleKey: String {
             switch self {
             case .library:
-                return NSLocalizedString("书架", comment: "")
+                return NSLocalizedString("tab.library", comment: "")
             case .progress:
-                return NSLocalizedString("进度", comment: "")
+                return NSLocalizedString("tab.progress", comment: "")
             case .settings:
-                return NSLocalizedString("设置", comment: "")
+                return NSLocalizedString("tab.settings", comment: "")
             }
         }
         

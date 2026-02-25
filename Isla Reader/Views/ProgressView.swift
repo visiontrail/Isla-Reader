@@ -35,11 +35,11 @@ struct ReadingProgressView: View {
         var displayNameKey: LocalizedStringKey {
             switch self {
             case .week:
-                return "本周"
+                return "progress.time_range.week"
             case .month:
-                return "本月"
+                return "progress.time_range.month"
             case .year:
-                return "今年"
+                return "progress.time_range.year"
             }
         }
     }
@@ -87,7 +87,7 @@ struct ReadingProgressView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     // Time Range Picker
-                    Picker(NSLocalizedString("时间范围", comment: ""), selection: $selectedTimeRange) {
+                    Picker(NSLocalizedString("progress.time_range", comment: ""), selection: $selectedTimeRange) {
                         ForEach(TimeRange.allCases, id: \.rawValue) { range in
                             Text(range.displayNameKey).tag(range)
                         }
@@ -101,28 +101,28 @@ struct ReadingProgressView: View {
                         GridItem(.flexible())
                     ], spacing: 16) {
                         StatCard(
-                            title: "阅读时长",
+                            title: "progress.reading_time",
                             value: formatReadingTime(totalReadingTime),
                             icon: "clock",
                             color: .blue
                         )
                         
                         StatCard(
-                            title: "平均进度",
+                            title: "progress.average_progress",
                             value: String(format: "%.1f%%", averageProgress * 100),
                             icon: "chart.line.uptrend.xyaxis",
                             color: .green
                         )
                         
                         StatCard(
-                            title: "阅读书籍",
+                            title: "progress.books_read",
                             value: "\(recentlyReadEntries.count)",
                             icon: "books.vertical",
                             color: .orange
                         )
                         
                         StatCard(
-                            title: "目标达成",
+                            title: "progress.goal_achievement",
                             value: goalAchievementText,
                             icon: "target",
                             color: .purple
@@ -142,7 +142,7 @@ struct ReadingProgressView: View {
                     if !recentlyReadEntries.isEmpty {
                         VStack(alignment: .leading, spacing: 16) {
                             HStack {
-                                Text(NSLocalizedString("最近阅读", comment: ""))
+                                Text(NSLocalizedString("progress.recent_reads", comment: ""))
                                     .font(.headline)
                                     .fontWeight(.semibold)
                                 Spacer()
@@ -166,7 +166,7 @@ struct ReadingProgressView: View {
                 }
                 .padding(.vertical)
             }
-            .navigationTitle(NSLocalizedString("阅读统计", comment: ""))
+            .navigationTitle(NSLocalizedString("progress.title", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
             #endif
@@ -317,11 +317,11 @@ struct ReadingGoalCard: View {
         VStack(spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(NSLocalizedString("阅读目标", comment: ""))
+                    Text(NSLocalizedString("progress.daily_goal.title", comment: ""))
                         .font(.headline)
                         .fontWeight(.semibold)
                     
-                    Text(String(format: NSLocalizedString("daily_goal_minutes_format", comment: ""), dailyGoal))
+                    Text(String(format: NSLocalizedString("progress.daily_goal.minutes_format", comment: ""), dailyGoal))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -333,7 +333,7 @@ struct ReadingGoalCard: View {
                         .font(.title3)
                         .fontWeight(.semibold)
                     
-                    Text(NSLocalizedString("分钟", comment: ""))
+                    Text(NSLocalizedString("common.minutes", comment: ""))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -359,7 +359,7 @@ struct ReadingGoalCard: View {
             .frame(height: 8)
             
             HStack {
-                Text(String(format: NSLocalizedString("progress_completed_format", comment: ""), progressPercentage * 100))
+                Text(String(format: NSLocalizedString("progress.completed.format", comment: ""), progressPercentage * 100))
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
@@ -369,7 +369,7 @@ struct ReadingGoalCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
-                        Text(NSLocalizedString("目标达成!", comment: ""))
+                        Text(NSLocalizedString("progress.goal_achieved", comment: ""))
                             .foregroundColor(.green)
                     }
                     .font(.caption)
