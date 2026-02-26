@@ -265,8 +265,6 @@ actor NotionBookSyncer {
 
     private static var initialPageChildren: [Block] {
         [
-            headingBlock(content: "📖 Highlights"),
-            dividerBlock(),
             headingBlock(content: "📝 Notes"),
             dividerBlock()
         ]

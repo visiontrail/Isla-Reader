@@ -128,6 +128,77 @@ struct NotionAPIClientTests {
         }
         #expect(items.count == 1)
     }
+
+    @Test
+    func listBlockChildrenBuildsExpectedQueryParameters() async throws {
+        let blockID = "page_123"
+        let session = makeMockSession()
+        let requestCapture = RequestCapture()
+        MockURLProtocol.removeAllHandlers()
+        defer { MockURLProtocol.removeAllHandlers() }
+
+        MockURLProtocol.registerHandler(for: "/v1/blocks/\(blockID)/children") { request in
+            requestCapture.set(request)
+
+            let responseBody: Object = [
+                "object": .string("list"),
+                "results": .array([]),
+                "has_more": .bool(false)
+            ]
+            let data = try JSONEncoder().encode(responseBody)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, data)
+        }
+
+        let client = NotionAPIClient(
+            session: session,
+            tokenProvider: StubTokenProvider(token: "test_token"),
+            notificationCenter: NotificationCenter()
+        )
+
+        _ = try await client.listBlockChildren(blockId: blockID, startCursor: "cursor_1", pageSize: 50)
+
+        let request = try #require(requestCapture.get())
+        #expect(request.httpMethod == "GET")
+        #expect(request.url?.query?.contains("page_size=50") == true)
+        #expect(request.url?.query?.contains("start_cursor=cursor_1") == true)
+    }
+
+    @Test
+    func archiveBlockBuildsPatchRequest() async throws {
+        let blockID = "block_to_archive"
+        let session = makeMockSession()
+        let requestCapture = RequestCapture()
+        MockURLProtocol.removeAllHandlers()
+        defer { MockURLProtocol.removeAllHandlers() }
+
+        MockURLProtocol.registerHandler(for: "/v1/blocks/\(blockID)") { request in
+            requestCapture.set(request)
+
+            let responseBody: Object = [
+                "id": .string(blockID),
+                "archived": .bool(true)
+            ]
+            let data = try JSONEncoder().encode(responseBody)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, data)
+        }
+
+        let client = NotionAPIClient(
+            session: session,
+            tokenProvider: StubTokenProvider(token: "test_token"),
+            notificationCenter: NotificationCenter()
+        )
+
+        let result = try await client.archiveBlock(blockId: blockID)
+        #expect(result["archived"] == .bool(true))
+
+        let request = try #require(requestCapture.get())
+        #expect(request.httpMethod == "PATCH")
+        let body = try #require(extractBodyData(from: request))
+        let payload = try JSONDecoder().decode(Object.self, from: body)
+        #expect(payload["archived"] == .bool(true))
+    }
 }
 
 private extension NotionAPIClientTests {

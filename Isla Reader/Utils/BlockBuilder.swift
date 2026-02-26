@@ -8,7 +8,6 @@ import Foundation
 struct BlockBuilder {
     static let maxTextLength = 2000
     private static let truncationSuffix = "..."
-    private static let fallbackChapter = "Unknown Chapter"
 
     struct HighlightInput: Equatable, Sendable {
         let text: String
@@ -42,15 +41,13 @@ struct BlockBuilder {
 
     static func buildBlocks(for highlight: HighlightInput) -> [Block] {
         [
-            quoteBlock(content: normalizedContent(highlight.text)),
-            footerBlock(chapter: highlight.chapter, date: highlight.date)
+            quoteBlock(content: normalizedContent(highlight.text))
         ]
     }
 
     static func buildBlocks(for note: NoteInput) -> [Block] {
         [
-            paragraphBlock(content: normalizedContent(note.content)),
-            footerBlock(chapter: note.relatedHighlight?.chapter, date: note.date)
+            paragraphBlock(content: normalizedContent(note.content))
         ]
     }
 
@@ -98,21 +95,6 @@ struct BlockBuilder {
         ]
     }
 
-    private static func footerBlock(chapter: String?, date: Date) -> Block {
-        let chapterText = normalizedChapter(chapter)
-        let dateText = formattedDate(date)
-        let content = normalizedContent("\(chapterText) • \(dateText)")
-
-        return [
-            "object": .string("block"),
-            "type": .string("paragraph"),
-            "paragraph": .object([
-                "rich_text": richTextArray(content: content, color: "gray"),
-                "color": .string("default")
-            ])
-        ]
-    }
-
     private static func richTextArray(content: String, color: String = "default") -> JSONValue {
         .array([
             .object([
@@ -144,20 +126,4 @@ struct BlockBuilder {
         return String(safe.prefix(headCount)) + truncationSuffix
     }
 
-    private static func normalizedChapter(_ rawChapter: String?) -> String {
-        guard let rawChapter else {
-            return fallbackChapter
-        }
-
-        let trimmed = rawChapter.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? fallbackChapter : trimmed
-    }
-
-    private static func formattedDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone.current
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
-    }
 }

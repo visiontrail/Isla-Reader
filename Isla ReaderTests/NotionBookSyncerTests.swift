@@ -72,6 +72,35 @@ struct NotionBookSyncerTests {
         #expect(callStats.queryCount == 1)
         #expect(callStats.createCount == 0)
     }
+
+    @Test
+    func createPageInitialChildrenOnlyContainNotesSection() async throws {
+        let mockClient = MockNotionBookSyncAPI(
+            queryResultPageIDs: [],
+            createdPageID: "page_created_2"
+        )
+        let mappingStore = InMemoryBookMappingStore()
+        let syncer = NotionBookSyncer(
+            notionClient: mockClient,
+            mappingStore: mappingStore,
+            databaseIDProvider: { "db_test_3" }
+        )
+
+        let book = BookInfo(id: "book_3", title: "The Pragmatic Programmer", author: "Andrew Hunt")
+        _ = try await syncer.sync(book: book)
+
+        let createdChildren = await mockClient.lastCreatedChildren()
+        #expect(createdChildren.count == 2)
+        #expect(createdChildren[0]["type"] == .string("heading_1"))
+        #expect(createdChildren[1]["type"] == .string("divider"))
+
+        let heading = try #require(createdChildren[0]["heading_1"]?.objectValue)
+        let richText = try #require(heading["rich_text"]?.arrayValue)
+        let first = try #require(richText.first?.objectValue)
+        let text = try #require(first["text"]?.objectValue)
+        let content = try #require(text["content"]?.stringValue)
+        #expect(content == "📝 Notes")
+    }
 }
 
 private final class InMemoryBookMappingStore: BookMappingStoring {
@@ -92,6 +121,7 @@ private final class InMemoryBookMappingStore: BookMappingStoring {
 private actor MockNotionBookSyncAPI: NotionBookSyncAPI {
     private(set) var queryCount = 0
     private(set) var createCount = 0
+    private var capturedChildren: [Block] = []
 
     private let queryResultPageIDs: [String]
     private let createdPageID: String
@@ -120,6 +150,7 @@ private actor MockNotionBookSyncAPI: NotionBookSyncAPI {
 
     func createPage(databaseId: String, properties: Object, children: [Block]) async throws -> NotionObject {
         createCount += 1
+        capturedChildren = children
 
         if createDelayNanoseconds > 0 {
             try await Task.sleep(nanoseconds: createDelayNanoseconds)
@@ -130,5 +161,9 @@ private actor MockNotionBookSyncAPI: NotionBookSyncAPI {
 
     func callStats() -> (queryCount: Int, createCount: Int) {
         (queryCount, createCount)
+    }
+
+    func lastCreatedChildren() -> [Block] {
+        capturedChildren
     }
 }

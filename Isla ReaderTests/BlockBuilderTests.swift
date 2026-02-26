@@ -9,7 +9,7 @@ import Testing
 
 struct BlockBuilderTests {
     @Test
-    func buildsQuoteAndGrayFooterForHighlight() throws {
+    func buildsQuoteForHighlight() throws {
         let highlight = BlockBuilder.HighlightInput(
             text: "We are what we repeatedly do.",
             chapter: "Chapter 1",
@@ -17,7 +17,7 @@ struct BlockBuilderTests {
         )
 
         let blocks = BlockBuilder.buildBlocks(for: highlight)
-        #expect(blocks.count == 2)
+        #expect(blocks.count == 1)
 
         let quoteBlock = blocks[0]
         #expect(quoteBlock["object"] == .string("block"))
@@ -26,19 +26,10 @@ struct BlockBuilderTests {
         let quote = try #require(quoteBlock["quote"]?.objectValue)
         let quoteText = try extractContent(from: quote)
         #expect(quoteText == "We are what we repeatedly do.")
-
-        let footerBlock = blocks[1]
-        #expect(footerBlock["type"] == .string("paragraph"))
-        let footerParagraph = try #require(footerBlock["paragraph"]?.objectValue)
-        let footerText = try extractContent(from: footerParagraph)
-        #expect(footerText == "Chapter 1 • 2023-10-27")
-
-        let color = try extractAnnotationColor(from: footerParagraph)
-        #expect(color == "gray")
     }
 
     @Test
-    func buildsParagraphAndFooterForNote() throws {
+    func buildsParagraphForNote() throws {
         let related = BlockBuilder.HighlightInput(
             text: "Action beats intention.",
             chapter: "Chapter 2",
@@ -51,18 +42,13 @@ struct BlockBuilderTests {
         )
 
         let blocks = BlockBuilder.buildBlocks(for: note)
-        #expect(blocks.count == 2)
+        #expect(blocks.count == 1)
 
         let paragraphBlock = blocks[0]
         #expect(paragraphBlock["type"] == .string("paragraph"))
         let paragraph = try #require(paragraphBlock["paragraph"]?.objectValue)
         let noteText = try extractContent(from: paragraph)
         #expect(noteText == "这句话可以放到我的每周复盘模板里。")
-
-        let footerBlock = blocks[1]
-        let footerParagraph = try #require(footerBlock["paragraph"]?.objectValue)
-        let footerText = try extractContent(from: footerParagraph)
-        #expect(footerText == "Chapter 2 • 2023-10-28")
     }
 
     @Test
@@ -95,12 +81,5 @@ private extension BlockBuilderTests {
         let first = try #require(richText.first?.objectValue)
         let text = try #require(first["text"]?.objectValue)
         return try #require(text["content"]?.stringValue)
-    }
-
-    func extractAnnotationColor(from container: Object) throws -> String {
-        let richText = try #require(container["rich_text"]?.arrayValue)
-        let first = try #require(richText.first?.objectValue)
-        let annotations = try #require(first["annotations"]?.objectValue)
-        return try #require(annotations["color"]?.stringValue)
     }
 }

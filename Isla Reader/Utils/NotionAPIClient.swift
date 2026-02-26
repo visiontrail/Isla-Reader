@@ -259,7 +259,35 @@ final class NotionAPIClient {
         return try await send(path: "blocks/\(blockId)/children", method: "PATCH", body: payload)
     }
 
-    private func send(path: String, method: String, body: NotionObject?) async throws -> NotionObject {
+    func listBlockChildren(blockId: String, startCursor: String? = nil, pageSize: Int = 100) async throws -> NotionObject {
+        let normalizedPageSize = max(1, min(pageSize, 100))
+        var queryItems = [URLQueryItem(name: "page_size", value: String(normalizedPageSize))]
+
+        if let cursor = startCursor?.trimmingCharacters(in: .whitespacesAndNewlines), !cursor.isEmpty {
+            queryItems.append(URLQueryItem(name: "start_cursor", value: cursor))
+        }
+
+        return try await send(
+            path: "blocks/\(blockId)/children",
+            method: "GET",
+            body: nil,
+            queryItems: queryItems
+        )
+    }
+
+    func archiveBlock(blockId: String) async throws -> NotionObject {
+        let payload: NotionObject = [
+            "archived": .bool(true)
+        ]
+        return try await send(path: "blocks/\(blockId)", method: "PATCH", body: payload)
+    }
+
+    private func send(
+        path: String,
+        method: String,
+        body: NotionObject?,
+        queryItems: [URLQueryItem] = []
+    ) async throws -> NotionObject {
         let token: String
         do {
             guard let accessToken = try tokenProvider.accessToken() else {
@@ -272,7 +300,22 @@ final class NotionAPIClient {
             throw NotionAPIError.tokenReadFailure(error.localizedDescription)
         }
 
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        let baseRequestURL = baseURL.appendingPathComponent(path)
+        let requestURL: URL
+        if queryItems.isEmpty {
+            requestURL = baseRequestURL
+        } else {
+            guard var components = URLComponents(url: baseRequestURL, resolvingAgainstBaseURL: false) else {
+                throw NotionAPIError.encodingFailure
+            }
+            components.queryItems = queryItems
+            guard let url = components.url else {
+                throw NotionAPIError.encodingFailure
+            }
+            requestURL = url
+        }
+
+        var request = URLRequest(url: requestURL)
         request.httpMethod = method
         request.timeoutInterval = 30
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

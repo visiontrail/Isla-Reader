@@ -30,13 +30,10 @@ struct NotionSyncQueueTask: Sendable {
 }
 
 enum NotionSyncQueueStoreError: LocalizedError {
-    case invalidPayload
     case invalidOperation
 
     var errorDescription: String? {
         switch self {
-        case .invalidPayload:
-            return "Sync queue payload is invalid"
         case .invalidOperation:
             return "Sync queue operation type is invalid"
         }
@@ -55,12 +52,78 @@ protocol NotionBookSyncing: Sendable {
 }
 
 protocol NotionContentAppending: Sendable {
-    func appendHighlight(_ highlight: BlockBuilder.HighlightInput, to pageID: String) async throws
-    func appendNote(_ note: BlockBuilder.NoteInput, to pageID: String) async throws
+    func replaceHighlightsAndNotes(_ snapshots: [NotionHighlightSnapshot], to pageID: String) async throws
+}
+
+protocol NotionHighlightSnapshotStoring: Sendable {
+    func fetchSnapshots(for bookID: String) throws -> [NotionHighlightSnapshot]
 }
 
 extension NotionBookSyncer: NotionBookSyncing {}
 extension NotionPageBlockAppender: NotionContentAppending {}
+
+final class CoreDataNotionHighlightSnapshotStore: @unchecked Sendable, NotionHighlightSnapshotStoring {
+    static let shared = CoreDataNotionHighlightSnapshotStore(container: PersistenceController.shared.container)
+
+    private let container: NSPersistentContainer
+
+    init(container: NSPersistentContainer) {
+        self.container = container
+    }
+
+    func fetchSnapshots(for bookID: String) throws -> [NotionHighlightSnapshot] {
+        try performOnBackgroundContext { context in
+            guard let bookUUID = UUID(uuidString: bookID) else {
+                return []
+            }
+
+            let request = Highlight.fetchRequest()
+            request.predicate = NSPredicate(format: "book.id == %@", bookUUID as CVarArg)
+            request.sortDescriptors = [
+                NSSortDescriptor(key: "createdAt", ascending: true),
+                NSSortDescriptor(key: "updatedAt", ascending: true)
+            ]
+
+            let highlights = try context.fetch(request)
+            return highlights.compactMap { highlight in
+                guard let text = self.normalize(highlight.selectedText) else {
+                    return nil
+                }
+
+                let normalizedNote = self.normalize(highlight.note)
+
+                return NotionHighlightSnapshot(
+                    highlightText: text,
+                    noteText: normalizedNote,
+                    chapter: self.normalize(highlight.chapter),
+                    highlightDate: highlight.createdAt,
+                    noteDate: normalizedNote == nil ? nil : highlight.updatedAt
+                )
+            }
+        }
+    }
+
+    private func performOnBackgroundContext<T>(_ work: @escaping (NSManagedObjectContext) throws -> T) throws -> T {
+        var result: Result<T, Error>!
+        let context = container.newBackgroundContext()
+
+        context.performAndWait {
+            do {
+                result = .success(try work(context))
+            } catch {
+                result = .failure(error)
+            }
+        }
+
+        return try result.get()
+    }
+
+    private func normalize(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
 
 final class CoreDataSyncQueueStore: @unchecked Sendable, NotionSyncQueueStoring {
     static let shared = CoreDataSyncQueueStore(container: PersistenceController.shared.container)
@@ -199,6 +262,7 @@ actor NotionSyncQueueProcessor {
     private let queueStore: NotionSyncQueueStoring
     private let bookSyncer: NotionBookSyncing
     private let blockAppender: NotionContentAppending
+    private let highlightSnapshotStore: NotionHighlightSnapshotStoring
     private let syncConfigStore: NotionSyncConfigStoring
 
     private let debounceDelay: TimeInterval
@@ -215,6 +279,7 @@ actor NotionSyncQueueProcessor {
         queueStore: NotionSyncQueueStoring,
         bookSyncer: NotionBookSyncing = NotionBookSyncer(),
         blockAppender: NotionContentAppending = NotionPageBlockAppender(),
+        highlightSnapshotStore: NotionHighlightSnapshotStoring = CoreDataNotionHighlightSnapshotStore.shared,
         syncConfigStore: NotionSyncConfigStoring = CoreDataNotionSyncConfigStore.shared,
         debounceDelay: TimeInterval = 2,
         unknownErrorDelay: TimeInterval = 8,
@@ -223,6 +288,7 @@ actor NotionSyncQueueProcessor {
         self.queueStore = queueStore
         self.bookSyncer = bookSyncer
         self.blockAppender = blockAppender
+        self.highlightSnapshotStore = highlightSnapshotStore
         self.syncConfigStore = syncConfigStore
         self.debounceDelay = debounceDelay
         self.unknownErrorDelay = unknownErrorDelay
@@ -323,46 +389,8 @@ actor NotionSyncQueueProcessor {
                 author: payload.bookAuthor
             )
         )
-
-        switch task.operationType {
-        case .highlight:
-            guard let text = payload.highlightText?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !text.isEmpty else {
-                throw NotionSyncQueueStoreError.invalidPayload
-            }
-
-            let highlight = BlockBuilder.HighlightInput(
-                text: text,
-                chapter: payload.chapter,
-                date: payload.eventDate
-            )
-            try await blockAppender.appendHighlight(highlight, to: pageID)
-
-        case .note:
-            guard let noteContent = payload.noteContent?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !noteContent.isEmpty else {
-                throw NotionSyncQueueStoreError.invalidPayload
-            }
-
-            let relatedText = payload.highlightText?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let relatedHighlight: BlockBuilder.HighlightInput?
-            if let relatedText, !relatedText.isEmpty {
-                relatedHighlight = BlockBuilder.HighlightInput(
-                    text: relatedText,
-                    chapter: payload.chapter,
-                    date: payload.eventDate
-                )
-            } else {
-                relatedHighlight = nil
-            }
-
-            let note = BlockBuilder.NoteInput(
-                content: noteContent,
-                relatedHighlight: relatedHighlight,
-                date: payload.eventDate
-            )
-            try await blockAppender.appendNote(note, to: pageID)
-        }
+        let snapshots = try highlightSnapshotStore.fetchSnapshots(for: payload.bookID)
+        try await blockAppender.replaceHighlightsAndNotes(snapshots, to: pageID)
     }
 
     private func handleFailure(_ error: Error, for task: NotionSyncQueueTask) -> FailureAction {
@@ -561,29 +589,39 @@ final class NotionSyncEngine {
         guard let coordinator = context.persistentStoreCoordinator else { return }
         guard coordinator === persistentStoreCoordinator else { return }
 
-        var enqueuedCount = 0
+        var touchedBooks: [String: (title: String, author: String)] = [:]
 
         let insertedHighlights = context.insertedObjects.compactMap { $0 as? Highlight }
         for highlight in insertedHighlights {
-            if let payload = makeHighlightPayload(from: highlight),
-               queueStore.enqueue(operation: .highlight, payload: payload, in: context) {
-                enqueuedCount += 1
-            }
-
-            if let notePayload = makeNotePayload(from: highlight, useUpdatedDate: false),
-               queueStore.enqueue(operation: .note, payload: notePayload, in: context) {
-                enqueuedCount += 1
-            }
+            collectBookInfo(from: highlight, into: &touchedBooks)
         }
 
         let updatedHighlights = context.updatedObjects.compactMap { $0 as? Highlight }
         for highlight in updatedHighlights where !highlight.isInserted {
-            guard highlight.changedValues().keys.contains("note") else {
+            guard shouldSyncUpdatedHighlight(highlight) else {
                 continue
             }
+            collectBookInfo(from: highlight, into: &touchedBooks)
+        }
 
-            if let payload = makeNotePayload(from: highlight, useUpdatedDate: true),
-               queueStore.enqueue(operation: .note, payload: payload, in: context) {
+        let deletedHighlights = context.deletedObjects.compactMap { $0 as? Highlight }
+        for highlight in deletedHighlights {
+            collectBookInfo(from: highlight, into: &touchedBooks)
+        }
+
+        var enqueuedCount = 0
+        for (bookID, metadata) in touchedBooks {
+            let payload = NotionSyncPayload(
+                bookID: bookID,
+                bookTitle: metadata.title,
+                bookAuthor: metadata.author,
+                chapter: nil,
+                highlightText: nil,
+                noteContent: nil,
+                eventDate: Date()
+            )
+
+            if queueStore.enqueue(operation: .highlight, payload: payload, in: context) {
                 enqueuedCount += 1
             }
         }
@@ -596,38 +634,21 @@ final class NotionSyncEngine {
         }
     }
 
-    private func makeHighlightPayload(from highlight: Highlight) -> NotionSyncPayload? {
-        guard let bookInfo = extractBookInfo(from: highlight),
-              let text = normalize(highlight.selectedText) else {
-            return nil
-        }
-
-        return NotionSyncPayload(
-            bookID: bookInfo.id,
-            bookTitle: bookInfo.title,
-            bookAuthor: bookInfo.author,
-            chapter: normalize(highlight.chapter),
-            highlightText: text,
-            noteContent: nil,
-            eventDate: highlight.createdAt
-        )
+    private func shouldSyncUpdatedHighlight(_ highlight: Highlight) -> Bool {
+        let relevantKeys: Set<String> = ["selectedText", "note", "chapter"]
+        let changedKeys = Set(highlight.changedValues().keys)
+        return !changedKeys.isDisjoint(with: relevantKeys)
     }
 
-    private func makeNotePayload(from highlight: Highlight, useUpdatedDate: Bool) -> NotionSyncPayload? {
-        guard let bookInfo = extractBookInfo(from: highlight),
-              let noteContent = normalize(highlight.note) else {
-            return nil
+    private func collectBookInfo(
+        from highlight: Highlight,
+        into touchedBooks: inout [String: (title: String, author: String)]
+    ) {
+        guard let bookInfo = extractBookInfo(from: highlight) else {
+            return
         }
 
-        return NotionSyncPayload(
-            bookID: bookInfo.id,
-            bookTitle: bookInfo.title,
-            bookAuthor: bookInfo.author,
-            chapter: normalize(highlight.chapter),
-            highlightText: normalize(highlight.selectedText),
-            noteContent: noteContent,
-            eventDate: useUpdatedDate ? highlight.updatedAt : highlight.createdAt
-        )
+        touchedBooks[bookInfo.id] = (title: bookInfo.title, author: bookInfo.author)
     }
 
     private func extractBookInfo(from highlight: Highlight) -> (id: String, title: String, author: String)? {

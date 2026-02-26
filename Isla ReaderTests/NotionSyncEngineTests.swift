@@ -23,17 +23,19 @@ struct NotionSyncEngineTests {
         }
 
         let appender = MockAppender()
+        let snapshotStore = MockHighlightSnapshotStore()
         let processor = NotionSyncQueueProcessor(
             queueStore: store,
             bookSyncer: MockBookSyncer(),
-            blockAppender: appender
+            blockAppender: appender,
+            highlightSnapshotStore: snapshotStore
         )
 
         await processor.setNetworkAvailable(true)
         await processor.setNotionReady(true)
 
         #expect(store.pendingCount() == 0)
-        #expect(await appender.highlightCallCount() == 10)
+        #expect(await appender.replaceCallCount() == 10)
     }
 
     @Test
@@ -57,10 +59,12 @@ struct NotionSyncEngineTests {
         )
 
         let appender = MockAppender(mode: .rateLimited(retryAfter: 3))
+        let snapshotStore = MockHighlightSnapshotStore()
         let processor = NotionSyncQueueProcessor(
             queueStore: store,
             bookSyncer: MockBookSyncer(),
-            blockAppender: appender
+            blockAppender: appender,
+            highlightSnapshotStore: snapshotStore
         )
 
         await processor.setNetworkAvailable(true)
@@ -85,10 +89,12 @@ struct NotionSyncEngineTests {
         )
 
         let appender = MockAppender(mode: .networkFailure)
+        let snapshotStore = MockHighlightSnapshotStore()
         let processor = NotionSyncQueueProcessor(
             queueStore: store,
             bookSyncer: MockBookSyncer(),
-            blockAppender: appender
+            blockAppender: appender,
+            highlightSnapshotStore: snapshotStore
         )
 
         await processor.setNetworkAvailable(true)
@@ -209,25 +215,19 @@ private actor MockAppender: NotionContentAppending {
     }
 
     private let mode: Mode
-    private var highlightCalls = 0
-    private var noteCalls = 0
+    private var replaceCalls = 0
 
     init(mode: Mode = .success) {
         self.mode = mode
     }
 
-    func appendHighlight(_ highlight: BlockBuilder.HighlightInput, to pageID: String) async throws {
-        highlightCalls += 1
+    func replaceHighlightsAndNotes(_ snapshots: [NotionHighlightSnapshot], to pageID: String) async throws {
+        replaceCalls += 1
         try throwIfNeeded()
     }
 
-    func appendNote(_ note: BlockBuilder.NoteInput, to pageID: String) async throws {
-        noteCalls += 1
-        try throwIfNeeded()
-    }
-
-    func highlightCallCount() -> Int {
-        highlightCalls
+    func replaceCallCount() -> Int {
+        replaceCalls
     }
 
     private func throwIfNeeded() throws {
@@ -239,5 +239,19 @@ private actor MockAppender: NotionContentAppending {
         case .networkFailure:
             throw NotionAPIError.transportFailure("offline")
         }
+    }
+}
+
+private final class MockHighlightSnapshotStore: NotionHighlightSnapshotStoring {
+    func fetchSnapshots(for bookID: String) throws -> [NotionHighlightSnapshot] {
+        [
+            NotionHighlightSnapshot(
+                highlightText: "highlight for \(bookID)",
+                noteText: "note for \(bookID)",
+                chapter: "Chapter 1",
+                highlightDate: Date(timeIntervalSince1970: 1_700_000_000),
+                noteDate: Date(timeIntervalSince1970: 1_700_000_100)
+            )
+        ]
     }
 }

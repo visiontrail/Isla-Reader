@@ -21,31 +21,51 @@ struct NotionPageBlockAppenderTests {
 
         try await appender.appendHighlight(highlight, to: "page_123")
 
-        let calls = await api.recordedCalls()
+        let calls = await api.recordedAppendCalls()
         #expect(calls.count == 1)
         #expect(calls.first?.blockID == "page_123")
-        #expect(calls.first?.children.count == 2)
+        #expect(calls.first?.children.count == 1)
         #expect(calls.first?.children.first?["type"] == .string("quote"))
     }
 
     @Test
-    func appendNoteUsesAppendBlockChildren() async throws {
-        let api = MockNotionPageBlockAppendAPI()
+    func replaceHighlightsAndNotesArchivesExistingBlocksAndRebuildsPage() async throws {
+        let api = MockNotionPageBlockAppendAPI(existingBlockIDs: ["old_1", "old_2"])
         let appender = NotionPageBlockAppender(notionClient: api)
 
-        let note = BlockBuilder.NoteInput(
-            content: "My note",
-            relatedHighlight: BlockBuilder.HighlightInput(text: "source", chapter: "Chapter 2", date: Date()),
-            date: Date(timeIntervalSince1970: 1_698_456_000)
-        )
+        let snapshots = [
+            NotionHighlightSnapshot(
+                highlightText: "First highlight",
+                noteText: "First note",
+                chapter: "Chapter 1",
+                highlightDate: Date(timeIntervalSince1970: 1_698_369_600),
+                noteDate: Date(timeIntervalSince1970: 1_698_370_000)
+            ),
+            NotionHighlightSnapshot(
+                highlightText: "Second highlight",
+                noteText: nil,
+                chapter: "Chapter 2",
+                highlightDate: Date(timeIntervalSince1970: 1_698_400_000),
+                noteDate: nil
+            )
+        ]
 
-        try await appender.appendNote(note, to: "page_note")
+        try await appender.replaceHighlightsAndNotes(snapshots, to: "page_abc")
 
-        let calls = await api.recordedCalls()
-        #expect(calls.count == 1)
-        #expect(calls.first?.blockID == "page_note")
-        #expect(calls.first?.children.count == 2)
-        #expect(calls.first?.children.first?["type"] == .string("paragraph"))
+        let listCalls = await api.recordedListCalls()
+        #expect(listCalls.count == 1)
+        #expect(listCalls.first?.blockID == "page_abc")
+
+        let archivedBlockIDs = await api.recordedArchivedBlockIDs()
+        #expect(archivedBlockIDs == ["old_1", "old_2"])
+
+        let appendCalls = await api.recordedAppendCalls()
+        #expect(appendCalls.count == 1)
+        #expect(appendCalls.first?.blockID == "page_abc")
+        #expect(appendCalls.first?.children.count == 5)
+
+        let types = appendCalls.first?.children.compactMap { $0["type"]?.stringValue } ?? []
+        #expect(types == ["heading_1", "divider", "quote", "paragraph", "quote"])
     }
 
     @Test
@@ -64,7 +84,7 @@ struct NotionPageBlockAppenderTests {
             Issue.record("Unexpected error: \(error)")
         }
 
-        let calls = await api.recordedCalls()
+        let calls = await api.recordedAppendCalls()
         #expect(calls.isEmpty)
     }
 }
@@ -75,14 +95,60 @@ private actor MockNotionPageBlockAppendAPI: NotionPageBlockAppendAPI {
         let children: [Block]
     }
 
-    private var calls: [Call] = []
+    struct ListCall {
+        let blockID: String
+        let startCursor: String?
+        let pageSize: Int
+    }
+
+    private let existingBlockIDs: [String]
+    private var appendCalls: [Call] = []
+    private var listCalls: [ListCall] = []
+    private var archivedBlockIDs: [String] = []
+
+    init(existingBlockIDs: [String] = []) {
+        self.existingBlockIDs = existingBlockIDs
+    }
 
     func appendBlockChildren(blockId: String, children: [Block]) async throws -> NotionObject {
-        calls.append(Call(blockID: blockId, children: children))
+        appendCalls.append(Call(blockID: blockId, children: children))
         return ["object": .string("list")]
     }
 
-    func recordedCalls() -> [Call] {
-        calls
+    func listBlockChildren(blockId: String, startCursor: String?, pageSize: Int) async throws -> NotionObject {
+        listCalls.append(ListCall(blockID: blockId, startCursor: startCursor, pageSize: pageSize))
+
+        let results: [JSONValue] = existingBlockIDs.map { blockID in
+            .object([
+                "id": .string(blockID)
+            ])
+        }
+
+        return [
+            "object": .string("list"),
+            "results": .array(results),
+            "has_more": .bool(false),
+            "next_cursor": .null
+        ]
+    }
+
+    func archiveBlock(blockId: String) async throws -> NotionObject {
+        archivedBlockIDs.append(blockId)
+        return [
+            "id": .string(blockId),
+            "archived": .bool(true)
+        ]
+    }
+
+    func recordedAppendCalls() -> [Call] {
+        appendCalls
+    }
+
+    func recordedListCalls() -> [ListCall] {
+        listCalls
+    }
+
+    func recordedArchivedBlockIDs() -> [String] {
+        archivedBlockIDs
     }
 }
