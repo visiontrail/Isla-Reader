@@ -13,44 +13,14 @@ final class DataBackupService {
     
     private init() {}
     
-    func exportReadingData(context: NSManagedObjectContext) async throws -> URL {
+    func exportAllDataExceptBooks(context: NSManagedObjectContext) async throws -> URL {
         try await context.perform { [self] in
-            DebugLogger.info("DataBackupService: 开始导出阅读数据")
+            DebugLogger.info("DataBackupService: 开始导出全部非书籍数据")
             
-            let request: NSFetchRequest<Book> = Book.fetchRequest()
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \Book.createdAt, ascending: true)]
-            
-            let books = try context.fetch(request)
+            let bookRequest: NSFetchRequest<Book> = Book.fetchRequest()
+            bookRequest.sortDescriptors = [NSSortDescriptor(keyPath: \Book.createdAt, ascending: true)]
+            let books = try context.fetch(bookRequest)
             DebugLogger.info("DataBackupService: 读取到 \(books.count) 本书籍的阅读数据")
-            
-            let bookPayloads = books.map { book in
-                BookReadingData(
-                    checksum: book.checksum,
-                    title: book.title,
-                    author: book.author,
-                    readingProgress: book.readingProgress.map { ReadingProgressSnapshot(from: $0) },
-                    libraryItem: book.libraryItem.map { LibraryItemSnapshot(from: $0) },
-                    bookmarks: (book.bookmarks as? Set<Bookmark> ?? [])
-                        .sorted { $0.createdAt < $1.createdAt }
-                        .map { BookmarkSnapshot(from: $0) }
-                )
-            }
-            
-            let payload = ReadingDataBackup(
-                version: 1,
-                exportedAt: Date(),
-                books: bookPayloads
-            )
-            
-            let url = try self.writeJSON(payload, prefix: "ReadingData")
-            DebugLogger.success("DataBackupService: 阅读数据导出完成 - \(url.lastPathComponent)")
-            return url
-        }
-    }
-    
-    func exportNotesAndHighlights(context: NSManagedObjectContext) async throws -> URL {
-        try await context.perform { [self] in
-            DebugLogger.info("DataBackupService: 开始导出笔记与高亮")
             
             let highlightRequest: NSFetchRequest<Highlight> = Highlight.fetchRequest()
             highlightRequest.sortDescriptors = [NSSortDescriptor(keyPath: \Highlight.updatedAt, ascending: false)]
@@ -72,15 +42,22 @@ final class DataBackupService {
                 return AnnotationSnapshot(from: annotation, book: book)
             }
             
-            let payload = NotesBackup(
+            let readingData = self.makeReadingDataBackup(books: books)
+            let notes = NotesBackup(
                 version: 1,
                 exportedAt: Date(),
                 highlights: highlightPayloads,
                 annotations: annotationPayloads
             )
+            let payload = CombinedDataBackup(
+                version: 1,
+                exportedAt: Date(),
+                readingData: readingData,
+                notes: notes
+            )
             
-            let url = try self.writeJSON(payload, prefix: "NotesHighlights")
-            DebugLogger.success("DataBackupService: 笔记与高亮导出完成 - \(url.lastPathComponent)")
+            let url = try self.writeJSON(payload, prefix: "AllData")
+            DebugLogger.success("DataBackupService: 全部非书籍数据导出完成 - \(url.lastPathComponent)")
             return url
         }
     }
@@ -88,7 +65,7 @@ final class DataBackupService {
     func importReadingData(from url: URL, context: NSManagedObjectContext) async throws -> ReadingDataImportResult {
         DebugLogger.info("DataBackupService: 开始导入阅读数据 - \(url.lastPathComponent)")
         let data = try Data(contentsOf: url)
-        let backup = try decoder.decode(ReadingDataBackup.self, from: data)
+        let backup = try decodeReadingDataBackup(from: data)
         
         return try await context.perform {
             let fetch: NSFetchRequest<Book> = Book.fetchRequest()
@@ -181,6 +158,34 @@ final class DataBackupService {
     }
     
     // MARK: - Helpers
+
+    private func makeReadingDataBackup(books: [Book]) -> ReadingDataBackup {
+        let bookPayloads = books.map { book in
+            BookReadingData(
+                checksum: book.checksum,
+                title: book.title,
+                author: book.author,
+                readingProgress: book.readingProgress.map { ReadingProgressSnapshot(from: $0) },
+                libraryItem: book.libraryItem.map { LibraryItemSnapshot(from: $0) },
+                bookmarks: (book.bookmarks as? Set<Bookmark> ?? [])
+                    .sorted { $0.createdAt < $1.createdAt }
+                    .map { BookmarkSnapshot(from: $0) }
+            )
+        }
+
+        return ReadingDataBackup(
+            version: 1,
+            exportedAt: Date(),
+            books: bookPayloads
+        )
+    }
+
+    private func decodeReadingDataBackup(from data: Data) throws -> ReadingDataBackup {
+        if let combined = try? decoder.decode(CombinedDataBackup.self, from: data) {
+            return combined.readingData
+        }
+        return try decoder.decode(ReadingDataBackup.self, from: data)
+    }
     
     private var encoder: JSONEncoder {
         let encoder = JSONEncoder()
@@ -225,6 +230,13 @@ private struct ReadingDataBackup: Codable {
     let version: Int
     let exportedAt: Date
     let books: [BookReadingData]
+}
+
+private struct CombinedDataBackup: Codable {
+    let version: Int
+    let exportedAt: Date
+    let readingData: ReadingDataBackup
+    let notes: NotesBackup
 }
 
 private struct BookReadingData: Codable {

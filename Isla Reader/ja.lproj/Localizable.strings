@@ -177,6 +177,7 @@
 "settings.export.notes_detail" = "すべてのメモ、ハイライト、注釈";
 "settings.export.app_settings_detail" = "テーマやフォントなどの好み";
 "settings.export.start" = "エクスポート開始";
+"export.all_data.description" = "読書進捗、読書時間、ブックマーク、棚の状態、メモ、ハイライト、注釈をエクスポートします（元の書籍ファイルは含みません）。";
 "export.reading_data.description" = "読書進捗、ブックマーク、読書時間、棚のステータスをエクスポートします。";
 "export.notes.description" = "メモ、ハイライト、注釈をすべてエクスポートします（書籍ファイルは含みません）。";
 "export.notice.without_books" = "エクスポートには書籍ファイルが含まれません。復元前に、対象デバイスで書籍をインポートしてください。";
@@ -283,6 +284,7 @@
 "settings.theme.mode.follow_system" = "システム設定に従う";
 "settings.theme.mode.always_light" = "常にライトテーマを使用";
 "settings.theme.mode.always_dark" = "常にダークテーマを使用";
+"settings.export.all_data_button" = "すべての読書データをエクスポート";
 "settings.export.reading_data_button" = "読書データをエクスポート";
 "settings.export.notes_button" = "メモとハイライトをエクスポート";
 "settings.sample_text.content" = "これは、現在のフォントとレイアウト設定の効果をプレビューするためのサンプルテキストです。上記の設定を調整して、最高の読書体験を得ることができます。";

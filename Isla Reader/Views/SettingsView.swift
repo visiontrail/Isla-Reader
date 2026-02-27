@@ -302,31 +302,6 @@ struct SettingsView: View {
     }
 }
 
-enum ExportCategory: String, Identifiable {
-    case readingData
-    case notesAndHighlights
-    
-    var id: String { rawValue }
-    
-    var title: String {
-        switch self {
-        case .readingData:
-            return NSLocalizedString("settings.export.reading_data_button", comment: "")
-        case .notesAndHighlights:
-            return NSLocalizedString("settings.export.notes_button", comment: "")
-        }
-    }
-    
-    var description: String {
-        switch self {
-        case .readingData:
-            return NSLocalizedString("export.reading_data.description", comment: "")
-        case .notesAndHighlights:
-            return NSLocalizedString("export.notes.description", comment: "")
-        }
-    }
-}
-
 private struct DataAlert: Identifiable {
     let id = UUID()
     let title: String
@@ -514,7 +489,7 @@ struct DataManagementView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     @State private var showingClearDataAlert = false
-    @State private var exportMode: ExportCategory?
+    @State private var showingExportView = false
     @State private var alertItem: DataAlert?
     @State private var showingImportPicker = false
     @State private var isImporting = false
@@ -528,17 +503,12 @@ struct DataManagementView: View {
         NavigationStack {
             List {
                 Section(NSLocalizedString("settings.data.export_section", comment: "")) {
-                    Button(action: { exportMode = .readingData }) {
-                        Label(NSLocalizedString("settings.export.reading_data_button", comment: ""), systemImage: "square.and.arrow.up")
+                    Button(action: { showingExportView = true }) {
+                        Label(NSLocalizedString("settings.export.all_data_button", comment: ""), systemImage: "square.and.arrow.up")
                             .foregroundColor(.blue)
                     }
-                    
-                    Button(action: { exportMode = .notesAndHighlights }) {
-                        Label(NSLocalizedString("settings.export.notes_button", comment: ""), systemImage: "note.text")
-                            .foregroundColor(.blue)
-                    }
-                    
-                    Text(NSLocalizedString("export.notice.without_books", comment: ""))
+
+                    Text(NSLocalizedString("export.all_data.description", comment: ""))
                         .font(.footnote)
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -632,8 +602,8 @@ struct DataManagementView: View {
             } message: {
                 Text(NSLocalizedString("settings.data.clear_warning", comment: ""))
             }
-            .sheet(item: $exportMode) { mode in
-                ExportDataView(mode: mode)
+            .sheet(isPresented: $showingExportView) {
+                ExportDataView()
             }
             .alert(item: $alertItem) { alert in
                 Alert(
@@ -808,9 +778,7 @@ struct DataManagementView: View {
 struct ExportDataView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
-    
-    let mode: ExportCategory
-    
+
     @State private var isExporting = false
     @State private var exportURL: URL?
     @State private var exportAlert: DataAlert?
@@ -825,11 +793,11 @@ struct ExportDataView: View {
                     .foregroundColor(.blue)
                 
                 VStack(spacing: 8) {
-                    Text(mode.title)
+                    Text(NSLocalizedString("settings.export.all_data_button", comment: ""))
                         .font(.title)
                         .fontWeight(.bold)
                     
-                    Text(mode.description)
+                    Text(NSLocalizedString("export.all_data.description", comment: ""))
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -873,7 +841,7 @@ struct ExportDataView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle(mode.title)
+            .navigationTitle(NSLocalizedString("settings.export.all_data_button", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -900,13 +868,7 @@ struct ExportDataView: View {
         
         Task {
             do {
-                let url: URL
-                switch mode {
-                case .readingData:
-                    url = try await DataBackupService.shared.exportReadingData(context: viewContext)
-                case .notesAndHighlights:
-                    url = try await DataBackupService.shared.exportNotesAndHighlights(context: viewContext)
-                }
+                let url = try await DataBackupService.shared.exportAllDataExceptBooks(context: viewContext)
                 
                 await MainActor.run {
                     exportURL = url

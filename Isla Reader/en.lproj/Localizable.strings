@@ -177,6 +177,7 @@
 "settings.export.notes_detail" = "All notes, highlights, and annotations";
 "settings.export.app_settings_detail" = "Preferences like theme and fonts";
 "settings.export.start" = "Start Export";
+"export.all_data.description" = "Export reading progress, reading time, bookmarks, shelf status, notes, highlights, and annotations (without the original book files).";
 "export.reading_data.description" = "Export reading progress, bookmarks, reading time, and shelf status.";
 "export.notes.description" = "Export all notes, highlights, and annotations (without the original book files).";
 "export.notice.without_books" = "Export does not include book files. Please import the books on the target device before restoring progress or notes.";
@@ -282,6 +283,7 @@
 "settings.theme.mode.follow_system" = "Follow system settings";
 "settings.theme.mode.always_light" = "Always use light theme";
 "settings.theme.mode.always_dark" = "Always use dark theme";
+"settings.export.all_data_button" = "Export All Reading Data";
 "settings.export.reading_data_button" = "Export Reading Data";
 "settings.export.notes_button" = "Export Notes & Highlights";
 "settings.sample_text.content" = "This is a sample text to preview current font and layout settings. You can adjust the settings above for the best reading experience.";

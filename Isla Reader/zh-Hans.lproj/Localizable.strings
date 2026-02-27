@@ -177,6 +177,7 @@
 "settings.export.notes_detail" = "所有笔记、高亮和注释";
 "settings.export.app_settings_detail" = "主题、字体等偏好设置";
 "settings.export.start" = "开始导出";
+"export.all_data.description" = "导出阅读进度、阅读时长、书签、书架状态、笔记、高亮和批注（不包含原始书籍文件）。";
 "export.reading_data.description" = "导出阅读进度、书签、阅读时长和书架状态。";
 "export.notes.description" = "导出所有笔记、高亮和批注（不包含书籍文件）。";
 "export.notice.without_books" = "导出的数据不包含书籍文件，请在目标设备先导入书籍后再恢复进度或笔记。";
@@ -282,6 +283,7 @@
 "settings.theme.mode.follow_system" = "根据系统设置自动切换";
 "settings.theme.mode.always_light" = "始终使用浅色主题";
 "settings.theme.mode.always_dark" = "始终使用深色主题";
+"settings.export.all_data_button" = "导出全部阅读数据";
 "settings.export.reading_data_button" = "导出阅读数据";
 "settings.export.notes_button" = "导出笔记和高亮";
 "settings.sample_text.content" = "这是一段示例文本，用于预览当前的字体和排版设置效果。您可以调整上面的设置来获得最佳的阅读体验。";
