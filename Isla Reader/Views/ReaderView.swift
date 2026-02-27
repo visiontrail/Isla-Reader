@@ -959,7 +959,13 @@ struct ReaderView: View {
 
         do {
             try viewContext.save()
-            selectionAction = ReaderSelectionAction(type: .highlight(colorHex: colorHex))
+            let action = ReaderSelectionAction(type: .highlight(colorHex: colorHex))
+            selectionAction = action
+            DispatchQueue.main.async {
+                if self.selectionAction?.id == action.id {
+                    self.selectionAction = nil
+                }
+            }
             let feedback = UINotificationFeedbackGenerator()
             feedback.notificationOccurred(.success)
             showHint(trimmedNote.isEmpty ? NSLocalizedString("reader.highlight.saved", comment: "") : NSLocalizedString("reader.highlight.saved_with_note", comment: ""))

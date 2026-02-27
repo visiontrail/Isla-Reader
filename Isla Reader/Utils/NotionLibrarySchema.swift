@@ -1,0 +1,102 @@
+//
+//  NotionLibrarySchema.swift
+//  LanRead
+//
+
+import Foundation
+
+enum NotionLibrarySchema {
+    static let nameProperty = "Name"
+    static let bookIDProperty = "BookID"
+    static let authorProperty = "Author"
+    static let lastSyncedProperty = "Last Synced"
+    static let readingProgressProperty = "阅读进度"
+    static let readingStatusProperty = "阅读状态"
+
+    private static let readingStatusWantToRead = "想读"
+    private static let readingStatusReading = "在读"
+    private static let readingStatusFinished = "已读"
+    private static let readingStatusPaused = "暂停"
+
+    static var databaseProperties: Object {
+        var properties: Object = [
+            nameProperty: .object([
+                "title": .object([:])
+            ]),
+            bookIDProperty: .object([
+                "rich_text": .object([:])
+            ]),
+            authorProperty: .object([
+                "rich_text": .object([:])
+            ]),
+            lastSyncedProperty: .object([
+                "date": .object([:])
+            ])
+        ]
+        properties.merge(schemaPatchProperties) { current, _ in
+            current
+        }
+        return properties
+    }
+
+    // 用于已存在数据库的补丁更新，避免影响既有字段。
+    static var schemaPatchProperties: Object {
+        [
+            readingProgressProperty: .object([
+                "number": .object([
+                    "format": .string("percent")
+                ])
+            ]),
+            readingStatusProperty: .object([
+                "select": .object([
+                    "options": .array([
+                        .object(["name": .string(readingStatusWantToRead)]),
+                        .object(["name": .string(readingStatusReading)]),
+                        .object(["name": .string(readingStatusFinished)]),
+                        .object(["name": .string(readingStatusPaused)])
+                    ])
+                ])
+            ])
+        ]
+    }
+
+    static func readingProgressPropertyValue(_ progressPercentage: Double?) -> JSONValue {
+        .object([
+            "number": .number(normalizedReadingProgress(progressPercentage))
+        ])
+    }
+
+    static func readingStatusPropertyValue(_ statusRaw: String?) -> JSONValue {
+        .object([
+            "select": .object([
+                "name": .string(readingStatusName(from: statusRaw))
+            ])
+        ])
+    }
+
+    private static func readingStatusName(from statusRaw: String?) -> String {
+        guard let statusRaw = statusRaw?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !statusRaw.isEmpty,
+              let status = ReadingStatus(rawValue: statusRaw) else {
+            return readingStatusWantToRead
+        }
+
+        switch status {
+        case .wantToRead:
+            return readingStatusWantToRead
+        case .reading:
+            return readingStatusReading
+        case .finished:
+            return readingStatusFinished
+        case .paused:
+            return readingStatusPaused
+        }
+    }
+
+    private static func normalizedReadingProgress(_ progressPercentage: Double?) -> Double {
+        guard let progressPercentage, progressPercentage.isFinite else {
+            return 0
+        }
+        return min(max(progressPercentage, 0), 1)
+    }
+}

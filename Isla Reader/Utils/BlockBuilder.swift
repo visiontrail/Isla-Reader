@@ -103,7 +103,7 @@ struct BlockBuilder {
                 "rich_text": richTextArray(content: content),
                 "icon": .object([
                     "type": .string("emoji"),
-                    "emoji": .string("📝")
+                    "emoji": .string("💡")
                 ]),
                 "color": .string("default")
             ])

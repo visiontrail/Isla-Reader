@@ -55,8 +55,12 @@ final class NotionSessionManager: ObservableObject {
     private let syncDataCleaner: NotionSyncDataCleaning
     private var cancellables = Set<AnyCancellable>()
 
+    convenience init() {
+        self.init(authService: .shared)
+    }
+
     init(
-        authService: NotionAuthService = .shared,
+        authService: NotionAuthService,
         notionClient: NotionAPIClient = NotionAPIClient(),
         mappingStore: NotionDatabaseMappingStoring = NotionDatabaseMappingStore.shared,
         initializationStore: NotionLibraryInitializationStoring = NotionLibraryInitializationStore.shared,
@@ -152,20 +156,7 @@ final class NotionSessionManager: ObservableObject {
                 ])
             ]),
             "is_inline": .bool(true),
-            "properties": .object([
-                "Name": .object([
-                    "title": .object([:])
-                ]),
-                "BookID": .object([
-                    "rich_text": .object([:])
-                ]),
-                "Author": .object([
-                    "rich_text": .object([:])
-                ]),
-                "Last Synced": .object([
-                    "date": .object([:])
-                ])
-            ])
+            "properties": .object(NotionLibrarySchema.databaseProperties)
         ]
 
         do {

@@ -228,6 +228,13 @@ final class NotionAPIClient {
         return try await send(path: "databases", method: "POST", body: payload)
     }
 
+    func updateDatabase(databaseId: String, properties: Object) async throws -> NotionObject {
+        let payload: NotionObject = [
+            "properties": .object(properties)
+        ]
+        return try await send(path: "databases/\(databaseId)", method: "PATCH", body: payload)
+    }
+
     func queryDatabase(databaseId: String, filter: Object) async throws -> NotionObject {
         let payload: NotionObject = [
             "filter": .object(filter)

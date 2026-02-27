@@ -10,6 +10,22 @@ struct BookInfo: Equatable, Sendable {
     let id: String
     let title: String
     let author: String
+    let readingStatusRaw: String?
+    let readingProgressPercentage: Double?
+
+    init(
+        id: String,
+        title: String,
+        author: String,
+        readingStatusRaw: String? = nil,
+        readingProgressPercentage: Double? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.author = author
+        self.readingStatusRaw = readingStatusRaw
+        self.readingProgressPercentage = readingProgressPercentage
+    }
 }
 
 enum NotionBookSyncError: LocalizedError, Equatable {
@@ -30,6 +46,7 @@ enum NotionBookSyncError: LocalizedError, Equatable {
 }
 
 protocol NotionBookSyncAPI {
+    func updateDatabase(databaseId: String, properties: Object) async throws -> NotionObject
     func queryDatabase(databaseId: String, filter: Object) async throws -> NotionObject
     func createPage(databaseId: String, properties: Object, children: [Block]) async throws -> NotionObject
 }
@@ -132,6 +149,7 @@ actor NotionBookSyncer {
 
     private var syncingBookIDs = Set<String>()
     private var waitingContinuations: [String: [CheckedContinuation<String, Error>]] = [:]
+    private var schemaEnsuredDatabaseIDs = Set<String>()
 
     init(
         notionClient: NotionBookSyncAPI = NotionAPIClient(),
@@ -169,15 +187,16 @@ actor NotionBookSyncer {
     }
 
     private func performSync(book: BookInfo, normalizedBookID: String) async throws -> String {
+        let databaseID = try await resolveDatabaseID()
+        await ensureDatabaseSchemaIfNeeded(databaseID: databaseID)
+
         if let cachedPageID = try mappingStore.notionPageID(for: normalizedBookID), !cachedPageID.isEmpty {
             DebugLogger.info("NotionBookSyncer hit local mapping cache bookID=\(normalizedBookID)")
             return cachedPageID
         }
 
-        let databaseID = try await resolveDatabaseID()
-
         let remoteFilter: Object = [
-            "property": .string("BookID"),
+            "property": .string(NotionLibrarySchema.bookIDProperty),
             "rich_text": .object([
                 "equals": .string(normalizedBookID)
             ])
@@ -191,10 +210,10 @@ actor NotionBookSyncer {
         }
 
         let properties = Self.makeProperties(for: book, normalizedBookID: normalizedBookID)
-        let created = try await notionClient.createPage(
-            databaseId: databaseID,
+        let created = try await createPageWithCompatibility(
+            databaseID: databaseID,
             properties: properties,
-            children: Self.initialPageChildren
+            fallbackProperties: Self.makeLegacyProperties(for: book, normalizedBookID: normalizedBookID)
         )
 
         guard let pageID = created["id"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -205,6 +224,25 @@ actor NotionBookSyncer {
         try mappingStore.saveMapping(bookID: normalizedBookID, notionPageID: pageID)
         DebugLogger.success("NotionBookSyncer created Notion page bookID=\(normalizedBookID) pageID=\(pageID)")
         return pageID
+    }
+
+    private func ensureDatabaseSchemaIfNeeded(databaseID: String) async {
+        guard !schemaEnsuredDatabaseIDs.contains(databaseID) else {
+            return
+        }
+
+        do {
+            _ = try await notionClient.updateDatabase(
+                databaseId: databaseID,
+                properties: NotionLibrarySchema.schemaPatchProperties
+            )
+            schemaEnsuredDatabaseIDs.insert(databaseID)
+            DebugLogger.info("NotionBookSyncer ensured database schema databaseID=\(databaseID)")
+        } catch {
+            DebugLogger.warning(
+                "NotionBookSyncer failed to ensure database schema databaseID=\(databaseID) reason=\(error.localizedDescription)"
+            )
+        }
     }
 
     private func resolveDatabaseID() async throws -> String {
@@ -229,6 +267,30 @@ actor NotionBookSyncer {
         }
     }
 
+    private func createPageWithCompatibility(
+        databaseID: String,
+        properties: Object,
+        fallbackProperties: Object
+    ) async throws -> NotionObject {
+        do {
+            return try await notionClient.createPage(
+                databaseId: databaseID,
+                properties: properties,
+                children: Self.initialPageChildren
+            )
+        } catch let error as NotionAPIError {
+            guard Self.shouldRetryWithLegacyProperties(error) else {
+                throw error
+            }
+            DebugLogger.warning("NotionBookSyncer create page retrying with legacy properties databaseID=\(databaseID)")
+            return try await notionClient.createPage(
+                databaseId: databaseID,
+                properties: fallbackProperties,
+                children: Self.initialPageChildren
+            )
+        }
+    }
+
     private static func extractFirstPageID(from response: NotionObject) -> String? {
         guard let results = response["results"]?.arrayValue else {
             return nil
@@ -247,20 +309,45 @@ actor NotionBookSyncer {
     }
 
     private static func makeProperties(for book: BookInfo, normalizedBookID: String) -> Object {
+        var properties = makeLegacyProperties(for: book, normalizedBookID: normalizedBookID)
+        properties[NotionLibrarySchema.readingProgressProperty] = NotionLibrarySchema.readingProgressPropertyValue(
+            book.readingProgressPercentage
+        )
+        properties[NotionLibrarySchema.readingStatusProperty] = NotionLibrarySchema.readingStatusPropertyValue(
+            book.readingStatusRaw
+        )
+        return properties
+    }
+
+    private static func makeLegacyProperties(for book: BookInfo, normalizedBookID: String) -> Object {
         let title = normalizedText(book.title, fallback: "Untitled")
         let author = normalizedText(book.author, fallback: "Unknown")
 
         return [
-            "Name": .object([
+            NotionLibrarySchema.nameProperty: .object([
                 "title": richTextArray(content: title)
             ]),
-            "Author": .object([
+            NotionLibrarySchema.authorProperty: .object([
                 "rich_text": richTextArray(content: author)
             ]),
-            "BookID": .object([
+            NotionLibrarySchema.bookIDProperty: .object([
                 "rich_text": richTextArray(content: normalizedBookID)
             ])
         ]
+    }
+
+    private static func shouldRetryWithLegacyProperties(_ error: NotionAPIError) -> Bool {
+        guard case .serverError(_, let message) = error else {
+            return false
+        }
+
+        let lowered = message?.lowercased() ?? ""
+        guard lowered.contains("property"), lowered.contains("does not exist") else {
+            return false
+        }
+
+        return lowered.contains(NotionLibrarySchema.readingProgressProperty)
+            || lowered.contains(NotionLibrarySchema.readingStatusProperty)
     }
 
     private static var initialPageChildren: [Block] {

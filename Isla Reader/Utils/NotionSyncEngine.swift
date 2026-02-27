@@ -16,6 +16,8 @@ struct NotionSyncPayload: Codable, Sendable {
     let bookID: String
     let bookTitle: String
     let bookAuthor: String
+    let bookReadingStatusRaw: String?
+    let bookProgressPercentage: Double?
     let chapter: String?
     let highlightText: String?
     let noteContent: String?
@@ -386,7 +388,9 @@ actor NotionSyncQueueProcessor {
             book: BookInfo(
                 id: payload.bookID,
                 title: payload.bookTitle,
-                author: payload.bookAuthor
+                author: payload.bookAuthor,
+                readingStatusRaw: payload.bookReadingStatusRaw,
+                readingProgressPercentage: payload.bookProgressPercentage
             )
         )
         let snapshots = try highlightSnapshotStore.fetchSnapshots(for: payload.bookID)
@@ -589,7 +593,7 @@ final class NotionSyncEngine {
         guard let coordinator = context.persistentStoreCoordinator else { return }
         guard coordinator === persistentStoreCoordinator else { return }
 
-        var touchedBooks: [String: (title: String, author: String)] = [:]
+        var touchedBooks: [String: (title: String, author: String, statusRaw: String?, progressPercentage: Double?)] = [:]
 
         let insertedHighlights = context.insertedObjects.compactMap { $0 as? Highlight }
         for highlight in insertedHighlights {
@@ -615,6 +619,8 @@ final class NotionSyncEngine {
                 bookID: bookID,
                 bookTitle: metadata.title,
                 bookAuthor: metadata.author,
+                bookReadingStatusRaw: metadata.statusRaw,
+                bookProgressPercentage: metadata.progressPercentage,
                 chapter: nil,
                 highlightText: nil,
                 noteContent: nil,
@@ -642,28 +648,44 @@ final class NotionSyncEngine {
 
     private func collectBookInfo(
         from highlight: Highlight,
-        into touchedBooks: inout [String: (title: String, author: String)]
+        into touchedBooks: inout [String: (title: String, author: String, statusRaw: String?, progressPercentage: Double?)]
     ) {
         guard let bookInfo = extractBookInfo(from: highlight) else {
             return
         }
 
-        touchedBooks[bookInfo.id] = (title: bookInfo.title, author: bookInfo.author)
+        touchedBooks[bookInfo.id] = (
+            title: bookInfo.title,
+            author: bookInfo.author,
+            statusRaw: bookInfo.statusRaw,
+            progressPercentage: bookInfo.progressPercentage
+        )
     }
 
-    private func extractBookInfo(from highlight: Highlight) -> (id: String, title: String, author: String)? {
+    private func extractBookInfo(
+        from highlight: Highlight
+    ) -> (id: String, title: String, author: String, statusRaw: String?, progressPercentage: Double?)? {
         let book = highlight.book
         let id = book.id.uuidString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !id.isEmpty else { return nil }
 
         let title = normalize(book.title) ?? "Untitled"
         let author = normalize(book.author) ?? "Unknown"
-        return (id, title, author)
+        let statusRaw = normalize(book.libraryItem?.statusRaw) ?? ReadingStatus.wantToRead.rawValue
+        let progressPercentage = normalizeProgress(book.readingProgress?.progressPercentage)
+        return (id, title, author, statusRaw, progressPercentage)
     }
 
     private func normalize(_ raw: String?) -> String? {
         guard let raw else { return nil }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func normalizeProgress(_ progress: Double?) -> Double {
+        guard let progress, progress.isFinite else {
+            return 0
+        }
+        return min(max(progress, 0), 1)
     }
 }

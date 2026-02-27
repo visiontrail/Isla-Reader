@@ -59,6 +59,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private var isPaginationReady = false
     private var lastAppliedTOCNavigationToken: Int = -1
     private var lastAppliedHighlightNavigationToken: Int = -1
+    private var lastHandledSelectionActionID: UUID?
     
     init(_ parent: ReaderWebView) {
         self.parent = parent
@@ -132,10 +133,10 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         } else if message.name == "pageMetrics" {
             if let dict = message.body as? [String: Any] {
                 if let type = dict["type"] as? String, type == "pageCount", let value = dict["value"] as? Int {
-                    parent.totalPages = value
+                    updateTotalPages(value)
                 }
             } else if let pages = message.body as? Int {
-                parent.totalPages = pages
+                updateTotalPages(pages)
             }
         }
     }
@@ -190,9 +191,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                     let clamped = max(0, min(snapshot.pageIndex, maxPage))
                     self.pendingPageIndex = nil
                     self.lastDisplayedPageIndex = clamped
-                    if self.parent.currentPageIndex != clamped {
-                        self.parent.currentPageIndex = clamped
-                    }
+                    self.updateCurrentPageIndex(clamped)
                     return
                 }
 
@@ -227,6 +226,26 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             return (parsedPage, hasSelection)
         }
         return nil
+    }
+
+    private func updateCurrentPageIndex(_ newValue: Int) {
+        let clampedValue = max(0, newValue)
+        guard parent.currentPageIndex != clampedValue else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard self.parent.currentPageIndex != clampedValue else { return }
+            self.parent.currentPageIndex = clampedValue
+        }
+    }
+
+    private func updateTotalPages(_ newValue: Int) {
+        let clampedValue = max(0, newValue)
+        guard parent.totalPages != clampedValue else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard self.parent.totalPages != clampedValue else { return }
+            self.parent.totalPages = clampedValue
+        }
     }
     
     private func applyPagination(on webView: WKWebView) {
@@ -485,7 +504,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                 }
                 DebugLogger.info("[HighlightNav] 导航结果: JS页码=\(pageIndex), clamped=\(clamped), totalPages=\(self.parent.totalPages), 之前页码=\(self.parent.currentPageIndex)")
                 self.lastDisplayedPageIndex = clamped
-                self.parent.currentPageIndex = clamped
+                self.updateCurrentPageIndex(clamped)
                 self.scrollToCurrentPage(on: webView, animated: false)
                 DebugLogger.info("[HighlightNav] 页码已更新为 \(clamped)，scrollToCurrentPage 已调用")
             }
@@ -568,7 +587,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                     clamped = max(0, pageIndex)
                 }
                 self.lastDisplayedPageIndex = clamped
-                self.parent.currentPageIndex = clamped
+                self.updateCurrentPageIndex(clamped)
             }
         }
     }
@@ -592,6 +611,13 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                 }
             }
         }
+    }
+
+    func performSelectionActionIfNeeded(_ action: ReaderSelectionAction?, on webView: WKWebView) {
+        guard let action else { return }
+        guard lastHandledSelectionActionID != action.id else { return }
+        lastHandledSelectionActionID = action.id
+        performSelectionAction(action, on: webView)
     }
 
     private func applyHighlightsIfReady(on webView: WKWebView?) {
@@ -738,12 +764,7 @@ struct ReaderWebView: UIViewRepresentable {
             context.coordinator.applyHighlightNavigationIfNeeded(on: webView)
         }
 
-        if let action = selectionAction {
-            context.coordinator.performSelectionAction(action, on: webView)
-            DispatchQueue.main.async {
-                self.selectionAction = nil
-            }
-        }
+        context.coordinator.performSelectionActionIfNeeded(selectionAction, on: webView)
     }
     
     private func generateFullHTML() -> String {

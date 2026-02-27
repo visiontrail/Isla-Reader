@@ -35,7 +35,7 @@ extension NotionAPIClient: NotionPageBlockAppendAPI {}
 actor NotionPageBlockAppender {
     private static let maxAppendBatchSize = 100
     private static let maxPayloadBytes = 450_000
-    private static let notesHeading = "📝 Notes"
+    private static let notesHeading = "📝 Highlights & Notes"
 
     private let notionClient: NotionPageBlockAppendAPI
 

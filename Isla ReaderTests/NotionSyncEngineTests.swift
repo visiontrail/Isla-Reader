@@ -120,6 +120,8 @@ private func makeTask(
             bookID: UUID().uuidString,
             bookTitle: "Test Book",
             bookAuthor: "Test Author",
+            bookReadingStatusRaw: nil,
+            bookProgressPercentage: nil,
             chapter: "Chapter 1",
             highlightText: highlightText,
             noteContent: noteContent,
