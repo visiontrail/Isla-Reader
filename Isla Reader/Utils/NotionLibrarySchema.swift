@@ -10,13 +10,13 @@ enum NotionLibrarySchema {
     static let bookIDProperty = "BookID"
     static let authorProperty = "Author"
     static let lastSyncedProperty = "Last Synced"
-    static let readingProgressProperty = "阅读进度"
-    static let readingStatusProperty = "阅读状态"
+    static let readingProgressProperty = "Reading Progress"
+    static let readingStatusProperty = "Reading Status"
 
-    private static let readingStatusWantToRead = "想读"
-    private static let readingStatusReading = "在读"
-    private static let readingStatusFinished = "已读"
-    private static let readingStatusPaused = "暂停"
+    private static let readingStatusWantToRead = "Want to Read"
+    private static let readingStatusReading = "Reading"
+    private static let readingStatusFinished = "Finished"
+    private static let readingStatusPaused = "Paused"
 
     static var databaseProperties: Object {
         var properties: Object = [

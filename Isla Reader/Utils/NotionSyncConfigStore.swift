@@ -123,6 +123,7 @@ struct NotionLogoutCleanupResult: Sendable {
 
 protocol NotionSyncDataCleaning: Sendable {
     func clearForLogout() throws -> NotionLogoutCleanupResult
+    func clearForLibraryRebuild() throws -> Int
 }
 
 final class NotionSyncDataCleaner: @unchecked Sendable, NotionSyncDataCleaning {
@@ -163,6 +164,24 @@ final class NotionSyncDataCleaner: @unchecked Sendable, NotionSyncDataCleaning {
 
         try configStore.clear()
         return result
+    }
+
+    func clearForLibraryRebuild() throws -> Int {
+        try performOnBackgroundContext { [self] context in
+            let books = try self.fetchMappedBooks(in: context)
+            for book in books {
+                book.notionPageId = nil
+            }
+            let clearedBookMappingsCount = books.count
+
+            _ = try self.batchDeleteCount(entityName: "BookMapping", context: context)
+
+            if context.hasChanges {
+                try context.save()
+            }
+
+            return clearedBookMappingsCount
+        }
     }
 
     private func fetchMappedBooks(in context: NSManagedObjectContext) throws -> [Book] {

@@ -115,7 +115,7 @@ struct NotionBookSyncerTests {
 
         let status = try #require(createdProperties[NotionLibrarySchema.readingStatusProperty]?.objectValue)
         let statusSelect = try #require(status["select"]?.objectValue)
-        #expect(statusSelect["name"] == .string("在读"))
+        #expect(statusSelect["name"] == .string("Reading"))
     }
 }
 

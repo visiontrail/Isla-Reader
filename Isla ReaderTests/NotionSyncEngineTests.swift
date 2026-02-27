@@ -105,6 +105,49 @@ struct NotionSyncEngineTests {
         #expect(failures.first?.retryCount == 1)
         #expect(failures.first?.shouldRetry == true)
     }
+
+    @Test
+    func archivedAncestorErrorTriggersLibraryRebuildFlow() async throws {
+        let store = InMemorySyncQueueStore()
+        store.seed(
+            task: makeTask(
+                operationType: .highlight,
+                retryCount: 0,
+                highlightText: "needs rebuild",
+                noteContent: nil
+            )
+        )
+
+        let appender = MockAppender(
+            mode: .serverError(
+                statusCode: 400,
+                message: "Can't edit page on block with an archived ancestor."
+            )
+        )
+        let snapshotStore = MockHighlightSnapshotStore()
+        let rebuildTracker = RebuildTracker()
+
+        let processor = NotionSyncQueueProcessor(
+            queueStore: store,
+            bookSyncer: MockBookSyncer(),
+            blockAppender: appender,
+            highlightSnapshotStore: snapshotStore,
+            libraryRebuildRetryDelay: 60,
+            libraryRebuildHandler: { reason in
+                await rebuildTracker.record(reason: reason)
+                return true
+            }
+        )
+
+        await processor.setNetworkAvailable(true)
+        await processor.setNotionReady(true)
+
+        #expect(await rebuildTracker.count() == 1)
+        let failures = store.failureRecords()
+        #expect(failures.count == 1)
+        #expect(failures.first?.retryCount == 1)
+        #expect(failures.first?.shouldRetry == true)
+    }
 }
 
 private func makeTask(
@@ -214,6 +257,7 @@ private actor MockAppender: NotionContentAppending {
         case success
         case rateLimited(retryAfter: TimeInterval)
         case networkFailure
+        case serverError(statusCode: Int, message: String?)
     }
 
     private let mode: Mode
@@ -240,7 +284,21 @@ private actor MockAppender: NotionContentAppending {
             throw NotionAPIError.rateLimited(retryAfter: retryAfter)
         case .networkFailure:
             throw NotionAPIError.transportFailure("offline")
+        case .serverError(let statusCode, let message):
+            throw NotionAPIError.serverError(statusCode: statusCode, message: message)
         }
+    }
+}
+
+private actor RebuildTracker {
+    private var reasons: [String] = []
+
+    func record(reason: String) {
+        reasons.append(reason)
+    }
+
+    func count() -> Int {
+        reasons.count
     }
 }
 

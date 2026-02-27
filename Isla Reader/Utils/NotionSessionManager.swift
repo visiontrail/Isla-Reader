@@ -185,6 +185,37 @@ final class NotionSessionManager: ObservableObject {
         }
     }
 
+    func rebuildLibraryDatabaseIfPossible(reason: String) async -> Bool {
+        guard isConnected else {
+            DebugLogger.warning("Notion rebuild skipped: not connected reason=\(reason)")
+            return false
+        }
+
+        guard let syncConfig = syncConfigStore.load() else {
+            DebugLogger.warning("Notion rebuild skipped: missing sync config reason=\(reason)")
+            return false
+        }
+
+        let parentPageID = syncConfig.containerPageId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !parentPageID.isEmpty else {
+            DebugLogger.warning("Notion rebuild skipped: empty container page id reason=\(reason)")
+            return false
+        }
+
+        do {
+            let clearedBookMappingsCount = try syncDataCleaner.clearForLibraryRebuild()
+            let clearedLegacyMappingsCount = mappingStore.clearAllMappings()
+            try await initializeLibraryDatabase(parentPageID: parentPageID)
+            DebugLogger.success(
+                "Notion library rebuilt reason=\(reason) clearedBookMappings=\(clearedBookMappingsCount) clearedLegacyMappings=\(clearedLegacyMappingsCount)"
+            )
+            return true
+        } catch {
+            DebugLogger.error("Notion rebuild failed reason=\(reason)", error: error)
+            return false
+        }
+    }
+
     func clearErrorIfNeeded() {
         authService.clearErrorIfNeeded()
     }

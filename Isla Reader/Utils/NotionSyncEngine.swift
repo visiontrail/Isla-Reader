@@ -261,13 +261,17 @@ actor NotionSyncQueueProcessor {
         case pauseAndStop(delay: TimeInterval)
     }
 
+    typealias LibraryRebuildHandler = @Sendable (_ reason: String) async -> Bool
+
     private let queueStore: NotionSyncQueueStoring
     private let bookSyncer: NotionBookSyncing
     private let blockAppender: NotionContentAppending
     private let highlightSnapshotStore: NotionHighlightSnapshotStoring
     private let syncConfigStore: NotionSyncConfigStoring
+    private let libraryRebuildHandler: LibraryRebuildHandler
 
     private let debounceDelay: TimeInterval
+    private let libraryRebuildRetryDelay: TimeInterval
     private let unknownErrorDelay: TimeInterval
     private let maxRetryCount: Int16
 
@@ -284,8 +288,12 @@ actor NotionSyncQueueProcessor {
         highlightSnapshotStore: NotionHighlightSnapshotStoring = CoreDataNotionHighlightSnapshotStore.shared,
         syncConfigStore: NotionSyncConfigStoring = CoreDataNotionSyncConfigStore.shared,
         debounceDelay: TimeInterval = 2,
+        libraryRebuildRetryDelay: TimeInterval = 1,
         unknownErrorDelay: TimeInterval = 8,
-        maxRetryCount: Int16 = 5
+        maxRetryCount: Int16 = 5,
+        libraryRebuildHandler: @escaping LibraryRebuildHandler = { reason in
+            await NotionSessionManager.shared.rebuildLibraryDatabaseIfPossible(reason: reason)
+        }
     ) {
         self.queueStore = queueStore
         self.bookSyncer = bookSyncer
@@ -293,8 +301,10 @@ actor NotionSyncQueueProcessor {
         self.highlightSnapshotStore = highlightSnapshotStore
         self.syncConfigStore = syncConfigStore
         self.debounceDelay = debounceDelay
+        self.libraryRebuildRetryDelay = libraryRebuildRetryDelay
         self.unknownErrorDelay = unknownErrorDelay
         self.maxRetryCount = maxRetryCount
+        self.libraryRebuildHandler = libraryRebuildHandler
     }
 
     func notifyDataEnqueued() {
@@ -370,7 +380,7 @@ actor NotionSyncQueueProcessor {
                 try queueStore.markTaskSynced(id: task.id)
                 try? syncConfigStore.updateLastSyncedAt(Date())
             } catch {
-                let action = handleFailure(error, for: task)
+                let action = await handleFailure(error, for: task)
                 switch action {
                 case .continueProcessing:
                     continue
@@ -397,10 +407,37 @@ actor NotionSyncQueueProcessor {
         try await blockAppender.replaceHighlightsAndNotes(snapshots, to: pageID)
     }
 
-    private func handleFailure(_ error: Error, for task: NotionSyncQueueTask) -> FailureAction {
+    private func handleFailure(_ error: Error, for task: NotionSyncQueueTask) async -> FailureAction {
         let nextRetryCount = task.retryCount + 1
         let shouldRetry = nextRetryCount <= maxRetryCount
         let message = error.localizedDescription
+
+        if shouldTriggerLibraryRebuild(for: error) {
+            let rebuildReason = "sync_task=\(task.id.uuidString) error=\(message)"
+            let rebuildSucceeded = await libraryRebuildHandler(rebuildReason)
+            do {
+                try queueStore.markTaskFailed(
+                    id: task.id,
+                    retryCount: nextRetryCount,
+                    shouldRetry: shouldRetry,
+                    message: message
+                )
+            } catch {
+                DebugLogger.error("NotionSyncEngine: failed to persist rebuild retry state", error: error)
+            }
+
+            guard shouldRetry else {
+                return .continueProcessing
+            }
+
+            if rebuildSucceeded {
+                DebugLogger.warning("NotionSyncEngine: library rebuilt, retrying sync task \(task.id)")
+                return .pauseAndStop(delay: libraryRebuildRetryDelay)
+            }
+
+            DebugLogger.warning("NotionSyncEngine: rebuild attempt failed, fallback to regular retry")
+            return .pauseAndStop(delay: unknownErrorDelay)
+        }
 
         if case NotionAPIError.rateLimited(let retryAfter) = error {
             let delay = max(1, retryAfter ?? 5)
@@ -472,6 +509,23 @@ actor NotionSyncQueueProcessor {
             return .pauseAndStop(delay: delay)
         }
         return .continueProcessing
+    }
+
+    private func shouldTriggerLibraryRebuild(for error: Error) -> Bool {
+        guard case NotionAPIError.serverError(let statusCode, let message) = error else {
+            return false
+        }
+
+        let lowered = message?.lowercased() ?? ""
+        if statusCode == 400 && lowered.contains("archived ancestor") {
+            return true
+        }
+
+        if statusCode == 404 && lowered.contains("could not find database") {
+            return true
+        }
+
+        return false
     }
 
     private func scheduleRun(after delay: TimeInterval, reason: String) {
