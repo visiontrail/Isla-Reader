@@ -62,10 +62,10 @@ struct NotionPageBlockAppenderTests {
         let appendCalls = await api.recordedAppendCalls()
         #expect(appendCalls.count == 1)
         #expect(appendCalls.first?.blockID == "page_abc")
-        #expect(appendCalls.first?.children.count == 5)
+        #expect(appendCalls.first?.children.count == 6)
 
         let types = appendCalls.first?.children.compactMap { $0["type"]?.stringValue } ?? []
-        #expect(types == ["heading_1", "divider", "quote", "paragraph", "quote"])
+        #expect(types == ["heading_1", "divider", "quote", "callout", "paragraph", "quote"])
     }
 
     @Test

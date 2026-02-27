@@ -161,7 +161,7 @@ actor NotionPageBlockAppender {
             return lhs.highlightText < rhs.highlightText
         }
 
-        for snapshot in sortedSnapshots {
+        for (index, snapshot) in sortedSnapshots.enumerated() {
             let highlightInput = BlockBuilder.HighlightInput(
                 text: snapshot.highlightText,
                 chapter: snapshot.chapter,
@@ -176,6 +176,10 @@ actor NotionPageBlockAppender {
                     date: snapshot.noteDate ?? snapshot.highlightDate
                 )
                 blocks.append(contentsOf: BlockBuilder.buildBlocks(for: noteInput))
+            }
+
+            if index < sortedSnapshots.count - 1 {
+                blocks.append(Self.spacerBlock())
             }
         }
 
@@ -197,6 +201,16 @@ actor NotionPageBlockAppender {
             "object": .string("block"),
             "type": .string("divider"),
             "divider": .object([:])
+        ]
+    }
+
+    private static func spacerBlock() -> Block {
+        [
+            "object": .string("block"),
+            "type": .string("paragraph"),
+            "paragraph": .object([
+                "rich_text": .array([])
+            ])
         ]
     }
 

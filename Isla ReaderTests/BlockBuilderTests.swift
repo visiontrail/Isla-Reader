@@ -29,7 +29,7 @@ struct BlockBuilderTests {
     }
 
     @Test
-    func buildsParagraphForNote() throws {
+    func buildsCalloutForNote() throws {
         let related = BlockBuilder.HighlightInput(
             text: "Action beats intention.",
             chapter: "Chapter 2",
@@ -44,10 +44,10 @@ struct BlockBuilderTests {
         let blocks = BlockBuilder.buildBlocks(for: note)
         #expect(blocks.count == 1)
 
-        let paragraphBlock = blocks[0]
-        #expect(paragraphBlock["type"] == .string("paragraph"))
-        let paragraph = try #require(paragraphBlock["paragraph"]?.objectValue)
-        let noteText = try extractContent(from: paragraph)
+        let calloutBlock = blocks[0]
+        #expect(calloutBlock["type"] == .string("callout"))
+        let callout = try #require(calloutBlock["callout"]?.objectValue)
+        let noteText = try extractContent(from: callout)
         #expect(noteText == "这句话可以放到我的每周复盘模板里。")
     }
 

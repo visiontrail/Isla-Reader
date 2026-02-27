@@ -47,7 +47,7 @@ struct BlockBuilder {
 
     static func buildBlocks(for note: NoteInput) -> [Block] {
         [
-            paragraphBlock(content: normalizedContent(note.content))
+            calloutBlock(content: normalizedContent(note.content))
         ]
     }
 
@@ -90,6 +90,21 @@ struct BlockBuilder {
             "type": .string("paragraph"),
             "paragraph": .object([
                 "rich_text": richTextArray(content: content),
+                "color": .string("default")
+            ])
+        ]
+    }
+
+    private static func calloutBlock(content: String) -> Block {
+        [
+            "object": .string("block"),
+            "type": .string("callout"),
+            "callout": .object([
+                "rich_text": richTextArray(content: content),
+                "icon": .object([
+                    "type": .string("emoji"),
+                    "emoji": .string("📝")
+                ]),
                 "color": .string("default")
             ])
         ]
