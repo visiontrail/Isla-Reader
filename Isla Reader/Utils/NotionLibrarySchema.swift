@@ -7,9 +7,7 @@ import Foundation
 
 enum NotionLibrarySchema {
     static let nameProperty = "Name"
-    static let bookIDProperty = "BookID"
     static let authorProperty = "Author"
-    static let lastSyncedProperty = "Last Synced"
     static let readingProgressProperty = "Reading Progress"
     static let readingStatusProperty = "Reading Status"
 
@@ -23,14 +21,8 @@ enum NotionLibrarySchema {
             nameProperty: .object([
                 "title": .object([:])
             ]),
-            bookIDProperty: .object([
-                "rich_text": .object([:])
-            ]),
             authorProperty: .object([
                 "rich_text": .object([:])
-            ]),
-            lastSyncedProperty: .object([
-                "date": .object([:])
             ])
         ]
         properties.merge(schemaPatchProperties) { current, _ in

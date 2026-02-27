@@ -47,7 +47,6 @@ enum NotionBookSyncError: LocalizedError, Equatable {
 
 protocol NotionBookSyncAPI {
     func updateDatabase(databaseId: String, properties: Object) async throws -> NotionObject
-    func queryDatabase(databaseId: String, filter: Object) async throws -> NotionObject
     func createPage(databaseId: String, properties: Object, children: [Block]) async throws -> NotionObject
 }
 
@@ -195,25 +194,11 @@ actor NotionBookSyncer {
             return cachedPageID
         }
 
-        let remoteFilter: Object = [
-            "property": .string(NotionLibrarySchema.bookIDProperty),
-            "rich_text": .object([
-                "equals": .string(normalizedBookID)
-            ])
-        ]
-
-        let queryResponse = try await notionClient.queryDatabase(databaseId: databaseID, filter: remoteFilter)
-        if let existingPageID = Self.extractFirstPageID(from: queryResponse) {
-            try mappingStore.saveMapping(bookID: normalizedBookID, notionPageID: existingPageID)
-            DebugLogger.info("NotionBookSyncer found existing Notion page bookID=\(normalizedBookID) pageID=\(existingPageID)")
-            return existingPageID
-        }
-
-        let properties = Self.makeProperties(for: book, normalizedBookID: normalizedBookID)
+        let properties = Self.makeProperties(for: book)
         let created = try await createPageWithCompatibility(
             databaseID: databaseID,
             properties: properties,
-            fallbackProperties: Self.makeLegacyProperties(for: book, normalizedBookID: normalizedBookID)
+            fallbackProperties: Self.makeLegacyProperties(for: book)
         )
 
         guard let pageID = created["id"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -291,25 +276,8 @@ actor NotionBookSyncer {
         }
     }
 
-    private static func extractFirstPageID(from response: NotionObject) -> String? {
-        guard let results = response["results"]?.arrayValue else {
-            return nil
-        }
-
-        for result in results {
-            guard let object = result.objectValue,
-                  let pageID = object["id"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !pageID.isEmpty else {
-                continue
-            }
-            return pageID
-        }
-
-        return nil
-    }
-
-    private static func makeProperties(for book: BookInfo, normalizedBookID: String) -> Object {
-        var properties = makeLegacyProperties(for: book, normalizedBookID: normalizedBookID)
+    private static func makeProperties(for book: BookInfo) -> Object {
+        var properties = makeLegacyProperties(for: book)
         properties[NotionLibrarySchema.readingProgressProperty] = NotionLibrarySchema.readingProgressPropertyValue(
             book.readingProgressPercentage
         )
@@ -319,7 +287,7 @@ actor NotionBookSyncer {
         return properties
     }
 
-    private static func makeLegacyProperties(for book: BookInfo, normalizedBookID: String) -> Object {
+    private static func makeLegacyProperties(for book: BookInfo) -> Object {
         let title = normalizedText(book.title, fallback: "Untitled")
         let author = normalizedText(book.author, fallback: "Unknown")
 
@@ -329,9 +297,6 @@ actor NotionBookSyncer {
             ]),
             NotionLibrarySchema.authorProperty: .object([
                 "rich_text": richTextArray(content: author)
-            ]),
-            NotionLibrarySchema.bookIDProperty: .object([
-                "rich_text": richTextArray(content: normalizedBookID)
             ])
         ]
     }

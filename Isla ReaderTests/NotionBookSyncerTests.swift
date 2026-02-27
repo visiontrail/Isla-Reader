@@ -11,7 +11,6 @@ struct NotionBookSyncerTests {
     @Test
     func syncingSameBookFiveTimesCreatesSinglePage() async throws {
         let mockClient = MockNotionBookSyncAPI(
-            queryResultPageIDs: [],
             createdPageID: "page_created_1",
             createDelayNanoseconds: 200_000_000
         )
@@ -43,14 +42,12 @@ struct NotionBookSyncerTests {
 
         let callStats = await mockClient.callStats()
         #expect(callStats.updateDatabaseCount == 1)
-        #expect(callStats.queryCount == 1)
         #expect(callStats.createCount == 1)
     }
 
     @Test
-    func syncUsesRemoteExistingPageThenCachesLocally() async throws {
+    func syncUsesLocalMappingCacheWithoutCreatingPage() async throws {
         let mockClient = MockNotionBookSyncAPI(
-            queryResultPageIDs: ["page_existing_1"],
             createdPageID: "page_should_not_be_created"
         )
         let mappingStore = InMemoryBookMappingStore()
@@ -61,6 +58,7 @@ struct NotionBookSyncerTests {
         )
 
         let book = BookInfo(id: "book_2", title: "Deep Work", author: "Cal Newport")
+        try mappingStore.saveMapping(bookID: "book_2", notionPageID: "page_existing_1")
 
         let first = try await syncer.sync(book: book)
         let second = try await syncer.sync(book: book)
@@ -71,14 +69,12 @@ struct NotionBookSyncerTests {
 
         let callStats = await mockClient.callStats()
         #expect(callStats.updateDatabaseCount == 1)
-        #expect(callStats.queryCount == 1)
         #expect(callStats.createCount == 0)
     }
 
     @Test
     func createPageInitialChildrenOnlyContainNotesSection() async throws {
         let mockClient = MockNotionBookSyncAPI(
-            queryResultPageIDs: [],
             createdPageID: "page_created_2"
         )
         let mappingStore = InMemoryBookMappingStore()
@@ -116,6 +112,8 @@ struct NotionBookSyncerTests {
         let status = try #require(createdProperties[NotionLibrarySchema.readingStatusProperty]?.objectValue)
         let statusSelect = try #require(status["select"]?.objectValue)
         #expect(statusSelect["name"] == .string("Reading"))
+        #expect(createdProperties[NotionLibrarySchema.nameProperty] != nil)
+        #expect(createdProperties[NotionLibrarySchema.authorProperty] != nil)
     }
 }
 
@@ -136,21 +134,17 @@ private final class InMemoryBookMappingStore: BookMappingStoring {
 
 private actor MockNotionBookSyncAPI: NotionBookSyncAPI {
     private(set) var updateDatabaseCount = 0
-    private(set) var queryCount = 0
     private(set) var createCount = 0
     private var capturedChildren: [Block] = []
     private var capturedProperties: Object = [:]
 
-    private let queryResultPageIDs: [String]
     private let createdPageID: String
     private let createDelayNanoseconds: UInt64
 
     init(
-        queryResultPageIDs: [String],
         createdPageID: String,
         createDelayNanoseconds: UInt64 = 0
     ) {
-        self.queryResultPageIDs = queryResultPageIDs
         self.createdPageID = createdPageID
         self.createDelayNanoseconds = createDelayNanoseconds
     }
@@ -158,17 +152,6 @@ private actor MockNotionBookSyncAPI: NotionBookSyncAPI {
     func updateDatabase(databaseId: String, properties: Object) async throws -> NotionObject {
         updateDatabaseCount += 1
         return ["id": .string(databaseId)]
-    }
-
-    func queryDatabase(databaseId: String, filter: Object) async throws -> NotionObject {
-        queryCount += 1
-        return [
-            "results": .array(queryResultPageIDs.map { pageID in
-                .object([
-                    "id": .string(pageID)
-                ])
-            })
-        ]
     }
 
     func createPage(databaseId: String, properties: Object, children: [Block]) async throws -> NotionObject {
@@ -183,8 +166,8 @@ private actor MockNotionBookSyncAPI: NotionBookSyncAPI {
         return ["id": .string(createdPageID)]
     }
 
-    func callStats() -> (updateDatabaseCount: Int, queryCount: Int, createCount: Int) {
-        (updateDatabaseCount, queryCount, createCount)
+    func callStats() -> (updateDatabaseCount: Int, createCount: Int) {
+        (updateDatabaseCount, createCount)
     }
 
     func lastCreatedChildren() -> [Block] {
