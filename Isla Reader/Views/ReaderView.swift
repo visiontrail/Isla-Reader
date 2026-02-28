@@ -104,6 +104,7 @@ struct ReaderView: View {
     // Pagination states per chapter
     @State private var chapterPageIndices: [Int] = []
     @State private var chapterTotalPages: [Int] = []
+    @State private var chapterPageCountsMeasured: [Bool] = []
     
     // Reading time tracking
     @State private var readingStartTime: Date?
@@ -1373,6 +1374,14 @@ struct ReaderView: View {
                 DispatchQueue.main.async {
                     self.chapters = metadata.chapters
                     self.tocItems = metadata.tocItems
+
+                    // Historical data may contain chapter count in totalPages.
+                    // Repair it with parser-estimated total pages when needed.
+                    let minimumReasonableTotalPages = max(metadata.chapters.count, 1)
+                    let parsedTotalPages = max(metadata.totalPages, minimumReasonableTotalPages)
+                    if Int(self.book.totalPages) <= minimumReasonableTotalPages {
+                        self.book.totalPages = Int32(min(parsedTotalPages, Int(Int32.max)))
+                    }
                     
                     if self.book.filePath != normalizedPath {
                         self.book.filePath = normalizedPath
@@ -1460,32 +1469,32 @@ struct ReaderView: View {
         
         if let progress = book.readingProgress {
             progress.currentPage = Int32(currentChapterIndex)
+
+            let totalBookPages = resolvedBookTotalPages()
+            let currentGlobalPage = currentGlobalPageNumber(totalBookPages: totalBookPages)
             
             // Save the current page within chapter to currentPosition as JSON
             let positionData: [String: Any] = [
                 "chapterIndex": currentChapterIndex,
                 "pageIndex": safeChapterPageIndex(currentChapterIndex),
-                "totalPages": safeChapterTotalPages(currentChapterIndex)
+                "totalPages": safeChapterTotalPages(currentChapterIndex),
+                "globalPage": currentGlobalPage,
+                "bookTotalPages": totalBookPages
             ]
             if let jsonData = try? JSONSerialization.data(withJSONObject: positionData),
                let jsonString = String(data: jsonData, encoding: .utf8) {
                 progress.currentPosition = jsonString
             }
             
-            // Estimate percentage by chapter index and current page within chapter
-            let chapterCount = max(chapters.count, 1)
-            let base = Double(currentChapterIndex) / Double(chapterCount)
-            let pageInChapter = Double(safeChapterPageIndex(currentChapterIndex))
-            let totalInChapter = Double(max(safeChapterTotalPages(currentChapterIndex), 1))
-            let perChapterWeight = 1.0 / Double(chapterCount)
-            let within = (totalInChapter > 0) ? (pageInChapter / totalInChapter) * perChapterWeight : 0
-            progress.progressPercentage = min(1.0, base + within)
+            // Calculate by absolute book page: current global page / total book pages
+            progress.progressPercentage = min(1.0, Double(currentGlobalPage) / Double(max(totalBookPages, 1)))
             progress.lastReadAt = Date()
             progress.updatedAt = Date()
             
             // Update book's totalPages if needed
-            if book.totalPages != Int32(chapters.count) {
-                book.totalPages = Int32(chapters.count)
+            let safeTotalBookPages = min(totalBookPages, Int(Int32.max))
+            if book.totalPages != Int32(safeTotalBookPages) {
+                book.totalPages = Int32(safeTotalBookPages)
             }
             
             // Update reading status based on progress
@@ -1494,7 +1503,7 @@ struct ReaderView: View {
                 libraryItem.lastAccessedAt = Date()
                 
                 // If progress reaches 100%, mark as finished
-                if progress.progressPercentage >= 0.99 { // Use 0.99 to account for floating point precision
+                if isAtLastPageInBook() || progress.progressPercentage >= 0.99 {
                     if libraryItem.status != .finished {
                         libraryItem.status = .finished
                         DebugLogger.info("ReaderView: Book completed! Updated status to 'finished'")
@@ -1507,7 +1516,7 @@ struct ReaderView: View {
             
             do {
                 try viewContext.save()
-                print("✅ Reading progress saved: Chapter \(currentChapterIndex), Page \(safeChapterPageIndex(currentChapterIndex)), Progress: \(String(format: "%.1f%%", progress.progressPercentage * 100))")
+                print("✅ Reading progress saved: Chapter \(currentChapterIndex), Page \(safeChapterPageIndex(currentChapterIndex)), GlobalPage \(currentGlobalPage)/\(totalBookPages), Progress: \(String(format: "%.1f%%", progress.progressPercentage * 100))")
             } catch {
                 print("❌ Failed to save reading progress: \(error)")
             }
@@ -1536,12 +1545,24 @@ struct ReaderView: View {
 
     // MARK: - Pagination helpers
     private func ensurePageArrays() {
-        if chapterPageIndices.count != chapters.count {
-            chapterPageIndices = Array(repeating: 0, count: max(chapters.count, 1))
+        let targetCount = max(chapters.count, 1)
+        if chapterPageIndices.count != targetCount {
+            chapterPageIndices = resizedArray(chapterPageIndices, to: targetCount, fill: 0)
         }
-        if chapterTotalPages.count != chapters.count {
-            chapterTotalPages = Array(repeating: 1, count: max(chapters.count, 1))
+        if chapterTotalPages.count != targetCount {
+            chapterTotalPages = resizedArray(chapterTotalPages, to: targetCount, fill: 1)
         }
+        if chapterPageCountsMeasured.count != targetCount {
+            chapterPageCountsMeasured = resizedArray(chapterPageCountsMeasured, to: targetCount, fill: false)
+        }
+    }
+
+    private func resizedArray<T>(_ source: [T], to targetCount: Int, fill: T) -> [T] {
+        var resized = Array(repeating: fill, count: targetCount)
+        let copyCount = min(source.count, targetCount)
+        guard copyCount > 0 else { return resized }
+        resized.replaceSubrange(0..<copyCount, with: source.prefix(copyCount))
+        return resized
     }
     
     private func safeChapterPageIndex(_ index: Int) -> Int {
@@ -1566,7 +1587,69 @@ struct ReaderView: View {
         ensurePageArrays()
         guard index >= 0 && index < chapterTotalPages.count else { return }
         chapterTotalPages[index] = max(1, value)
+        chapterPageCountsMeasured[index] = true
         clampCurrentPage(index)
+    }
+
+    private func isChapterPageCountMeasured(_ index: Int) -> Bool {
+        ensurePageArrays()
+        guard index >= 0 && index < chapterPageCountsMeasured.count else { return false }
+        return chapterPageCountsMeasured[index]
+    }
+
+    private func resolvedBookTotalPages() -> Int {
+        ensurePageArrays()
+        let chapterCount = max(chapters.count, 1)
+        let fallbackTotalPages = max(Int(book.totalPages), 1)
+        let fallbackPagesPerChapter = max(1, Int((Double(fallbackTotalPages) / Double(chapterCount)).rounded()))
+
+        var measuredPages = 0
+        var measuredCount = 0
+        for index in 0..<chapterCount where isChapterPageCountMeasured(index) {
+            measuredPages += safeChapterTotalPages(index)
+            measuredCount += 1
+        }
+
+        if measuredCount == chapterCount {
+            return max(measuredPages, 1)
+        }
+
+        let estimatedTotalPages = measuredPages + (chapterCount - measuredCount) * fallbackPagesPerChapter
+        return max(fallbackTotalPages, estimatedTotalPages, 1)
+    }
+
+    private func currentGlobalPageNumber(totalBookPages: Int) -> Int {
+        ensurePageArrays()
+        let chapterCount = max(chapters.count, 1)
+        let clampedChapterIndex = min(max(currentChapterIndex, 0), chapterCount - 1)
+        let fallbackPagesPerChapter = max(1, Int((Double(totalBookPages) / Double(chapterCount)).rounded()))
+
+        var pagesBeforeCurrentChapter = 0
+        if clampedChapterIndex > 0 {
+            for index in 0..<clampedChapterIndex {
+                if isChapterPageCountMeasured(index) {
+                    pagesBeforeCurrentChapter += safeChapterTotalPages(index)
+                } else {
+                    pagesBeforeCurrentChapter += fallbackPagesPerChapter
+                }
+            }
+        }
+
+        let currentPageInChapter = safeChapterPageIndex(clampedChapterIndex)
+        let pageNumber = pagesBeforeCurrentChapter + currentPageInChapter + 1
+        return max(1, min(totalBookPages, pageNumber))
+    }
+
+    private func isAtLastPageInBook() -> Bool {
+        ensurePageArrays()
+        guard !chapters.isEmpty else { return false }
+
+        let clampedChapterIndex = min(max(currentChapterIndex, 0), chapters.count - 1)
+        guard clampedChapterIndex == chapters.count - 1 else { return false }
+
+        let totalPagesInChapter = safeChapterTotalPages(clampedChapterIndex)
+        let currentPageInChapter = safeChapterPageIndex(clampedChapterIndex)
+        return currentPageInChapter >= max(totalPagesInChapter - 1, 0)
     }
     
     @discardableResult
