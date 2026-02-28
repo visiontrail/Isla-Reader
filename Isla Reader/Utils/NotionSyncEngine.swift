@@ -79,29 +79,34 @@ final class CoreDataNotionHighlightSnapshotStore: @unchecked Sendable, NotionHig
                 return []
             }
 
-            let request = Highlight.fetchRequest()
+            let request: NSFetchRequest<Highlight> = Highlight.fetchRequest()
             request.predicate = NSPredicate(format: "book.id == %@", bookUUID as CVarArg)
-            request.sortDescriptors = [
-                NSSortDescriptor(key: "createdAt", ascending: true),
-                NSSortDescriptor(key: "updatedAt", ascending: true)
-            ]
 
-            let highlights = try context.fetch(request)
-            return highlights.compactMap { highlight in
+            let highlights: [Highlight] = try context.fetch(request)
+            let snapshots: [NotionHighlightSnapshot] = highlights.compactMap { highlight -> NotionHighlightSnapshot? in
                 guard let text = self.normalize(highlight.selectedText) else {
                     return nil
                 }
 
                 let normalizedNote = self.normalize(highlight.note)
+                let createdAt = highlight.createdAt
+                let updatedAt = highlight.updatedAt
+                let readingLocation = self.decodeReadingLocation(from: highlight.startPosition)
 
                 return NotionHighlightSnapshot(
                     highlightText: text,
                     noteText: normalizedNote,
                     chapter: self.normalize(highlight.chapter),
-                    highlightDate: highlight.createdAt,
-                    noteDate: normalizedNote == nil ? nil : highlight.updatedAt
+                    createdAt: createdAt,
+                    updatedAt: updatedAt,
+                    readingLocation: readingLocation,
+                    highlightDate: createdAt,
+                    noteDate: normalizedNote == nil ? nil : updatedAt
                 )
             }
+
+            let sortMode = AppSettings.currentHighlightSortMode()
+            return self.sortSnapshots(snapshots, mode: sortMode)
         }
     }
 
@@ -124,6 +129,82 @@ final class CoreDataNotionHighlightSnapshotStore: @unchecked Sendable, NotionHig
         guard let raw else { return nil }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func sortSnapshots(_ snapshots: [NotionHighlightSnapshot], mode: HighlightSortMode) -> [NotionHighlightSnapshot] {
+        switch mode {
+        case .modifiedTime:
+            return snapshots.sorted { lhs, rhs in
+                if lhs.updatedAt != rhs.updatedAt {
+                    return lhs.updatedAt > rhs.updatedAt
+                }
+                return lhs.createdAt > rhs.createdAt
+            }
+        case .chapter:
+            return snapshots.sorted(by: compareByChapter)
+        }
+    }
+
+    private func compareByChapter(_ lhs: NotionHighlightSnapshot, _ rhs: NotionHighlightSnapshot) -> Bool {
+        switch (lhs.readingLocation, rhs.readingLocation) {
+        case let (.some(left), .some(right)):
+            if left.chapterIndex != right.chapterIndex {
+                return left.chapterIndex < right.chapterIndex
+            }
+            if left.pageIndex != right.pageIndex {
+                return left.pageIndex < right.pageIndex
+            }
+            let leftOffset = left.textOffset ?? Int.max
+            let rightOffset = right.textOffset ?? Int.max
+            if leftOffset != rightOffset {
+                return leftOffset < rightOffset
+            }
+            if lhs.createdAt != rhs.createdAt {
+                return lhs.createdAt < rhs.createdAt
+            }
+            return lhs.updatedAt > rhs.updatedAt
+        case (.some, .none):
+            return true
+        case (.none, .some):
+            return false
+        case (.none, .none):
+            if lhs.updatedAt != rhs.updatedAt {
+                return lhs.updatedAt > rhs.updatedAt
+            }
+            return lhs.createdAt > rhs.createdAt
+        }
+    }
+
+    private func decodeReadingLocation(from rawStartPosition: String) -> NotionHighlightReadingLocation? {
+        guard let data = rawStartPosition.data(using: .utf8) else {
+            return nil
+        }
+
+        if let anchor = try? JSONDecoder().decode(SelectionAnchor.self, from: data) {
+            return NotionHighlightReadingLocation(
+                chapterIndex: max(anchor.chapterIndex, 0),
+                pageIndex: max(anchor.pageIndex, 0),
+                textOffset: anchor.offset
+            )
+        }
+
+        if let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let chapterValue = payload["chapterIndex"] as? NSNumber,
+           let pageValue = payload["pageIndex"] as? NSNumber {
+            return NotionHighlightReadingLocation(
+                chapterIndex: max(chapterValue.intValue, 0),
+                pageIndex: max(pageValue.intValue, 0),
+                textOffset: payload["offset"] as? Int
+            )
+        }
+
+        return nil
+    }
+
+    private struct SelectionAnchor: Decodable {
+        let chapterIndex: Int
+        let pageIndex: Int
+        let offset: Int?
     }
 }
 

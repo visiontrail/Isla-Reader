@@ -258,6 +258,13 @@ final class NotionAPIClient {
         return try await send(path: "pages", method: "POST", body: payload)
     }
 
+    func updatePage(pageId: String, properties: Object) async throws -> NotionObject {
+        let payload: NotionObject = [
+            "properties": .object(properties)
+        ]
+        return try await send(path: "pages/\(pageId)", method: "PATCH", body: payload)
+    }
+
     func appendBlockChildren(blockId: String, children: [Block]) async throws -> NotionObject {
         let payload: NotionObject = [
             "children": .array(children.map { .object($0) })

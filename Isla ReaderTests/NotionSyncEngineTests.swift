@@ -309,6 +309,9 @@ private final class MockHighlightSnapshotStore: NotionHighlightSnapshotStoring {
                 highlightText: "highlight for \(bookID)",
                 noteText: "note for \(bookID)",
                 chapter: "Chapter 1",
+                createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_100),
+                readingLocation: NotionHighlightReadingLocation(chapterIndex: 1, pageIndex: 0, textOffset: 12),
                 highlightDate: Date(timeIntervalSince1970: 1_700_000_000),
                 noteDate: Date(timeIntervalSince1970: 1_700_000_100)
             )

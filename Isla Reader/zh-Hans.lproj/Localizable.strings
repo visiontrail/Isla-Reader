@@ -150,6 +150,8 @@
 "settings.highlight_sort.title" = "高亮排序";
 "settings.highlight_sort.by_chapter" = "按章节";
 "settings.highlight_sort.by_modified_time" = "按修改时间";
+"settings.highlight_sort.subtitle_format" = "当前：%@";
+"settings.highlight_sort.sync_note" = "该顺序也会用于“高亮与笔记”同步到 Notion 时的排序。";
 "reader.page_turn.reached_start" = "已经是本章第一页";
 "reader.page_turn.reached_end" = "已经是本章最后一页";
 

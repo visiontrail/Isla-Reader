@@ -150,6 +150,8 @@
 "settings.highlight_sort.title" = "하이라이트 정렬";
 "settings.highlight_sort.by_chapter" = "챕터 순";
 "settings.highlight_sort.by_modified_time" = "수정 시간 순";
+"settings.highlight_sort.subtitle_format" = "현재: %@";
+"settings.highlight_sort.sync_note" = "이 순서는 \"하이라이트와 노트\"를 Notion에 동기화할 때도 적용됩니다.";
 "reader.page_turn.reached_start" = "이 장의 첫 페이지입니다";
 "reader.page_turn.reached_end" = "이 장의 마지막 페이지입니다";
 

@@ -38,13 +38,19 @@ struct NotionPageBlockAppenderTests {
                 highlightText: "First highlight",
                 noteText: "First note",
                 chapter: "Chapter 1",
-                highlightDate: Date(timeIntervalSince1970: 1_698_369_600),
-                noteDate: Date(timeIntervalSince1970: 1_698_370_000)
+                createdAt: Date(timeIntervalSince1970: 1_698_500_000),
+                updatedAt: Date(timeIntervalSince1970: 1_698_500_100),
+                readingLocation: NotionHighlightReadingLocation(chapterIndex: 1, pageIndex: 0, textOffset: 10),
+                highlightDate: Date(timeIntervalSince1970: 1_698_500_000),
+                noteDate: Date(timeIntervalSince1970: 1_698_500_100)
             ),
             NotionHighlightSnapshot(
                 highlightText: "Second highlight",
                 noteText: nil,
                 chapter: "Chapter 2",
+                createdAt: Date(timeIntervalSince1970: 1_698_400_000),
+                updatedAt: Date(timeIntervalSince1970: 1_698_400_000),
+                readingLocation: NotionHighlightReadingLocation(chapterIndex: 2, pageIndex: 0, textOffset: 5),
                 highlightDate: Date(timeIntervalSince1970: 1_698_400_000),
                 noteDate: nil
             )
@@ -66,6 +72,12 @@ struct NotionPageBlockAppenderTests {
 
         let types = appendCalls.first?.children.compactMap { $0["type"]?.stringValue } ?? []
         #expect(types == ["heading_1", "divider", "quote", "callout", "paragraph", "quote"])
+
+        let quoteBlocks = appendCalls.first?.children.filter { $0["type"]?.stringValue == "quote" } ?? []
+        let quoteTexts = quoteBlocks.compactMap { block in
+            block["quote"]?.objectValue?["rich_text"]?.arrayValue?.first?.objectValue?["text"]?.objectValue?["content"]?.stringValue
+        }
+        #expect(quoteTexts == ["First highlight", "Second highlight"])
     }
 
     @Test

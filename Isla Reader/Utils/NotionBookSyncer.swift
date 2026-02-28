@@ -47,6 +47,7 @@ enum NotionBookSyncError: LocalizedError, Equatable {
 
 protocol NotionBookSyncAPI {
     func updateDatabase(databaseId: String, properties: Object) async throws -> NotionObject
+    func updatePage(pageId: String, properties: Object) async throws -> NotionObject
     func createPage(databaseId: String, properties: Object, children: [Block]) async throws -> NotionObject
 }
 
@@ -188,17 +189,23 @@ actor NotionBookSyncer {
     private func performSync(book: BookInfo, normalizedBookID: String) async throws -> String {
         let databaseID = try await resolveDatabaseID()
         await ensureDatabaseSchemaIfNeeded(databaseID: databaseID)
+        let properties = Self.makeProperties(for: book)
+        let fallbackProperties = Self.makeLegacyProperties(for: book)
 
         if let cachedPageID = try mappingStore.notionPageID(for: normalizedBookID), !cachedPageID.isEmpty {
+            try await updatePageWithCompatibility(
+                pageID: cachedPageID,
+                properties: properties,
+                fallbackProperties: fallbackProperties
+            )
             DebugLogger.info("NotionBookSyncer hit local mapping cache bookID=\(normalizedBookID)")
             return cachedPageID
         }
 
-        let properties = Self.makeProperties(for: book)
         let created = try await createPageWithCompatibility(
             databaseID: databaseID,
             properties: properties,
-            fallbackProperties: Self.makeLegacyProperties(for: book)
+            fallbackProperties: fallbackProperties
         )
 
         guard let pageID = created["id"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -273,6 +280,22 @@ actor NotionBookSyncer {
                 properties: fallbackProperties,
                 children: Self.initialPageChildren
             )
+        }
+    }
+
+    private func updatePageWithCompatibility(
+        pageID: String,
+        properties: Object,
+        fallbackProperties: Object
+    ) async throws {
+        do {
+            _ = try await notionClient.updatePage(pageId: pageID, properties: properties)
+        } catch let error as NotionAPIError {
+            guard Self.shouldRetryWithLegacyProperties(error) else {
+                throw error
+            }
+            DebugLogger.warning("NotionBookSyncer update page retrying with legacy properties pageID=\(pageID)")
+            _ = try await notionClient.updatePage(pageId: pageID, properties: fallbackProperties)
         }
     }
 

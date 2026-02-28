@@ -57,7 +57,17 @@ struct SettingsView: View {
                     }
 
                     NavigationLink(destination: HighlightSortSettingsView()) {
-                        Label(NSLocalizedString("settings.highlight_sort.title", comment: ""), systemImage: "arrow.up.arrow.down")
+                        HStack(spacing: 12) {
+                            Image(systemName: "arrow.up.arrow.down")
+                                .foregroundColor(.accentColor)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(NSLocalizedString("settings.highlight_sort.title", comment: ""))
+                                    .foregroundColor(.primary)
+                                Text(highlightSortSubtitle)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
 
                     Toggle(isOn: $appSettings.isAIAdvanceAdNoticeEnabled) {
@@ -261,6 +271,11 @@ struct SettingsView: View {
             get: { appSettings.readingReminderTime },
             set: { appSettings.setReadingReminderTime($0) }
         )
+    }
+
+    private var highlightSortSubtitle: String {
+        let format = NSLocalizedString("settings.highlight_sort.subtitle_format", comment: "Highlight sort summary in settings")
+        return String(format: format, appSettings.highlightSortMode.displayName)
     }
 
     @ViewBuilder
@@ -494,7 +509,9 @@ struct HighlightSortSettingsView: View {
 
     var body: some View {
         List {
-            Section {
+            Section(
+                footer: Text(NSLocalizedString("settings.highlight_sort.sync_note", comment: ""))
+            ) {
                 ForEach(HighlightSortMode.allCases, id: \.rawValue) { mode in
                     HStack {
                         Text(mode.displayName)

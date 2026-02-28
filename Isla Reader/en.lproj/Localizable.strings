@@ -150,6 +150,8 @@
 "settings.highlight_sort.title" = "Highlights Sort";
 "settings.highlight_sort.by_chapter" = "By Chapter";
 "settings.highlight_sort.by_modified_time" = "By Modified Time";
+"settings.highlight_sort.subtitle_format" = "Current: %@";
+"settings.highlight_sort.sync_note" = "This order is also used when syncing Highlights & Notes to Notion.";
 "reader.page_turn.reached_start" = "You're at the beginning of this chapter";
 "reader.page_turn.reached_end" = "You've reached the end of this chapter";
 

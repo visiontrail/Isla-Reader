@@ -294,6 +294,10 @@ class AppSettings: ObservableObject {
         let minute = calendar.component(.minute, from: date)
         readingReminderMinutesSinceMidnight = hour * 60 + minute
     }
+
+    static func currentHighlightSortMode(defaults: UserDefaults = .standard) -> HighlightSortMode {
+        HighlightSortMode(rawValue: defaults.string(forKey: AppSettings.highlightSortModeKey) ?? "") ?? .modifiedTime
+    }
     
     private init() {
         let storedLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language") ?? "") ?? .en
@@ -310,7 +314,7 @@ class AppSettings: ObservableObject {
         let storedPageMargins = UserDefaults.standard.object(forKey: "page_margins") as? Double ?? AppSettings.defaultPageMargins
         self.pageMargins = min(max(storedPageMargins, AppSettings.pageMarginsRange.lowerBound), AppSettings.pageMarginsRange.upperBound)
         let defaults = UserDefaults.standard
-        self.highlightSortMode = HighlightSortMode(rawValue: defaults.string(forKey: AppSettings.highlightSortModeKey) ?? "") ?? .modifiedTime
+        self.highlightSortMode = AppSettings.currentHighlightSortMode(defaults: defaults)
         self.isAIAdvanceAdNoticeEnabled = defaults.object(forKey: AppSettings.aiAdvanceAdNoticeEnabledKey) as? Bool ?? true
         self.isReadingReminderEnabled = defaults.object(forKey: AppSettings.readingReminderEnabledKey) as? Bool
             ?? defaults.object(forKey: AppSettings.legacyReadingReminderEnabledKey) as? Bool

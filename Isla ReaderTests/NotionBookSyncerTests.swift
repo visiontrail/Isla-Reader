@@ -43,10 +43,11 @@ struct NotionBookSyncerTests {
         let callStats = await mockClient.callStats()
         #expect(callStats.updateDatabaseCount == 1)
         #expect(callStats.createCount == 1)
+        #expect(callStats.updatePageCount == 0)
     }
 
     @Test
-    func syncUsesLocalMappingCacheWithoutCreatingPage() async throws {
+    func syncUsesLocalMappingCacheAndUpdatesPageProperties() async throws {
         let mockClient = MockNotionBookSyncAPI(
             createdPageID: "page_should_not_be_created"
         )
@@ -57,7 +58,13 @@ struct NotionBookSyncerTests {
             databaseIDProvider: { "db_test_2" }
         )
 
-        let book = BookInfo(id: "book_2", title: "Deep Work", author: "Cal Newport")
+        let book = BookInfo(
+            id: "book_2",
+            title: "Deep Work",
+            author: "Cal Newport",
+            readingStatusRaw: ReadingStatus.reading.rawValue,
+            readingProgressPercentage: 0.75
+        )
         try mappingStore.saveMapping(bookID: "book_2", notionPageID: "page_existing_1")
 
         let first = try await syncer.sync(book: book)
@@ -70,6 +77,14 @@ struct NotionBookSyncerTests {
         let callStats = await mockClient.callStats()
         #expect(callStats.updateDatabaseCount == 1)
         #expect(callStats.createCount == 0)
+        #expect(callStats.updatePageCount == 2)
+
+        let updatedProperties = await mockClient.lastUpdatedProperties()
+        let progress = try #require(updatedProperties[NotionLibrarySchema.readingProgressProperty]?.objectValue)
+        #expect(progress["number"] == .number(0.75))
+        let status = try #require(updatedProperties[NotionLibrarySchema.readingStatusProperty]?.objectValue)
+        let statusSelect = try #require(status["select"]?.objectValue)
+        #expect(statusSelect["name"] == .string("Reading"))
     }
 
     @Test
@@ -167,8 +182,10 @@ private final class InMemoryBookMappingStore: BookMappingStoring {
 private actor MockNotionBookSyncAPI: NotionBookSyncAPI {
     private(set) var updateDatabaseCount = 0
     private(set) var createCount = 0
-    private var capturedChildren: [Block] = []
-    private var capturedProperties: Object = [:]
+    private(set) var updatePageCount = 0
+    private var capturedCreatedChildren: [Block] = []
+    private var capturedCreatedProperties: Object = [:]
+    private var capturedUpdatedProperties: Object = [:]
 
     private let createdPageID: String
     private let createDelayNanoseconds: UInt64
@@ -186,10 +203,16 @@ private actor MockNotionBookSyncAPI: NotionBookSyncAPI {
         return ["id": .string(databaseId)]
     }
 
+    func updatePage(pageId: String, properties: Object) async throws -> NotionObject {
+        updatePageCount += 1
+        capturedUpdatedProperties = properties
+        return ["id": .string(pageId)]
+    }
+
     func createPage(databaseId: String, properties: Object, children: [Block]) async throws -> NotionObject {
         createCount += 1
-        capturedChildren = children
-        capturedProperties = properties
+        capturedCreatedChildren = children
+        capturedCreatedProperties = properties
 
         if createDelayNanoseconds > 0 {
             try await Task.sleep(nanoseconds: createDelayNanoseconds)
@@ -198,15 +221,19 @@ private actor MockNotionBookSyncAPI: NotionBookSyncAPI {
         return ["id": .string(createdPageID)]
     }
 
-    func callStats() -> (updateDatabaseCount: Int, createCount: Int) {
-        (updateDatabaseCount, createCount)
+    func callStats() -> (updateDatabaseCount: Int, createCount: Int, updatePageCount: Int) {
+        (updateDatabaseCount, createCount, updatePageCount)
     }
 
     func lastCreatedChildren() -> [Block] {
-        capturedChildren
+        capturedCreatedChildren
     }
 
     func lastCreatedProperties() -> Object {
-        capturedProperties
+        capturedCreatedProperties
+    }
+
+    func lastUpdatedProperties() -> Object {
+        capturedUpdatedProperties
     }
 }

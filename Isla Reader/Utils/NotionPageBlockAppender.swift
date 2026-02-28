@@ -5,10 +5,19 @@
 
 import Foundation
 
+struct NotionHighlightReadingLocation: Equatable, Sendable {
+    let chapterIndex: Int
+    let pageIndex: Int
+    let textOffset: Int?
+}
+
 struct NotionHighlightSnapshot: Equatable, Sendable {
     let highlightText: String
     let noteText: String?
     let chapter: String?
+    let createdAt: Date
+    let updatedAt: Date
+    let readingLocation: NotionHighlightReadingLocation?
     let highlightDate: Date
     let noteDate: Date?
 }
@@ -151,17 +160,7 @@ actor NotionPageBlockAppender {
             Self.dividerBlock()
         ]
 
-        let sortedSnapshots = snapshots.sorted { lhs, rhs in
-            if lhs.highlightDate != rhs.highlightDate {
-                return lhs.highlightDate < rhs.highlightDate
-            }
-            if lhs.noteDate != rhs.noteDate {
-                return (lhs.noteDate ?? lhs.highlightDate) < (rhs.noteDate ?? rhs.highlightDate)
-            }
-            return lhs.highlightText < rhs.highlightText
-        }
-
-        for (index, snapshot) in sortedSnapshots.enumerated() {
+        for (index, snapshot) in snapshots.enumerated() {
             let highlightInput = BlockBuilder.HighlightInput(
                 text: snapshot.highlightText,
                 chapter: snapshot.chapter,
@@ -178,7 +177,7 @@ actor NotionPageBlockAppender {
                 blocks.append(contentsOf: BlockBuilder.buildBlocks(for: noteInput))
             }
 
-            if index < sortedSnapshots.count - 1 {
+            if index < snapshots.count - 1 {
                 blocks.append(Self.spacerBlock())
             }
         }
