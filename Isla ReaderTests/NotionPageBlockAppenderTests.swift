@@ -31,7 +31,10 @@ struct NotionPageBlockAppenderTests {
     @Test
     func replaceHighlightsAndNotesArchivesExistingBlocksAndRebuildsPage() async throws {
         let api = MockNotionPageBlockAppendAPI(existingBlockIDs: ["old_1", "old_2"])
-        let appender = NotionPageBlockAppender(notionClient: api)
+        let appender = NotionPageBlockAppender(
+            notionClient: api,
+            highlightSortModeProvider: { .modifiedTime }
+        )
 
         let snapshots = [
             NotionHighlightSnapshot(
@@ -78,6 +81,71 @@ struct NotionPageBlockAppenderTests {
             block["quote"]?.objectValue?["rich_text"]?.arrayValue?.first?.objectValue?["text"]?.objectValue?["content"]?.stringValue
         }
         #expect(quoteTexts == ["First highlight", "Second highlight"])
+    }
+
+    @Test
+    func replaceHighlightsAndNotesGroupsByChapterWithHeading2WhenSortModeIsChapter() async throws {
+        let api = MockNotionPageBlockAppendAPI()
+        let appender = NotionPageBlockAppender(
+            notionClient: api,
+            highlightSortModeProvider: { .chapter }
+        )
+
+        let snapshots = [
+            NotionHighlightSnapshot(
+                highlightText: "Chapter one highlight A",
+                noteText: "Chapter one note",
+                chapter: "Chapter 1",
+                createdAt: Date(timeIntervalSince1970: 1_698_500_000),
+                updatedAt: Date(timeIntervalSince1970: 1_698_500_050),
+                readingLocation: NotionHighlightReadingLocation(chapterIndex: 1, pageIndex: 0, textOffset: 10),
+                highlightDate: Date(timeIntervalSince1970: 1_698_500_000),
+                noteDate: Date(timeIntervalSince1970: 1_698_500_050)
+            ),
+            NotionHighlightSnapshot(
+                highlightText: "Chapter one highlight B",
+                noteText: nil,
+                chapter: "Chapter 1",
+                createdAt: Date(timeIntervalSince1970: 1_698_500_100),
+                updatedAt: Date(timeIntervalSince1970: 1_698_500_100),
+                readingLocation: NotionHighlightReadingLocation(chapterIndex: 1, pageIndex: 1, textOffset: 0),
+                highlightDate: Date(timeIntervalSince1970: 1_698_500_100),
+                noteDate: nil
+            ),
+            NotionHighlightSnapshot(
+                highlightText: "Chapter two highlight",
+                noteText: "Chapter two note",
+                chapter: "Chapter 2",
+                createdAt: Date(timeIntervalSince1970: 1_698_600_000),
+                updatedAt: Date(timeIntervalSince1970: 1_698_600_050),
+                readingLocation: NotionHighlightReadingLocation(chapterIndex: 2, pageIndex: 0, textOffset: 3),
+                highlightDate: Date(timeIntervalSince1970: 1_698_600_000),
+                noteDate: Date(timeIntervalSince1970: 1_698_600_050)
+            )
+        ]
+
+        try await appender.replaceHighlightsAndNotes(snapshots, to: "page_grouped")
+
+        let appendCalls = await api.recordedAppendCalls()
+        #expect(appendCalls.count == 1)
+
+        let children = appendCalls.first?.children ?? []
+        let types = children.compactMap { $0["type"]?.stringValue }
+        #expect(types == ["heading_1", "divider", "heading_2", "quote", "callout", "paragraph", "quote", "paragraph", "heading_2", "quote", "callout"])
+
+        let chapterHeadings = children
+            .filter { $0["type"]?.stringValue == "heading_2" }
+            .compactMap { block in
+                block["heading_2"]?.objectValue?["rich_text"]?.arrayValue?.first?.objectValue?["text"]?.objectValue?["content"]?.stringValue
+            }
+        #expect(chapterHeadings == ["Chapter 1", "Chapter 2"])
+
+        let quoteTexts = children
+            .filter { $0["type"]?.stringValue == "quote" }
+            .compactMap { block in
+                block["quote"]?.objectValue?["rich_text"]?.arrayValue?.first?.objectValue?["text"]?.objectValue?["content"]?.stringValue
+            }
+        #expect(quoteTexts == ["Chapter one highlight A", "Chapter one highlight B", "Chapter two highlight"])
     }
 
     @Test

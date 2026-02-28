@@ -45,11 +45,17 @@ actor NotionPageBlockAppender {
     private static let maxAppendBatchSize = 100
     private static let maxPayloadBytes = 450_000
     private static let notesHeading = "📝 Highlights & Notes"
+    private static let unknownChapterHeadingKey = "highlight.list.unknown_chapter"
 
     private let notionClient: NotionPageBlockAppendAPI
+    private let highlightSortModeProvider: @Sendable () -> HighlightSortMode
 
-    init(notionClient: NotionPageBlockAppendAPI = NotionAPIClient()) {
+    init(
+        notionClient: NotionPageBlockAppendAPI = NotionAPIClient(),
+        highlightSortModeProvider: @escaping @Sendable () -> HighlightSortMode = { AppSettings.currentHighlightSortMode() }
+    ) {
         self.notionClient = notionClient
+        self.highlightSortModeProvider = highlightSortModeProvider
     }
 
     func replaceHighlightsAndNotes(_ snapshots: [NotionHighlightSnapshot], to pageID: String) async throws {
@@ -160,29 +166,72 @@ actor NotionPageBlockAppender {
             Self.dividerBlock()
         ]
 
-        for (index, snapshot) in snapshots.enumerated() {
-            let highlightInput = BlockBuilder.HighlightInput(
-                text: snapshot.highlightText,
-                chapter: snapshot.chapter,
-                date: snapshot.highlightDate
-            )
-            blocks.append(contentsOf: BlockBuilder.buildBlocks(for: highlightInput))
+        switch highlightSortModeProvider() {
+        case .modifiedTime:
+            appendFlatSnapshots(snapshots, to: &blocks)
+        case .chapter:
+            appendChapterGroupedSnapshots(snapshots, to: &blocks)
+        }
 
-            if let noteContent = normalize(snapshot.noteText) {
-                let noteInput = BlockBuilder.NoteInput(
-                    content: noteContent,
-                    relatedHighlight: highlightInput,
-                    date: snapshot.noteDate ?? snapshot.highlightDate
-                )
-                blocks.append(contentsOf: BlockBuilder.buildBlocks(for: noteInput))
-            }
+        return blocks
+    }
+
+    private func appendFlatSnapshots(_ snapshots: [NotionHighlightSnapshot], to blocks: inout [Block]) {
+        for (index, snapshot) in snapshots.enumerated() {
+            appendSnapshot(snapshot, to: &blocks)
 
             if index < snapshots.count - 1 {
                 blocks.append(Self.spacerBlock())
             }
         }
+    }
 
-        return blocks
+    private func appendChapterGroupedSnapshots(_ snapshots: [NotionHighlightSnapshot], to blocks: inout [Block]) {
+        guard !snapshots.isEmpty else { return }
+
+        var previousGrouping: ChapterGrouping?
+
+        for (index, snapshot) in snapshots.enumerated() {
+            let grouping = chapterGrouping(for: snapshot)
+            let startsNewChapter = grouping != previousGrouping
+
+            if startsNewChapter {
+                if previousGrouping != nil {
+                    blocks.append(Self.spacerBlock())
+                }
+                blocks.append(Self.subheadingBlock(content: grouping.title))
+            }
+
+            appendSnapshot(snapshot, to: &blocks)
+            previousGrouping = grouping
+
+            guard index < snapshots.count - 1 else {
+                continue
+            }
+
+            let nextGrouping = chapterGrouping(for: snapshots[index + 1])
+            if nextGrouping == grouping {
+                blocks.append(Self.spacerBlock())
+            }
+        }
+    }
+
+    private func appendSnapshot(_ snapshot: NotionHighlightSnapshot, to blocks: inout [Block]) {
+        let highlightInput = BlockBuilder.HighlightInput(
+            text: snapshot.highlightText,
+            chapter: snapshot.chapter,
+            date: snapshot.highlightDate
+        )
+        blocks.append(contentsOf: BlockBuilder.buildBlocks(for: highlightInput))
+
+        if let noteContent = normalize(snapshot.noteText) {
+            let noteInput = BlockBuilder.NoteInput(
+                content: noteContent,
+                relatedHighlight: highlightInput,
+                date: snapshot.noteDate ?? snapshot.highlightDate
+            )
+            blocks.append(contentsOf: BlockBuilder.buildBlocks(for: noteInput))
+        }
     }
 
     private static func headingBlock(content: String) -> Block {
@@ -190,6 +239,16 @@ actor NotionPageBlockAppender {
             "object": .string("block"),
             "type": .string("heading_1"),
             "heading_1": .object([
+                "rich_text": richTextArray(content: content)
+            ])
+        ]
+    }
+
+    private static func subheadingBlock(content: String) -> Block {
+        [
+            "object": .string("block"),
+            "type": .string("heading_2"),
+            "heading_2": .object([
                 "rich_text": richTextArray(content: content)
             ])
         ]
@@ -236,6 +295,16 @@ actor NotionPageBlockAppender {
         guard let raw else { return nil }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func chapterGrouping(for snapshot: NotionHighlightSnapshot) -> ChapterGrouping {
+        let title = normalize(snapshot.chapter)
+            ?? NSLocalizedString(Self.unknownChapterHeadingKey, comment: "Unknown chapter heading for Notion sync grouping")
+        return ChapterGrouping(title: title)
+    }
+
+    private struct ChapterGrouping: Equatable {
+        let title: String
     }
 
     private func isPayloadTooLarge(_ blocks: [Block]) -> Bool {
