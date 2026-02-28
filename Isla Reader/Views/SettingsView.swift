@@ -57,9 +57,7 @@ struct SettingsView: View {
                     }
 
                     NavigationLink(destination: HighlightSortSettingsView()) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "arrow.up.arrow.down")
-                                .foregroundColor(.accentColor)
+                        Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(NSLocalizedString("settings.highlight_sort.title", comment: ""))
                                     .foregroundColor(.primary)
@@ -67,6 +65,9 @@ struct SettingsView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
+                        } icon: {
+                            Image(systemName: "arrow.up.arrow.down")
+                                .foregroundColor(.accentColor)
                         }
                     }
 
