@@ -135,12 +135,27 @@ public enum AppLanguage: String, CaseIterable {
     }
 }
 
+public enum HighlightSortMode: String, CaseIterable {
+    case chapter = "chapter"
+    case modifiedTime = "modified_time"
+
+    var displayName: String {
+        switch self {
+        case .chapter:
+            return NSLocalizedString("settings.highlight_sort.by_chapter", comment: "Sort highlights by chapter")
+        case .modifiedTime:
+            return NSLocalizedString("settings.highlight_sort.by_modified_time", comment: "Sort highlights by modified time")
+        }
+    }
+}
+
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
     private static let readingReminderEnabledKey = "readingReminderEnabled"
     private static let readingGoalMinutesKey = "readingGoalMinutes"
     private static let readingReminderTimeMinutesKey = "readingReminderTimeMinutes"
     private static let aiAdvanceAdNoticeEnabledKey = "aiAdvanceAdNoticeEnabled"
+    private static let highlightSortModeKey = "highlightSortMode"
     private static let legacyReadingReminderEnabledKey = "reading_reminder_enabled"
     private static let legacyReadingGoalMinutesKey = "daily_reading_goal"
     private static let minutesPerDay = 24 * 60
@@ -161,6 +176,7 @@ class AppSettings: ObservableObject {
         "reading_font",
         "line_spacing",
         "page_margins",
+        highlightSortModeKey,
         aiAdvanceAdNoticeEnabledKey,
         readingReminderEnabledKey,
         readingGoalMinutesKey,
@@ -216,6 +232,12 @@ class AppSettings: ObservableObject {
     @Published var isAIAdvanceAdNoticeEnabled: Bool {
         didSet {
             UserDefaults.standard.set(isAIAdvanceAdNoticeEnabled, forKey: AppSettings.aiAdvanceAdNoticeEnabledKey)
+        }
+    }
+
+    @Published var highlightSortMode: HighlightSortMode {
+        didSet {
+            UserDefaults.standard.set(highlightSortMode.rawValue, forKey: AppSettings.highlightSortModeKey)
         }
     }
     
@@ -288,6 +310,7 @@ class AppSettings: ObservableObject {
         let storedPageMargins = UserDefaults.standard.object(forKey: "page_margins") as? Double ?? AppSettings.defaultPageMargins
         self.pageMargins = min(max(storedPageMargins, AppSettings.pageMarginsRange.lowerBound), AppSettings.pageMarginsRange.upperBound)
         let defaults = UserDefaults.standard
+        self.highlightSortMode = HighlightSortMode(rawValue: defaults.string(forKey: AppSettings.highlightSortModeKey) ?? "") ?? .modifiedTime
         self.isAIAdvanceAdNoticeEnabled = defaults.object(forKey: AppSettings.aiAdvanceAdNoticeEnabledKey) as? Bool ?? true
         self.isReadingReminderEnabled = defaults.object(forKey: AppSettings.readingReminderEnabledKey) as? Bool
             ?? defaults.object(forKey: AppSettings.legacyReadingReminderEnabledKey) as? Bool
@@ -315,6 +338,7 @@ class AppSettings: ObservableObject {
         readingFont = .system
         lineSpacing = AppSettings.defaultLineSpacing
         pageMargins = AppSettings.defaultPageMargins
+        highlightSortMode = .modifiedTime
         isAIAdvanceAdNoticeEnabled = true
         isReadingReminderEnabled = false
         dailyReadingGoal = 20

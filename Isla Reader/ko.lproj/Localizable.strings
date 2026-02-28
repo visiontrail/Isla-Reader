@@ -147,6 +147,9 @@
 "highlight.list.empty" = "하이라이트나 노트가 없습니다";
 "highlight.list.edit_note" = "메모 편집";
 "highlight.list.unknown_chapter" = "알 수 없는 챕터";
+"settings.highlight_sort.title" = "하이라이트 정렬";
+"settings.highlight_sort.by_chapter" = "챕터 순";
+"settings.highlight_sort.by_modified_time" = "수정 시간 순";
 "reader.page_turn.reached_start" = "이 장의 첫 페이지입니다";
 "reader.page_turn.reached_end" = "이 장의 마지막 페이지입니다";
 

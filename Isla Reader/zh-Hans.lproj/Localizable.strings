@@ -147,6 +147,9 @@
 "highlight.list.empty" = "暂无高亮或笔记";
 "highlight.list.edit_note" = "编辑笔记";
 "highlight.list.unknown_chapter" = "未知章节";
+"settings.highlight_sort.title" = "高亮排序";
+"settings.highlight_sort.by_chapter" = "按章节";
+"settings.highlight_sort.by_modified_time" = "按修改时间";
 "reader.page_turn.reached_start" = "已经是本章第一页";
 "reader.page_turn.reached_end" = "已经是本章最后一页";
 

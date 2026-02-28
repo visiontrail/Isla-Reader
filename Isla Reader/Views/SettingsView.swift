@@ -56,6 +56,10 @@ struct SettingsView: View {
                         Label(NSLocalizedString("settings.theme.appearance", comment: ""), systemImage: "paintbrush")
                     }
 
+                    NavigationLink(destination: HighlightSortSettingsView()) {
+                        Label(NSLocalizedString("settings.highlight_sort.title", comment: ""), systemImage: "arrow.up.arrow.down")
+                    }
+
                     Toggle(isOn: $appSettings.isAIAdvanceAdNoticeEnabled) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(NSLocalizedString("settings.ai_ad_notice", comment: ""))
@@ -482,6 +486,37 @@ struct ThemeSettingsView: View {
         case .dark:
             return NSLocalizedString("settings.theme.mode.always_dark", comment: "")
         }
+    }
+}
+
+struct HighlightSortSettingsView: View {
+    @StateObject private var appSettings = AppSettings.shared
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(HighlightSortMode.allCases, id: \.rawValue) { mode in
+                    HStack {
+                        Text(mode.displayName)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if appSettings.highlightSortMode == mode {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.accentColor)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        appSettings.highlightSortMode = mode
+                    }
+                }
+            }
+        }
+        .navigationTitle(NSLocalizedString("settings.highlight_sort.title", comment: ""))
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
 }
 

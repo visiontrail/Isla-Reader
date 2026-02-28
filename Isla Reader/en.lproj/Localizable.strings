@@ -147,6 +147,9 @@
 "highlight.list.empty" = "No highlights or notes yet";
 "highlight.list.edit_note" = "Edit Note";
 "highlight.list.unknown_chapter" = "Unknown chapter";
+"settings.highlight_sort.title" = "Highlights Sort";
+"settings.highlight_sort.by_chapter" = "By Chapter";
+"settings.highlight_sort.by_modified_time" = "By Modified Time";
 "reader.page_turn.reached_start" = "You're at the beginning of this chapter";
 "reader.page_turn.reached_end" = "You've reached the end of this chapter";
 

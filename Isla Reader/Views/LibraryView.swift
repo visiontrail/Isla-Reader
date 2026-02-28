@@ -952,6 +952,7 @@ struct HighlightListSheet: View {
     let book: Book
     var onSelect: ((BookmarkLocation) -> Void)? = nil
     
+    @StateObject private var appSettings = AppSettings.shared
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
     @FetchRequest private var highlights: FetchedResults<Highlight>
@@ -974,7 +975,7 @@ struct HighlightListSheet: View {
                 if highlights.isEmpty {
                     highlightEmptyState
                 } else {
-                    ForEach(highlights) { highlight in
+                    ForEach(displayedHighlights) { highlight in
                         highlightRow(for: highlight)
                     }
                 }
@@ -1004,6 +1005,53 @@ struct HighlightListSheet: View {
         .onAppear {
             DebugLogger.info("HighlightListSheet: 显示书籍高亮/笔记列表 - \(book.displayTitle)")
             viewContext.refreshAllObjects()
+        }
+    }
+
+    private var displayedHighlights: [Highlight] {
+        switch appSettings.highlightSortMode {
+        case .modifiedTime:
+            return highlights.sorted { lhs, rhs in
+                if lhs.updatedAt != rhs.updatedAt {
+                    return lhs.updatedAt > rhs.updatedAt
+                }
+                return lhs.createdAt > rhs.createdAt
+            }
+        case .chapter:
+            return highlights.sorted(by: compareByChapter)
+        }
+    }
+
+    private func compareByChapter(_ lhs: Highlight, _ rhs: Highlight) -> Bool {
+        let leftLocation = lhs.readingLocation
+        let rightLocation = rhs.readingLocation
+
+        switch (leftLocation, rightLocation) {
+        case let (.some(left), .some(right)):
+            if left.chapterIndex != right.chapterIndex {
+                return left.chapterIndex < right.chapterIndex
+            }
+            if left.pageIndex != right.pageIndex {
+                return left.pageIndex < right.pageIndex
+            }
+            let leftOffset = left.textOffset ?? Int.max
+            let rightOffset = right.textOffset ?? Int.max
+            if leftOffset != rightOffset {
+                return leftOffset < rightOffset
+            }
+            if lhs.createdAt != rhs.createdAt {
+                return lhs.createdAt < rhs.createdAt
+            }
+            return lhs.updatedAt > rhs.updatedAt
+        case (.some, .none):
+            return true
+        case (.none, .some):
+            return false
+        case (.none, .none):
+            if lhs.updatedAt != rhs.updatedAt {
+                return lhs.updatedAt > rhs.updatedAt
+            }
+            return lhs.createdAt > rhs.createdAt
         }
     }
     

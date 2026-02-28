@@ -147,6 +147,9 @@
 "highlight.list.empty" = "ハイライトやノートはまだありません";
 "highlight.list.edit_note" = "ノートを編集";
 "highlight.list.unknown_chapter" = "不明な章";
+"settings.highlight_sort.title" = "ハイライトの並び順";
+"settings.highlight_sort.by_chapter" = "章順";
+"settings.highlight_sort.by_modified_time" = "更新日時順";
 "reader.page_turn.reached_start" = "この章の先頭です";
 "reader.page_turn.reached_end" = "この章の末尾です";
 
