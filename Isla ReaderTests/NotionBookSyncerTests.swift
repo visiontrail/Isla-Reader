@@ -115,6 +115,38 @@ struct NotionBookSyncerTests {
         #expect(createdProperties[NotionLibrarySchema.nameProperty] != nil)
         #expect(createdProperties[NotionLibrarySchema.authorProperty] != nil)
     }
+
+    @Test
+    func readingProgressRoundsToTwoPercentDecimalsWhenSyncing() async throws {
+        let mockClient = MockNotionBookSyncAPI(
+            createdPageID: "page_created_3"
+        )
+        let mappingStore = InMemoryBookMappingStore()
+        let syncer = NotionBookSyncer(
+            notionClient: mockClient,
+            mappingStore: mappingStore,
+            databaseIDProvider: { "db_test_4" }
+        )
+
+        let book = BookInfo(
+            id: "book_4",
+            title: "Clean Code",
+            author: "Robert C. Martin",
+            readingProgressPercentage: 0.421256
+        )
+        _ = try await syncer.sync(book: book)
+
+        let createdProperties = await mockClient.lastCreatedProperties()
+        let progress = try #require(createdProperties[NotionLibrarySchema.readingProgressProperty]?.objectValue)
+        let numberValue = try #require(progress["number"])
+
+        switch numberValue {
+        case .number(let value):
+            #expect(abs(value - 0.4213) < 0.000_000_1)
+        default:
+            Issue.record("Reading Progress should be stored as number")
+        }
+    }
 }
 
 private final class InMemoryBookMappingStore: BookMappingStoring {

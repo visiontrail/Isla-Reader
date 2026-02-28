@@ -1116,10 +1116,6 @@ struct HighlightListSheet: View {
             }
             
             HStack(spacing: 12) {
-                Label(chapterLabel(for: highlight), systemImage: "text.book.closed")
-                    .lineLimit(1)
-                Label(pageLabel(for: highlight), systemImage: "rectangle.and.pencil.and.ellipsis")
-                    .lineLimit(1)
                 Spacer(minLength: 8)
                 inlineNoteActionButton(for: highlight)
             }

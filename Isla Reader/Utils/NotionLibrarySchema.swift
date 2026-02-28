@@ -15,6 +15,8 @@ enum NotionLibrarySchema {
     private static let readingStatusReading = "Reading"
     private static let readingStatusFinished = "Finished"
     private static let readingStatusPaused = "Paused"
+    // Notion percent format displays value * 100, so keep 4 digits here for 2 visible decimals.
+    private static let readingProgressStorageDecimalPlaces = 4
 
     static var databaseProperties: Object {
         var properties: Object = [
@@ -89,6 +91,8 @@ enum NotionLibrarySchema {
         guard let progressPercentage, progressPercentage.isFinite else {
             return 0
         }
-        return min(max(progressPercentage, 0), 1)
+        let clamped = min(max(progressPercentage, 0), 1)
+        let scale = pow(10.0, Double(readingProgressStorageDecimalPlaces))
+        return (clamped * scale).rounded() / scale
     }
 }
