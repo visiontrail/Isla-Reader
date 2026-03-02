@@ -8,6 +8,7 @@
 import SwiftUI
 import CoreData
 import UniformTypeIdentifiers
+import UIKit
 
 // Filter type enum supporting both reading status and favorites
 enum LibraryFilterType: Equatable {
@@ -960,7 +961,22 @@ struct HighlightListSheet: View {
     @FetchRequest private var highlights: FetchedResults<Highlight>
     @State private var editingHighlight: Highlight?
     @State private var noteDraft = ""
-    @State private var showingNoteSaveError = false
+    @State private var activeAlert: HighlightListAlert?
+    @State private var sharePreviewPayload: HighlightSharePreviewPayload?
+    @State private var shareFileURLToCleanup: URL?
+    @State private var generatingShareHighlightID: UUID?
+
+    private struct HighlightListAlert: Identifiable {
+        let id = UUID()
+        let title: String
+        let message: String?
+    }
+
+    private struct HighlightSharePreviewPayload: Identifiable {
+        let id = UUID()
+        let image: UIImage
+        let fileURL: URL
+    }
     
     init(book: Book, onSelect: ((BookmarkLocation) -> Void)? = nil) {
         self.book = book
@@ -1001,8 +1017,15 @@ struct HighlightListSheet: View {
         .sheet(item: $editingHighlight) { highlight in
             noteEditorSheet(for: highlight)
         }
-        .alert(NSLocalizedString("reader.highlight.save_failed", comment: ""), isPresented: $showingNoteSaveError) {
-            Button(NSLocalizedString("common.confirm", comment: "")) { }
+        .sheet(item: $sharePreviewPayload, onDismiss: handleSharePreviewDismiss) { payload in
+            HighlightSharePreviewSheet(image: payload.image, fileURL: payload.fileURL)
+        }
+        .alert(item: $activeAlert) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: alert.message.map(Text.init),
+                dismissButton: .default(Text(NSLocalizedString("common.confirm", comment: "")))
+            )
         }
         .onAppear {
             DebugLogger.info("HighlightListSheet: 显示书籍高亮/笔记列表 - \(book.displayTitle)")
@@ -1119,7 +1142,7 @@ struct HighlightListSheet: View {
             
             HStack(spacing: 12) {
                 Spacer(minLength: 8)
-                inlineNoteActionButton(for: highlight)
+                inlineActionButtons(for: highlight)
             }
             .font(.caption)
             .foregroundColor(.secondary)
@@ -1153,28 +1176,100 @@ struct HighlightListSheet: View {
     }
 
     @ViewBuilder
-    private func inlineNoteActionButton(for highlight: Highlight) -> some View {
+    private func inlineActionButtons(for highlight: Highlight) -> some View {
         ViewThatFits(in: .horizontal) {
-            Button(action: { openNoteEditor(for: highlight) }) {
+            HStack(spacing: 8) {
+                noteActionButton(for: highlight, compact: false)
+                shareActionButton(for: highlight, compact: false)
+            }
+
+            HStack(spacing: 8) {
+                noteActionButton(for: highlight, compact: true)
+                shareActionButton(for: highlight, compact: true)
+            }
+        }
+    }
+
+    private func noteActionButton(for highlight: Highlight, compact: Bool) -> some View {
+        Button(action: { openNoteEditor(for: highlight) }) {
+            if compact {
+                Image(systemName: "square.and.pencil")
+            } else {
                 Label(noteActionTitle(for: highlight), systemImage: "square.and.pencil")
                     .labelStyle(.titleAndIcon)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .fixedSize(horizontal: true, vertical: false)
-
-            Button(action: { openNoteEditor(for: highlight) }) {
-                Image(systemName: "square.and.pencil")
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .fixedSize(horizontal: true, vertical: false)
         }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func shareActionButton(for highlight: Highlight, compact: Bool) -> some View {
+        Button(action: { generateSharePreview(for: highlight) }) {
+            if isGeneratingShare(for: highlight) {
+                ProgressView()
+            } else if compact {
+                Image(systemName: "square.and.arrow.up")
+            } else {
+                Label(NSLocalizedString("highlight.list.share_note", comment: ""), systemImage: "square.and.arrow.up")
+                    .labelStyle(.titleAndIcon)
+            }
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .fixedSize(horizontal: true, vertical: false)
+        .disabled(generatingShareHighlightID != nil)
     }
 
     private func openNoteEditor(for highlight: Highlight) {
         noteDraft = highlight.note ?? ""
         editingHighlight = highlight
+    }
+
+    private func generateSharePreview(for highlight: Highlight) {
+        let payload = HighlightShareCardPayload.make(
+            highlightText: highlight.displayText,
+            noteText: noteText(for: highlight),
+            bookTitle: book.displayTitle,
+            chapterTitle: highlight.chapter,
+            chapterFallback: NSLocalizedString("highlight.list.unknown_chapter", comment: ""),
+            footerText: NSLocalizedString("highlight.share.footer", comment: "")
+        )
+        let highlightID = highlight.id
+        generatingShareHighlightID = highlightID
+        DebugLogger.info("HighlightListSheet: 开始生成分享图 - \(book.displayTitle)")
+
+        Task {
+            do {
+                let fileURL = try await HighlightShareCardRenderer.renderPNG(payload: payload)
+                guard let image = UIImage(contentsOfFile: fileURL.path) else {
+                    try? FileManager.default.removeItem(at: fileURL)
+                    throw HighlightShareError.renderFailed
+                }
+                await MainActor.run {
+                    generatingShareHighlightID = nil
+                    if let staleURL = shareFileURLToCleanup {
+                        cleanupShareFile(at: staleURL)
+                    }
+                    shareFileURLToCleanup = fileURL
+                    sharePreviewPayload = HighlightSharePreviewPayload(image: image, fileURL: fileURL)
+                    DebugLogger.info("HighlightListSheet: 分享图生成成功 - \(book.displayTitle)")
+                }
+            } catch {
+                await MainActor.run {
+                    generatingShareHighlightID = nil
+                    activeAlert = HighlightListAlert(
+                        title: NSLocalizedString("highlight.share.generate_failed.title", comment: ""),
+                        message: NSLocalizedString("highlight.share.generate_failed.message", comment: "")
+                    )
+                }
+                DebugLogger.error("HighlightListSheet: 分享图生成失败", error: error)
+            }
+        }
+    }
+
+    private func isGeneratingShare(for highlight: Highlight) -> Bool {
+        generatingShareHighlightID == highlight.id
     }
 
     private func openHighlightLocation(for highlight: Highlight) {
@@ -1205,7 +1300,26 @@ struct HighlightListSheet: View {
             editingHighlight = nil
         } catch {
             DebugLogger.error("HighlightListSheet: 笔记保存失败", error: error)
-            showingNoteSaveError = true
+            activeAlert = HighlightListAlert(
+                title: NSLocalizedString("reader.highlight.save_failed", comment: ""),
+                message: nil
+            )
+        }
+    }
+
+    private func handleSharePreviewDismiss() {
+        guard let fileURL = shareFileURLToCleanup else { return }
+        cleanupShareFile(at: fileURL)
+        shareFileURLToCleanup = nil
+    }
+
+    private func cleanupShareFile(at fileURL: URL) {
+        do {
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                try FileManager.default.removeItem(at: fileURL)
+            }
+        } catch {
+            DebugLogger.error("HighlightListSheet: 清理分享临时文件失败", error: error)
         }
     }
 

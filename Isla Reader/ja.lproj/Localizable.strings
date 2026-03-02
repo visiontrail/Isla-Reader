@@ -147,7 +147,13 @@
 "highlight.list.title" = "ハイライトとノート";
 "highlight.list.empty" = "ハイライトやノートはまだありません";
 "highlight.list.edit_note" = "ノートを編集";
+"highlight.list.share_note" = "ノートを共有";
 "highlight.list.unknown_chapter" = "不明な章";
+"highlight.share.preview_title" = "共有プレビュー";
+"highlight.share.image_button" = "画像を共有";
+"highlight.share.generate_failed.title" = "共有に失敗しました";
+"highlight.share.generate_failed.message" = "共有画像を生成できませんでした。しばらくしてから再試行してください。";
+"highlight.share.footer" = "LanRead から共有";
 "settings.highlight_sort.title" = "ハイライトの並び順";
 "settings.highlight_sort.by_chapter" = "章順";
 "settings.highlight_sort.by_modified_time" = "更新日時順";

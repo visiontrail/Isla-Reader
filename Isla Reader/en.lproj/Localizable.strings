@@ -147,7 +147,13 @@
 "highlight.list.title" = "Highlights & Notes";
 "highlight.list.empty" = "No highlights or notes yet";
 "highlight.list.edit_note" = "Edit Note";
+"highlight.list.share_note" = "Share Note";
 "highlight.list.unknown_chapter" = "Unknown chapter";
+"highlight.share.preview_title" = "Share Preview";
+"highlight.share.image_button" = "Share Image";
+"highlight.share.generate_failed.title" = "Share Failed";
+"highlight.share.generate_failed.message" = "Failed to generate share image. Please try again.";
+"highlight.share.footer" = "Shared from LanRead";
 "settings.highlight_sort.title" = "Highlights Sort";
 "settings.highlight_sort.by_chapter" = "By Chapter";
 "settings.highlight_sort.by_modified_time" = "By Modified Time";
