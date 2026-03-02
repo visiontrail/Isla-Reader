@@ -289,11 +289,13 @@ struct LibraryView: View {
                 }
             } message: {
                 if let pending = pendingLibraryRemoval {
+                    let baseMessage = String(
+                        format: NSLocalizedString("library.remove.confirm.message", comment: ""),
+                        pending.title
+                    )
+                    let notionNote = NSLocalizedString("library.remove.confirm.notion.note", comment: "")
                     Text(
-                        String(
-                            format: NSLocalizedString("library.remove.confirm.message", comment: ""),
-                            pending.title
-                        )
+                        "\(baseMessage)\n\n\(notionNote)"
                     )
                 }
             }

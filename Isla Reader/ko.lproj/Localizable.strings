@@ -98,7 +98,8 @@
 "library.favorite.title" = "즐겨찾기";
 "library.remove.action" = "서가에서 제거";
 "library.remove.confirm.title" = "제거 확인";
-"library.remove.confirm.message" = "\"%@\"을(를) 서가에서 제거하시겠어요? 이 책의 로컬 파일, 읽기 진행, 북마크, 메모가 삭제됩니다.";
+"library.remove.confirm.message" = "\"%@\"을(를) 서가에서 제거할까요? 로컬 파일과 로컬 읽기 데이터(진행도, 북마크, 메모)가 삭제됩니다.";
+"library.remove.confirm.notion.note" = "Notion 데이터는 삭제되지 않습니다. 이 책을 다시 추가하면 새 레코드가 생성됩니다.";
 "library.remove.confirm.action" = "제거";
 "library.remove.failure.title" = "제거 실패";
 "library.remove.failure.not_found" = "제거할 책을 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.";

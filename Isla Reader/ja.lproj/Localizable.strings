@@ -98,7 +98,8 @@
 "library.favorite.title" = "お気に入り";
 "library.remove.action" = "ライブラリから削除";
 "library.remove.confirm.title" = "削除を確認";
-"library.remove.confirm.message" = "「%@」をライブラリから削除しますか？この本のローカルファイル、読書進捗、ブックマーク、メモが削除されます。";
+"library.remove.confirm.message" = "「%@」をライブラリから削除しますか？ローカルファイルとローカル読書データ（進捗・ブックマーク・メモ）が削除されます。";
+"library.remove.confirm.notion.note" = "Notion のデータは削除されません。再追加すると新しいレコードが作成されます。";
 "library.remove.confirm.action" = "削除";
 "library.remove.failure.title" = "削除に失敗しました";
 "library.remove.failure.not_found" = "削除対象の本が見つかりません。更新してから再試行してください。";

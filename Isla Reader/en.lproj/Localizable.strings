@@ -98,7 +98,8 @@
 "library.favorite.title" = "Favorites";
 "library.remove.action" = "Remove from Library";
 "library.remove.confirm.title" = "Remove Book";
-"library.remove.confirm.message" = "Remove \"%@\" from your library? This deletes the local file, reading progress, bookmarks, and notes for this book.";
+"library.remove.confirm.message" = "Remove \"%@\" from your library? This deletes local files and local reading data (progress, bookmarks, notes).";
+"library.remove.confirm.notion.note" = "Notion data is not deleted. Re-adding this book creates a new record.";
 "library.remove.confirm.action" = "Remove";
 "library.remove.failure.title" = "Remove Failed";
 "library.remove.failure.not_found" = "The selected book was not found. Please refresh and try again.";
