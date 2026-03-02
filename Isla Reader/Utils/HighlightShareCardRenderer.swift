@@ -156,9 +156,13 @@ private struct HighlightShareCardView: View {
 
                 if let noteText = payload.noteText {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text(noteText)
-                            .font(.system(size: 36, weight: .regular, design: .rounded))
-                            .foregroundColor(Color(red: 0.24, green: 0.29, blue: 0.36))
+                        Text(
+                            MarkdownRenderer.render(
+                                noteText,
+                                textColor: Color(red: 0.24, green: 0.29, blue: 0.36),
+                                typography: .shareCard
+                            )
+                        )
                             .lineSpacing(8)
                             .lineLimit(mode.noteLineLimit)
                             .multilineTextAlignment(.leading)
