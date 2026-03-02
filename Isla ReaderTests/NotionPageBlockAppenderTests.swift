@@ -71,16 +71,90 @@ struct NotionPageBlockAppenderTests {
         let appendCalls = await api.recordedAppendCalls()
         #expect(appendCalls.count == 1)
         #expect(appendCalls.first?.blockID == "page_abc")
-        #expect(appendCalls.first?.children.count == 6)
+        #expect(appendCalls.first?.children.count == 8)
 
         let types = appendCalls.first?.children.compactMap { $0["type"]?.stringValue } ?? []
-        #expect(types == ["heading_1", "divider", "quote", "callout", "paragraph", "quote"])
+        #expect(types == ["heading_1", "divider", "heading_2", "quote", "callout", "paragraph", "heading_2", "quote"])
+
+        let dateHeadings = appendCalls.first?.children
+            .filter { $0["type"]?.stringValue == "heading_2" }
+            .compactMap { block in
+                block["heading_2"]?.objectValue?["rich_text"]?.arrayValue?.first?.objectValue?["text"]?.objectValue?["content"]?.stringValue
+            } ?? []
+        #expect(dateHeadings.count == 2)
+        #expect(dateHeadings.allSatisfy { !$0.isEmpty })
 
         let quoteBlocks = appendCalls.first?.children.filter { $0["type"]?.stringValue == "quote" } ?? []
         let quoteTexts = quoteBlocks.compactMap { block in
             block["quote"]?.objectValue?["rich_text"]?.arrayValue?.first?.objectValue?["text"]?.objectValue?["content"]?.stringValue
         }
         #expect(quoteTexts == ["First highlight", "Second highlight"])
+    }
+
+    @Test
+    func replaceHighlightsAndNotesGroupsByModifiedDateWithHeading2WhenSortModeIsModifiedTime() async throws {
+        let api = MockNotionPageBlockAppendAPI()
+        let appender = NotionPageBlockAppender(
+            notionClient: api,
+            highlightSortModeProvider: { .modifiedTime }
+        )
+
+        let snapshots = [
+            NotionHighlightSnapshot(
+                highlightText: "Today highlight A",
+                noteText: "Today note",
+                chapter: "Chapter 3",
+                createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_200),
+                readingLocation: nil,
+                highlightDate: Date(timeIntervalSince1970: 1_700_000_000),
+                noteDate: Date(timeIntervalSince1970: 1_700_000_200)
+            ),
+            NotionHighlightSnapshot(
+                highlightText: "Today highlight B",
+                noteText: nil,
+                chapter: "Chapter 4",
+                createdAt: Date(timeIntervalSince1970: 1_700_000_300),
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_350),
+                readingLocation: nil,
+                highlightDate: Date(timeIntervalSince1970: 1_700_000_300),
+                noteDate: nil
+            ),
+            NotionHighlightSnapshot(
+                highlightText: "Yesterday highlight",
+                noteText: nil,
+                chapter: "Chapter 2",
+                createdAt: Date(timeIntervalSince1970: 1_699_880_000),
+                updatedAt: Date(timeIntervalSince1970: 1_699_880_100),
+                readingLocation: nil,
+                highlightDate: Date(timeIntervalSince1970: 1_699_880_000),
+                noteDate: nil
+            )
+        ]
+
+        try await appender.replaceHighlightsAndNotes(snapshots, to: "page_modified_grouped")
+
+        let appendCalls = await api.recordedAppendCalls()
+        #expect(appendCalls.count == 1)
+
+        let children = appendCalls.first?.children ?? []
+        let types = children.compactMap { $0["type"]?.stringValue }
+        #expect(types == ["heading_1", "divider", "heading_2", "quote", "callout", "paragraph", "quote", "paragraph", "heading_2", "quote"])
+
+        let headings = children
+            .filter { $0["type"]?.stringValue == "heading_2" }
+            .compactMap { block in
+                block["heading_2"]?.objectValue?["rich_text"]?.arrayValue?.first?.objectValue?["text"]?.objectValue?["content"]?.stringValue
+            }
+        #expect(headings.count == 2)
+        #expect(headings[0] != headings[1])
+
+        let quoteTexts = children
+            .filter { $0["type"]?.stringValue == "quote" }
+            .compactMap { block in
+                block["quote"]?.objectValue?["rich_text"]?.arrayValue?.first?.objectValue?["text"]?.objectValue?["content"]?.stringValue
+            }
+        #expect(quoteTexts == ["Today highlight A", "Today highlight B", "Yesterday highlight"])
     }
 
     @Test

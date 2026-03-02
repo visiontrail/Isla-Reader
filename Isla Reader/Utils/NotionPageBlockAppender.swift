@@ -168,7 +168,7 @@ actor NotionPageBlockAppender {
 
         switch highlightSortModeProvider() {
         case .modifiedTime:
-            appendFlatSnapshots(snapshots, to: &blocks)
+            appendModifiedTimeGroupedSnapshots(snapshots, to: &blocks)
         case .chapter:
             appendChapterGroupedSnapshots(snapshots, to: &blocks)
         }
@@ -176,11 +176,31 @@ actor NotionPageBlockAppender {
         return blocks
     }
 
-    private func appendFlatSnapshots(_ snapshots: [NotionHighlightSnapshot], to blocks: inout [Block]) {
-        for (index, snapshot) in snapshots.enumerated() {
-            appendSnapshot(snapshot, to: &blocks)
+    private func appendModifiedTimeGroupedSnapshots(_ snapshots: [NotionHighlightSnapshot], to blocks: inout [Block]) {
+        guard !snapshots.isEmpty else { return }
 
-            if index < snapshots.count - 1 {
+        var previousGrouping: ModifiedTimeGrouping?
+
+        for (index, snapshot) in snapshots.enumerated() {
+            let grouping = modifiedTimeGrouping(for: snapshot)
+            let startsNewDateSection = grouping != previousGrouping
+
+            if startsNewDateSection {
+                if previousGrouping != nil {
+                    blocks.append(Self.spacerBlock())
+                }
+                blocks.append(Self.subheadingBlock(content: grouping.title))
+            }
+
+            appendSnapshot(snapshot, to: &blocks)
+            previousGrouping = grouping
+
+            guard index < snapshots.count - 1 else {
+                continue
+            }
+
+            let nextGrouping = modifiedTimeGrouping(for: snapshots[index + 1])
+            if nextGrouping == grouping {
                 blocks.append(Self.spacerBlock())
             }
         }
@@ -303,7 +323,18 @@ actor NotionPageBlockAppender {
         return ChapterGrouping(title: title)
     }
 
+    private func modifiedTimeGrouping(for snapshot: NotionHighlightSnapshot) -> ModifiedTimeGrouping {
+        let dayStart = Calendar.current.startOfDay(for: snapshot.updatedAt)
+        let title = DateFormatter.localizedString(from: dayStart, dateStyle: .medium, timeStyle: .none)
+        return ModifiedTimeGrouping(dayStart: dayStart, title: title)
+    }
+
     private struct ChapterGrouping: Equatable {
+        let title: String
+    }
+
+    private struct ModifiedTimeGrouping: Equatable {
+        let dayStart: Date
         let title: String
     }
 
