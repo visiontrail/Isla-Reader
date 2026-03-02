@@ -20,7 +20,8 @@ scripts/
 │   ├── run.sh            # 运行脚本（带实时日志输出）
 │   ├── dev.sh            # 一键开发（编译+运行）⭐ 最常用
 │   ├── simulator.sh      # 模拟器管理工具
-│   └── test-scripts.sh   # 环境测试脚本
+│   ├── test-scripts.sh   # 环境测试脚本
+│   └── preflight-app-review.sh # App Store 提审前检查
 │
 └── 📚 文档（.md）
     ├── INDEX.md          # 本文件（快速索引）
@@ -371,4 +372,3 @@ Happy Coding! 🚀📱✨
 **创建时间：** 2025-10-21  
 **项目：** LanRead  
 **作者：** AI Assistant
-

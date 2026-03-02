@@ -86,6 +86,30 @@ xcrun simctl list devices available | grep iPhone
 
 ---
 
+### 4. `preflight-app-review.sh` - 提审前检查脚本
+在提交 App Store Review 前执行静态合规检查，可选串联完整测试。
+
+**使用方法：**
+```bash
+# 快速静态检查（默认）
+./scripts/preflight-app-review.sh
+
+# 完整检查（包含测试脚本 + xcodebuild test）
+./scripts/preflight-app-review.sh --full
+```
+
+**覆盖检查点：**
+- ✅ App Review 信息入口（支持与隐私链接）
+- ✅ 隐私/ATT 与广告 SDK 组合检查
+- ✅ IAP/Restore 标记检查
+- ✅ 第三方登录与 Sign in with Apple 触发检查
+- ✅ 账号删除条件检查（按功能触发）
+- ✅ UGC 安全机制条件检查（按功能触发）
+- ✅ Export Compliance 提醒
+- ✅ Release 配置占位符检查
+
+---
+
 ## 🚀 快速开始
 
 ### 第一次使用
@@ -455,4 +479,3 @@ chmod +x scripts/watch.sh
 
 **最后更新**: 2025-10-21  
 **版本**: 1.0.0
-
