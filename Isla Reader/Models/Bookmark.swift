@@ -35,12 +35,20 @@ struct BookmarkLocation: Hashable {
     let pageIndex: Int
     let chapterTitle: String?
     let textOffset: Int?
+    let tocFragment: String?
 
-    init(chapterIndex: Int, pageIndex: Int, chapterTitle: String?, textOffset: Int? = nil) {
+    init(
+        chapterIndex: Int,
+        pageIndex: Int,
+        chapterTitle: String?,
+        textOffset: Int? = nil,
+        tocFragment: String? = nil
+    ) {
         self.chapterIndex = chapterIndex
         self.pageIndex = pageIndex
         self.chapterTitle = chapterTitle
         self.textOffset = textOffset
+        self.tocFragment = tocFragment
     }
 }
 

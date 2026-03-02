@@ -302,10 +302,14 @@ struct SkimmingModeView: View {
     private func openReader(at index: Int) {
         guard chapters.indices.contains(index) else { return }
         let chapter = chapters[index]
+        DebugLogger.info(
+            "SkimmingModeView: 跳转全文阅读，skimmingIndex=\(index), readerChapterIndex=\(chapter.readerChapterIndex), fragment=\(chapter.sourceFragment ?? "nil")"
+        )
         let location = BookmarkLocation(
-            chapterIndex: index,
+            chapterIndex: chapter.readerChapterIndex,
             pageIndex: 0,
-            chapterTitle: chapter.title
+            chapterTitle: chapter.title,
+            tocFragment: chapter.sourceFragment
         )
         navigationPath.append(NavigationTarget.startFromChapter(location))
     }
@@ -492,7 +496,7 @@ struct SkimmingModeView: View {
                 DebugLogger.info("SkimmingModeView: 已在章节切换前展示奖励插屏广告")
                 updateInterstitialReadinessIfNeeded(for: currentChapterIndex)
             case .skippedNotReady:
-                showAdvanceNoticeIfEnabled("skimming.ad_notice.skipped_not_ready")
+                DebugLogger.info("SkimmingModeView: 广告未就绪，已跳过提示弹窗")
             case .skippedNoTopViewController:
                 DebugLogger.warning("SkimmingModeView: 章节切换前未找到可展示广告的控制器，已跳过")
             }

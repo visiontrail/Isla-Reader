@@ -12,8 +12,34 @@ struct SkimmingChapterMetadata: Identifiable, Hashable {
     let title: String
     let content: String
     let order: Int
+    let sourceChapterIndex: Int
+    let sourceFragment: String?
     
     var id: Int { order }
+
+    var readerChapterIndex: Int { max(sourceChapterIndex, 0) }
+
+    init(
+        title: String,
+        content: String,
+        order: Int,
+        sourceChapterIndex: Int? = nil,
+        sourceFragment: String? = nil
+    ) {
+        self.title = title
+        self.content = content
+        self.order = order
+        self.sourceChapterIndex = max(sourceChapterIndex ?? order, 0)
+
+        let trimmedFragment = sourceFragment?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let trimmedFragment, !trimmedFragment.isEmpty else {
+            self.sourceFragment = nil
+            return
+        }
+        self.sourceFragment = trimmedFragment.hasPrefix("#")
+            ? String(trimmedFragment.dropFirst())
+            : trimmedFragment
+    }
 }
 
 struct SkimmingStructurePoint: Codable, Hashable, Identifiable {
@@ -148,7 +174,12 @@ final class SkimmingModeService {
                   let order = Int(orderString) else {
                 return nil
             }
-            return SkimmingChapterMetadata(title: title, content: content, order: order)
+            return SkimmingChapterMetadata(
+                title: title,
+                content: content,
+                order: order,
+                sourceChapterIndex: order
+            )
         }
         
         return chapters.sorted { $0.order < $1.order }
@@ -171,7 +202,12 @@ final class SkimmingModeService {
         let tocItems = metadata.tocItems
         guard !tocItems.isEmpty else {
             return parsedChapters.map {
-                SkimmingChapterMetadata(title: $0.title, content: $0.content, order: $0.order)
+                SkimmingChapterMetadata(
+                    title: $0.title,
+                    content: $0.content,
+                    order: $0.order,
+                    sourceChapterIndex: $0.order
+                )
             }
         }
         
@@ -195,7 +231,9 @@ final class SkimmingModeService {
                 SkimmingChapterMetadata(
                     title: item.title,
                     content: safeContent,
-                    order: index
+                    order: index,
+                    sourceChapterIndex: startIndex,
+                    sourceFragment: item.fragment
                 )
             )
         }

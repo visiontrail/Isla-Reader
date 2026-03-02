@@ -58,6 +58,25 @@ struct TOCEntry {
 }
 
 class EPubParser {
+    private struct ParsedFileFingerprint: Hashable {
+        let path: String
+        let size: Int64
+        let modifiedAt: TimeInterval
+    }
+
+    private struct CachedMetadataEntry {
+        let metadata: EPubMetadata
+    }
+
+    private static let cacheLock = NSLock()
+    private static var metadataCache: [ParsedFileFingerprint: CachedMetadataEntry] = [:]
+    private static var metadataCacheOrder: [ParsedFileFingerprint] = []
+    private static let metadataCacheLimit = 2
+
+    private static let verboseTOCEntryLoggingEnabled =
+        ProcessInfo.processInfo.environment["LANREAD_VERBOSE_TOC_LOGS"] == "1"
+    private static let tocEntryInitialDetailedCount = 3
+    private static let tocEntryProgressInterval = 50
     
     static func parseEPub(from url: URL) throws -> EPubMetadata {
         DebugLogger.info("EPubParser: 开始解析ePub文件")
@@ -77,13 +96,17 @@ class EPubParser {
             throw EPubParseError.fileNotFound
         }
         
-        // 获取文件属性
-        do {
-            let attributes = try fileManager.attributesOfItem(atPath: url.path)
-            let fileSize = attributes[.size] as? Int64 ?? 0
-            DebugLogger.info("EPubParser: 文件大小: \(fileSize) bytes")
-        } catch {
-            DebugLogger.warning("EPubParser: 无法获取文件属性: \(error.localizedDescription)")
+        let fileFingerprint = makeFileFingerprint(for: url, fileManager: fileManager)
+        if let fileFingerprint {
+            DebugLogger.info("EPubParser: 文件大小: \(fileFingerprint.size) bytes")
+            if let cachedMetadata = cachedMetadata(for: fileFingerprint) {
+                DebugLogger.info(
+                    "EPubParser: 命中内存缓存，章节=\(cachedMetadata.chapters.count), toc=\(cachedMetadata.tocItems.count)"
+                )
+                return cachedMetadata
+            }
+        } else {
+            DebugLogger.warning("EPubParser: 无法获取文件属性，将跳过解析缓存")
         }
         
         // 创建临时解压目录
@@ -159,7 +182,10 @@ class EPubParser {
                 totalPages: chapters.count * 10, // 粗略估计
                 resourcesBaseURL: nil // 图片已嵌入HTML，不需要baseURL
             )
-            
+
+            if let fileFingerprint {
+                storeMetadataInCache(metadata, for: fileFingerprint)
+            }
             DebugLogger.success("EPubParser: ePub解析完成")
             return metadata
             
@@ -573,7 +599,11 @@ class EPubParser {
                         
                         let order = entries.count
                         entries.append(TOCEntry(title: title, href: decodedHref, order: order, level: 0))
-                        DebugLogger.info("EPubParser: NCX条目[\(order + 1)] - \(title) -> \(decodedHref)")
+                        let position = order + 1
+                        maybeLogTOCEntry(
+                            "EPubParser: NCX条目[\(position)] - \(title) -> \(decodedHref)",
+                            position: position
+                        )
                     }
                 }
             }
@@ -629,7 +659,11 @@ class EPubParser {
                     
                     let order = entries.count
                     entries.append(TOCEntry(title: title, href: decodedHref, order: order, level: 0))
-                    DebugLogger.info("EPubParser: NAV条目[\(order + 1)] - \(title) -> \(decodedHref)")
+                    let position = order + 1
+                    maybeLogTOCEntry(
+                        "EPubParser: NAV条目[\(position)] - \(title) -> \(decodedHref)",
+                        position: position
+                    )
                 }
             }
         }
@@ -702,7 +736,10 @@ class EPubParser {
                     } else {
                         let entry = TOCEntry(title: rawTitle, href: decodedHref, order: context.startIndex, level: context.level)
                         entries.insert(entry, at: context.startIndex)
-                        DebugLogger.info("EPubParser: NCX条目(XML)插入[\(context.startIndex + 1)] - \(rawTitle) -> \(decodedHref), level=\(context.level)")
+                        EPubParser.maybeLogTOCEntry(
+                            "EPubParser: NCX条目(XML)插入[\(context.startIndex + 1)] - \(rawTitle) -> \(decodedHref), level=\(context.level)",
+                            position: entries.count
+                        )
                     }
                     
                     currentText = ""
@@ -791,7 +828,10 @@ class EPubParser {
                         let level = max(listDepth - 1, 0)
                         let order = entries.count
                         entries.append(TOCEntry(title: title, href: decodedHref, order: order, level: level))
-                        DebugLogger.info("EPubParser: NAV条目(XML)[\(order + 1)] - \(title) -> \(decodedHref), level=\(level)")
+                        EPubParser.maybeLogTOCEntry(
+                            "EPubParser: NAV条目(XML)[\(order + 1)] - \(title) -> \(decodedHref), level=\(level)",
+                            position: entries.count
+                        )
                     }
                 } else if name == "ol" || name == "ul" {
                     listDepth = max(listDepth - 1, 0)
@@ -1230,6 +1270,51 @@ class EPubParser {
         }
         
         return nil
+    }
+
+    private static func makeFileFingerprint(for url: URL, fileManager: FileManager) -> ParsedFileFingerprint? {
+        guard let attributes = try? fileManager.attributesOfItem(atPath: url.path) else {
+            return nil
+        }
+        let size = (attributes[.size] as? NSNumber)?.int64Value ?? (attributes[.size] as? Int64 ?? 0)
+        let modifiedAt = (attributes[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+        return ParsedFileFingerprint(path: url.path, size: size, modifiedAt: modifiedAt)
+    }
+
+    private static func cachedMetadata(for fingerprint: ParsedFileFingerprint) -> EPubMetadata? {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        return metadataCache[fingerprint]?.metadata
+    }
+
+    private static func storeMetadataInCache(_ metadata: EPubMetadata, for fingerprint: ParsedFileFingerprint) {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+
+        metadataCache[fingerprint] = CachedMetadataEntry(metadata: metadata)
+        metadataCacheOrder.removeAll { $0 == fingerprint }
+        metadataCacheOrder.append(fingerprint)
+
+        while metadataCacheOrder.count > metadataCacheLimit {
+            let staleFingerprint = metadataCacheOrder.removeFirst()
+            metadataCache.removeValue(forKey: staleFingerprint)
+        }
+    }
+
+    private static func maybeLogTOCEntry(_ message: String, position: Int) {
+        guard shouldLogTOCEntry(at: position) else { return }
+        DebugLogger.info(message)
+    }
+
+    private static func shouldLogTOCEntry(at position: Int) -> Bool {
+        guard position > 0 else { return false }
+        if verboseTOCEntryLoggingEnabled {
+            return true
+        }
+        if position <= tocEntryInitialDetailedCount {
+            return true
+        }
+        return position % tocEntryProgressInterval == 0
     }
 
 }

@@ -786,10 +786,24 @@ struct ReaderView: View {
         }
 
         let targetChapter = min(max(location.chapterIndex, 0), chapters.count - 1)
+        let targetFragment = normalizeTOCFragment(location.tocFragment)
         ensurePageArrays()
         currentChapterIndex = targetChapter
         setChapterPageIndex(targetChapter, max(0, location.pageIndex))
         DebugLogger.info("[HighlightNav] navigateTo: 设置 chapter=\(targetChapter), 初始page=\(location.pageIndex)")
+
+        currentTOCFragment = targetFragment
+        if let targetFragment {
+            tocNavigationToken += 1
+            pendingTOCNavigation = TOCNavigationRequest(
+                chapterIndex: targetChapter,
+                fragment: targetFragment,
+                token: tocNavigationToken
+            )
+            DebugLogger.info("ReaderView: navigateTo 设置 TOC fragment=\(targetFragment), token=\(tocNavigationToken)")
+        } else {
+            pendingTOCNavigation = nil
+        }
 
         if let textOffset = location.textOffset {
             highlightNavigationToken += 1
@@ -802,8 +816,6 @@ struct ReaderView: View {
         } else {
             DebugLogger.warning("[HighlightNav] navigateTo: textOffset 为 nil，仅使用 pageIndex=\(location.pageIndex) 回退定位")
         }
-
-        currentTOCFragment = nil
     }
 
     private func handleCopySelectedText() {
@@ -1414,10 +1426,24 @@ struct ReaderView: View {
         didApplyInitialLocation = true
         
         let targetChapter = min(max(location.chapterIndex, 0), chapters.count - 1)
+        let targetFragment = normalizeTOCFragment(location.tocFragment)
         ensurePageArrays()
         currentChapterIndex = targetChapter
         setChapterPageIndex(targetChapter, max(0, location.pageIndex))
         DebugLogger.info("ReaderView: 应用书签定位到章节 \(targetChapter + 1)，页码 \(safeChapterPageIndex(targetChapter) + 1)")
+
+        currentTOCFragment = targetFragment
+        if let targetFragment {
+            tocNavigationToken += 1
+            pendingTOCNavigation = TOCNavigationRequest(
+                chapterIndex: targetChapter,
+                fragment: targetFragment,
+                token: tocNavigationToken
+            )
+            DebugLogger.info("ReaderView: 应用初始 TOC fragment=\(targetFragment), token=\(tocNavigationToken)")
+        } else {
+            pendingTOCNavigation = nil
+        }
 
         if let textOffset = location.textOffset {
             highlightNavigationToken += 1
