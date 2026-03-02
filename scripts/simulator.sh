@@ -18,7 +18,7 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 PROJECT_NAME="LanRead"
-BUNDLE_ID="LeoGuo.Isla-Reader-Local"
+BUNDLE_ID="top.islareader.lanread"
 
 # 显示帮助信息
 show_help() {
@@ -312,4 +312,3 @@ case "${1:-help}" in
         exit 1
         ;;
 esac
-

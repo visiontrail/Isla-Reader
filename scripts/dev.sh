@@ -44,9 +44,6 @@ echo -e "${BLUE}📍 步骤 2/2: 启动模拟器并运行应用${NC}"
 echo ""
 
 # 传递模拟器名称参数（如果有）
-if [ -n "$1" ]; then
-    "$SCRIPT_DIR/run.sh" "$1"
-else
-    "$SCRIPT_DIR/run.sh"
-fi
-
+DEFAULT_SIMULATOR="iPhone 15 Pro"
+SIMULATOR_NAME="${1:-$DEFAULT_SIMULATOR}"
+"$SCRIPT_DIR/run.sh" "$SIMULATOR_NAME"

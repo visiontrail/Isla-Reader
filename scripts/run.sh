@@ -19,7 +19,6 @@ NC='\033[0m' # No Color
 
 # 项目配置
 PROJECT_NAME="LanRead"
-BUNDLE_ID="LeoGuo.Isla-Reader-Local"
 BUILD_DIR="./build"
 CONFIGURATION="Debug"
 DEFAULT_SIMULATOR="iPhone 16"
@@ -82,6 +81,24 @@ if [ ! -d "$APP_PATH" ]; then
 fi
 
 echo -e "${GREEN}✅ 找到应用: ${NC}$APP_PATH"
+echo ""
+
+# 从已编译应用中读取真实 Bundle ID，避免脚本硬编码导致启动失败
+APP_INFO_PLIST="$APP_PATH/Info.plist"
+if [ ! -f "$APP_INFO_PLIST" ]; then
+    echo -e "${RED}❌ 错误: 未找到应用 Info.plist${NC}"
+    echo -e "${YELLOW}路径: ${NC}$APP_INFO_PLIST"
+    exit 1
+fi
+
+BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_INFO_PLIST" 2>/dev/null || true)
+if [ -z "$BUNDLE_ID" ]; then
+    echo -e "${RED}❌ 错误: 无法从应用中读取 Bundle ID${NC}"
+    echo -e "${YELLOW}请检查: ${NC}$APP_INFO_PLIST"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Bundle ID: ${NC}$BUNDLE_ID"
 echo ""
 
 # 检查模拟器状态
