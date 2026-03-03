@@ -124,7 +124,18 @@ class BookImportService: ObservableObject {
             let readingProgress = ReadingProgress(context: context)
             readingProgress.id = UUID()
             readingProgress.book = book
-            readingProgress.currentPage = 1
+            readingProgress.currentPage = 0
+            let initialPosition: [String: Any] = [
+                "chapterIndex": 0,
+                "pageIndex": 0,
+                "totalPages": 1,
+                "globalPage": 1,
+                "bookTotalPages": max(metadata.totalPages, 1)
+            ]
+            if let positionData = try? JSONSerialization.data(withJSONObject: initialPosition),
+               let positionString = String(data: positionData, encoding: .utf8) {
+                readingProgress.currentPosition = positionString
+            }
             readingProgress.progressPercentage = 0.0
             readingProgress.lastReadAt = Date()
             readingProgress.totalReadingTime = 0

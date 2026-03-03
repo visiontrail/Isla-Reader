@@ -1585,70 +1585,77 @@ struct ImportBookView: View {
                 DebugLogger.error("没有选择任何文件")
                 return 
             }
-            
-            DebugLogger.info("选择的文件URL: \(url.absoluteString)")
-            DebugLogger.info("文件路径: \(url.path)")
-            DebugLogger.info("文件扩展名: \(url.pathExtension)")
-            
-            // 检查文件属性
-            do {
-                let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .isReadableKey, .contentTypeKey])
-                DebugLogger.info("文件大小: \(resourceValues.fileSize ?? 0) bytes")
-                DebugLogger.info("文件可读: \(resourceValues.isReadable ?? false)")
-                DebugLogger.info("文件类型: \(resourceValues.contentType?.identifier ?? "未知")")
-            } catch {
-                DebugLogger.error("获取文件属性失败: \(error.localizedDescription)")
-            }
-            
-            // 开始安全访问文件
-            DebugLogger.info("尝试开始安全访问文件")
-            guard url.startAccessingSecurityScopedResource() else {
-                DebugLogger.error("无法开始安全访问文件")
-                alertMessage = "无法访问选择的文件，请重试"
-                showingAlert = true
-                return
-            }
-            DebugLogger.success("成功开始安全访问文件")
-            
-            Task {
-                defer {
-                    // 确保停止安全访问
-                    DebugLogger.info("停止安全访问文件")
-                    url.stopAccessingSecurityScopedResource()
-                }
-                
-                do {
-                    DebugLogger.info("开始导入书籍")
-                    let book = try await importService.importBook(from: url, context: viewContext)
-                    DebugLogger.success("书籍导入成功: \(book.displayTitle)")
-                    
-                    await MainActor.run {
-                        importedBook = book
-                        // 先关闭导入界面
-                        DebugLogger.info("ImportBookView: 关闭导入界面")
-                        dismiss()
-                        // 延迟调用回调，确保sheet完全关闭
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            DebugLogger.info("ImportBookView: 调用 onBookImported 回调")
-                            onBookImported?(book)
-                        }
-                    }
-                } catch {
-                    DebugLogger.error("书籍导入失败: \(error.localizedDescription)")
-                    DebugLogger.error("错误详情: \(error)")
-                    
-                    await MainActor.run {
-                        alertMessage = error.localizedDescription
-                        showingAlert = true
-                    }
-                }
-            }
+            importBook(from: url, usesSecurityScopedResource: true)
             
         case .failure(let error):
             DebugLogger.error("文件选择失败: \(error.localizedDescription)")
             DebugLogger.error("错误详情: \(error)")
             alertMessage = "选择文件时出错：\(error.localizedDescription)"
             showingAlert = true
+        }
+    }
+
+    private func importBook(from url: URL, usesSecurityScopedResource: Bool) {
+        DebugLogger.info("选择的文件URL: \(url.absoluteString)")
+        DebugLogger.info("文件路径: \(url.path)")
+        DebugLogger.info("文件扩展名: \(url.pathExtension)")
+
+        // 检查文件属性
+        do {
+            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .isReadableKey, .contentTypeKey])
+            DebugLogger.info("文件大小: \(resourceValues.fileSize ?? 0) bytes")
+            DebugLogger.info("文件可读: \(resourceValues.isReadable ?? false)")
+            DebugLogger.info("文件类型: \(resourceValues.contentType?.identifier ?? "未知")")
+        } catch {
+            DebugLogger.error("获取文件属性失败: \(error.localizedDescription)")
+        }
+
+        var securityScopedAccessStarted = false
+        if usesSecurityScopedResource {
+            DebugLogger.info("尝试开始安全访问文件")
+            securityScopedAccessStarted = url.startAccessingSecurityScopedResource()
+            guard securityScopedAccessStarted else {
+                DebugLogger.error("无法开始安全访问文件")
+                alertMessage = "无法访问选择的文件，请重试"
+                showingAlert = true
+                return
+            }
+            DebugLogger.success("成功开始安全访问文件")
+        }
+
+        Task {
+            defer {
+                if securityScopedAccessStarted {
+                    DebugLogger.info("停止安全访问文件")
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            do {
+                DebugLogger.info("开始导入书籍")
+                let book = try await importService.importBook(from: url, context: viewContext)
+                DebugLogger.success("书籍导入成功: \(book.displayTitle)")
+
+                await MainActor.run {
+                    importedBook = book
+                    // 先关闭导入界面
+                    DebugLogger.info("ImportBookView: 关闭导入界面")
+                    dismiss()
+                    // 延迟调用回调，确保sheet完全关闭
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        DebugLogger.info("ImportBookView: 调用 onBookImported 回调")
+                        onBookImported?(book)
+                    }
+                }
+            } catch {
+                DebugLogger.error("书籍导入失败: \(error.localizedDescription)")
+                DebugLogger.error("错误详情: \(error)")
+
+                await MainActor.run {
+                    alertMessage = error.localizedDescription
+                    showingAlert = true
+                }
+            }
         }
     }
 }

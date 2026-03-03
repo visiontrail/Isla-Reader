@@ -66,10 +66,8 @@ struct ReaderView: View {
     @State private var deletingNoteOnly = false
     @State private var showingDeleteConfirmation = false
     @State private var hintMessage: String?
-    @State private var showingAISummary = false
     @State private var showingHighlightsList = false
     @State private var showingBookmarksList = false
-    @State private var isFirstOpen = true
     @State private var didApplyInitialLocation = false
     
     @State private var scrollOffset: CGFloat = 0
@@ -171,7 +169,6 @@ struct ReaderView: View {
         }
         .onAppear {
             loadBookContent()
-            checkFirstTimeOpen()
             startReadingSession()
             startReadingHeartbeat()
             syncLiveActivityReadingProgressIfNeeded(reason: "onAppear")
@@ -395,16 +392,6 @@ struct ReaderView: View {
                 clampCurrentPage(index)
             }
             
-            // AI Summary overlay for first chapter on first open
-            if showingAISummary && isFirstOpen && chapter.order == 0 {
-                VStack {
-                    AISummaryCard(book: book)
-                        .padding(.horizontal, horizontalPadding(for: geometry))
-                        .padding(.top, 60)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                    Spacer()
-                }
-            }
             // 滑动视觉反馈
             if isDragging {
                 slideVisualFeedback(geometry: geometry)
@@ -440,18 +427,6 @@ struct ReaderView: View {
         .ignoresSafeArea(edges: .bottom)
     }
     
-    private func horizontalPadding(for geometry: GeometryProxy) -> CGFloat {
-        let width = geometry.size.width
-        // Adaptive padding based on screen size for optimal reading width
-        if width > 1000 {
-            return width * 0.20 // Large iPad
-        } else if width > 700 {
-            return width * 0.15 // iPad
-        } else {
-            return max(appSettings.pageMargins, 24) // iPhone
-        }
-    }
-
     private func normalizeTOCFragment(_ fragment: String?) -> String? {
         guard let fragment else { return nil }
         let cleaned = fragment.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1460,21 +1435,34 @@ struct ReaderView: View {
     
     private func restoreReadingProgress() {
         guard let progress = book.readingProgress, !chapters.isEmpty else { return }
-        currentChapterIndex = min(Int(progress.currentPage), chapters.count - 1)
-        
+        ensurePageArrays()
+        var restoredFromPosition = false
+
         if let positionJSON = progress.currentPosition,
            let data = positionJSON.data(using: .utf8),
            let positionData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let savedChapterIndex = positionData["chapterIndex"] as? Int,
-           let savedPageIndex = positionData["pageIndex"] as? Int {
-            
-            ensurePageArrays()
-            
-            if savedChapterIndex >= 0 && savedChapterIndex < chapters.count {
+           let savedPageIndex = intValue(from: positionData["pageIndex"]) {
+
+            if let savedChapterIndex = intValue(from: positionData["chapterIndex"]),
+               savedChapterIndex >= 0 && savedChapterIndex < chapters.count {
                 currentChapterIndex = savedChapterIndex
                 setChapterPageIndex(savedChapterIndex, savedPageIndex)
             } else {
+                currentChapterIndex = min(max(Int(progress.currentPage), 0), chapters.count - 1)
                 setChapterPageIndex(currentChapterIndex, savedPageIndex)
+            }
+            restoredFromPosition = true
+        }
+
+        if !restoredFromPosition {
+            // Legacy imports once initialized currentPage as 1 with 0% progress.
+            let legacyChapterIndex = Int(progress.currentPage)
+            let shouldResetToStart = progress.progressPercentage <= 0.0001 && legacyChapterIndex > 0
+            let fallbackChapterIndex = shouldResetToStart ? 0 : legacyChapterIndex
+            currentChapterIndex = min(max(fallbackChapterIndex, 0), chapters.count - 1)
+            setChapterPageIndex(currentChapterIndex, 0)
+            if shouldResetToStart {
+                DebugLogger.info("ReaderView: 检测到旧版初始进度数据，已回退到第一章")
             }
         }
     }
@@ -1549,26 +1537,6 @@ struct ReaderView: View {
         }
     }
     
-    private func checkFirstTimeOpen() {
-        // 检查阅读进度，如果是新书或进度很少，则认为是首次打开
-        if let progress = book.readingProgress {
-            isFirstOpen = progress.progressPercentage < 0.05 // 小于5%认为是首次打开
-        } else {
-            isFirstOpen = true
-        }
-        
-        // 如果是首次打开，延迟显示AI摘要以获得更好的用户体验
-        if isFirstOpen {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                withAnimation(.easeInOut(duration: 0.5)) {
-                    showingAISummary = true
-                }
-            }
-        } else {
-            showingAISummary = false
-        }
-    }
-
     // MARK: - Pagination helpers
     private func ensurePageArrays() {
         let targetCount = max(chapters.count, 1)
@@ -1589,6 +1557,19 @@ struct ReaderView: View {
         guard copyCount > 0 else { return resized }
         resized.replaceSubrange(0..<copyCount, with: source.prefix(copyCount))
         return resized
+    }
+
+    private func intValue(from any: Any?) -> Int? {
+        if let value = any as? Int {
+            return value
+        }
+        if let number = any as? NSNumber {
+            return number.intValue
+        }
+        if let text = any as? String {
+            return Int(text)
+        }
+        return nil
     }
     
     private func safeChapterPageIndex(_ index: Int) -> Int {

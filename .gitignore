@@ -95,6 +95,7 @@ iOSInjectionProject/
 # Test files
 *.epub
 test.epub
+!Isla Reader/SampleBooks/LanRead_Getting_Started_Multilingual.epub
 
 # IDE
 .vscode/
