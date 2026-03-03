@@ -257,6 +257,29 @@ async def metrics_export(
     )
 
 
+@router.post("/admin/metrics/clear")
+async def clear_metrics(
+    user: str = Depends(require_dashboard_user),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    store = _store(settings)
+    try:
+        cleared = store.clear()
+    except Exception as exc:
+        logger.error("Failed to clear metrics requested by %s: %s", user, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to clear metrics",
+        ) from exc
+
+    logger.warning("Dashboard metrics cleared by %s (cleared=%s, file=%s)", user, cleared, store.path)
+    return {
+        "ok": True,
+        "cleared": cleared,
+        "retained": 0,
+    }
+
+
 DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -461,6 +484,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       border-color: var(--border);
       box-shadow: none;
     }
+    .btn.danger {
+      background: linear-gradient(120deg, #ff7f8e, #ff5f6d);
+      color: #ffffff;
+      border-color: rgba(255,255,255,0.18);
+    }
     .hidden { display: none; }
     .chips { display: flex; gap: 8px; flex-wrap: wrap; }
     .chip-button {
@@ -612,6 +640,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <div class="pill">Past 7 days</div>
           <button type="button" class="btn ghost" id="export-button">Export CSV</button>
+          <button type="button" class="btn danger" id="clear-button">Clear Metrics</button>
         </div>
       </div>
       <div class="glass card" style="overflow-x:auto;">
@@ -648,6 +677,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const loginError = document.getElementById('login-error');
     const sessionIndicator = document.getElementById('session-indicator');
     const exportButton = document.getElementById('export-button');
+    const clearButton = document.getElementById('clear-button');
     const granularityButtons = document.querySelectorAll('[data-granularity]');
     const timelineRange = document.getElementById('timeline-range');
     const rangeLabel = document.getElementById('range-label');
@@ -713,6 +743,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     if (exportButton) {
       exportButton.addEventListener('click', exportMetrics);
     }
+    if (clearButton) {
+      clearButton.addEventListener('click', clearMetrics);
+    }
 
     async function exportMetrics() {
       const res = await fetch('/admin/metrics/export', { credentials: 'include' });
@@ -734,6 +767,29 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+    }
+
+    async function clearMetrics() {
+      const accepted = window.confirm('确认清空所有 metrics 数据？该操作不可恢复。');
+      if (!accepted) return;
+
+      const res = await fetch('/admin/metrics/clear', {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        alert('清空失败，请检查登录状态后重试');
+        if (res.status === 401) {
+          sessionIndicator.textContent = 'Auth required';
+          dashboard.classList.add('hidden');
+          loginSection.classList.remove('hidden');
+        }
+        return;
+      }
+
+      await loadData();
+      alert('Metrics 数据已清空。');
     }
 
     function formatNumber(value) {

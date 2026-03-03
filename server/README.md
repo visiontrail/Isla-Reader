@@ -85,6 +85,7 @@ curl -k -X POST https://localhost:8443/v1/keys/ai \
 - `POST /v1/metrics` — 采集客户端上报的 AI/API 调用指标，需携带 `X-Metrics-Key`（默认与 `client_secret` 相同，可单独配置 `ISLA_METRICS_INGEST_TOKEN`）。请确保与 iOS 构建时的 `SECURE_SERVER_METRICS_TOKEN` 一致，否则会被 401 拒绝。
 - `GET /admin/metrics/ads` — 登录后返回最近 7 天广告加载成功/失败次数及失败原因统计，数据由客户端上报（`source=ads`）。
 - `GET /admin/metrics` — 登录后查看实时统计面板（`ISLA_DASHBOARD_USERNAME`/`ISLA_DASHBOARD_PASSWORD`），数据持久化在 `ISLA_METRICS_DATA_FILE`（默认 `data/metrics.jsonl`，保留数量由 `ISLA_METRICS_MAX_EVENTS` 控制）。
+- `POST /admin/metrics/clear` — 登录后清空所有已保留 metrics 事件（内存 + 持久化文件），适合发布前清理测试数据。
 
 > 说明：若访问 / 返回 404 属于正常现象（API-only 服务不一定提供根路径页面）。建议用 /health 做可用性检查。
 > 
@@ -420,7 +421,8 @@ cd server
 
 ## 维护脚本
 
-- `clear-metrics.sh`：清空统计数据文件（默认读取 `.env` 的 `ISLA_METRICS_DATA_FILE`，相对路径按 `app/` 目录解析）。若服务正在运行，执行后请重启以清除内存缓存。
+- `clear-metrics.sh`：直接清空统计数据文件（默认读取 `.env` 的 `ISLA_METRICS_DATA_FILE`，相对路径按 `app/` 目录解析）。若服务正在运行，执行后请重启以清除内存缓存。
+- Dashboard/API 清空：`POST /admin/metrics/clear` 会同时清理内存与文件，不需要重启服务，推荐用于发布前清理。
 
 示例：
 

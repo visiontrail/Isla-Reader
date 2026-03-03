@@ -131,6 +131,13 @@ class MetricsStore:
             len(self._events),
         )
 
+    def clear(self) -> int:
+        cleared = len(self._events)
+        self._events = []
+        self._persist()
+        self._logger.info("Cleared %s retained metrics events from %s", cleared, self.path)
+        return cleared
+
     def list_recent(self, limit: int = 30) -> List[MetricEvent]:
         return list(self._events[-limit:])
 
