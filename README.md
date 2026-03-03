@@ -44,7 +44,7 @@ LanRead reimagines the reading experience by combining traditional e-reading cap
 ## Core Capabilities
 
 ### 1. Book Management
-- Import books from Files app, iCloud Drive, or local storage
+- Import books from Files app or local storage
 - Support for ePub and plain text formats
 - Organize books with custom tags and categories
 - Reading progress tracking and statistics
@@ -120,7 +120,7 @@ LanRead reimagines the reading experience by combining traditional e-reading cap
 - iOS 16.0+ or iPadOS 16.0+
 - Xcode 15.0+
 - Swift 5.9+
-- Active Apple Developer account (for CloudKit)
+- Active Apple Developer account (for signing and distribution)
 
 ### Setup
 

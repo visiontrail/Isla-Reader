@@ -112,7 +112,6 @@
 "library.import.sheet.title" = "导入电子书";
 "library.import.sheet.description" = "支持 ePub、TXT 等格式\n从文件 App 或其他应用导入";
 "library.import.source.files_app" = "从文件 App 选择";
-"library.import.source.icloud" = "从 iCloud Drive 导入";
 "common.cancel" = "取消";
 "common.save" = "保存";
 

@@ -19,7 +19,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lan Read · Privacy</title>
-  <meta name="description" content="Lan Read privacy & data use. Local-first by default with optional iCloud sync and secure AI key exchange." />
+  <meta name="description" content="Lan Read privacy & data use. Local-first by default with secure AI key exchange." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,700&display=swap" rel="stylesheet">
   <style>
@@ -302,7 +302,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       en: {
         meta: {
           title: 'Lan Read · Privacy',
-          description: 'Lan Read privacy & data use. Local-first by default with optional iCloud sync and secure AI key exchange.'
+          description: 'Lan Read privacy & data use. Local-first by default with secure AI key exchange.'
         },
         nav: {
           home: 'Home',
@@ -377,7 +377,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       zh: {
         meta: {
           title: 'Lan Read · 隐私',
-          description: 'Lan Read 隐私与数据使用。默认本地优先，可选 iCloud 同步与安全 AI 密钥交换。'
+          description: 'Lan Read 隐私与数据使用。默认本地优先，并采用安全 AI 密钥交换。'
         },
         nav: {
           home: '主页',
@@ -452,7 +452,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       ja: {
         meta: {
           title: 'Lan Read · プライバシー',
-          description: 'Lan Read のプライバシーとデータ利用。ローカル優先、必要に応じて iCloud 同期と安全な AI キー交換。'
+          description: 'Lan Read のプライバシーとデータ利用。ローカル優先で安全な AI キー交換を採用。'
         },
         nav: {
           home: 'ホーム',
@@ -527,7 +527,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       ko: {
         meta: {
           title: 'Lan Read · 개인정보',
-          description: 'Lan Read 개인정보 및 데이터 사용. 기본 로컬 우선, 선택적 iCloud 동기화와 안전한 AI 키 교환.'
+          description: 'Lan Read 개인정보 및 데이터 사용. 기본 로컬 우선과 안전한 AI 키 교환.'
         },
         nav: {
           home: '홈',

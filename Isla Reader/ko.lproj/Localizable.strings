@@ -112,7 +112,6 @@
 "library.import.sheet.title" = "전자책 가져오기";
 "library.import.sheet.description" = "ePub, TXT 등 지원\n파일 앱 또는 다른 앱에서 가져오기";
 "library.import.source.files_app" = "파일 앱에서 선택";
-"library.import.source.icloud" = "iCloud Drive에서 가져오기";
 "common.cancel" = "취소";
 "common.save" = "저장";
 

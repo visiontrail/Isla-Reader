@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Lan Read — Your first AI-powered reading companion",
-    "description": "Lan Read turns ePub/txt into a conversational mentor on iOS and iPadOS: instant summaries, skimming, ask-while-reading, optional iCloud sync and Notion export, privacy-first local storage."
+    "description": "Lan Read turns ePub/txt into a conversational mentor on iOS and iPadOS: instant summaries, skimming, ask-while-reading, Notion export, privacy-first local storage."
   },
   "brand": {
     "name": "Lan Read",
@@ -20,7 +20,7 @@
   },
   "hero": {
     "title": "Your first AI-powered reading companion",
-    "subtitle": "Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with optional iCloud sync and Notion export.",
+    "subtitle": "Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with Notion export.",
     "primaryCta": "Explore features",
     "secondaryCta": "See workflow"
   },
@@ -28,36 +28,36 @@
   "facts": [
     { "label": "Platforms", "value": "iOS / iPadOS (macOS planned)" },
     { "label": "Storage", "value": "Local-first, no required signup" },
-    { "label": "Sync", "value": "Optional iCloud (CloudKit) sync" },
+    { "label": "Reading data", "value": "On-device only" },
     { "label": "Export", "value": "Notion export for highlights and bookmarks" }
   ],
   "features": {
     "title": "Features",
     "items": [
-      { "title": "Local Book Import", "body": "Bring your own ePub or .txt from Files or iCloud Drive; keep your library local." },
+      { "title": "Local Book Import", "body": "Bring your own ePub or .txt from Files or local storage; keep your library local." },
       { "title": "Instant AI Summaries", "body": "Open a book to see a concise overview and chapter structure with caching and manual refresh." },
       { "title": "Skimming Mode", "body": "Chapter skeleton summaries with quick navigation for fast context building." },
       { "title": "Ask While Reading", "body": "Ask about selected text, a chapter, or the whole book—explain, translate, or give examples; selection shortcuts are planned.", "status": "planned" },
       { "title": "Reader Essentials", "body": "TOC, search, bookmarks, highlights, annotations, themes, adjustable fonts and line spacing, night mode." },
-      { "title": "Sync & Export", "body": "Optional CloudKit sync across devices plus Notion export for bookmarks and highlights." },
+      { "title": "Export & Notes", "body": "Export bookmarks and highlights to Notion when needed." },
       { "title": "Comprehension Checks (planned)", "body": "Diagnostics and quizzes to test recall are designed and planned.", "status": "planned" }
     ],
-    "privacyNote": "No required signup. Library stays local; cloud sync, secure key exchange, and AI calls remain opt-in."
+    "privacyNote": "No required signup. Library stays local; secure key exchange and AI calls remain opt-in."
   },
   "workflow": {
     "title": "Workflow",
     "steps": [
-      { "title": "Import", "body": "Add ePub or text files from Files or iCloud Drive." },
+      { "title": "Import", "body": "Add ePub or text files from Files or local storage." },
       { "title": "Summarize", "body": "Open a book to get the AI overview and chapter skeleton; results are cached for reuse." },
       { "title": "Read & Ask", "body": "Highlight to ask, translate, or get examples while reading; selection shortcuts are planned." },
-      { "title": "Sync / Export", "body": "Turn on iCloud sync when you want and export highlights/bookmarks to Notion." }
+      { "title": "Export", "body": "Export highlights/bookmarks to Notion when needed." }
     ]
   },
   "privacy": {
-    "title": "Privacy & sync",
+    "title": "Privacy",
     "lines": [
-      "Local-first by default; your library stays on device unless you enable cloud features.",
-      "Optional CloudKit sync and FastAPI key exchange keep credentials off the client while still anonymizing requests where possible.",
+      "Local-first by default; your library stays on your device.",
+      "FastAPI key exchange keeps credentials off the client while still anonymizing requests where possible.",
       "No required registration. AI prompts avoid sending account identifiers; telemetry is minimal and focused on reliability."
     ]
   },

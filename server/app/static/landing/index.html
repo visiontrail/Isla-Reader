@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lan Read — Your first AI-powered reading companion</title>
-  <meta name="description" content="Lan Read turns ePub/txt into a conversational mentor on iOS and iPadOS: instant summaries, skimming, ask-while-reading, optional iCloud sync and Notion export, privacy-first local storage." />
+  <meta name="description" content="Lan Read turns ePub/txt into a conversational mentor on iOS and iPadOS: instant summaries, skimming, ask-while-reading, Notion export, privacy-first local storage." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,700&display=swap" rel="stylesheet">
   <style>
@@ -838,7 +838,7 @@
           </div>
         </div>
       </div>
-      <p class="book-hidden-subtitle" data-key="hero.subtitle">Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with optional iCloud sync and Notion export.</p>
+      <p class="book-hidden-subtitle" data-key="hero.subtitle">Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with Notion export.</p>
       <p class="vision" id="vision-line">Make every book a conversational mentor so you understand, remember, and discuss faster.</p>
     </div>
     <div class="outline-hero">
@@ -856,13 +856,13 @@
     <div class="paper-sheet">
       <div class="paper-label" data-key="labels.chapters">Features</div>
       <div class="grid-3" id="feature-grid"></div>
-      <p class="vision" id="features-privacy-note">No required signup. Library stays local; cloud sync, secure key exchange, and AI calls remain opt-in.</p>
+      <p class="vision" id="features-privacy-note">No required signup. Library stays local; secure key exchange and AI calls remain opt-in.</p>
       <div class="paper-edge" aria-hidden="true"></div>
     </div>
   </section>
 
   <section class="section" id="privacy">
-    <h2 data-key="privacy.title">Privacy &amp; sync</h2>
+    <h2 data-key="privacy.title">Privacy</h2>
     <div class="paper-sheet ruled">
       <div class="paper-label" data-key="labels.privacy">Privacy</div>
       <ul class="privacy-list" id="privacy-lines"></ul>
@@ -1049,14 +1049,14 @@
     const fallbackEn = {
       meta: {
         title: 'Lan Read — Your first AI-powered reading companion',
-        description: 'Lan Read turns ePub/txt into a conversational mentor on iOS and iPadOS: instant summaries, skimming, ask-while-reading, optional iCloud sync and Notion export, privacy-first local storage.'
+        description: 'Lan Read turns ePub/txt into a conversational mentor on iOS and iPadOS: instant summaries, skimming, ask-while-reading, Notion export, privacy-first local storage.'
       },
       brand: { name: 'Lan Read', tagline: 'Your first AI-Powered Reading Companion' },
       nav: { features: 'Features', workflow: 'Workflow', language: 'Language' },
       labels: { fieldnote: 'Product note', chapters: 'Features', notebook: 'Workflow', privacy: 'Privacy' },
       hero: {
         title: 'Your first AI-powered reading companion',
-        subtitle: 'Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with optional iCloud sync and Notion export.',
+        subtitle: 'Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with Notion export.',
         primaryCta: 'Explore features',
         secondaryCta: 'See workflow'
       },
@@ -1064,36 +1064,36 @@
       facts: [
         { label: 'Platforms', value: 'iOS / iPadOS (macOS planned)' },
         { label: 'Storage', value: 'Local-first, no required signup' },
-        { label: 'Sync', value: 'Optional iCloud (CloudKit) sync' },
+        { label: 'Reading data', value: 'On-device only' },
         { label: 'Export', value: 'Notion export for highlights and bookmarks' }
       ],
       features: {
         title: 'Features',
         items: [
-          { title: 'Local Book Import', body: 'Bring your own ePub or .txt from Files or iCloud Drive; keep your library local.' },
+          { title: 'Local Book Import', body: 'Bring your own ePub or .txt from Files or local storage; keep your library local.' },
           { title: 'Instant AI Summaries', body: 'Open a book to see a concise overview and chapter structure with caching and manual refresh.' },
           { title: 'Skimming Mode', body: 'Chapter skeleton summaries with quick navigation for fast context building.' },
           { title: 'Ask While Reading', body: 'Ask about selected text, a chapter, or the whole book—explain, translate, or give examples; selection shortcuts are planned.', status: 'planned' },
           { title: 'Reader Essentials', body: 'TOC, search, bookmarks, highlights, annotations, themes, adjustable fonts and line spacing, night mode.' },
-          { title: 'Sync & Export', body: 'Optional CloudKit sync across devices plus Notion export for bookmarks and highlights.' },
+          { title: 'Export & Notes', body: 'Export bookmarks and highlights to Notion when needed.' },
           { title: 'Comprehension Checks (planned)', body: 'Diagnostics and quizzes to test recall are designed and planned.', status: 'planned' }
         ],
-        privacyNote: 'No required signup. Library stays local; cloud sync, secure key exchange, and AI calls remain opt-in.'
+        privacyNote: 'No required signup. Library stays local; secure key exchange and AI calls remain opt-in.'
       },
       workflow: {
         title: 'Workflow',
         steps: [
-          { title: 'Import', body: 'Add ePub or text files from Files or iCloud Drive.' },
+          { title: 'Import', body: 'Add ePub or text files from Files or local storage.' },
           { title: 'Summarize', body: 'Open a book to get the AI overview and chapter skeleton; results are cached for reuse.' },
           { title: 'Read & Ask', body: 'Highlight to ask, translate, or get examples while reading; selection shortcuts are planned.' },
-          { title: 'Sync / Export', body: 'Turn on iCloud sync when you want and export highlights/bookmarks to Notion.' }
+          { title: 'Export', body: 'Export highlights/bookmarks to Notion when needed.' }
         ]
       },
       privacy: {
-        title: 'Privacy & sync',
+        title: 'Privacy',
         lines: [
-          'Local-first by default; your library stays on device unless you enable cloud features.',
-          'Optional CloudKit sync and FastAPI key exchange keep credentials off the client while still anonymizing requests where possible.',
+          'Local-first by default; your library stays on your device.',
+          'FastAPI key exchange keeps credentials off the client while still anonymizing requests where possible.',
           'No required registration. AI prompts avoid sending account identifiers; telemetry is minimal and focused on reliability.'
         ]
       },
@@ -1165,7 +1165,7 @@
     const bookLocale = (lang, t) => {
       const facts = t.facts || fallbackEn.facts;
       const storageFact = facts[1] || { label: 'Storage', value: '' };
-      const syncFact = facts[2] || { label: 'Sync', value: '' };
+      const syncFact = facts[2] || { label: 'Reading data', value: '' };
       const exportFact = facts[3] || { label: 'Export', value: '' };
       if (lang === 'zh') {
         return {
@@ -1173,12 +1173,12 @@
           coverLabel: '封皮',
           prevLabel: '上一页',
           nextLabel: '下一页',
-          coverStrip: ['AI Summary', 'Skim read', 'Products', 'Sync', 'Export'],
-          coverEmboss: 'summary · skim · products · storage · sync · export',
+          coverStrip: ['AI Summary', 'Skim read', 'Products', 'Data', 'Export'],
+          coverEmboss: 'summary · skim · products · storage · data · export',
           summaryTag: 'AI Summary',
           summaryMeta: '流式输出',
           summaryTitle: '这本 App 做了什么',
-          summaryStream: `Lan Read 把你的 ePub / txt 书库变成一个可对话阅读伙伴。\n\n它会在你打开书时给出 AI 摘要，帮助你先建立整体脉络；你可以用 Skim read 快速扫章节，再按需深入；同时支持可选 iCloud 同步与 Notion 导出，让阅读记录在“默认本地优先”的前提下按你的节奏流动。`,
+          summaryStream: `Lan Read 把你的 ePub / txt 书库变成一个可对话阅读伙伴。\n\n它会在你打开书时给出 AI 摘要，帮助你先建立整体脉络；你可以用 Skim read 快速扫章节，再按需深入；支持 Notion 导出，让阅读记录在“默认本地优先”的前提下按你的节奏流动。`,
           skimTag: 'Skim read',
           skimMeta: '章节骨架',
           skimTitle: '先看全貌，再决定读哪里',
@@ -1193,11 +1193,11 @@
           storageTag: 'Storage',
           storageMeta: '本地优先',
           storageTitle: `${storageFact.label}: ${storageFact.value}`,
-          storageBody: '默认本地保存让你不需要先注册账号再开始读书。是否上云由你决定，库数据与阅读轨迹可以持续留在设备里。',
-          syncTag: 'Sync',
-          syncMeta: '可选云端',
+          storageBody: '默认本地保存让你不需要先注册账号再开始读书。库数据与阅读轨迹会持续保留在设备里。',
+          syncTag: 'Data',
+          syncMeta: '本机存储',
           syncTitle: `${syncFact.label}: ${syncFact.value}`,
-          syncBody: '当你需要多设备延续阅读时再开启同步。设计上保持“可选开启、可控范围”，让云端只在你需要时介入。',
+          syncBody: '阅读数据仅保存在本机，保持可控和简单，不依赖跨设备同步。',
           exportTag: 'Export',
           exportMeta: '知识流转',
           exportTitle: `${exportFact.label}: ${exportFact.value}`,
@@ -1210,12 +1210,12 @@
           coverLabel: '表紙',
           prevLabel: '前へ',
           nextLabel: '次へ',
-          coverStrip: ['AI要約', 'Skim read', '製品', '同期', 'エクスポート'],
-          coverEmboss: 'summary · skim · products · storage · sync · export',
+          coverStrip: ['AI要約', 'Skim read', '製品', 'データ', 'エクスポート'],
+          coverEmboss: 'summary · skim · products · storage · data · export',
           summaryTag: 'AI要約',
           summaryMeta: 'ストリーミング',
           summaryTitle: 'このアプリでできること',
-          summaryStream: `Lan Read は、あなたの ePub / txt ライブラリを会話できる読書パートナーに変えます。\n\n本を開くと AI 要約で全体像を素早く把握でき、Skim read で章の骨格を短時間で確認できます。さらに、必要なときだけ iCloud 同期や Notion エクスポートを使えるため、ローカルファーストの読書体験を崩しません。`,
+          summaryStream: `Lan Read は、あなたの ePub / txt ライブラリを会話できる読書パートナーに変えます。\n\n本を開くと AI 要約で全体像を素早く把握でき、Skim read で章の骨格を短時間で確認できます。さらに Notion エクスポートに対応し、ローカルファーストの読書体験を崩しません。`,
           skimTag: 'Skim read',
           skimMeta: '章の骨格',
           skimTitle: '全体を先に把握して、読む場所を決める',
@@ -1230,11 +1230,11 @@
           storageTag: '保存',
           storageMeta: 'ローカル優先',
           storageTitle: `${storageFact.label}: ${storageFact.value}`,
-          storageBody: 'アカウント登録なしですぐ読書を始められます。明示的にクラウドを選ぶまで、書籍と読書履歴は端末内に保持されます。',
-          syncTag: '同期',
-          syncMeta: '任意のクラウド',
+          storageBody: 'アカウント登録なしですぐ読書を始められます。書籍と読書履歴は端末内に保持されます。',
+          syncTag: 'データ',
+          syncMeta: '端末内',
           syncTitle: `${syncFact.label}: ${syncFact.value}`,
-          syncBody: '複数デバイスで続きを読みたいときだけ同期を有効化できます。クラウド利用はオプトインで、範囲もユーザーが制御できます。',
+          syncBody: '読書データは端末内のみで管理され、シンプルで制御しやすい状態を保ちます。',
           exportTag: 'エクスポート',
           exportMeta: '知識フロー',
           exportTitle: `${exportFact.label}: ${exportFact.value}`,
@@ -1247,12 +1247,12 @@
           coverLabel: '표지',
           prevLabel: '이전',
           nextLabel: '다음',
-          coverStrip: ['AI 요약', 'Skim read', '제품', '동기화', '내보내기'],
-          coverEmboss: 'summary · skim · products · storage · sync · export',
+          coverStrip: ['AI 요약', 'Skim read', '제품', '데이터', '내보내기'],
+          coverEmboss: 'summary · skim · products · storage · data · export',
           summaryTag: 'AI 요약',
           summaryMeta: '스트리밍',
           summaryTitle: '이 앱이 하는 일',
-          summaryStream: `Lan Read는 당신의 ePub / txt 라이브러리를 대화형 읽기 파트너로 바꿉니다.\n\n책을 열면 AI 요약으로 먼저 큰 흐름을 파악하고, Skim read로 장별 구조를 빠르게 훑을 수 있습니다. 필요할 때만 iCloud 동기화와 Notion 내보내기를 켤 수 있어 로컬 우선 경험을 유지합니다.`,
+          summaryStream: `Lan Read는 당신의 ePub / txt 라이브러리를 대화형 읽기 파트너로 바꿉니다.\n\n책을 열면 AI 요약으로 먼저 큰 흐름을 파악하고, Skim read로 장별 구조를 빠르게 훑을 수 있습니다. Notion 내보내기를 지원하면서도 로컬 우선 경험을 유지합니다.`,
           skimTag: 'Skim read',
           skimMeta: '챕터 골격',
           skimTitle: '먼저 전체를 보고, 읽을 위치를 결정',
@@ -1267,11 +1267,11 @@
           storageTag: '저장',
           storageMeta: '로컬 우선',
           storageTitle: `${storageFact.label}: ${storageFact.value}`,
-          storageBody: '계정 등록 없이 바로 읽기를 시작할 수 있습니다. 클라우드를 선택하기 전까지 책과 읽기 기록은 기기에 로컬로 유지됩니다.',
-          syncTag: '동기화',
-          syncMeta: '선택형 클라우드',
+          storageBody: '계정 등록 없이 바로 읽기를 시작할 수 있습니다. 책과 읽기 기록은 기기에 로컬로 유지됩니다.',
+          syncTag: '데이터',
+          syncMeta: '기기 내',
           syncTitle: `${syncFact.label}: ${syncFact.value}`,
-          syncBody: '여러 기기에서 이어 읽기가 필요할 때만 동기화를 켤 수 있습니다. 클라우드 사용은 옵트인 방식이며 범위도 제어 가능합니다.',
+          syncBody: '읽기 데이터는 기기 안에서만 관리되어 단순하고 예측 가능한 사용 흐름을 제공합니다.',
           exportTag: '내보내기',
           exportMeta: '지식 흐름',
           exportTitle: `${exportFact.label}: ${exportFact.value}`,
@@ -1283,12 +1283,12 @@
         coverLabel: 'Cover',
         prevLabel: 'Prev',
         nextLabel: 'Next',
-        coverStrip: ['AI Summary', 'Skim read', 'Products', 'Sync', 'Export'],
-        coverEmboss: 'summary · skim · products · storage · sync · export',
+        coverStrip: ['AI Summary', 'Skim read', 'Products', 'Data', 'Export'],
+        coverEmboss: 'summary · skim · products · storage · data · export',
         summaryTag: 'AI Summary',
         summaryMeta: 'Streaming',
         summaryTitle: 'What this app does',
-        summaryStream: `Lan Read turns your ePub / txt library into a conversational reading companion.\n\nOpen a title and it generates an AI summary so you get orientation before deep reading. Then Skim read helps you scan chapter skeletons fast, while optional iCloud sync and Notion export keep your reading flow portable without breaking a local-first default.`,
+        summaryStream: `Lan Read turns your ePub / txt library into a conversational reading companion.\n\nOpen a title and it generates an AI summary so you get orientation before deep reading. Then Skim read helps you scan chapter skeletons fast, with Notion export support while keeping a local-first default.`,
         skimTag: 'Skim read',
         skimMeta: 'Chapter skeleton',
         skimTitle: 'Map quickly, then dive where it matters',
@@ -1303,11 +1303,11 @@
         storageTag: 'Storage',
         storageMeta: 'Local-first',
         storageTitle: `${storageFact.label}: ${storageFact.value}`,
-        storageBody: 'You can start reading without account setup. Books and reading traces stay local by default until you explicitly choose a cloud path.',
-        syncTag: 'Sync',
-        syncMeta: 'Optional cloud',
+        storageBody: 'You can start reading without account setup. Books and reading traces stay local by default.',
+        syncTag: 'Data',
+        syncMeta: 'On-device',
         syncTitle: `${syncFact.label}: ${syncFact.value}`,
-        syncBody: 'Enable sync only when you need cross-device continuity. The model is opt-in and scoped, so cloud involvement stays user-controlled.',
+        syncBody: 'Reading data remains on device, keeping behavior predictable and fully under your control.',
         exportTag: 'Export',
         exportMeta: 'Knowledge flow',
         exportTitle: `${exportFact.label}: ${exportFact.value}`,

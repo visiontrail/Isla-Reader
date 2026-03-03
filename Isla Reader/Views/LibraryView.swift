@@ -1533,19 +1533,6 @@ struct ImportBookView: View {
                             .background(Color.accentColor)
                             .cornerRadius(12)
                         }
-                        
-                        Button(action: { showingFilePicker = true }) {
-                            HStack {
-                                Image(systemName: "icloud")
-                                Text(NSLocalizedString("library.import.source.icloud", comment: ""))
-                            }
-                            .font(.headline)
-                            .foregroundColor(.accentColor)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.accentColor.opacity(0.1))
-                            .cornerRadius(12)
-                        }
                     }
                 }
                 

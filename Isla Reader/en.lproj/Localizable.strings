@@ -112,7 +112,6 @@
 "library.import.sheet.title" = "Import eBooks";
 "library.import.sheet.description" = "Supports ePub, TXT, etc.\nImport from Files app or other apps";
 "library.import.source.files_app" = "Choose from Files app";
-"library.import.source.icloud" = "Import from iCloud Drive";
 "common.cancel" = "Cancel";
 "common.save" = "Save";
 

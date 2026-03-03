@@ -112,7 +112,6 @@
 "library.import.sheet.title" = "電子書籍をインポート";
 "library.import.sheet.description" = "ePub、TXT などに対応\nファイルAppまたは他のアプリからインポート";
 "library.import.source.files_app" = "ファイルAppから選択";
-"library.import.source.icloud" = "iCloud Drive からインポート";
 "common.cancel" = "キャンセル";
 "common.save" = "保存";
 
