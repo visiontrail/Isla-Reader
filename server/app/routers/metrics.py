@@ -474,6 +474,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       padding: 10px 14px;
       background: linear-gradient(120deg, #8ef6ff, #7ec3ff);
       color: #0b1021;
+      text-decoration: none;
       border-radius: 12px;
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
@@ -639,6 +640,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <h2>Recent Calls</h2>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <div class="pill">Past 7 days</div>
+          <a class="btn ghost" href="/admin/update-policy">Update Policy</a>
           <button type="button" class="btn ghost" id="export-button">Export CSV</button>
           <button type="button" class="btn danger" id="clear-button">Clear Metrics</button>
         </div>
