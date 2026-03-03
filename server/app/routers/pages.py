@@ -340,7 +340,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI Feature Uploads',
             items: [
-              'When you use translation, explanation, AI summary, or skimming, we send the relevant text over HTTPS to your configured model to generate results.',
+              'When you use translation, explanation, AI summary, or skimming, we send the relevant text over HTTPS to the model configured by the app to generate results.',
               'Uploaded content is limited to the book passages you request to process plus necessary prompt context; it excludes account identifiers and ad identifiers.',
               'API keys can be issued by the secure server (isla-reader.top/v1/keys/ai); this server does not store your book content and only signs and forwards credentials.',
               'We do not persist uploaded text on the server; generated summaries/key points remain on your device.',
@@ -416,7 +416,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI 功能上传',
             items: [
-              '当你使用翻译、解释、AI 摘要或略读功能时，我们会通过 HTTPS 将相关文本发送到你配置的大模型生成结果。',
+              '当你使用翻译、解释、AI 摘要或略读功能时，我们会通过 HTTPS 将相关文本发送到应用配置的大模型生成结果。',
               '上传内容仅限你请求处理的书籍片段及必要的提示上下文；不包含账号标识或广告标识。',
               'API 密钥可由安全服务器（isla-reader.top/v1/keys/ai）签发；该服务器不存储你的书籍内容，只负责签名与转发凭证。',
               '我们不会在服务器持久化上传文本；生成的摘要/要点保留在你的设备上。',
@@ -492,7 +492,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI 機能の送信',
             items: [
-              '翻訳／解説／AI要約／スキミングを使う際、関連テキストを HTTPS で設定済みの大規模モデルへ送信します。',
+              '翻訳／解説／AI要約／スキミングを使う際、関連テキストを HTTPS でアプリ側が設定した大規模モデルへ送信します。',
               '送信内容は必要な書籍の抜粋とプロンプト文脈のみで、アカウントIDや広告IDは含みません。',
               'API キーは安全なサーバー（isla-reader.top/v1/keys/ai）から発行可能で、書籍内容は保存せず署名と転送のみを行います。',
               'サーバーに送信テキストを永続保存しません。生成結果は端末に保存されます。',
@@ -568,7 +568,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI 기능 업로드',
             items: [
-              '번역/설명/AI 요약/스키밍을 사용할 때 관련 텍스트를 HTTPS로 사용자가 설정한 대규모 모델에 전송합니다.',
+              '번역/설명/AI 요약/스키밍을 사용할 때 관련 텍스트를 HTTPS로 앱에서 설정한 대규모 모델에 전송합니다.',
               '전송 내용은 요청한 책 구간과 필요한 프롬프트 컨텍스트만 포함하며, 계정/광고 식별자는 제외됩니다.',
               'API 키는 보안 서버(isla-reader.top/v1/keys/ai)에서 발급될 수 있으며, 서버는 책 내용을 저장하지 않고 서명과 전달만 수행합니다.',
               '업로드된 텍스트를 서버에 영구 저장하지 않으며, 생성 결과는 기기에 보관됩니다.',
