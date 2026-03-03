@@ -25,6 +25,11 @@
 "app.terms_of_service" = "服务条款";
 "common.done" = "完成";
 "common.close" = "关闭";
+"update.prompt.default_title" = "发现新版本";
+"update.prompt.default_message_soft" = "检测到新版本，建议立即更新以获得更好的体验。";
+"update.prompt.default_message_hard" = "当前版本已停止支持，请更新后继续使用。";
+"update.prompt.update_now" = "立即更新";
+"update.prompt.later" = "稍后";
 
 "settings.theme.primary_text_color" = "主要文本颜色";
 "settings.theme.secondary_text_color" = "次要文本颜色";

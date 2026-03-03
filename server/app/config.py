@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     client_secret: str
     metrics_ingest_token: Optional[str] = None
     metrics_data_file: str = "data/metrics.jsonl"
+    update_policy_file: str = "data/update_policy.json"
     metrics_max_events: int = 5000
     log_file: str = "logs/server.log"
     log_level: str = "INFO"

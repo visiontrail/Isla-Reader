@@ -25,6 +25,11 @@
 "app.terms_of_service" = "利用規約";
 "common.done" = "完了";
 "common.close" = "閉じる";
+"update.prompt.default_title" = "アップデートがあります";
+"update.prompt.default_message_soft" = "新しいバージョンが利用できます。より良い体験のために更新してください。";
+"update.prompt.default_message_hard" = "このバージョンのサポートは終了しました。続行するには更新してください。";
+"update.prompt.update_now" = "今すぐ更新";
+"update.prompt.later" = "あとで";
 
 "settings.theme.primary_text_color" = "主要テキスト色";
 "settings.theme.secondary_text_color" = "補助テキスト色";

@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 
 from .config import Settings, get_settings
 from .logging_utils import configure_logging, get_logger
-from .routers import key, metrics, pages, notion_oauth
+from .routers import key, metrics, notion_oauth, pages, update_policy
 
 app = FastAPI(
     title="LanRead Server",
@@ -74,3 +74,4 @@ app.include_router(key.router)
 app.include_router(metrics.router)
 app.include_router(pages.router)
 app.include_router(notion_oauth.router)
+app.include_router(update_policy.router)

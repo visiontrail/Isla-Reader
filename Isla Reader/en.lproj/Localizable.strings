@@ -25,6 +25,11 @@
 "app.terms_of_service" = "Terms of Service";
 "common.done" = "Done";
 "common.close" = "Close";
+"update.prompt.default_title" = "Update Available";
+"update.prompt.default_message_soft" = "A new version is available. Update now for the best experience.";
+"update.prompt.default_message_hard" = "This version is no longer supported. Please update to continue.";
+"update.prompt.update_now" = "Update Now";
+"update.prompt.later" = "Later";
 
 "settings.theme.primary_text_color" = "Primary Text Color";
 "settings.theme.secondary_text_color" = "Secondary Text Color";

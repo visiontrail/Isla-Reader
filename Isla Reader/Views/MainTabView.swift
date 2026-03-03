@@ -16,12 +16,15 @@ struct MainTabView: View {
 
     @StateObject private var appSettings = AppSettings.shared
     @StateObject private var reminderCoordinator = ReadingReminderCoordinator.shared
+    @StateObject private var updatePromptCoordinator = AppUpdatePromptCoordinator.shared
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
 
     @State private var selectedPhoneTab: PhoneTab = .library
     @State private var handledContinueReadingRequestID = 0
     @State private var handledReminderTapRequestID = 0
+    @State private var hasTriggeredLaunchUpdateCheck = false
     
     var body: some View {
         Group {
@@ -71,12 +74,44 @@ struct MainTabView: View {
             DebugLogger.info("[LiveActivityFlow] scenePhase changed. phase=\(String(describing: phase)), isSceneActive=\(isSceneActive)")
             processPendingContinueReadingRequestIfNeeded(isSceneActive: isSceneActive)
             processPendingReminderTapIfNeeded(isSceneActive: isSceneActive)
+            if isSceneActive {
+                updatePromptCoordinator.checkForUpdateIfNeeded(trigger: .foreground)
+            }
+        }
+        .onAppear {
+            guard !hasTriggeredLaunchUpdateCheck else { return }
+            hasTriggeredLaunchUpdateCheck = true
+            updatePromptCoordinator.checkForUpdateIfNeeded(trigger: .launch)
         }
         .onOpenURL { url in
             guard ReadingReminderService.shared.isContinueReadingURL(url) else {
                 return
             }
             reminderCoordinator.requestContinueReading(triggeredByReminder: false)
+        }
+        .alert(item: $updatePromptCoordinator.activePrompt) { prompt in
+            if prompt.isMandatory {
+                return Alert(
+                    title: Text(prompt.title),
+                    message: Text(prompt.message),
+                    dismissButton: .default(Text(NSLocalizedString("update.prompt.update_now", comment: ""))) {
+                        openStore(for: prompt)
+                        updatePromptCoordinator.consumePrompt()
+                    }
+                )
+            }
+
+            return Alert(
+                title: Text(prompt.title),
+                message: Text(prompt.message),
+                primaryButton: .default(Text(NSLocalizedString("update.prompt.update_now", comment: ""))) {
+                    openStore(for: prompt)
+                    updatePromptCoordinator.consumePrompt()
+                },
+                secondaryButton: .cancel(Text(NSLocalizedString("update.prompt.later", comment: ""))) {
+                    updatePromptCoordinator.consumePrompt()
+                }
+            )
         }
     }
 
@@ -125,6 +160,21 @@ struct MainTabView: View {
                 deepLink: ReadingReminderConstants.defaultDeepLink
             )
         }
+    }
+
+    private func openStore(for prompt: AppUpdatePrompt) {
+        openURL(prompt.appStoreURL) { accepted in
+            guard !accepted else { return }
+            guard let fallbackURL = Self.makeStoreFallbackURL(from: prompt.appStoreURL) else { return }
+            openURL(fallbackURL)
+        }
+    }
+
+    private static func makeStoreFallbackURL(from url: URL) -> URL? {
+        guard url.scheme?.lowercased() == "itms-apps" else { return nil }
+        let raw = url.absoluteString
+        let fallbackRaw = raw.replacingOccurrences(of: "itms-apps://", with: "https://")
+        return URL(string: fallbackRaw)
     }
 }
 

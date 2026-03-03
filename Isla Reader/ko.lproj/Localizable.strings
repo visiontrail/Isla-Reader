@@ -25,6 +25,11 @@
 "app.terms_of_service" = "서비스 약관";
 "common.done" = "완료";
 "common.close" = "닫기";
+"update.prompt.default_title" = "업데이트 가능";
+"update.prompt.default_message_soft" = "새 버전이 있습니다. 더 나은 경험을 위해 지금 업데이트하세요.";
+"update.prompt.default_message_hard" = "현재 버전 지원이 종료되었습니다. 계속하려면 업데이트가 필요합니다.";
+"update.prompt.update_now" = "지금 업데이트";
+"update.prompt.later" = "나중에";
 
 "settings.theme.primary_text_color" = "기본 텍스트 색상";
 "settings.theme.secondary_text_color" = "보조 텍스트 색상";

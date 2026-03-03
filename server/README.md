@@ -83,9 +83,11 @@ curl -k -X POST https://localhost:8443/v1/keys/ai \
 - `GET /notion/callback` — Notion OAuth 回调地址。服务端校验 `state` 与 `code`，向 Notion `/v1/oauth/token` 交换 Access Token，生成一次性 `session_id`（缓存 60 秒），再 `302` 跳转到 `lanread://notion/finish?session=...&state=...`（失败则跳到 `lanread://notion/error?msg=...`）。
 - `POST /v1/oauth/finalize` — iOS 端携带 `{session_id}` 获取 Notion token JSON。`session_id` 仅可使用一次，读取后立即删除；过期/不存在返回 400。
 - `POST /v1/metrics` — 采集客户端上报的 AI/API 调用指标，需携带 `X-Metrics-Key`（默认与 `client_secret` 相同，可单独配置 `ISLA_METRICS_INGEST_TOKEN`）。请确保与 iOS 构建时的 `SECURE_SERVER_METRICS_TOKEN` 一致，否则会被 401 拒绝。
+- `GET /v1/app/update-policy` — 客户端拉取升级策略（软更新/强更新、最低支持版本、App Store 跳转链接、提醒间隔）。
 - `GET /admin/metrics/ads` — 登录后返回最近 7 天广告加载成功/失败次数及失败原因统计，数据由客户端上报（`source=ads`）。
 - `GET /admin/metrics` — 登录后查看实时统计面板（`ISLA_DASHBOARD_USERNAME`/`ISLA_DASHBOARD_PASSWORD`），数据持久化在 `ISLA_METRICS_DATA_FILE`（默认 `data/metrics.jsonl`，保留数量由 `ISLA_METRICS_MAX_EVENTS` 控制）。
 - `POST /admin/metrics/clear` — 登录后清空所有已保留 metrics 事件（内存 + 持久化文件），适合发布前清理测试数据。
+- `GET /admin/update-policy` — 登录后可视化编辑升级策略；配置持久化到 `ISLA_UPDATE_POLICY_FILE`（默认 `data/update_policy.json`）。
 
 > 说明：若访问 / 返回 404 属于正常现象（API-only 服务不一定提供根路径页面）。建议用 /health 做可用性检查。
 > 
