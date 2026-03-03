@@ -23,6 +23,7 @@ if [[ "${require_https,,}" != "false" ]]; then
     --host "$host" \
     --port "$port" \
     --workers "$workers" \
+    --no-access-log \
     --ssl-certfile "$ssl_cert" \
     --ssl-keyfile "$ssl_key" \
     --proxy-headers
@@ -31,5 +32,6 @@ else
     --host "$host" \
     --port "$port" \
     --workers "$workers" \
+    --no-access-log \
     --proxy-headers
 fi

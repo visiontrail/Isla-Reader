@@ -182,7 +182,7 @@ async def notion_oauth_callback(
         return _redirect_error("Invalid OAuth state")
 
     if not code:
-        logger.warning("Notion callback rejected: missing code state=%s", verified_state)
+        logger.warning("Notion callback rejected: missing code")
         return _redirect_error("Missing authorization code", verified_state)
 
     notion_client_id = settings.notion_client_id

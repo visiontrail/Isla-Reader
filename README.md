@@ -148,7 +148,7 @@ open Isla\ Reader.xcodeproj
 
 - Backend lives in `server/` (FastAPI + HMAC + HTTPS). See `server/README.md` for full instructions.
 - Quick start: `cd server && python -m venv .venv && source .venv/bin/activate && pip install -e .`
-- Copy `.env.example` to `.env`, set `ISLA_API_ENDPOINT`, `ISLA_AI_MODEL`, `ISLA_API_KEY`, `ISLA_CLIENT_ID`, `ISLA_CLIENT_SECRET`, and run `uvicorn app.main:app --host 0.0.0.0 --port 8443 --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt`.
+- Copy `.env.example` to `.env`, set `ISLA_API_ENDPOINT`, `ISLA_AI_MODEL`, `ISLA_API_KEY`, `ISLA_CLIENT_ID`, `ISLA_CLIENT_SECRET`, and run `uvicorn app.main:app --host 0.0.0.0 --port 8443 --no-access-log --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt`.
 
 ## Usage
 

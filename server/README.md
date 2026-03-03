@@ -57,6 +57,7 @@ sudochmod 640 certs/server.crt certs/server.key
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8443 \
+  --no-access-log \
   --ssl-keyfile certs/server.key \
   --ssl-certfile certs/server.crt
 
@@ -150,6 +151,7 @@ source .venv/bin/activate
 uvicorn app.main:app \
   --host 127.0.0.1 \
   --port 8000 \
+  --no-access-log \
   --proxy-headers \
   --forwarded-allow-ips 127.0.0.1
 
@@ -188,6 +190,7 @@ Environment=PYTHONUNBUFFERED=1
 ExecStart=/home/ec2-user/Isla-Reader/server/.venv/bin/uvicorn app.main:app \
   --host 127.0.0.1 \
   --port 8000 \
+  --no-access-log \
   --proxy-headers \
   --forwarded-allow-ips 127.0.0.1
 
@@ -279,10 +282,8 @@ sudochmod 755 /etc/caddy
 isla-reader.top www.isla-reader.top {
     reverse_proxy 127.0.0.1:8000
 
-    # 可选：访问日志
-    log {
-        output file /var/log/caddy/access.log
-    }
+    # 建议默认不启用访问日志，避免 OAuth query 参数写入日志。
+    # 如必须启用，请先确保对 query 参数进行脱敏。
 }
 
 ```

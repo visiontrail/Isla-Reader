@@ -149,7 +149,7 @@ open Isla\ Reader.xcodeproj
 - 后端位于 `server/`（FastAPI + HMAC + HTTPS），详细见 `server/README.md`
 - 快速启动：`cd server && python -m venv .venv && source .venv/bin/activate && pip install -e .`
 - 复制 `.env.example` 为 `.env`，设置 `ISLA_API_ENDPOINT`、`ISLA_AI_MODEL`、`ISLA_API_KEY`、`ISLA_CLIENT_ID`、`ISLA_CLIENT_SECRET`，然后运行：
-  `uvicorn app.main:app --host 0.0.0.0 --port 8443 --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt`
+  `uvicorn app.main:app --host 0.0.0.0 --port 8443 --no-access-log --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt`
 
 ## 使用
 

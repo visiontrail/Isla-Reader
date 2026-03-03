@@ -322,15 +322,16 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           principles: {
             title: 'Our Principles',
             items: [
-              'No account is required; data remains local to your device.',
+              'No account is required; your library data remains local to your device by default.',
               'Book content is not uploaded unless you trigger AI features (summaries, translation, etc.).',
+              'When you use AI, ad, or secure-config features, we send minimal technical telemetry (status, latency, request size, token usage, request/error IDs) to our backend for reliability monitoring.',
               'You can export, import, or erase local data anytime in "Settings > Data Management."'
             ]
           },
           admob: {
             title: 'AdMob Data Use',
             items: [
-              'We use Google AdMob to show banner and rewarded ads that keep the app free.',
+              'We use Google AdMob to show banner, interstitial, and rewarded interstitial ads that keep the app free.',
               'AdMob may collect device info such as IDFA (if permitted), IP address, device model, OS version, coarse location (IP-based), and ad performance/fraud signals.',
               'We do not send your imported books, notes, or account data to AdMob; ad requests include only the SDK’s necessary device signals.',
               'You can limit ad personalization via iOS "Allow Apps to Request to Track" and "Personalized Ads." See the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.'
@@ -339,11 +340,11 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI Feature Uploads',
             items: [
-              'When you use translation, explanation, AI summary, or skimming, we send the relevant text over HTTPS to your configured OpenAI-compatible endpoint (DashScope by default) to generate results.',
+              'When you use translation, explanation, AI summary, or skimming, we send the relevant text over HTTPS to your configured model to generate results.',
               'Uploaded content is limited to the book passages you request to process plus necessary prompt context; it excludes account identifiers and ad identifiers.',
               'API keys can be issued by the secure server (isla-reader.top/v1/keys/ai); this server does not store your book content and only signs and forwards credentials.',
               'We do not persist uploaded text on the server; generated summaries/key points remain on your device.',
-              'Third-party model providers (e.g., DashScope or your custom OpenAI-compatible service) may handle data under their own privacy policies.'
+              'Third-party model providers may handle data under their own privacy policies.'
             ]
           },
           notion: {
@@ -352,7 +353,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
               'If you opt into syncing highlights or notes to Notion, we perform only the OAuth code exchange on the server to keep the Notion client secret off your device.',
               'Data we receive: the authorization code and OAuth state from Notion callback. We send these to Notion over HTTPS, then create a one-time session ID for app handoff.',
               'The Notion token payload is cached for up to 60 seconds only (in-memory/Redis style ephemeral cache), returned to your device via <code>/v1/oauth/finalize</code>, and deleted immediately after retrieval.',
-              'Logs keep minimal metadata (status, workspace_id/name, bot_id) for troubleshooting and omit the authorization code and access token.',
+              'Application logs keep minimal metadata (such as status, workspace_id/name, bot_id) plus sanitized operational errors; authorization codes and access tokens are not intentionally logged. In deployment, access logs should be disabled or redacted.',
               'Book content and notes are not proxied through our server for Notion sync; your device uses the token to call Notion’s API directly.',
               'You may revoke the integration anytime in Notion (“Settings & Members → My connections”) or disconnect in the app; expired temporary sessions are automatically removed.'
             ]
@@ -360,7 +361,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           rights: {
             title: 'Your Rights & Contact',
             items: [
-              'You can export or erase local data anytime via "Data Management." All data stays on-device.',
+              'You can export or erase local reading data anytime via "Data Management." Core book, note, and summary data stays on-device; server-side retention is limited to the minimal technical events described above.',
               'For questions about this policy or data handling, contact <a href="mailto:support@isla-reader.top">support@isla-reader.top</a>.'
             ]
           }
@@ -397,15 +398,16 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           principles: {
             title: '我们的原则',
             items: [
-              '无需账号；数据保留在设备本地。',
+              '无需账号；你的书库与阅读数据默认保留在设备本地。',
               '除非你触发 AI 功能（摘要、翻译等），书籍内容不会上传。',
+              '当你使用 AI、广告或安全配置功能时，我们会向后端发送最小化技术指标（状态码、时延、请求大小、Token 用量、请求 ID/错误原因）用于稳定性监控。',
               '你可以随时在“设置 > 数据管理”导出、导入或清除本地数据。'
             ]
           },
           admob: {
             title: 'AdMob 数据使用',
             items: [
-              '我们使用 Google AdMob 展示横幅与激励广告以保持应用免费。',
+              '我们使用 Google AdMob 展示横幅、插屏和激励插屏广告以保持应用免费。',
               'AdMob 可能收集设备信息，如 IDFA（若允许）、IP 地址、设备型号、系统版本、粗略位置（基于 IP）及广告表现/反欺诈信号。',
               '我们不会向 AdMob 发送你导入的书籍、笔记或账号数据；广告请求仅包含 SDK 必需的设备信号。',
               '你可在 iOS“允许 App 请求跟踪”和“个性化广告”中限制个性化广告。详见 <a href="https://policies.google.com/privacy">Google 隐私政策</a>。'
@@ -414,7 +416,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI 功能上传',
             items: [
-              '当你使用翻译、解释、AI 摘要或略读功能时，我们会通过 HTTPS 将相关文本发送到你配置的 OpenAI 兼容端点（默认 DashScope）生成结果。',
+              '当你使用翻译、解释、AI 摘要或略读功能时，我们会通过 HTTPS 将相关文本发送到你配置的大模型生成结果。',
               '上传内容仅限你请求处理的书籍片段及必要的提示上下文；不包含账号标识或广告标识。',
               'API 密钥可由安全服务器（isla-reader.top/v1/keys/ai）签发；该服务器不存储你的书籍内容，只负责签名与转发凭证。',
               '我们不会在服务器持久化上传文本；生成的摘要/要点保留在你的设备上。',
@@ -427,7 +429,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
               '若你选择同步高亮或笔记至 Notion，我们仅在服务器完成 OAuth code 交换，以避免 Notion 客户端密钥出现在设备上。',
               '我们接收的数据：Notion 回调中的授权码与 OAuth state；随后通过 HTTPS 向 Notion 换取访问令牌，并生成一次性 session_id 回传 App。',
               'Notion Token JSON 仅会在 60 秒内临时缓存（内存/Redis 类短期缓存）；App 调用 <code>/v1/oauth/finalize</code> 取回后会立即删除。',
-              '日志仅保留最小元数据（status、workspace_id/name、bot_id）用于排障，不含授权码和访问令牌。',
+              '应用日志仅保留最小元数据（如 status、workspace_id/name、bot_id）及脱敏错误信息；不会主动记录授权码和访问令牌。部署时应关闭或脱敏访问日志。',
               'Notion 同步的书籍内容与笔记不会经过服务器代理；设备使用令牌直接调用 Notion API。',
               '你可以在 Notion（“Settings & Members → My connections”）或应用内随时撤销；过期的一次性会话会自动清理。'
             ]
@@ -435,7 +437,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           rights: {
             title: '你的权利与联系',
             items: [
-              '你可以随时在“数据管理”导出或清除本地数据；所有数据保留在设备上。',
+              '你可以随时在“数据管理”导出或清除本地阅读数据；书籍/笔记/摘要等核心内容保留在设备上，服务器仅保留上文所述最小化技术事件。',
               '如对本政策或数据处理有疑问，请联系 <a href="mailto:support@isla-reader.top">support@isla-reader.top</a>。'
             ]
           }
@@ -472,15 +474,16 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           principles: {
             title: '基本方針',
             items: [
-              'アカウント不要。データは端末内に保持されます。',
+              'アカウントは不要です。ライブラリと読書データは既定で端末内に保持されます。',
               'AI機能（要約・翻訳など）を使わない限り、書籍内容は送信されません。',
+              'AI・広告・安全な設定配信機能を使う場合、安定性監視のため最小限の技術テレメトリ（status、latency、request size、token usage、request/error ID）をバックエンドへ送信します。',
               '「設定 > データ管理」からいつでもエクスポート／インポート／消去できます。'
             ]
           },
           admob: {
             title: 'AdMob のデータ利用',
             items: [
-              '無料提供のため Google AdMob のバナー／リワード広告を使用します。',
+              '無料提供のため Google AdMob のバナー／インタースティシャル／リワード付きインタースティシャル広告を使用します。',
               'AdMob は IDFA（許可時）、IP、端末モデル、OS バージョン、概算位置（IPベース）、広告パフォーマンス／不正対策シグナル等を収集する可能性があります。',
               '書籍・ノート・アカウント情報は AdMob に送信しません。広告リクエストは SDK の必要な端末シグナルのみを含みます。',
               'iOS の「Appにトラッキングを許可」「パーソナライズド広告」で制限できます。詳しくは <a href="https://policies.google.com/privacy">Google プライバシーポリシー</a> を参照してください。'
@@ -489,7 +492,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI 機能の送信',
             items: [
-              '翻訳／解説／AI要約／スキミングを使う際、関連テキストを HTTPS で OpenAI 互換エンドポイント（既定は DashScope）へ送信します。',
+              '翻訳／解説／AI要約／スキミングを使う際、関連テキストを HTTPS で設定済みの大規模モデルへ送信します。',
               '送信内容は必要な書籍の抜粋とプロンプト文脈のみで、アカウントIDや広告IDは含みません。',
               'API キーは安全なサーバー（isla-reader.top/v1/keys/ai）から発行可能で、書籍内容は保存せず署名と転送のみを行います。',
               'サーバーに送信テキストを永続保存しません。生成結果は端末に保存されます。',
@@ -502,7 +505,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
               'Notion 同期を選択した場合、サーバーで OAuth のコード交換のみを行い、クライアントシークレットを端末外に保持します。',
               '受信するデータ：Notion コールバックの認可コードと OAuth state。HTTPS で Notion に送信してアクセストークンを取得し、アプリ引き渡し用の一時 session_id を発行します。',
               'Notion の token JSON は最大 60 秒だけ一時キャッシュ（メモリ/Redis 相当）され、<code>/v1/oauth/finalize</code> で取得後すぐ削除されます。',
-              'ログは最小メタデータ（status、workspace_id/name、bot_id）のみで、認可コードとトークンは含みません。',
+              'アプリケーションログには最小メタデータ（status、workspace_id/name、bot_id など）とマスク済み運用エラーのみを残し、認可コード/アクセストークンは意図的に記録しません。運用時はアクセスログを無効化またはマスクしてください。',
               '書籍内容とノートはサーバーを経由せず、端末がトークンで Notion API を直接呼び出します。',
               'Notion 側またはアプリでいつでも解除可能。期限切れの一時セッションは自動削除されます。'
             ]
@@ -510,7 +513,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           rights: {
             title: '権利と連絡先',
             items: [
-              '「データ管理」からいつでもエクスポート／消去できます。データは端末内に保持されます。',
+              '「データ管理」からいつでもローカル読書データをエクスポート／消去できます。書籍・ノート・要約などの中核データは端末内に保持され、サーバー側保持は上記の最小技術イベントに限定されます。',
               '本ポリシーやデータ取り扱いについては <a href="mailto:support@isla-reader.top">support@isla-reader.top</a> までお問い合わせください。'
             ]
           }
@@ -547,15 +550,16 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           principles: {
             title: '핵심 원칙',
             items: [
-              '계정이 필요 없으며 데이터는 기기에 로컬로 보관됩니다.',
+              '계정이 필요 없으며 라이브러리/독서 데이터는 기본적으로 기기에 로컬 보관됩니다.',
               'AI 기능(요약, 번역 등)을 사용하지 않는 한 책 내용은 업로드되지 않습니다.',
+              'AI/광고/보안 설정 전달 기능을 사용할 때는 안정성 모니터링을 위해 최소 기술 텔레메트리(status, latency, request size, token usage, request/error ID)를 백엔드로 전송합니다.',
               '“설정 > 데이터 관리”에서 언제든 내보내기/가져오기/삭제할 수 있습니다.'
             ]
           },
           admob: {
             title: 'AdMob 데이터 사용',
             items: [
-              '앱을 무료로 제공하기 위해 Google AdMob 배너 및 보상형 광고를 사용합니다.',
+              '앱을 무료로 제공하기 위해 Google AdMob 배너, 전면(인터스티셜), 리워드 인터스티셜 광고를 사용합니다.',
               'AdMob은 IDFA(허용 시), IP 주소, 기기 모델, OS 버전, 대략적 위치(IP 기반), 광고 성과/부정 신호 등을 수집할 수 있습니다.',
               '책/노트/계정 데이터는 AdMob에 전송하지 않으며, 광고 요청에는 SDK에 필요한 기기 신호만 포함됩니다.',
               'iOS의 “앱 추적 요청 허용” 및 “맞춤형 광고”에서 개인화 광고를 제한할 수 있습니다. 자세한 내용은 <a href="https://policies.google.com/privacy">Google 개인정보처리방침</a>을 참고하세요.'
@@ -564,7 +568,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI 기능 업로드',
             items: [
-              '번역/설명/AI 요약/스키밍을 사용할 때 관련 텍스트를 HTTPS로 OpenAI 호환 엔드포인트(기본 DashScope)에 전송합니다.',
+              '번역/설명/AI 요약/스키밍을 사용할 때 관련 텍스트를 HTTPS로 사용자가 설정한 대규모 모델에 전송합니다.',
               '전송 내용은 요청한 책 구간과 필요한 프롬프트 컨텍스트만 포함하며, 계정/광고 식별자는 제외됩니다.',
               'API 키는 보안 서버(isla-reader.top/v1/keys/ai)에서 발급될 수 있으며, 서버는 책 내용을 저장하지 않고 서명과 전달만 수행합니다.',
               '업로드된 텍스트를 서버에 영구 저장하지 않으며, 생성 결과는 기기에 보관됩니다.',
@@ -577,7 +581,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
               'Notion 동기화를 선택하면 OAuth 코드 교환만 서버에서 수행하여 클라이언트 시크릿을 기기에 두지 않습니다.',
               '수신 데이터: Notion 콜백의 인증 코드와 OAuth state. 이를 HTTPS로 Notion에 전송해 토큰을 교환하고 앱 전달용 1회성 session_id를 발급합니다.',
               'Notion 토큰 JSON은 최대 60초 동안만 임시 캐시(메모리/Redis 성격)에 저장되며, <code>/v1/oauth/finalize</code>로 조회 후 즉시 삭제됩니다.',
-              '로그는 최소 메타데이터(status, workspace_id/name, bot_id)만 유지하고 인증 코드와 토큰은 포함하지 않습니다.',
+              '애플리케이션 로그는 최소 메타데이터(status, workspace_id/name, bot_id 등)와 마스킹된 운영 오류만 유지하며, 인증 코드/액세스 토큰은 의도적으로 기록하지 않습니다. 운영 환경에서는 접근 로그를 비활성화하거나 마스킹해야 합니다.',
               '책 내용과 노트는 서버를 거치지 않으며, 기기가 토큰으로 Notion API를 직접 호출합니다.',
               'Notion 또는 앱에서 언제든지 연결을 해제할 수 있으며, 만료된 임시 세션은 자동으로 정리됩니다.'
             ]
@@ -585,7 +589,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           rights: {
             title: '권리 및 문의',
             items: [
-              '“데이터 관리”에서 언제든 내보내기/삭제할 수 있으며 모든 데이터는 기기에 남습니다.',
+              '“데이터 관리”에서 언제든 로컬 독서 데이터를 내보내기/삭제할 수 있습니다. 책/노트/요약 같은 핵심 데이터는 기기에 남고, 서버 보관은 위에 설명한 최소 기술 이벤트로 제한됩니다.',
               '정책 또는 데이터 처리 관련 문의는 <a href="mailto:support@isla-reader.top">support@isla-reader.top</a>으로 연락하세요.'
             ]
           }
