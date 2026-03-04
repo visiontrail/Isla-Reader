@@ -12,7 +12,12 @@ struct AISummaryView: View {
     @StateObject private var summaryService = AISummaryService.shared
     @State private var showingSummary = false
     @State private var isFirstOpen = true
+    @State private var navigateToSkimmingMode = false
     @Environment(\.managedObjectContext) private var viewContext
+    
+    private var isSummaryReadyForSkimming: Bool {
+        !summaryService.isGenerating && !summaryService.currentSummary.isEmpty
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -23,6 +28,16 @@ struct AISummaryView: View {
                 Text(NSLocalizedString("common.loading", comment: "Loading"))
                     .foregroundColor(.secondary)
             }
+        }
+        .simultaneousGesture(skimmingSwipeGesture)
+        .safeAreaInset(edge: .bottom) {
+            if isSummaryReadyForSkimming {
+                skimmingModeEntry
+            }
+        }
+        .navigationDestination(isPresented: $navigateToSkimmingMode) {
+            SkimmingModeView(book: book)
+                .navigationBarHidden(true)
         }
         .onAppear {
             DebugLogger.info("AISummaryView: onAppear触发")
@@ -38,6 +53,50 @@ struct AISummaryView: View {
                 DebugLogger.info("AISummaryView: 非首次打开，跳过")
             }
         }
+    }
+    
+    private var skimmingModeEntry: some View {
+        Button(action: openSkimmingMode) {
+            HStack(spacing: 10) {
+                Image(systemName: "bolt.horizontal.circle.fill")
+                    .font(.headline)
+                Text(NSLocalizedString("skimming.mode_badge", comment: "Skimming Mode"))
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                Spacer()
+                Image(systemName: "arrow.left")
+                    .font(.subheadline)
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                LinearGradient(
+                    colors: [Color.orange, Color.orange.opacity(0.82)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+        .background(.ultraThinMaterial)
+    }
+    
+    private var skimmingSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onEnded { value in
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+                guard isSummaryReadyForSkimming else { return }
+                guard horizontal < -100 else { return }
+                guard abs(horizontal) > abs(vertical) else { return }
+                openSkimmingMode()
+            }
     }
     
     private var summaryContent: some View {
@@ -374,6 +433,15 @@ struct AISummaryView: View {
         
         // 重新生成
         generateSummaryWithStream()
+    }
+    
+    private func openSkimmingMode() {
+        guard isSummaryReadyForSkimming else {
+            DebugLogger.info("AISummaryView: 摘要未完成，忽略进入Skimming Mode")
+            return
+        }
+        DebugLogger.info("AISummaryView: 进入Skimming Mode - \(book.displayTitle)")
+        navigateToSkimmingMode = true
     }
     
     private func formatDate(_ date: Date) -> String {
