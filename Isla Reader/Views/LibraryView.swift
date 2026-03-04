@@ -615,7 +615,7 @@ struct BookContextMenu: View {
     
     var body: some View {
         Button(action: { onContinueReading?() }) {
-            Label(NSLocalizedString("library.continue_reading", comment: ""), systemImage: "book.open")
+            Label(NSLocalizedString("library.continue_reading", comment: ""), systemImage: "book")
         }
         
         if let onShowBookmarks = onShowBookmarks {
