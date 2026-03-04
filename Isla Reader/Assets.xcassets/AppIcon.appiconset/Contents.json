@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "LanReadIcon1024.png",
+      "filename" : "LanReadIcon1024-NoAlpha.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "LanReadIcon1024Dark.png",
+      "filename" : "LanReadIcon1024Dark-NoAlpha.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
