@@ -136,7 +136,8 @@ open Isla\ Reader.xcodeproj
 ```
 
 3. 配置 AI 与安全服务器
-   - 将 `Config/AISecrets.xcconfig.example` 复制为 `Config/AISecrets.xcconfig`
+   - `Config/Base.xcconfig` 已提交并作为默认构建配置（Xcode Cloud 无本地密钥文件时也可构建）。
+   - 可选本地覆盖：将 `Config/AISecrets.xcconfig.example` 复制为 `Config/AISecrets.xcconfig`（该文件已 gitignore）。
    - 推荐：配置安全服务器，让后端下发 `api_endpoint` / `model` / `api_key`，客户端填好 `SECURE_SERVER_BASE_URL`、`SECURE_SERVER_CLIENT_ID`、`SECURE_SERVER_CLIENT_SECRET`、`SECURE_SERVER_REQUIRE_TLS`（可将 `AI_API_ENDPOINT`、`AI_MODEL` 留空）。
    - 可选备用（离线/本地调试）：手动设置 `AI_API_ENDPOINT`、`AI_MODEL` 和 `AI_API_KEY`
 

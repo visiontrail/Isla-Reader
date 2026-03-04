@@ -136,7 +136,8 @@ open Isla\ Reader.xcodeproj
 ```
 
 3. **Configure AI & secure server**
-   - Copy `Config/AISecrets.xcconfig.example` to `Config/AISecrets.xcconfig`
+   - `Config/Base.xcconfig` is committed and used by default (works in Xcode Cloud without local secret files).
+   - Optional local override: copy `Config/AISecrets.xcconfig.example` to `Config/AISecrets.xcconfig` (gitignored).
    - Recommended: point `SECURE_SERVER_BASE_URL`, `SECURE_SERVER_CLIENT_ID`, `SECURE_SERVER_CLIENT_SECRET`, `SECURE_SERVER_REQUIRE_TLS` to the backend so it can deliver `api_endpoint`/`model`/`api_key` dynamically.
    - Optional fallback (offline/local only): set `AI_API_ENDPOINT`, `AI_MODEL`, and `AI_API_KEY` manually.
 

@@ -1,0 +1,31 @@
+// Committed defaults for local builds and Xcode Cloud archives.
+// Local overrides: create Config/AISecrets.xcconfig (gitignored).
+// Values in AISecrets.xcconfig will override these defaults.
+
+// AI fallback config (usually served by secure backend in production)
+AI_API_ENDPOINT =
+AI_API_KEY =
+AI_MODEL =
+
+// Notion OAuth (client_id is safe to embed)
+NOTION_CLIENT_ID =
+NOTION_REDIRECT_URI =
+
+// Secure server config for fetching AI settings
+SECURE_SERVER_BASE_URL = https:\/\/isla-reader.top:443
+SECURE_SERVER_CLIENT_ID =
+SECURE_SERVER_CLIENT_SECRET =
+SECURE_SERVER_REQUIRE_TLS = true
+SECURE_SERVER_METRICS_TOKEN =
+
+// AdMob ad unit IDs
+ADMOB_BANNER_AD_UNIT_ID =
+ADMOB_REWARDED_INTERSTITIAL_AD_UNIT_ID =
+ADMOB_INTERSTITIAL_AD_UNIT_ID =
+
+// Advertising build toggle: keep empty by default for cloud-safe builds
+ADS_SWIFT_FLAGS =
+OTHER_SWIFT_FLAGS = $(inherited) $(ADS_SWIFT_FLAGS)
+
+// Optional include; ignored if the file does not exist.
+#include? "AISecrets.xcconfig"

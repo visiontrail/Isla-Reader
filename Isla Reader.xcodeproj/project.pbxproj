@@ -55,6 +55,7 @@
 		CA285BCD2E714BD2008BE112 /* LanReadUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LanReadUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CACEA1002F1A000100000001 /* AISecrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AISecrets.xcconfig; sourceTree = "<group>"; };
 		CACEA1012F1A000100000002 /* AISecrets.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AISecrets.xcconfig.example; sourceTree = "<group>"; };
+		CACEA1032F1A000100000004 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		D10200012FABC00000000001 /* ReadingReminderLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ReadingReminderLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -163,6 +164,7 @@
 		CACEA1022F1A000100000003 /* Config */ = {
 			isa = PBXGroup;
 			children = (
+				CACEA1032F1A000100000004 /* Base.xcconfig */,
 				CACEA1002F1A000100000001 /* AISecrets.xcconfig */,
 				CACEA1012F1A000100000002 /* AISecrets.xcconfig.example */,
 			);
@@ -402,7 +404,7 @@
 /* Begin XCBuildConfiguration section */
 		CA285BD72E714BD2008BE112 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CACEA1002F1A000100000001 /* AISecrets.xcconfig */;
+			baseConfigurationReference = CACEA1032F1A000100000004 /* Base.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -443,7 +445,7 @@
 		};
 		CA285BD82E714BD2008BE112 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CACEA1002F1A000100000001 /* AISecrets.xcconfig */;
+			baseConfigurationReference = CACEA1032F1A000100000004 /* Base.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -486,7 +488,7 @@
 		};
 		CA285BD92E714BD2008BE112 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CACEA1002F1A000100000001 /* AISecrets.xcconfig */;
+			baseConfigurationReference = CACEA1032F1A000100000004 /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -551,7 +553,7 @@
 		};
 		CA285BDA2E714BD2008BE112 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CACEA1002F1A000100000001 /* AISecrets.xcconfig */;
+			baseConfigurationReference = CACEA1032F1A000100000004 /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
