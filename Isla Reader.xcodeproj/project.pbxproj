@@ -182,7 +182,6 @@
 				CA285BAC2E714BCF008BE112 /* Frameworks */,
 				CA285BAD2E714BCF008BE112 /* Resources */,
 				D10200092FABC00000000001 /* Embed App Extensions */,
-				E1A000012FC0D00100000001 /* Generate Ad SDK dSYMs */,
 			);
 			buildRules = (
 			);
@@ -352,27 +351,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		E1A000012FC0D00100000001 /* Generate Ad SDK dSYMs */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Generate Ad SDK dSYMs";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if [ \"$CONFIGURATION\" != \"Release\" ] || [ \"$PLATFORM_NAME\" != \"iphoneos\" ]; then\n  exit 0\nfi\n\nFRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Frameworks\"\nif [ ! -d \"$FRAMEWORKS_DIR\" ]; then\n  exit 0\nfi\n\nfor framework in GoogleMobileAds UserMessagingPlatform; do\n  binary_path=\"$FRAMEWORKS_DIR/${framework}.framework/${framework}\"\n  dsym_path=\"${DWARF_DSYM_FOLDER_PATH}/${framework}.framework.dSYM\"\n\n  if [ ! -f \"$binary_path\" ]; then\n    continue\n  fi\n\n  if [ -d \"$dsym_path\" ]; then\n    rm -rf \"$dsym_path\"\n  fi\n\n  echo \"Generating dSYM for ${framework}.framework\"\n  /usr/bin/dsymutil \"$binary_path\" -o \"$dsym_path\" || {\n    echo \"warning: failed to generate dSYM for ${framework}.framework\"\n    rm -rf \"$dsym_path\"\n  }\ndone\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		CA285BAB2E714BCF008BE112 /* Sources */ = {
