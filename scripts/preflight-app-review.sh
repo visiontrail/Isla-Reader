@@ -68,7 +68,20 @@ section() {
 has_pattern() {
     local pattern="$1"
     shift
-    rg -n --hidden --glob '!**/.git/**' "$pattern" "$@" >/dev/null 2>&1
+    if command -v rg >/dev/null 2>&1; then
+        rg -n --hidden --glob '!**/.git/**' "$pattern" "$@" >/dev/null 2>&1
+    else
+        grep -R -n -E --exclude-dir=.git "$pattern" "$@" >/dev/null 2>&1
+    fi
+}
+
+count_placeholders() {
+    local target="$1"
+    if command -v rg >/dev/null 2>&1; then
+        rg -n '\$\([A-Za-z0-9_]+\)' "$target" | wc -l | xargs
+    else
+        grep -n -E '\$\([A-Za-z0-9_]+\)' "$target" | wc -l | xargs
+    fi
 }
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -246,7 +259,7 @@ fi
 
 section "9) Build config placeholder sanity"
 
-placeholder_count=$(rg -n '\$\([A-Za-z0-9_]+\)' "Isla Reader/Info.plist" | wc -l | xargs || true)
+placeholder_count=$(count_placeholders "Isla Reader/Info.plist" || true)
 if [ "$placeholder_count" -gt 0 ]; then
     warn "Info.plist contains $placeholder_count build-time placeholders; verify Release xcconfig values before archive"
 else
@@ -255,7 +268,7 @@ fi
 
 release_app_plist="build/Build/Products/Release-iphonesimulator/LanRead.app/Info.plist"
 if [ -f "$release_app_plist" ]; then
-    if rg -n '\$\([A-Za-z0-9_]+\)' "$release_app_plist" >/dev/null 2>&1; then
+    if has_pattern '\$\([A-Za-z0-9_]+\)' "$release_app_plist"; then
         fail "Release app Info.plist still contains unresolved placeholders"
     else
         pass "Release app Info.plist has no unresolved placeholders"
