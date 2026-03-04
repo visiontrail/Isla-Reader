@@ -1,337 +1,212 @@
-# LanRead - AI 驱动的阅读助手
+# LanRead - 面向 iOS 的 AI EPUB 阅读器
 
 [![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20iPadOS-lightgrey.svg)](https://developer.apple.com/ios/)
 [![Swift](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.2-green.svg)](CHANGELOG.md)
 
-> 让每本书成为可对话的导师：获取、阅读、理解与讨论，尽在一处。
+LanRead 是一款基于 SwiftUI 的阅读应用，聚焦 EPUB 阅读、AI 辅助理解与本地优先的数据体验。
 
-## 概览
+## README 语言版本
 
-LanRead 是一款面向 iOS 与 iPadOS 的智能电子书阅读应用，利用 AI 技术提升阅读体验。它聚焦数字阅读中的常见痛点：难以获取、理解门槛高、阅读不完整、记忆留存差、缺少讨论伙伴。
+- English: [README.md](README.md)
+- 中文: [README_CN.md](README_CN.md)
+- 日本語: [README_JA.md](README_JA.md)
+- 한국어: [README_KO.md](README_KO.md)
+- Español: [README_ES.md](README_ES.md)
+- Deutsch: [README_DE.md](README_DE.md)
+- Français: [README_FR.md](README_FR.md)
 
-### 关键特性
+## 当前状态（与代码实现一致）
 
-- 📚 本地图书导入：支持从本地存储或“文件”App 导入 ePub 与纯文本
-- 🤖 AI 导读摘要：打开即生成章节与全书摘要
-- 🧭 略读模式：章节骨架摘要与快速导航
-- 💬 交互式阅读助手：可针对选区、章节或整书进行提问
-- 🎯 理解诊断：自动生成测验评估理解程度
-- 🔖 高级阅读器：书签、高亮、批注、搜索与可定制主题
-- 🔗 同步到 Notion：将书签与标注同步到 Notion
-- 🌙 阅读模式：夜间模式、可调字体、行距与版式
-- 🔒 隐私优先：无需注册，数据本地优先
+- App 目标平台：iOS/iPadOS 16.0+
+- Xcode 工程当前 Marketing Version：`1.0`
+- 主要导入格式：通过“文件”App 导入 `EPUB`
+- App 内置 UI 语言：英文、简体中文、日文、韩文
 
-## 愿景
+## 已实现功能
 
-让每本书成为可对话的导师。
+### 阅读与书库
+- EPUB 导入（基于 SHA-256 校验和的重复导入检测）
+- 书库搜索、收藏、阅读状态筛选（想读/在读/暂停/已读）
+- 书籍详情面板（元数据、文件信息、阅读进度）
+- 阅读器能力：
+  - 目录导航
+  - 点按/滑动翻页
+  - 分章节分页状态
+  - 阅读主题与排版设置
+  - 书签增删与书签列表
+  - 文本高亮与笔记
+  - 从高亮列表跳转回原文位置
 
-LanRead 将传统电子阅读与 AI 理解工具结合，使读者不仅能高效获取内容，更能主动参与与深度理解复杂材料。
+### AI 功能
+- AI 开始阅读导读摘要（缓存到 Core Data）
+- 摘要流式风格显示
+- 对选中文本/高亮执行 AI 动作：
+  - 翻译
+  - 解释
+- AI 结果可直接插入高亮笔记
+- 略读模式：
+  - 按章节生成 AI 略读摘要
+  - 结构要点、关键句、关键词、思考问题
+  - 从略读章节一键进入全文阅读对应位置
 
-## 目标用户
+### 进度、提醒与 Live Activity
+- 阅读进度页（周/月/年维度）
+- 阅读时长与目标完成率统计
+- 每日阅读提醒通知
+- Live Activity 实时更新当天阅读进度（iOS 16.1+）
 
-### 学习型读者
-- 需要高效获取知识的学生与职场人士
-- 希望理解并总结复杂材料的个体
-- 受益于交互式学习与理解评估的读者
+### 同步与数据管理
+- Notion OAuth 连接流程
+- Notion 书库初始化（选择父页面并创建数据库）
+- 高亮/笔记变更的队列化同步（含重试与退避）
+- 阅读数据导出/导入（JSON，不包含书籍文件）
+- 缓存空间统计与缓存清理
+- 本地数据一键清除（Core Data + 已导入书籍文件 + 摘要缓存）
 
-### 轻阅读用户
-- 期望获取个性化图书推荐的用户
-- 喜欢在深入阅读前快速了解要点的读者
-- 重视舒适、无干扰阅读体验的用户
+### 安全与运维能力
+- 通过后端安全下发 AI 配置（`/v1/keys/ai`，HMAC 签名）
+- 本地 `xcconfig` 兜底 AI 配置
+- 版本更新策略拉取（`/v1/app/update-policy`）
+- 可选指标上报（`/v1/metrics`）
 
-## 核心能力
+### 广告（可选配置）
+- 集成 Google Mobile Ads
+- 摘要页/阅读器弹层中的 Banner 广告位
+- 略读流程中的激励插屏预加载
+- 未配置广告位或使用占位/测试广告位时会自动跳过请求
 
-### 1. 图书管理
-- 从“文件”App 或本地存储导入书籍
-- 支持 ePub 与纯文本格式
-- 使用自定义标签与分类组织图书
-- 跟踪阅读进度与数据统计
-- 在书库中搜索与筛选
+## 技术栈
 
-### 2. AI 加持阅读
+### iOS 客户端
+- SwiftUI + Core Data
+- Swift 5.9+
+- ActivityKit（Live Activity）
+- UserNotifications
+- GoogleMobileAds SDK
 
-#### 即时摘要
-- 全书概览，涵盖关键要点与章节结构
-- 章节摘要，突出核心概念
-- 自动缓存，可离线访问
-- 支持手动刷新
+### 后端（`server/`）
+- FastAPI（Python 3.11+）
+- HTTPS + HMAC 请求签名
+- 提供 AI Key 下发、Notion OAuth finalize、指标上报、更新策略等接口
 
-#### 交互式问答
-- 选区提问：高亮文本后进行翻译、解释或扩展
-- 章节级提问：围绕主题、概念或论点提问
-- 整书级讨论：跨章节交叉引用观点
-- 引用支持：回答包含对应原文出处
+## 项目结构
 
-### 3. 理解工具
+```text
+.
+├── Isla Reader/                       # iOS 应用源码
+│   ├── Views/                         # SwiftUI 页面
+│   ├── Models/                        # Core Data 实体/扩展
+│   ├── Utils/                         # AI、Notion、提醒、缓存等服务
+│   ├── Assets.xcassets/
+│   ├── *.lproj/                       # 应用内多语言（en/zh-Hans/ja/ko）
+│   └── Isla_Reader.xcdatamodeld/
+├── Isla ReaderTests/                  # 单元测试（Swift Testing）
+├── Isla ReaderUITests/                # UI 冒烟测试（XCTest）
+├── scripts/                           # 本地开发/构建/测试脚本
+├── server/                            # 可选安全后端
+├── README.md
+└── README_CN.md
+```
 
-#### 理解诊断
-- 打开新书时自动生成 2–5 道测验题
-- 即时反馈与详细解析
-- 基于结果给出学习路径建议
-
-#### 知识卡片
-- 一键将高亮与笔记转为闪卡
-- AI 生成术语表条目与示例
-- 支持导出为 Markdown/CSV 用于复习
-
-### 4. 阅读体验
-
-#### 核心阅读功能
-- 目录导航
-- 全文搜索
-- 书签与进度跟踪
-- 多色高亮
-- 行内批注
-- 阅读统计
-
-#### 个性化设置
-- 多套主题（亮色、暗色、仿古、自定义）
-- 可调字体大小与字族
-- 可配置行距与页边距
-- 夜间模式与蓝光降低
-
-### 5. 隐私
-
-- 最小化数据采集
-- 不接入第三方分析或追踪
-- 用户拥有导入内容的完全所有权
-- AI 请求匿名化处理
-- 支持完整数据导出
-
-## 技术架构
-
-### 客户端
-- 平台：iOS 16.0+，iPadOS 16.0+
-- 语言：Swift 5.9+
-- UI 框架：SwiftUI
-- 存储：Core Data（仅本地）
-
-### AI 集成
-- 模型：兼容 OpenAI API（可配置）
-- 流式：渐进式 UI 更新（模拟流式）；计划支持 SSE
-- 上下文管理：基于规则的段落抽取（无向量数据库）
-- 缓存：积极的摘要与响应缓存
-
-## 安装
+## 快速开始
 
 ### 环境要求
-- iOS 16.0+ 或 iPadOS 16.0+
-- Xcode 15.0+
-- Swift 5.9+
-- 有效 Apple 开发者账号（用于签名与分发）
+- Xcode 15+
+- iOS 模拟器运行时（推荐设备：`iPhone 16`）
+- macOS 命令行工具
+- 后端可选：Python 3.11+
 
-### 设置步骤
-
-1. 克隆仓库
-```bash
-git clone https://github.com/yourusername/LanRead-ios.git
-cd LanRead-ios/Isla\ Reader
-```
-
-2. 使用 Xcode 打开
-```bash
-open Isla\ Reader.xcodeproj
-```
-
-3. 配置 AI 与安全服务器
-   - `Config/Base.xcconfig` 已提交并作为默认构建配置（Xcode Cloud 无本地密钥文件时也可构建）。
-   - 可选本地覆盖：将 `Config/AISecrets.xcconfig.example` 复制为 `Config/AISecrets.xcconfig`（该文件已 gitignore）。
-   - 推荐：配置安全服务器，让后端下发 `api_endpoint` / `model` / `api_key`，客户端填好 `SECURE_SERVER_BASE_URL`、`SECURE_SERVER_CLIENT_ID`、`SECURE_SERVER_CLIENT_SECRET`、`SECURE_SERVER_REQUIRE_TLS`（可将 `AI_API_ENDPOINT`、`AI_MODEL` 留空）。
-   - 可选备用（离线/本地调试）：手动设置 `AI_API_ENDPOINT`、`AI_MODEL` 和 `AI_API_KEY`
-
-4. 构建与运行
-   - 选择目标设备或模拟器
-   - 按 `Cmd + R` 构建并运行
-
-### 安全密钥交换服务器
-
-- 后端位于 `server/`（FastAPI + HMAC + HTTPS），详细见 `server/README.md`
-- 快速启动：`cd server && python -m venv .venv && source .venv/bin/activate && pip install -e .`
-- 复制 `.env.example` 为 `.env`，设置 `ISLA_API_ENDPOINT`、`ISLA_AI_MODEL`、`ISLA_API_KEY`、`ISLA_CLIENT_ID`、`ISLA_CLIENT_SECRET`，然后运行：
-  `uvicorn app.main:app --host 0.0.0.0 --port 8443 --no-access-log --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt`
-
-## 使用
-
-### 快速开始
-
-1. 导入你的第一本书
-   - 在书架点击 “＋”
-   - 从“文件”App 选择 ePub 或 .txt 文件
-   - 书籍将出现在你的书库
-
-2. 使用 AI 辅助阅读
-   - 点击书籍打开阅读器
-   - 首屏显示 AI 生成的导读摘要
-   - 选中任意文本即可提问、翻译或获取解释
-
-3. 略读模式
-   - 长按点击 “略读” 按钮，显示章节摘要
-   - 左右滑动或点击目录跳转至对应章节
-
-4. 跟踪进度
-   - 自动保存书签
-   - 在“我的书库”查看阅读统计
-
-### 高级功能
-
-#### 自定义 AI 操作
-为选区预设动作：
-- 翻译为【目标语言】
-- 解释该概念
-- 提供示例
-- 与【概念】进行对比
-- 用简明语言总结
-
-#### 导出与备份
-- 将高亮与笔记导出为 Markdown
-- 将知识卡片导出为 CSV
-- 将书库备份到“文件”App
-
-## 路线图
-
-### v0.1 MVP（当前）
-- [x] 本地文件导入（ePub、纯文本）
-- [x] 基础 ePub 渲染引擎
-- [x] 阅读器基础能力（目录、书签、进度、主题）
-- [x] AI 书籍摘要与缓存
-- [x] 略读模式（章节摘要与跳转）
-
-
-### v0.2（MVP发布）
-- [ ] 性能优化
-- [ ] 稳定性提升
-- [ ] 合规与成本治理
-- [ ] App Store 提交
-
-### v0.5（计划）
-- [ ] 选区问答（翻译、解释、总结）
-
-### v1.0（未来）
-
-
-
-
-## 开发
-
-### 项目结构
-
-```
-Isla Reader/
-├── Isla Reader/
-│   ├── Isla_ReaderApp.swift       # 应用入口
-│   ├── ContentView.swift          # 主视图
-│   ├── Models/                    # 数据模型
-│   ├── Views/                     # SwiftUI 视图
-│   ├── Utils/                     # 工具与服务
-│   ├── Persistence.swift          # Core Data 栈
-│   ├── Isla_Reader.xcdatamodeld/  # Core Data 模型
-│   ├── en.lproj/                  # 英文本地化
-│   ├── zh-Hans.lproj/             # 简体中文本地化
-│   ├── ja.lproj/                  # 日文本地化
-│   ├── ko.lproj/                  # 韩文本地化
-│   ├── Info.plist                 # 应用配置
-│   ├── Isla_Reader.entitlements   # 应用权限配置
-│   ├── docs/                      # 应用文档
-│   └── Assets.xcassets/           # 图片与配色
-├── Isla Reader.xcodeproj/         # Xcode 工程
-├── Isla ReaderTests/              # 单元测试
-├── Isla ReaderUITests/            # UI 测试
-├── scripts/                       # 构建与自动化脚本
-└── server/                        # 安全密钥交换服务（FastAPI）
-```
-
-### 开发构建
+### 1）克隆并打开工程
 
 ```bash
-# 运行全部测试
+git clone <your-repo-url>
+cd LanRead-ios
+open "Isla Reader.xcodeproj"
+```
+
+### 2）配置应用密钥
+
+默认基础配置已提交：
+- `Config/Base.xcconfig`
+
+可选本地覆盖（已 gitignore）：
+
+```bash
+cp Config/AISecrets.xcconfig.example Config/AISecrets.xcconfig
+```
+
+推荐生产式配置：
+- 填写安全服务配置（`SECURE_SERVER_BASE_URL`、`SECURE_SERVER_CLIENT_ID`、`SECURE_SERVER_CLIENT_SECRET`、`SECURE_SERVER_REQUIRE_TLS`）
+- 由后端下发 `api_endpoint`、`model`、`api_key`
+
+本地兜底配置：
+- 填写 `AI_API_ENDPOINT`、`AI_MODEL`、`AI_API_KEY`
+
+### 3）构建并运行
+
+```bash
+./scripts/dev.sh "iPhone 16"
+```
+
+## 开发命令
+
+```bash
+# 仅构建
+./scripts/build.sh debug
+./scripts/build.sh release
+./scripts/build.sh clean
+
+# 在模拟器运行已构建 app + 实时日志
+./scripts/run.sh "iPhone 16"
+
+# 一键构建 + 运行
+./scripts/dev.sh "iPhone 16"
+
+# 保留模拟器已安装应用数据
+./scripts/dev_preserve_data.sh "iPhone 16"
+
+# 单元 + UI 测试
 xcodebuild test -project "Isla Reader.xcodeproj" -scheme "LanRead" -destination 'platform=iOS Simulator,name=iPhone 16'
 
-# 构建模拟器版本
-xcodebuild build -project "Isla Reader.xcodeproj" -scheme "LanRead" -destination 'platform=iOS Simulator,name=iPhone 16'
+# 辅助检查
+./scripts/test-localization.sh
+./scripts/test-epub-parser.sh
+./scripts/test-scripts.sh
 
-# 构建设备版本
-xcodebuild build -project "Isla Reader.xcodeproj" -scheme "LanRead" -destination 'generic/platform=iOS'
+# 提审前预检
+./scripts/preflight-app-review.sh
+./scripts/preflight-app-review.sh --full
 ```
 
-### 测试
+## 可选后端快速启动
 
 ```bash
-# 运行单元测试
-cd scripts
-./test-scripts.sh
-
-# 在模拟器中运行
-./simulator.sh
+cd server
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+cp .env.example .env
+uvicorn app.main:app --host 0.0.0.0 --port 8443 --no-access-log --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt
 ```
 
-## 合规与隐私
+完整部署与安全说明见：[server/README.md](server/README.md)
 
-### App Store 指南
-- 5.1 隐私：最小化数据收集，提供隐私政策，可删除数据
-- 5.1.1 权限：权限请求提供明确用途说明
-- 5.1.3 账户删除：应用内删除账号并同时删除服务端数据
-- 3.1 支付：数字内容/功能（如适用）需使用 IAP
-- 4.2 质量：功能完整，无崩溃，达标可发布
+## 隐私说明
 
-### 隐私特性
-- 不收集邮箱或个人身份信息
-- 阅读数据仅存储在本地设备
-- AI 请求匿名化且不记录
-- 用户完全掌控数据，可导出/删除
-- 符合 App 隐私营养标签要求
+- 核心阅读数据默认保存在本地设备（Core Data + 本地 EPUB 文件）。
+- AI 与 Notion 同步功能需要网络。
+- 本地阅读核心能力不需要账号。
+- 可在设置中执行导出、导入与重置。
 
-### 版权与内容
-- 用户对导入内容的合法性负责
-- 应用不提供书籍下载或聚合服务
-- 示例书籍应来自古登堡计划等公共领域
-- 所有 AI 生成内容均包含引用与来源标注
+## 相关文档
 
-## 贡献
-
-我们欢迎所有贡献！提交 PR 前请阅读 [贡献指南](CONTRIBUTING.md)。
-
-### 开发流程
-1. Fork 仓库
-2. 创建功能分支（`git checkout -b feature/amazing-feature`）
-3. 提交变更（`git commit -m 'Add amazing feature'`）
-4. 推送分支（`git push origin feature/amazing-feature`）
-5. 创建 Pull Request
-
-### 代码风格
-- 遵循 Swift API 设计指南
-- 使用 SwiftLint 保持代码一致性
-- 为新功能编写测试
-- 按需更新文档
-
-## 支持
-
-### 文档
-- [快速上手](scripts/QUICK_START.md)
-- [需求规格说明](Isla%20Reader/docs/requirements.md)
-- [阅读交互设计](Isla%20Reader/docs/reading_interaction_design.md)
-- [提示策略](Isla%20Reader/docs/prompt_strategy.md)
+- iOS 需求文档：[Isla Reader/docs/requirements.md](Isla%20Reader/docs/requirements.md)
+- 阅读交互设计：[Isla Reader/docs/reading_interaction_design.md](Isla%20Reader/docs/reading_interaction_design.md)
+- Prompt 策略：[Isla Reader/docs/prompt_strategy.md](Isla%20Reader/docs/prompt_strategy.md)
+- Notion OAuth 配置：[Isla Reader/docs/NOTION_OAUTH_SETUP.md](Isla%20Reader/docs/NOTION_OAUTH_SETUP.md)
+- 脚本说明：[scripts/README.md](scripts/README.md)
 
 ## 许可证
 
-项目在 MIT 许可证下发布——详见 [LICENSE](LICENSE)。
-
-## 致谢
-
-- 灵感来源：用 AI 让知识更易获得
-- 构建于 SwiftUI 与 Core Data
-- 通过兼容 OpenAI 的 API 集成 AI
-- 特别感谢开源社区
-
-## 更新日志
-
-更新日志将发布在 Releases；当前进展请参见上方路线图。
-
----
-
-**当前版本**：v1.0 
-**最近更新**：2025-12-12  
-**状态**：积极开发（MVP 阶段）
-
-为热爱学习的读者倾心打造。
+MIT，详见 [LICENSE](LICENSE)。
