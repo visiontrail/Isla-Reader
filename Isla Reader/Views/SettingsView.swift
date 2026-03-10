@@ -71,12 +71,14 @@ struct SettingsView: View {
                         }
                     }
 
-                    Toggle(isOn: $appSettings.isAIAdvanceAdNoticeEnabled) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(NSLocalizedString("settings.ai_ad_notice", comment: ""))
-                            Text(NSLocalizedString("settings.ai_ad_notice.description", comment: ""))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    if appSettings.areAdsEnabled {
+                        Toggle(isOn: $appSettings.isAIAdvanceAdNoticeEnabled) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(NSLocalizedString("settings.ai_ad_notice", comment: ""))
+                                Text(NSLocalizedString("settings.ai_ad_notice.description", comment: ""))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                 }

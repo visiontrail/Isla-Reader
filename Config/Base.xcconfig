@@ -23,7 +23,8 @@ ADMOB_BANNER_AD_UNIT_ID =
 ADMOB_REWARDED_INTERSTITIAL_AD_UNIT_ID =
 ADMOB_INTERSTITIAL_AD_UNIT_ID =
 
-// Advertising build toggle: keep empty by default for cloud-safe builds
+// Advertising build toggle: keep empty by default for cloud-safe builds.
+// Set `ADS_SWIFT_FLAGS = -DLANREAD_ADS_DISABLED` for an ad-free build variant.
 ADS_SWIFT_FLAGS =
 OTHER_SWIFT_FLAGS = $(inherited) $(ADS_SWIFT_FLAGS)
 

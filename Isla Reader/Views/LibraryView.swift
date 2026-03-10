@@ -828,6 +828,37 @@ struct ReaderLaunchTarget: Identifiable {
     }
 }
 
+private struct ReaderColorOption: Identifiable {
+    let id: String
+    let titleKey: String
+    let hex: String
+    let swipeTintHex: String
+
+    var title: String {
+        NSLocalizedString(titleKey, comment: "")
+    }
+
+    var swipeTintColor: Color {
+        Color(hex: swipeTintHex) ?? (Color(hex: hex) ?? .gray)
+    }
+}
+
+private enum ReaderColorPalette {
+    static let bookmarkOptions: [ReaderColorOption] = [
+        ReaderColorOption(id: "bookmark-white", titleKey: "color.option.white", hex: Bookmark.defaultColorHex, swipeTintHex: "D9D9D9"),
+        ReaderColorOption(id: "bookmark-mint", titleKey: "color.option.mint", hex: "D6EFDE", swipeTintHex: "B7DEC3"),
+        ReaderColorOption(id: "bookmark-blue", titleKey: "color.option.blue", hex: "D4E7FF", swipeTintHex: "B2D0F4"),
+        ReaderColorOption(id: "bookmark-peach", titleKey: "color.option.peach", hex: "FFDCC8", swipeTintHex: "F2BEA4")
+    ]
+
+    static let highlightOptions: [ReaderColorOption] = [
+        ReaderColorOption(id: "highlight-yellow", titleKey: "color.option.yellow", hex: Color.yellow.hexString, swipeTintHex: "E5C949"),
+        ReaderColorOption(id: "highlight-green", titleKey: "color.option.green", hex: "D6EFD6", swipeTintHex: "B6DBB6"),
+        ReaderColorOption(id: "highlight-blue", titleKey: "color.option.blue", hex: "D4E7FF", swipeTintHex: "B2D0F4"),
+        ReaderColorOption(id: "highlight-pink", titleKey: "color.option.pink", hex: "FFD3E5", swipeTintHex: "F0B1CB")
+    ]
+}
+
 struct BookmarkListSheet: View {
     let book: Book
     var onSelect: (BookmarkLocation) -> Void
@@ -859,6 +890,11 @@ struct BookmarkListSheet: View {
                             bookmarkRow(for: bookmark)
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            ForEach(ReaderColorPalette.bookmarkOptions) { option in
+                                bookmarkColorSwipeButton(option, for: bookmark)
+                            }
+                        }
                     }
                     .onDelete(perform: deleteBookmarks)
                 }
@@ -900,6 +936,9 @@ struct BookmarkListSheet: View {
     private func bookmarkRow(for bookmark: Bookmark) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
+                Circle()
+                    .fill(bookmark.bookmarkColor)
+                    .frame(width: 10, height: 10)
                 Text(bookmark.displayTitle)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
@@ -910,7 +949,7 @@ struct BookmarkListSheet: View {
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Color.primary.opacity(0.06))
+                    .background(bookmark.bookmarkColor.opacity(0.56))
                     .cornerRadius(10)
             }
             
@@ -935,6 +974,11 @@ struct BookmarkListSheet: View {
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 6)
+        .padding(.horizontal, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(bookmark.bookmarkColor.opacity(0.34))
+        )
     }
     
     private func deleteBookmarks(at offsets: IndexSet) {
@@ -947,6 +991,28 @@ struct BookmarkListSheet: View {
             DebugLogger.info("BookmarkListSheet: 删除书签完成")
         } catch {
             DebugLogger.error("BookmarkListSheet: 删除书签失败", error: error)
+        }
+    }
+
+    private func bookmarkColorSwipeButton(_ option: ReaderColorOption, for bookmark: Bookmark) -> some View {
+        return Button {
+            applyBookmarkColor(option.hex, to: bookmark)
+        } label: {
+            Color.clear
+                .frame(width: 10, height: 22)
+        }
+        .tint(option.swipeTintColor)
+        .accessibilityLabel(Text(option.title))
+    }
+
+    private func applyBookmarkColor(_ hex: String, to bookmark: Bookmark) {
+        bookmark.colorHex = hex
+
+        do {
+            try viewContext.save()
+            DebugLogger.info("BookmarkListSheet: 书签颜色已更新 - \(bookmark.id.uuidString)")
+        } catch {
+            DebugLogger.error("BookmarkListSheet: 更新书签颜色失败", error: error)
         }
     }
 }
@@ -995,6 +1061,19 @@ struct HighlightListSheet: View {
                 } else {
                     ForEach(displayedHighlights) { highlight in
                         highlightRow(for: highlight)
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                ForEach(ReaderColorPalette.highlightOptions) { option in
+                                    highlightColorSwipeButton(option, for: highlight)
+                                }
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    deleteHighlight(highlight)
+                                } label: {
+                                    Label(NSLocalizedString("highlight.list.delete", comment: ""), systemImage: "trash")
+                                }
+                                .tint(.red)
+                            }
                     }
                 }
             }
@@ -1117,6 +1196,10 @@ struct HighlightListSheet: View {
                     Text(highlight.displayText)
                         .font(.body)
                         .foregroundColor(.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(highlight.highlightColor.opacity(0.48))
+                        .cornerRadius(10)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
@@ -1124,6 +1207,10 @@ struct HighlightListSheet: View {
                 Text(highlight.displayText)
                     .font(.body)
                     .foregroundColor(.primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(highlight.highlightColor.opacity(0.48))
+                    .cornerRadius(10)
             }
             
             if let noteText = noteText(for: highlight) {
@@ -1181,11 +1268,13 @@ struct HighlightListSheet: View {
             HStack(spacing: 8) {
                 noteActionButton(for: highlight, compact: false)
                 shareActionButton(for: highlight, compact: false)
+                deleteActionButton(for: highlight, compact: false)
             }
 
             HStack(spacing: 8) {
                 noteActionButton(for: highlight, compact: true)
                 shareActionButton(for: highlight, compact: true)
+                deleteActionButton(for: highlight, compact: true)
             }
         }
     }
@@ -1219,6 +1308,21 @@ struct HighlightListSheet: View {
         .controlSize(.small)
         .fixedSize(horizontal: true, vertical: false)
         .disabled(generatingShareHighlightID != nil)
+    }
+
+    private func deleteActionButton(for highlight: Highlight, compact: Bool) -> some View {
+        Button(role: .destructive, action: { deleteHighlight(highlight) }) {
+            if compact {
+                Image(systemName: "trash")
+            } else {
+                Label(NSLocalizedString("highlight.list.delete", comment: ""), systemImage: "trash")
+                    .labelStyle(.titleAndIcon)
+            }
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .fixedSize(horizontal: true, vertical: false)
+        .tint(.red)
     }
 
     private func openNoteEditor(for highlight: Highlight) {
@@ -1270,6 +1374,55 @@ struct HighlightListSheet: View {
 
     private func isGeneratingShare(for highlight: Highlight) -> Bool {
         generatingShareHighlightID == highlight.id
+    }
+
+    private func deleteHighlight(_ highlight: Highlight) {
+        let highlightID = highlight.id
+        viewContext.delete(highlight)
+
+        do {
+            try viewContext.save()
+            if generatingShareHighlightID == highlightID {
+                generatingShareHighlightID = nil
+            }
+            if editingHighlight?.id == highlightID {
+                editingHighlight = nil
+            }
+            DebugLogger.info("HighlightListSheet: 删除高亮成功 - \(highlightID.uuidString)")
+        } catch {
+            DebugLogger.error("HighlightListSheet: 删除高亮失败", error: error)
+            activeAlert = HighlightListAlert(
+                title: NSLocalizedString("reader.highlight.save_failed", comment: ""),
+                message: nil
+            )
+        }
+    }
+
+    private func highlightColorSwipeButton(_ option: ReaderColorOption, for highlight: Highlight) -> some View {
+        return Button {
+            applyHighlightColor(option.hex, to: highlight)
+        } label: {
+            Color.clear
+                .frame(width: 10, height: 22)
+        }
+        .tint(option.swipeTintColor)
+        .accessibilityLabel(Text(option.title))
+    }
+
+    private func applyHighlightColor(_ hex: String, to highlight: Highlight) {
+        highlight.colorHex = hex
+        highlight.updatedAt = Date()
+
+        do {
+            try viewContext.save()
+            DebugLogger.info("HighlightListSheet: 高亮颜色已更新 - \(highlight.id.uuidString)")
+        } catch {
+            DebugLogger.error("HighlightListSheet: 更新高亮颜色失败", error: error)
+            activeAlert = HighlightListAlert(
+                title: NSLocalizedString("reader.highlight.save_failed", comment: ""),
+                message: nil
+            )
+        }
     }
 
     private func openHighlightLocation(for highlight: Highlight) {

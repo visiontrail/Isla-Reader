@@ -152,6 +152,8 @@
 "highlight.list.empty" = "하이라이트나 노트가 없습니다";
 "highlight.list.edit_note" = "메모 편집";
 "highlight.list.share_note" = "메모 공유";
+"highlight.list.delete" = "삭제";
+"highlight.list.change_color" = "색상 변경";
 "highlight.list.unknown_chapter" = "알 수 없는 챕터";
 "highlight.share.preview_title" = "공유 미리보기";
 "highlight.share.image_button" = "이미지 공유";
@@ -211,8 +213,18 @@
 "reader.page.number_format" = "%d페이지";
 "bookmark.list.title" = "북마크";
 "bookmark.list.empty" = "북마크가 없습니다";
+"bookmark.list.change_color" = "색상 변경";
 "bookmark.chapter_format" = "제 %d장";
 "bookmark.page_format" = "제 %d쪽";
+"color.option.white" = "흰색";
+"color.option.mint" = "민트";
+"color.option.blue" = "파랑";
+"color.option.peach" = "피치";
+"color.option.lavender" = "라벤더";
+"color.option.yellow" = "노랑";
+"color.option.green" = "초록";
+"color.option.pink" = "분홍";
+"color.option.orange" = "주황";
 
 // AI Summary Prompts
 "ai.summary.book.prompt.title" = "다음 책에 대한 독서 가이드 요약을 생성해 주세요：";

@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreData
+import SwiftUI
 
 @objc(Bookmark)
 public class Bookmark: NSManagedObject {
@@ -14,6 +15,7 @@ public class Bookmark: NSManagedObject {
 }
 
 extension Bookmark {
+    static let defaultColorHex = "FFFFFF"
     
     @nonobjc public class func fetchRequest() -> NSFetchRequest<Bookmark> {
         NSFetchRequest<Bookmark>(entityName: "Bookmark")
@@ -24,6 +26,7 @@ extension Bookmark {
     @NSManaged public var pageIndex: Int32
     @NSManaged public var chapterTitle: String?
     @NSManaged public var createdAt: Date
+    @NSManaged public var colorHex: String?
     
     // Relationship
     @NSManaged public var book: Book
@@ -53,6 +56,15 @@ struct BookmarkLocation: Hashable {
 }
 
 extension Bookmark: Identifiable {
+
+    var resolvedColorHex: String {
+        let candidate = colorHex?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return candidate.isEmpty ? Self.defaultColorHex : candidate
+    }
+
+    var bookmarkColor: Color {
+        Color(hex: resolvedColorHex) ?? .white
+    }
     
     var location: BookmarkLocation {
         BookmarkLocation(

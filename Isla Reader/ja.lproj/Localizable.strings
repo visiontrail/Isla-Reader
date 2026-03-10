@@ -152,6 +152,8 @@
 "highlight.list.empty" = "ハイライトやノートはまだありません";
 "highlight.list.edit_note" = "ノートを編集";
 "highlight.list.share_note" = "ノートを共有";
+"highlight.list.delete" = "削除";
+"highlight.list.change_color" = "色を変更";
 "highlight.list.unknown_chapter" = "不明な章";
 "highlight.share.preview_title" = "共有プレビュー";
 "highlight.share.image_button" = "画像を共有";
@@ -211,8 +213,18 @@
 "reader.page.number_format" = "%d ページ";
 "bookmark.list.title" = "ブックマーク";
 "bookmark.list.empty" = "ブックマークがまだありません";
+"bookmark.list.change_color" = "色を変更";
 "bookmark.chapter_format" = "第%d章";
 "bookmark.page_format" = "第%dページ";
+"color.option.white" = "白";
+"color.option.mint" = "ミント";
+"color.option.blue" = "ブルー";
+"color.option.peach" = "ピーチ";
+"color.option.lavender" = "ラベンダー";
+"color.option.yellow" = "イエロー";
+"color.option.green" = "グリーン";
+"color.option.pink" = "ピンク";
+"color.option.orange" = "オレンジ";
 
 // AI Summary Prompts
 "ai.summary.book.prompt.title" = "次の本の読書ガイド要約を生成してください：";

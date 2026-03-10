@@ -8,6 +8,18 @@
 import Foundation
 import SwiftUI
 
+enum AdDisplayPolicy {
+    #if LANREAD_ADS_DISABLED
+    static let isAdBuildEnabled = false
+    #else
+    static let isAdBuildEnabled = true
+    #endif
+
+    static func isAdsEnabled(adRemovalUnlocked: Bool) -> Bool {
+        isAdBuildEnabled && !adRemovalUnlocked
+    }
+}
+
 public enum AppTheme: String, CaseIterable {
     case system = "system"
     case light = "light"
@@ -154,6 +166,7 @@ class AppSettings: ObservableObject {
     private static let readingReminderEnabledKey = "readingReminderEnabled"
     private static let readingGoalMinutesKey = "readingGoalMinutes"
     private static let readingReminderTimeMinutesKey = "readingReminderTimeMinutes"
+    private static let adRemovalUnlockedKey = "adRemovalUnlocked"
     private static let aiAdvanceAdNoticeEnabledKey = "aiAdvanceAdNoticeEnabled"
     private static let highlightSortModeKey = "highlightSortMode"
     private static let legacyReadingReminderEnabledKey = "reading_reminder_enabled"
@@ -176,6 +189,7 @@ class AppSettings: ObservableObject {
         "reading_font",
         "line_spacing",
         "page_margins",
+        adRemovalUnlockedKey,
         highlightSortModeKey,
         aiAdvanceAdNoticeEnabledKey,
         readingReminderEnabledKey,
@@ -229,10 +243,24 @@ class AppSettings: ObservableObject {
         }
     }
 
+    @Published var isAdRemovalUnlocked: Bool {
+        didSet {
+            UserDefaults.standard.set(isAdRemovalUnlocked, forKey: AppSettings.adRemovalUnlockedKey)
+        }
+    }
+
     @Published var isAIAdvanceAdNoticeEnabled: Bool {
         didSet {
             UserDefaults.standard.set(isAIAdvanceAdNoticeEnabled, forKey: AppSettings.aiAdvanceAdNoticeEnabledKey)
         }
+    }
+
+    var areAdsEnabled: Bool {
+        AdDisplayPolicy.isAdsEnabled(adRemovalUnlocked: isAdRemovalUnlocked)
+    }
+
+    var shouldShowAIAdvanceAdNotice: Bool {
+        areAdsEnabled && isAIAdvanceAdNoticeEnabled
     }
 
     @Published var highlightSortMode: HighlightSortMode {
@@ -298,6 +326,12 @@ class AppSettings: ObservableObject {
     static func currentHighlightSortMode(defaults: UserDefaults = .standard) -> HighlightSortMode {
         HighlightSortMode(rawValue: defaults.string(forKey: AppSettings.highlightSortModeKey) ?? "") ?? .modifiedTime
     }
+
+    @MainActor
+    func applyAdRemovalEntitlement(unlocked: Bool) {
+        guard isAdRemovalUnlocked != unlocked else { return }
+        isAdRemovalUnlocked = unlocked
+    }
     
     private init() {
         let storedLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language") ?? "") ?? .en
@@ -314,6 +348,7 @@ class AppSettings: ObservableObject {
         let storedPageMargins = UserDefaults.standard.object(forKey: "page_margins") as? Double ?? AppSettings.defaultPageMargins
         self.pageMargins = min(max(storedPageMargins, AppSettings.pageMarginsRange.lowerBound), AppSettings.pageMarginsRange.upperBound)
         let defaults = UserDefaults.standard
+        self.isAdRemovalUnlocked = defaults.object(forKey: AppSettings.adRemovalUnlockedKey) as? Bool ?? false
         self.highlightSortMode = AppSettings.currentHighlightSortMode(defaults: defaults)
         self.isAIAdvanceAdNoticeEnabled = defaults.object(forKey: AppSettings.aiAdvanceAdNoticeEnabledKey) as? Bool ?? true
         self.isReadingReminderEnabled = defaults.object(forKey: AppSettings.readingReminderEnabledKey) as? Bool
@@ -342,6 +377,7 @@ class AppSettings: ObservableObject {
         readingFont = .system
         lineSpacing = AppSettings.defaultLineSpacing
         pageMargins = AppSettings.defaultPageMargins
+        isAdRemovalUnlocked = false
         highlightSortMode = .modifiedTime
         isAIAdvanceAdNoticeEnabled = true
         isReadingReminderEnabled = false

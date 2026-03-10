@@ -12,7 +12,11 @@ import UserNotifications
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        GADMobileAds.sharedInstance().start(completionHandler: nil)
+        if AppSettings.shared.areAdsEnabled {
+            GADMobileAds.sharedInstance().start(completionHandler: nil)
+        } else {
+            DebugLogger.info("AdMob: 广告关闭，跳过 SDK 初始化")
+        }
         UNUserNotificationCenter.current().delegate = self
         return true
     }

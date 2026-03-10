@@ -152,6 +152,8 @@
 "highlight.list.empty" = "暂无高亮或笔记";
 "highlight.list.edit_note" = "编辑笔记";
 "highlight.list.share_note" = "分享笔记";
+"highlight.list.delete" = "删除";
+"highlight.list.change_color" = "更改颜色";
 "highlight.list.unknown_chapter" = "未知章节";
 "highlight.share.preview_title" = "分享预览";
 "highlight.share.image_button" = "分享图片";
@@ -211,8 +213,18 @@
 "reader.page.number_format" = "第 %d 页";
 "bookmark.list.title" = "书签";
 "bookmark.list.empty" = "暂无书签";
+"bookmark.list.change_color" = "更改颜色";
 "bookmark.chapter_format" = "第 %d 章";
 "bookmark.page_format" = "第 %d 页";
+"color.option.white" = "白色";
+"color.option.mint" = "薄荷绿";
+"color.option.blue" = "蓝色";
+"color.option.peach" = "蜜桃色";
+"color.option.lavender" = "淡紫色";
+"color.option.yellow" = "黄色";
+"color.option.green" = "绿色";
+"color.option.pink" = "粉色";
+"color.option.orange" = "橙色";
 
 // AI Summary Prompts
 "ai.summary.book.prompt.title" = "请为以下书籍生成一份导读摘要：";

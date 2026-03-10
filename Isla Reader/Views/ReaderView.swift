@@ -1134,8 +1134,7 @@ struct ReaderView: View {
                         .padding(.top, 40)
                 }
 
-                Spacer()
-                adBannerSection
+                adBannerFooter
             }
             .padding()
             .navigationTitle(NSLocalizedString("highlight.action.title", comment: ""))
@@ -1190,9 +1189,7 @@ struct ReaderView: View {
                     .buttonStyle(.borderedProminent)
                 }
 
-                Spacer()
-
-                adBannerSection
+                adBannerFooter
             }
             .padding()
             .navigationTitle(aiResponseTitle)
@@ -1250,19 +1247,29 @@ struct ReaderView: View {
 
     private var adBannerSection: some View {
         Group {
-            if let adUnit = AdMobAdUnitIDs.fixedBanner {
-                BannerAdView(adUnitID: adUnit)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 60)
-            } else {
-                Text(NSLocalizedString("ads.slot_not_configured", comment: ""))
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.primary.opacity(0.05))
-                    .cornerRadius(12)
+            if appSettings.areAdsEnabled {
+                if let adUnit = AdMobAdUnitIDs.fixedBanner {
+                    BannerAdView(adUnitID: adUnit)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 60)
+                } else {
+                    Text(NSLocalizedString("ads.slot_not_configured", comment: ""))
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.primary.opacity(0.05))
+                        .cornerRadius(12)
+                }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var adBannerFooter: some View {
+        if appSettings.areAdsEnabled {
+            Spacer(minLength: 0)
+            adBannerSection
         }
     }
 
@@ -1304,6 +1311,7 @@ struct ReaderView: View {
         bookmark.chapterIndex = Int32(currentChapterIndex)
         bookmark.pageIndex = Int32(safeChapterPageIndex(currentChapterIndex))
         bookmark.chapterTitle = chapters[currentChapterIndex].title
+        bookmark.colorHex = Bookmark.defaultColorHex
         bookmark.book = book
         
         do {

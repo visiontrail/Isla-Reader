@@ -152,6 +152,8 @@
 "highlight.list.empty" = "No highlights or notes yet";
 "highlight.list.edit_note" = "Edit Note";
 "highlight.list.share_note" = "Share Note";
+"highlight.list.delete" = "Delete";
+"highlight.list.change_color" = "Change Color";
 "highlight.list.unknown_chapter" = "Unknown chapter";
 "highlight.share.preview_title" = "Share Preview";
 "highlight.share.image_button" = "Share Image";
@@ -211,8 +213,18 @@
 "reader.page.number_format" = "Page %d";
 "bookmark.list.title" = "Bookmarks";
 "bookmark.list.empty" = "No bookmarks yet";
+"bookmark.list.change_color" = "Change Color";
 "bookmark.chapter_format" = "Chapter %d";
 "bookmark.page_format" = "Page %d";
+"color.option.white" = "White";
+"color.option.mint" = "Mint";
+"color.option.blue" = "Blue";
+"color.option.peach" = "Peach";
+"color.option.lavender" = "Lavender";
+"color.option.yellow" = "Yellow";
+"color.option.green" = "Green";
+"color.option.pink" = "Pink";
+"color.option.orange" = "Orange";
 
 // AI Summary Prompts
 "ai.summary.book.prompt.title" = "Please generate a reading guide summary for the following book:";

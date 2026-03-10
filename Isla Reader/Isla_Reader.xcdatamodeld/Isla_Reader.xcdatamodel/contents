@@ -58,6 +58,7 @@
         <attribute name="pageIndex" optional="NO" attributeType="Integer 32" usesScalarValueType="YES"/>
         <attribute name="chapterTitle" optional="YES" attributeType="String"/>
         <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="colorHex" optional="YES" attributeType="String"/>
         <relationship name="book" destinationEntity="Book" inverseName="bookmarks" inverseEntity="Book" minCount="1" maxCount="1" deleteRule="Cascade" optional="NO" toMany="NO"/>
     </entity>
 

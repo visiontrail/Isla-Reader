@@ -10,6 +10,7 @@ import SwiftUI
 struct AISummaryView: View {
     let book: Book
     @StateObject private var summaryService = AISummaryService.shared
+    @StateObject private var appSettings = AppSettings.shared
     @State private var showingSummary = false
     @State private var isFirstOpen = true
     @State private var navigateToSkimmingMode = false
@@ -104,7 +105,7 @@ struct AISummaryView: View {
             // 摘要头部
             summaryHeader
             
-            if let bannerUnitID = AdMobAdUnitIDs.fixedBanner {
+            if appSettings.areAdsEnabled, let bannerUnitID = AdMobAdUnitIDs.fixedBanner {
                 BannerAdView(adUnitID: bannerUnitID)
                     .frame(width: 320, height: 50)
                     .padding(.horizontal)

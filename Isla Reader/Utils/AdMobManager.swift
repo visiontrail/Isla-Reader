@@ -165,6 +165,11 @@ enum AdMobAdUnitIDs {
     }
 
     private static func resolvedID(for infoPlistKey: String) -> String? {
+        guard AppSettings.shared.areAdsEnabled else {
+            DebugLogger.info("AdMob: 广告已关闭，跳过读取广告位 \(infoPlistKey)")
+            return nil
+        }
+
         guard let raw = Bundle.main.object(forInfoDictionaryKey: infoPlistKey) as? String else {
             DebugLogger.warning("AdMob: Info.plist 缺少键 \(infoPlistKey)，已跳过广告请求")
             return nil
@@ -259,6 +264,11 @@ final class RewardedInterstitialAdManager: NSObject {
     }
 
     func loadAd() {
+        guard AppSettings.shared.areAdsEnabled else {
+            resetLoadedAds()
+            return
+        }
+
         if rewardedAd != nil || interstitialAd != nil {
             return
         }
@@ -267,6 +277,10 @@ final class RewardedInterstitialAdManager: NSObject {
     }
 
     func availabilityStatus() -> RewardedInterstitialAvailability {
+        guard AppSettings.shared.areAdsEnabled else {
+            return .notReady
+        }
+
         if rewardedAd != nil || interstitialAd != nil {
             return .ready
         }
@@ -279,6 +293,11 @@ final class RewardedInterstitialAdManager: NSObject {
     @MainActor
     @discardableResult
     func presentFromTopControllerIfAvailable() -> RewardedInterstitialPresentationResult {
+        guard AppSettings.shared.areAdsEnabled else {
+            resetLoadedAds()
+            return .skippedNotReady
+        }
+
         switch availabilityStatus() {
         case .loading:
             DebugLogger.info("AdMob: Fullscreen ad is loading, skip current presentation")
@@ -340,6 +359,7 @@ final class RewardedInterstitialAdManager: NSObject {
     }
 
     private func loadPrimaryInterstitialIfNeeded(trigger: String) {
+        guard AppSettings.shared.areAdsEnabled else { return }
         guard interstitialAd == nil else { return }
         guard !isInterstitialLoading else { return }
         guard let interstitialAdUnitID = AdMobAdUnitIDs.interstitial else {
@@ -377,6 +397,7 @@ final class RewardedInterstitialAdManager: NSObject {
     }
 
     private func loadFallbackRewardedIfNeeded(trigger: String) {
+        guard AppSettings.shared.areAdsEnabled else { return }
         guard rewardedAd == nil else { return }
         guard !isRewardedLoading else { return }
         guard let rewardedAdUnitID = AdMobAdUnitIDs.rewardedInterstitial else {
@@ -416,6 +437,13 @@ final class RewardedInterstitialAdManager: NSObject {
             return "interstitial primary"
         }
         return "full screen ad"
+    }
+
+    private func resetLoadedAds() {
+        rewardedAd = nil
+        interstitialAd = nil
+        isRewardedLoading = false
+        isInterstitialLoading = false
     }
 }
 

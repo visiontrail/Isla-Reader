@@ -60,10 +60,17 @@ struct SkimmingModeView: View {
             .preferredColorScheme(appSettings.theme.colorScheme)
             .onAppear {
                 loadChapters()
-                RewardedInterstitialAdManager.shared.loadAd()
+                if appSettings.areAdsEnabled {
+                    RewardedInterstitialAdManager.shared.loadAd()
+                }
             }
             .onDisappear {
                 adNoticeDismissTask?.cancel()
+            }
+            .onChange(of: appSettings.areAdsEnabled) { enabled in
+                guard !enabled else { return }
+                pendingInterstitialBeforeNextChapter = false
+                dismissAdvanceNotice()
             }
             .overlay(alignment: .top) {
                 if let adNoticeMessage {
@@ -471,6 +478,10 @@ struct SkimmingModeView: View {
 
     @MainActor
     private func updateInterstitialReadinessIfNeeded(for chapterIndex: Int) {
+        guard appSettings.areAdsEnabled else {
+            pendingInterstitialBeforeNextChapter = false
+            return
+        }
         let completedTriggerCount = min(skimmingAIRequestCount / 3, forwardChapterSwipeCount / 3)
         guard completedTriggerCount > interstitialPresentedCount else { return }
         pendingInterstitialBeforeNextChapter = true
@@ -483,6 +494,10 @@ struct SkimmingModeView: View {
 
     @MainActor
     private func handlePendingInterstitialBeforeChapterAdvance() {
+        guard appSettings.areAdsEnabled else {
+            pendingInterstitialBeforeNextChapter = false
+            return
+        }
         guard pendingInterstitialBeforeNextChapter else { return }
         Task { @MainActor in
             await Task.yield()
@@ -518,7 +533,7 @@ struct SkimmingModeView: View {
 
     @MainActor
     private func showAdvanceNoticeIfEnabled(_ key: String) {
-        guard appSettings.isAIAdvanceAdNoticeEnabled else { return }
+        guard appSettings.shouldShowAIAdvanceAdNotice else { return }
         showAdvanceNotice(NSLocalizedString(key, comment: ""))
     }
 

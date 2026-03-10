@@ -136,6 +136,7 @@ final class DataBackupService {
                     bookmark.pageIndex = bookmarkSnapshot.pageIndex
                     bookmark.chapterTitle = bookmarkSnapshot.chapterTitle
                     bookmark.createdAt = bookmarkSnapshot.createdAt
+                    bookmark.colorHex = bookmarkSnapshot.resolvedColorHex
                     bookmark.book = book
                     updatedBookmarks += 1
                 }
@@ -298,6 +299,12 @@ private struct BookmarkSnapshot: Codable {
     let pageIndex: Int32
     let chapterTitle: String?
     let createdAt: Date
+    let colorHex: String?
+
+    var resolvedColorHex: String {
+        let candidate = colorHex?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return candidate.isEmpty ? Bookmark.defaultColorHex : candidate
+    }
     
     init(from bookmark: Bookmark) {
         id = bookmark.id
@@ -305,6 +312,7 @@ private struct BookmarkSnapshot: Codable {
         pageIndex = bookmark.pageIndex
         chapterTitle = bookmark.chapterTitle
         createdAt = bookmark.createdAt
+        colorHex = bookmark.resolvedColorHex
     }
 }
 
