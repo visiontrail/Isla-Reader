@@ -440,6 +440,242 @@
       border: 1px solid rgba(20,20,20,0.1);
       background: linear-gradient(180deg, #fbf5e9, #f2e8d4);
     }
+    .storage-sheet-stack {
+      position: relative;
+      margin-top: 4px;
+      isolation: isolate;
+    }
+    .storage-sheet-stack::before,
+    .storage-sheet-stack::after {
+      content: "";
+      position: absolute;
+      inset: 4px 8px -4px;
+      border-radius: 11px;
+      border: 1px solid rgba(20,20,20,0.1);
+      pointer-events: none;
+    }
+    .storage-sheet-stack::before {
+      z-index: -2;
+      background: linear-gradient(180deg, #f1e7d4, #eadfcb);
+      transform: rotate(-1deg);
+      opacity: 0.88;
+      box-shadow: 0 14px 26px rgba(25,18,7,0.08);
+    }
+    .storage-sheet-stack::after {
+      z-index: -1;
+      background: linear-gradient(180deg, #f8efdf, #efe3d0);
+      transform: rotate(0.9deg) translateY(2px);
+      opacity: 0.85;
+    }
+    .storage-sheet {
+      border-radius: 11px;
+      border: 1px solid rgba(20,20,20,0.16);
+      background:
+        linear-gradient(90deg, rgba(20,20,20,0.08), transparent 6%),
+        linear-gradient(180deg, rgba(255,255,255,0.9), rgba(250,240,226,0.93));
+      padding: 12px 12px 11px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.58), 0 7px 20px rgba(20,16,8,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .storage-sheet::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(rgba(58,50,40,0.09) 1px, transparent 1px);
+      background-size: 100% 32px;
+      opacity: 0.38;
+      pointer-events: none;
+    }
+    .storage-sheet h3,
+    .storage-sheet > p,
+    .storage-summary-card {
+      position: relative;
+      z-index: 1;
+    }
+    .storage-sheet > p {
+      margin-bottom: 9px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .storage-summary-card {
+      border-radius: 10px;
+      border: 1px solid rgba(20,20,20,0.13);
+      background: rgba(255,255,255,0.65);
+      padding: 10px 10px 9px;
+    }
+    .storage-summary-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #625a4d;
+    }
+    .storage-led {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #f8f2e7 0 25%, #7e7466 55%, #5d5549 100%);
+      box-shadow: 0 0 0 2px rgba(20,20,20,0.09);
+      flex-shrink: 0;
+    }
+    .storage-chip-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 7px;
+      margin-top: 9px;
+    }
+    .storage-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(20,20,20,0.12);
+      background: rgba(255,255,255,0.64);
+      font-size: 12px;
+      line-height: 1.32;
+      color: #514a3f;
+    }
+    .storage-chip::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #62594c;
+      box-shadow: 0 0 0 2px rgba(98,89,76,0.12);
+      flex-shrink: 0;
+    }
+    .export-sheet-stack {
+      position: relative;
+      margin-top: 4px;
+      isolation: isolate;
+    }
+    .export-sheet-stack::before,
+    .export-sheet-stack::after {
+      content: "";
+      position: absolute;
+      inset: 4px 8px -4px;
+      border-radius: 11px;
+      border: 1px solid rgba(20,20,20,0.1);
+      pointer-events: none;
+    }
+    .export-sheet-stack::before {
+      z-index: -2;
+      background: linear-gradient(180deg, #efe2ca, #e7d7bd);
+      transform: rotate(0.85deg);
+      opacity: 0.9;
+      box-shadow: 0 12px 22px rgba(27,18,8,0.08);
+    }
+    .export-sheet-stack::after {
+      z-index: -1;
+      background: linear-gradient(180deg, #f8eedb, #efe3cd);
+      transform: rotate(-0.9deg) translateY(2px);
+      opacity: 0.84;
+    }
+    .export-sheet {
+      border-radius: 11px;
+      border: 1px solid rgba(20,20,20,0.16);
+      background:
+        linear-gradient(90deg, rgba(20,20,20,0.08), transparent 6%),
+        linear-gradient(180deg, rgba(255,255,255,0.9), rgba(250,239,223,0.93));
+      padding: 12px 12px 11px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.58), 0 7px 20px rgba(20,16,8,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .export-sheet::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(rgba(58,50,40,0.085) 1px, transparent 1px);
+      background-size: 100% 30px;
+      opacity: 0.36;
+      pointer-events: none;
+    }
+    .export-sheet h3,
+    .export-sheet > p,
+    .export-flow,
+    .export-track {
+      position: relative;
+      z-index: 1;
+    }
+    .export-sheet > p {
+      margin-bottom: 9px;
+      font-size: 14px;
+      line-height: 1.52;
+    }
+    .export-flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 7px;
+      align-items: stretch;
+      margin-bottom: 8px;
+    }
+    .export-flow-item {
+      border-radius: 9px;
+      border: 1px solid rgba(20,20,20,0.14);
+      background: rgba(255,255,255,0.68);
+      padding: 8px 8px 7px;
+      min-width: 0;
+    }
+    .export-flow-key {
+      display: block;
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #655d50;
+    }
+    .export-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .export-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(20,20,20,0.14);
+      background: rgba(255,255,255,0.75);
+      font-size: 11px;
+      line-height: 1;
+      color: #4f473d;
+    }
+    .export-flow-divider {
+      align-self: center;
+      font-family: "DM Mono", monospace;
+      font-size: 14px;
+      color: #73695a;
+      letter-spacing: 0.02em;
+      padding: 0 1px;
+    }
+    .notion-target p {
+      margin: 6px 0 0;
+      font-size: 11px;
+      line-height: 1.36;
+      color: #564e43;
+    }
+    .export-track {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .export-track-item {
+      padding: 6px 7px;
+      border-radius: 8px;
+      border: 1px dashed rgba(20,20,20,0.2);
+      background: rgba(255,255,255,0.62);
+      font-size: 11px;
+      line-height: 1.25;
+      color: #51493e;
+      text-align: center;
+    }
     .illustration-caption {
       margin: 8px 2px 0;
       font-size: 12px;
@@ -717,6 +953,13 @@
       .book-cover h1 { max-width: min(18ch, calc(100% - 18px)); }
       .book-pages { inset: 12px 12px 58px; }
       .book-page { padding: 15px 14px 16px; }
+      .storage-sheet { padding: 10px 10px 9px; }
+      .storage-sheet > p { margin-bottom: 8px; font-size: 13px; }
+      .storage-summary-card { padding: 8px 8px 7px; }
+      .storage-chip { padding: 6px 7px; font-size: 11px; }
+      .export-sheet { padding: 10px 10px 9px; }
+      .export-sheet > p { margin-bottom: 8px; font-size: 13px; }
+      .export-flow { gap: 6px; }
       .book-foot { left: 10px; right: 10px; grid-template-columns: 86px 1fr 86px; }
       .page-corner { width: 86px; }
       .page-corner.prev::before { border-width: 44px 0 0 60px; }
@@ -730,6 +973,14 @@
       .cover-open-corner::before { border-left: 46px solid transparent; border-top: 46px solid transparent; border-bottom: 46px solid rgba(251,246,234,0.22); }
       .cover-open-corner span { bottom: 46px; font-size: 9px; }
       .cover-emboss { right: 74px; }
+      .export-flow {
+        grid-template-columns: 1fr;
+        gap: 5px;
+      }
+      .export-flow-divider {
+        justify-self: center;
+        transform: rotate(90deg);
+      }
     }
   </style>
 </head>
@@ -807,31 +1058,50 @@
                 <span class="ink-tag" id="storage-tag">Storage</span>
                 <span class="ink-meta" id="storage-meta">Local-first</span>
               </div>
-              <h3 id="storage-title"></h3>
-              <p id="storage-body"></p>
+              <div class="storage-sheet-stack">
+                <div class="storage-sheet">
+                  <h3 id="storage-title"></h3>
+                  <p id="storage-body"></p>
+                  <div class="storage-summary-card">
+                    <div class="storage-summary-head">
+                      <span class="storage-led" aria-hidden="true"></span>
+                      <span id="storage-card-title"></span>
+                    </div>
+                    <div class="storage-chip-list" id="storage-chip-list"></div>
+                  </div>
+                </div>
+              </div>
             </article>
             <article class="book-page" data-page-index="4">
-              <div class="book-page-head">
-                <span class="ink-tag" id="sync-tag">Sync</span>
-                <span class="ink-meta" id="sync-meta">Optional cloud</span>
-              </div>
-              <h3 id="sync-title"></h3>
-              <p id="sync-body"></p>
-            </article>
-            <article class="book-page" data-page-index="5">
               <div class="book-page-head">
                 <span class="ink-tag" id="export-tag">Export</span>
                 <span class="ink-meta" id="export-meta">Notion</span>
               </div>
-              <h3 id="export-title"></h3>
-              <p id="export-body"></p>
+              <div class="export-sheet-stack">
+                <div class="export-sheet">
+                  <h3 id="export-title"></h3>
+                  <p id="export-body"></p>
+                  <div class="export-flow">
+                    <div class="export-flow-item">
+                      <span class="export-flow-key" id="export-flow-source-label"></span>
+                      <div class="export-chip-list" id="export-source-chips"></div>
+                    </div>
+                    <div class="export-flow-divider" aria-hidden="true">→</div>
+                    <div class="export-flow-item notion-target">
+                      <span class="export-flow-key" id="export-flow-target-label"></span>
+                      <p id="export-flow-target-body"></p>
+                    </div>
+                  </div>
+                  <div class="export-track" id="export-track-list"></div>
+                </div>
+              </div>
             </article>
           </div>
           <div class="book-foot">
             <button class="page-corner prev" id="book-prev" type="button" aria-label="Previous page">
               <span id="book-prev-label">Prev</span>
             </button>
-            <div class="page-counter" id="book-counter">01 / 06</div>
+            <div class="page-counter" id="book-counter">01 / 05</div>
             <button class="page-corner next" id="book-next" type="button" aria-label="Next page">
               <span id="book-next-label">Next</span>
             </button>
@@ -937,14 +1207,17 @@
     const storageMeta = document.getElementById('storage-meta');
     const storageTitle = document.getElementById('storage-title');
     const storageBody = document.getElementById('storage-body');
-    const syncTag = document.getElementById('sync-tag');
-    const syncMeta = document.getElementById('sync-meta');
-    const syncTitle = document.getElementById('sync-title');
-    const syncBody = document.getElementById('sync-body');
+    const storageCardTitle = document.getElementById('storage-card-title');
+    const storageChipList = document.getElementById('storage-chip-list');
     const exportTag = document.getElementById('export-tag');
     const exportMeta = document.getElementById('export-meta');
     const exportTitle = document.getElementById('export-title');
     const exportBody = document.getElementById('export-body');
+    const exportFlowSourceLabel = document.getElementById('export-flow-source-label');
+    const exportSourceChips = document.getElementById('export-source-chips');
+    const exportFlowTargetLabel = document.getElementById('export-flow-target-label');
+    const exportFlowTargetBody = document.getElementById('export-flow-target-body');
+    const exportTrackList = document.getElementById('export-track-list');
     const bookPages = Array.from(document.querySelectorAll('.book-page'));
 
     let bookOpen = false;
@@ -1165,7 +1438,6 @@
     const bookLocale = (lang, t) => {
       const facts = t.facts || fallbackEn.facts;
       const storageFact = facts[1] || { label: 'Storage', value: '' };
-      const syncFact = facts[2] || { label: 'Reading data', value: '' };
       const exportFact = facts[3] || { label: 'Export', value: '' };
       if (lang === 'zh') {
         return {
@@ -1173,8 +1445,8 @@
           coverLabel: '封皮',
           prevLabel: '上一页',
           nextLabel: '下一页',
-          coverStrip: ['AI Summary', 'Skim read', 'Products', 'Data', 'Export'],
-          coverEmboss: 'summary · skim · products · storage · data · export',
+          coverStrip: ['AI Summary', 'Skim read', 'Products', 'Export'],
+          coverEmboss: 'summary · skim · products · storage · export',
           summaryTag: 'AI Summary',
           summaryMeta: '流式输出',
           summaryTitle: '这本 App 做了什么',
@@ -1194,14 +1466,17 @@
           storageMeta: '本地优先',
           storageTitle: `${storageFact.label}: ${storageFact.value}`,
           storageBody: '默认本地保存让你不需要先注册账号再开始读书。库数据与阅读轨迹会持续保留在设备里。',
-          syncTag: 'Data',
-          syncMeta: '本机存储',
-          syncTitle: `${syncFact.label}: ${syncFact.value}`,
-          syncBody: '阅读数据仅保存在本机，保持可控和简单，不依赖跨设备同步。',
+          storageCardTitle: '本地优先阅读流',
+          storageChips: ['不用注册，翻开即读', '书籍与批注默认留在设备本地', '阅读轨迹仅在你主动导出时外流'],
           exportTag: 'Export',
           exportMeta: '知识流转',
           exportTitle: `${exportFact.label}: ${exportFact.value}`,
-          exportBody: '高亮和书签可导出到 Notion，把阅读结果接入你的知识管理流程，方便复盘、整理与后续写作。'
+          exportBody: '高亮和书签可导出到 Notion，把阅读结果接入你的知识管理流程，方便复盘、整理与后续写作。',
+          exportFlowSourceLabel: '导出内容',
+          exportSourceChips: ['高亮', '书签'],
+          exportFlowTargetLabel: 'Notion 目标页',
+          exportFlowTargetBody: '把阅读上下文连同摘录一起写入 Notion，减少二次整理。',
+          exportTracks: ['笔记沉淀', '复盘回顾', '写作引用']
         };
       }
       if (lang === 'ja') {
@@ -1210,8 +1485,8 @@
           coverLabel: '表紙',
           prevLabel: '前へ',
           nextLabel: '次へ',
-          coverStrip: ['AI要約', 'Skim read', '製品', 'データ', 'エクスポート'],
-          coverEmboss: 'summary · skim · products · storage · data · export',
+          coverStrip: ['AI要約', 'Skim read', '製品', 'エクスポート'],
+          coverEmboss: 'summary · skim · products · storage · export',
           summaryTag: 'AI要約',
           summaryMeta: 'ストリーミング',
           summaryTitle: 'このアプリでできること',
@@ -1231,14 +1506,17 @@
           storageMeta: 'ローカル優先',
           storageTitle: `${storageFact.label}: ${storageFact.value}`,
           storageBody: 'アカウント登録なしですぐ読書を始められます。書籍と読書履歴は端末内に保持されます。',
-          syncTag: 'データ',
-          syncMeta: '端末内',
-          syncTitle: `${syncFact.label}: ${syncFact.value}`,
-          syncBody: '読書データは端末内のみで管理され、シンプルで制御しやすい状態を保ちます。',
+          storageCardTitle: 'ローカル優先フロー',
+          storageChips: ['登録なしでそのまま読み始める', '書籍と注釈は端末内に保存', '読書履歴は自分で出力しない限り外に出ない'],
           exportTag: 'エクスポート',
           exportMeta: '知識フロー',
           exportTitle: `${exportFact.label}: ${exportFact.value}`,
-          exportBody: 'ハイライトやブックマークを Notion に送ることで、読書結果をメモ、振り返り、執筆の流れに接続できます。'
+          exportBody: 'ハイライトやブックマークを Notion に送ることで、読書結果をメモ、振り返り、執筆の流れに接続できます。',
+          exportFlowSourceLabel: 'エクスポート対象',
+          exportSourceChips: ['ハイライト', 'ブックマーク'],
+          exportFlowTargetLabel: 'Notion 保存先',
+          exportFlowTargetBody: '読書時の文脈を保ったまま Notion ページへ追記できます。',
+          exportTracks: ['ノート整理', '振り返り', '執筆フロー']
         };
       }
       if (lang === 'ko') {
@@ -1247,8 +1525,8 @@
           coverLabel: '표지',
           prevLabel: '이전',
           nextLabel: '다음',
-          coverStrip: ['AI 요약', 'Skim read', '제품', '데이터', '내보내기'],
-          coverEmboss: 'summary · skim · products · storage · data · export',
+          coverStrip: ['AI 요약', 'Skim read', '제품', '내보내기'],
+          coverEmboss: 'summary · skim · products · storage · export',
           summaryTag: 'AI 요약',
           summaryMeta: '스트리밍',
           summaryTitle: '이 앱이 하는 일',
@@ -1268,14 +1546,17 @@
           storageMeta: '로컬 우선',
           storageTitle: `${storageFact.label}: ${storageFact.value}`,
           storageBody: '계정 등록 없이 바로 읽기를 시작할 수 있습니다. 책과 읽기 기록은 기기에 로컬로 유지됩니다.',
-          syncTag: '데이터',
-          syncMeta: '기기 내',
-          syncTitle: `${syncFact.label}: ${syncFact.value}`,
-          syncBody: '읽기 데이터는 기기 안에서만 관리되어 단순하고 예측 가능한 사용 흐름을 제공합니다.',
+          storageCardTitle: '로컬 우선 읽기 흐름',
+          storageChips: ['가입 단계 없이 즉시 읽기 시작', '책과 메모를 기기 안에 유지', '직접 내보내기 전까지 읽기 흔적은 로컬 유지'],
           exportTag: '내보내기',
           exportMeta: '지식 흐름',
           exportTitle: `${exportFact.label}: ${exportFact.value}`,
-          exportBody: '하이라이트와 북마크를 Notion으로 보내 읽기 결과를 메모, 복습, 작성 워크플로에 연결할 수 있습니다.'
+          exportBody: '하이라이트와 북마크를 Notion으로 보내 읽기 결과를 메모, 복습, 작성 워크플로에 연결할 수 있습니다.',
+          exportFlowSourceLabel: '내보낼 항목',
+          exportSourceChips: ['하이라이트', '북마크'],
+          exportFlowTargetLabel: 'Notion 대상',
+          exportFlowTargetBody: '읽기 맥락과 함께 Notion 페이지로 보내 후처리 시간을 줄입니다.',
+          exportTracks: ['노트 축적', '복습 정리', '작성 인용']
         };
       }
       return {
@@ -1283,8 +1564,8 @@
         coverLabel: 'Cover',
         prevLabel: 'Prev',
         nextLabel: 'Next',
-        coverStrip: ['AI Summary', 'Skim read', 'Products', 'Data', 'Export'],
-        coverEmboss: 'summary · skim · products · storage · data · export',
+        coverStrip: ['AI Summary', 'Skim read', 'Products', 'Export'],
+        coverEmboss: 'summary · skim · products · storage · export',
         summaryTag: 'AI Summary',
         summaryMeta: 'Streaming',
         summaryTitle: 'What this app does',
@@ -1304,14 +1585,17 @@
         storageMeta: 'Local-first',
         storageTitle: `${storageFact.label}: ${storageFact.value}`,
         storageBody: 'You can start reading without account setup. Books and reading traces stay local by default.',
-        syncTag: 'Data',
-        syncMeta: 'On-device',
-        syncTitle: `${syncFact.label}: ${syncFact.value}`,
-        syncBody: 'Reading data remains on device, keeping behavior predictable and fully under your control.',
+        storageCardTitle: 'Local-first reading flow',
+        storageChips: ['No signup wall before you begin', 'Books and notes stay on your device', 'Reading traces remain local unless you export'],
         exportTag: 'Export',
         exportMeta: 'Knowledge flow',
         exportTitle: `${exportFact.label}: ${exportFact.value}`,
-        exportBody: 'Highlights and bookmarks can move into Notion so reading output flows directly into your note, review, and writing process.'
+        exportBody: 'Highlights and bookmarks can move into Notion so reading output flows directly into your note, review, and writing process.',
+        exportFlowSourceLabel: 'Export set',
+        exportSourceChips: ['Highlights', 'Bookmarks'],
+        exportFlowTargetLabel: 'Notion destination',
+        exportFlowTargetBody: 'Push excerpts into your Notion pages with source context attached.',
+        exportTracks: ['Notes', 'Review', 'Writing']
       };
     };
 
@@ -1400,16 +1684,24 @@
       if (storageMeta) storageMeta.textContent = b.storageMeta;
       if (storageTitle) storageTitle.textContent = b.storageTitle;
       if (storageBody) storageBody.textContent = b.storageBody;
-
-      if (syncTag) syncTag.textContent = b.syncTag;
-      if (syncMeta) syncMeta.textContent = b.syncMeta;
-      if (syncTitle) syncTitle.textContent = b.syncTitle;
-      if (syncBody) syncBody.textContent = b.syncBody;
+      if (storageCardTitle) storageCardTitle.textContent = b.storageCardTitle || '';
+      if (storageChipList) {
+        storageChipList.innerHTML = (b.storageChips || []).map(line => `<div class="storage-chip">${line}</div>`).join('');
+      }
 
       if (exportTag) exportTag.textContent = b.exportTag;
       if (exportMeta) exportMeta.textContent = b.exportMeta;
       if (exportTitle) exportTitle.textContent = b.exportTitle;
       if (exportBody) exportBody.textContent = b.exportBody;
+      if (exportFlowSourceLabel) exportFlowSourceLabel.textContent = b.exportFlowSourceLabel || '';
+      if (exportSourceChips) {
+        exportSourceChips.innerHTML = (b.exportSourceChips || []).map(line => `<span class="export-chip">${line}</span>`).join('');
+      }
+      if (exportFlowTargetLabel) exportFlowTargetLabel.textContent = b.exportFlowTargetLabel || '';
+      if (exportFlowTargetBody) exportFlowTargetBody.textContent = b.exportFlowTargetBody || '';
+      if (exportTrackList) {
+        exportTrackList.innerHTML = (b.exportTracks || []).map(line => `<div class="export-track-item">${line}</div>`).join('');
+      }
 
       if (!bookOpen) {
         streamToken += 1;

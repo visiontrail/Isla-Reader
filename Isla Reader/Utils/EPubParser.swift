@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreData
+import zlib
 
 struct EPubMetadata {
     let title: String
@@ -41,13 +42,24 @@ struct TOCItem {
 }
 
 struct OPFInfo {
+    struct ManifestItem {
+        let id: String
+        let href: String
+        let mediaType: String?
+        let properties: Set<String>
+    }
+
     var title: String?
     var author: String?
     var language: String?
     var coverId: String?
     var manifestMap: [String: String] = [:]
+    var manifestItems: [String: ManifestItem] = [:]
     var spineItems: [String] = []
     var tocId: String? // NCX file ID
+    var navId: String? // EPUB 3 nav document ID
+    var coverHref: String? // direct cover href fallback
+    var tocCandidateIds: [String] = [] // ordered TOC fallback candidates
 }
 
 struct TOCEntry {
@@ -158,7 +170,7 @@ class EPubParser {
             DebugLogger.info("EPubParser: 语言: \(language ?? "未知")")
             
             // 解析目录（TOC）
-            let tocEntries = parseTOC(tocId: opfInfo.tocId, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL, coverId: opfInfo.coverId)
+            let tocEntries = parseTOC(opfInfo: opfInfo, baseURL: opfBaseURL, coverId: opfInfo.coverId)
             DebugLogger.info("EPubParser: 从TOC解析了 \(tocEntries.count) 个标题（含层级）")
             
             // 解析章节
@@ -170,7 +182,12 @@ class EPubParser {
             let tocItems = mapTOCEntriesToChapters(tocEntries, hrefToChapterIndex: chapterResult.hrefToChapterIndex)
             
             // 提取封面图片（如果存在）
-            let coverImageData = extractCoverImage(coverId: opfInfo.coverId, manifestMap: opfInfo.manifestMap, baseURL: opfBaseURL)
+            let coverImageData = extractCoverImage(
+                coverId: opfInfo.coverId,
+                coverHref: opfInfo.coverHref,
+                manifestMap: opfInfo.manifestMap,
+                baseURL: opfBaseURL
+            )
             
             let metadata = EPubMetadata(
                 title: title,
@@ -232,159 +249,620 @@ class EPubParser {
         try parseAndExtractZIP(data: data, to: destinationURL)
     }
     
+    private struct ZIPCentralDirectoryEntry {
+        let fileName: String
+        let compressionMethod: UInt16
+        let compressedSize: Int
+        let uncompressedSize: Int
+        let generalPurposeFlag: UInt16
+        let localHeaderOffset: Int
+    }
+
     private static func parseAndExtractZIP(data: Data, to destinationURL: URL) throws {
         let fileManager = FileManager.default
-        
-        // ZIP 文件的魔术数字
-        let zipMagic: [UInt8] = [0x50, 0x4B, 0x03, 0x04] // "PK\x03\x04"
-        
-        var offset = 0
-        
-        while offset < data.count - 30 {
-            // 查找 Local File Header
-            let header = data.subdata(in: offset..<min(offset + 4, data.count))
-            
-            if Array(header) != zipMagic {
-                // 如果找不到更多文件头，说明到达中心目录区域
-                break
-            }
-            
-            // 读取 Local File Header (30 bytes + 文件名长度 + 额外字段长度)
-            _ = data.readUInt16(at: offset + 4) // versionNeeded
-            _ = data.readUInt16(at: offset + 6) // flags
-            let compressionMethod = data.readUInt16(at: offset + 8)
-            let compressedSize = Int(data.readUInt32(at: offset + 18))
-            _ = data.readUInt32(at: offset + 22) // uncompressedSize
-            let fileNameLength = Int(data.readUInt16(at: offset + 26))
-            let extraFieldLength = Int(data.readUInt16(at: offset + 28))
-            
-            // 读取文件名
-            let fileNameData = data.subdata(in: (offset + 30)..<(offset + 30 + fileNameLength))
-            guard let fileName = String(data: fileNameData, encoding: .utf8) else {
-                offset += 30 + fileNameLength + extraFieldLength + compressedSize
+        guard let entries = parseCentralDirectoryEntries(from: data), !entries.isEmpty else {
+            throw EPubParseError.unsupportedFormat
+        }
+
+        for entry in entries {
+            let normalizedPath = normalizedRelativeArchivePath(entry.fileName)
+            guard let normalizedPath else {
+                DebugLogger.warning("EPubParser: 跳过可疑ZIP条目路径: \(entry.fileName)")
                 continue
             }
-            
-            // 跳过额外字段
-            let dataOffset = offset + 30 + fileNameLength + extraFieldLength
-            
-            // 读取文件数据
-            let fileData = data.subdata(in: dataOffset..<(dataOffset + compressedSize))
-            
-            // 创建文件路径
-            let filePath = destinationURL.appendingPathComponent(fileName)
-            
-            // 如果是目录，创建目录
-            if fileName.hasSuffix("/") {
-                try fileManager.createDirectory(at: filePath, withIntermediateDirectories: true)
-            } else {
-                // 创建父目录
-                let parentDir = filePath.deletingLastPathComponent()
-                try fileManager.createDirectory(at: parentDir, withIntermediateDirectories: true)
-                
-                // 解压文件数据
-                let decompressedData: Data
-                if compressionMethod == 0 {
-                    // 无压缩
-                    decompressedData = fileData
-                } else if compressionMethod == 8 {
-                    // Deflate 压缩
-                    guard let decompressed = try? (fileData as NSData).decompressed(using: .zlib) as Data else {
-                        offset += 30 + fileNameLength + extraFieldLength + compressedSize
-                        continue
-                    }
-                    decompressedData = decompressed
-                } else {
-                    // 不支持的压缩方法
-                    offset += 30 + fileNameLength + extraFieldLength + compressedSize
-                    continue
-                }
-                
-                // 写入文件
-                try decompressedData.write(to: filePath)
+
+            guard let outputURL = resolveArchiveDestinationURL(
+                archivePath: normalizedPath,
+                destinationRoot: destinationURL
+            ) else {
+                DebugLogger.warning("EPubParser: 跳过越界ZIP条目: \(entry.fileName)")
+                continue
             }
-            
-            // 移动到下一个条目
-            offset += 30 + fileNameLength + extraFieldLength + compressedSize
+
+            if normalizedPath.hasSuffix("/") {
+                try fileManager.createDirectory(at: outputURL, withIntermediateDirectories: true)
+                continue
+            }
+
+            let outputDirectory = outputURL.deletingLastPathComponent()
+            try fileManager.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+            let payload = try extractCompressedPayload(for: entry, from: data)
+            let extracted = try decompressZIPPayload(
+                payload,
+                method: entry.compressionMethod,
+                expectedSize: entry.uncompressedSize,
+                generalPurposeFlag: entry.generalPurposeFlag
+            )
+            try extracted.write(to: outputURL)
         }
+    }
+
+    private static func parseCentralDirectoryEntries(from data: Data) -> [ZIPCentralDirectoryEntry]? {
+        guard let endOfCentralDirectoryOffset = findEndOfCentralDirectoryOffset(in: data) else {
+            return nil
+        }
+        guard endOfCentralDirectoryOffset + 22 <= data.count else {
+            return nil
+        }
+        guard data.readUInt32(at: endOfCentralDirectoryOffset) == 0x06054b50 else {
+            return nil
+        }
+
+        let entryCount = Int(data.readUInt16(at: endOfCentralDirectoryOffset + 10))
+        let centralDirectorySize = Int(data.readUInt32(at: endOfCentralDirectoryOffset + 12))
+        let centralDirectoryOffset = Int(data.readUInt32(at: endOfCentralDirectoryOffset + 16))
+
+        guard entryCount > 0 else {
+            return []
+        }
+        guard centralDirectoryOffset >= 0, centralDirectorySize >= 0,
+              centralDirectoryOffset + centralDirectorySize <= data.count else {
+            return nil
+        }
+
+        var entries: [ZIPCentralDirectoryEntry] = []
+        var cursor = centralDirectoryOffset
+        let centralDirectoryEnd = centralDirectoryOffset + centralDirectorySize
+
+        while cursor + 46 <= centralDirectoryEnd, entries.count < entryCount {
+            guard data.readUInt32(at: cursor) == 0x02014b50 else {
+                return nil
+            }
+
+            let generalPurposeFlag = data.readUInt16(at: cursor + 8)
+            let compressionMethod = data.readUInt16(at: cursor + 10)
+            let compressedSize = Int(data.readUInt32(at: cursor + 20))
+            let uncompressedSize = Int(data.readUInt32(at: cursor + 24))
+            let fileNameLength = Int(data.readUInt16(at: cursor + 28))
+            let extraFieldLength = Int(data.readUInt16(at: cursor + 30))
+            let commentLength = Int(data.readUInt16(at: cursor + 32))
+            let localHeaderOffset = Int(data.readUInt32(at: cursor + 42))
+
+            let recordLength = 46 + fileNameLength + extraFieldLength + commentLength
+            guard cursor + recordLength <= data.count else {
+                return nil
+            }
+
+            let fileNameStart = cursor + 46
+            let fileNameEnd = fileNameStart + fileNameLength
+            let fileNameData = data.subdata(in: fileNameStart..<fileNameEnd)
+            let isUTF8FileName = (generalPurposeFlag & (1 << 11)) != 0
+            guard let fileName = decodeZIPFileName(fileNameData, utf8Flag: isUTF8FileName), !fileName.isEmpty else {
+                cursor += recordLength
+                continue
+            }
+
+            entries.append(
+                ZIPCentralDirectoryEntry(
+                    fileName: fileName,
+                    compressionMethod: compressionMethod,
+                    compressedSize: compressedSize,
+                    uncompressedSize: uncompressedSize,
+                    generalPurposeFlag: generalPurposeFlag,
+                    localHeaderOffset: localHeaderOffset
+                )
+            )
+            cursor += recordLength
+        }
+
+        return entries
+    }
+
+    private static func findEndOfCentralDirectoryOffset(in data: Data) -> Int? {
+        guard data.count >= 22 else { return nil }
+        // EOCD 之后最多有 65,535 字节注释 + 22 字节固定头
+        let maxTail = min(data.count, 22 + 65_535)
+        let start = data.count - maxTail
+        var cursor = data.count - 22
+
+        while cursor >= start {
+            if data.readUInt32(at: cursor) == 0x06054b50 {
+                return cursor
+            }
+            cursor -= 1
+        }
+        return nil
+    }
+
+    private static func decodeZIPFileName(_ data: Data, utf8Flag: Bool) -> String? {
+        if utf8Flag {
+            return String(data: data, encoding: .utf8)
+        }
+        return String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1)
+    }
+
+    private static func normalizedRelativeArchivePath(_ rawPath: String) -> String? {
+        let slashNormalized = rawPath.replacingOccurrences(of: "\\", with: "/")
+        guard !slashNormalized.hasPrefix("/") else {
+            return nil
+        }
+
+        let components = slashNormalized.split(separator: "/", omittingEmptySubsequences: true)
+        guard !components.isEmpty else {
+            return nil
+        }
+
+        var sanitized: [String] = []
+        for component in components {
+            if component == "." {
+                continue
+            }
+            if component == ".." {
+                return nil
+            }
+            sanitized.append(String(component))
+        }
+
+        var normalized = sanitized.joined(separator: "/")
+        if rawPath.hasSuffix("/") {
+            normalized += "/"
+        }
+        return normalized
+    }
+
+    private static func resolveArchiveDestinationURL(archivePath: String, destinationRoot: URL) -> URL? {
+        let candidate = destinationRoot.appendingPathComponent(archivePath).standardizedFileURL
+        let rootPath = destinationRoot.standardizedFileURL.path
+        let candidatePath = candidate.path
+        if candidatePath == rootPath || candidatePath.hasPrefix(rootPath + "/") {
+            return candidate
+        }
+        return nil
+    }
+
+    private static func extractCompressedPayload(for entry: ZIPCentralDirectoryEntry, from data: Data) throws -> Data {
+        let localHeaderOffset = entry.localHeaderOffset
+        guard localHeaderOffset >= 0, localHeaderOffset + 30 <= data.count else {
+            throw EPubParseError.unsupportedFormat
+        }
+        guard data.readUInt32(at: localHeaderOffset) == 0x04034b50 else {
+            throw EPubParseError.unsupportedFormat
+        }
+
+        let localFileNameLength = Int(data.readUInt16(at: localHeaderOffset + 26))
+        let localExtraFieldLength = Int(data.readUInt16(at: localHeaderOffset + 28))
+        let payloadOffset = localHeaderOffset + 30 + localFileNameLength + localExtraFieldLength
+        let payloadEnd = payloadOffset + entry.compressedSize
+
+        guard payloadOffset >= 0, payloadEnd >= payloadOffset, payloadEnd <= data.count else {
+            throw EPubParseError.unsupportedFormat
+        }
+
+        return data.subdata(in: payloadOffset..<payloadEnd)
+    }
+
+    private static func decompressZIPPayload(
+        _ payload: Data,
+        method: UInt16,
+        expectedSize: Int,
+        generalPurposeFlag: UInt16
+    ) throws -> Data {
+        // bit 0 = encrypted
+        if (generalPurposeFlag & 0x0001) != 0 {
+            throw EPubParseError.unsupportedFormat
+        }
+
+        switch method {
+        case 0:
+            return payload
+        case 8:
+            if let inflated = try? inflateRawDeflateData(payload, expectedSize: expectedSize) {
+                return inflated
+            }
+            if let zlibWrapped = try? inflateZlibWrappedData(payload, expectedSize: expectedSize) {
+                return zlibWrapped
+            }
+            throw EPubParseError.unsupportedFormat
+        default:
+            throw EPubParseError.unsupportedFormat
+        }
+    }
+
+    private static func inflateRawDeflateData(_ data: Data, expectedSize: Int) throws -> Data {
+        try inflateData(data, windowBits: -MAX_WBITS, expectedSize: expectedSize)
+    }
+
+    private static func inflateZlibWrappedData(_ data: Data, expectedSize: Int) throws -> Data {
+        try inflateData(data, windowBits: MAX_WBITS, expectedSize: expectedSize)
+    }
+
+    private static func inflateData(_ data: Data, windowBits: Int32, expectedSize: Int) throws -> Data {
+        if data.isEmpty {
+            return Data()
+        }
+
+        var stream = z_stream()
+        let initStatus = inflateInit2_(
+            &stream,
+            windowBits,
+            ZLIB_VERSION,
+            Int32(MemoryLayout<z_stream>.size)
+        )
+        guard initStatus == Z_OK else {
+            throw EPubParseError.unsupportedFormat
+        }
+        defer { inflateEnd(&stream) }
+
+        var output = Data()
+        output.reserveCapacity(max(expectedSize, 0))
+        let chunkSize = max(16_384, min(max(expectedSize, 0), 262_144))
+
+        let finalStatus: Int32 = data.withUnsafeBytes { rawInput in
+            guard let inputBase = rawInput.bindMemory(to: Bytef.self).baseAddress else {
+                return Z_DATA_ERROR
+            }
+            stream.next_in = UnsafeMutablePointer(mutating: inputBase)
+            stream.avail_in = uInt(rawInput.count)
+
+            while true {
+                var chunk = [UInt8](repeating: 0, count: chunkSize)
+                let status = chunk.withUnsafeMutableBytes { rawOutput -> Int32 in
+                    guard let outputBase = rawOutput.bindMemory(to: Bytef.self).baseAddress else {
+                        return Z_DATA_ERROR
+                    }
+                    stream.next_out = outputBase
+                    stream.avail_out = uInt(rawOutput.count)
+                    return inflate(&stream, Z_NO_FLUSH)
+                }
+
+                let produced = chunk.count - Int(stream.avail_out)
+                if produced > 0 {
+                    output.append(chunk, count: produced)
+                }
+
+                if status == Z_STREAM_END {
+                    return status
+                }
+                if status != Z_OK {
+                    return status
+                }
+                if stream.avail_in == 0 && produced == 0 {
+                    return Z_DATA_ERROR
+                }
+            }
+        }
+
+        guard finalStatus == Z_STREAM_END else {
+            throw EPubParseError.unsupportedFormat
+        }
+        return output
     }
     
     // MARK: - XML解析辅助方法
     
     private static func parseContainerXML(_ data: Data) -> String? {
-        // 简单的正则表达式解析
-        guard let xmlString = String(data: data, encoding: .utf8) else { return nil }
-        
-        // 查找 <rootfile full-path="..." />
-        if let range = xmlString.range(of: "full-path=\"([^\"]+)\"", options: .regularExpression) {
+        if let rootFilePath = parseContainerWithXMLParser(data) {
+            return rootFilePath
+        }
+
+        guard let xmlString = decodeXMLText(data) else { return nil }
+
+        // 回退：兼容单双引号
+        if let range = xmlString.range(of: "full-path\\s*=\\s*['\"]([^'\"]+)['\"]", options: .regularExpression) {
             let match = String(xmlString[range])
-            if let pathRange = match.range(of: "\"([^\"]+)\"", options: .regularExpression) {
+            if let pathRange = match.range(of: "['\"]([^'\"]+)['\"]", options: .regularExpression) {
                 var path = String(match[pathRange])
                 path = path.replacingOccurrences(of: "\"", with: "")
+                path = path.replacingOccurrences(of: "'", with: "")
                 return path
             }
         }
-        
+
         return nil
     }
     
     private static func parseOPFFile(_ data: Data) -> OPFInfo {
-        var info = OPFInfo()
-        
-        guard let xmlString = String(data: data, encoding: .utf8) else {
-            return info
+        if let parsed = parseOPFWithXMLParser(data), !parsed.manifestMap.isEmpty {
+            DebugLogger.info(
+                "EPubParser: 解析OPF完成(XML) - manifest项: \(parsed.manifestMap.count), spine项: \(parsed.spineItems.count), TOC ID: \(parsed.tocId ?? "无"), NAV ID: \(parsed.navId ?? "无")"
+            )
+            return parsed
         }
-        
-        // 解析 metadata
-        info.title = extractXMLTag(xmlString, tag: "dc:title")
-        info.author = extractXMLTag(xmlString, tag: "dc:creator")
-        info.language = extractXMLTag(xmlString, tag: "dc:language")
-        
-        // 解析 cover id
-        if let coverMeta = xmlString.range(of: "<meta\\s+name=\"cover\"\\s+content=\"([^\"]+)\"", options: .regularExpression) {
-            let match = String(xmlString[coverMeta])
-            if let contentRange = match.range(of: "content=\"([^\"]+)\"", options: .regularExpression) {
-                var coverId = String(match[contentRange])
-                coverId = coverId.replacingOccurrences(of: "content=\"", with: "")
-                coverId = coverId.replacingOccurrences(of: "\"", with: "")
-                info.coverId = coverId
-            }
-        }
-        
-        // 解析 manifest
-        let manifestPattern = "<item\\s+([^>]+)>"
-        if let manifestRange = xmlString.range(of: "<manifest>([\\s\\S]*?)</manifest>", options: .regularExpression) {
-            let manifestContent = String(xmlString[manifestRange])
-            
-            let regex = try? NSRegularExpression(pattern: manifestPattern, options: [])
-            let nsString = manifestContent as NSString
-            let results = regex?.matches(in: manifestContent, options: [], range: NSRange(location: 0, length: nsString.length))
-            
-            results?.forEach { result in
-                let itemString = nsString.substring(with: result.range)
-                
-                if let id = extractAttribute(from: itemString, attribute: "id"),
-                   let href = extractAttribute(from: itemString, attribute: "href") {
-                    info.manifestMap[id] = href
+
+        let fallback = parseOPFWithRegex(data)
+        DebugLogger.info(
+            "EPubParser: 解析OPF完成(Regex回退) - manifest项: \(fallback.manifestMap.count), spine项: \(fallback.spineItems.count), TOC ID: \(fallback.tocId ?? "无"), NAV ID: \(fallback.navId ?? "无")"
+        )
+        return fallback
+    }
+
+    private static func parseContainerWithXMLParser(_ data: Data) -> String? {
+        final class ContainerDelegate: NSObject, XMLParserDelegate {
+            var rootFilePath: String?
+
+            func parser(
+                _ parser: XMLParser,
+                didStartElement elementName: String,
+                namespaceURI: String?,
+                qualifiedName qName: String?,
+                attributes attributeDict: [String : String] = [:]
+            ) {
+                guard rootFilePath == nil else { return }
+                let name = elementName.lowercased()
+                guard name == "rootfile" || name.hasSuffix(":rootfile") else { return }
+                if let fullPath = EPubParser.firstAttributeValue(named: "full-path", in: attributeDict), !fullPath.isEmpty {
+                    rootFilePath = fullPath
+                    parser.abortParsing()
                 }
             }
         }
-        
-        // 解析 spine (包括 toc 属性)
+
+        let delegate = ContainerDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        parser.shouldProcessNamespaces = false
+        parser.shouldResolveExternalEntities = false
+        _ = parser.parse()
+        return delegate.rootFilePath
+    }
+
+    private static func parseOPFWithXMLParser(_ data: Data) -> OPFInfo? {
+        final class OPFDelegate: NSObject, XMLParserDelegate {
+            var info = OPFInfo()
+            private var currentText = ""
+            private var currentMetaProperty: String?
+            private var currentMetaRefines: String?
+
+            func parser(
+                _ parser: XMLParser,
+                didStartElement elementName: String,
+                namespaceURI: String?,
+                qualifiedName qName: String?,
+                attributes attributeDict: [String : String] = [:]
+            ) {
+                let name = elementName.lowercased()
+                currentText = ""
+
+                switch name {
+                case _ where name == "spine" || name.hasSuffix(":spine"):
+                    if let toc = EPubParser.firstAttributeValue(named: "toc", in: attributeDict), !toc.isEmpty {
+                        info.tocId = toc
+                    }
+                case _ where name == "itemref" || name.hasSuffix(":itemref"):
+                    guard let idref = EPubParser.firstAttributeValue(named: "idref", in: attributeDict), !idref.isEmpty else {
+                        return
+                    }
+                    if let linear = EPubParser.firstAttributeValue(named: "linear", in: attributeDict),
+                       linear.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "no" {
+                        DebugLogger.info("EPubParser: 跳过non-linear的spine项: \(idref)")
+                        return
+                    }
+                    info.spineItems.append(idref)
+                case _ where name == "item" || name.hasSuffix(":item"):
+                    guard let id = EPubParser.firstAttributeValue(named: "id", in: attributeDict), !id.isEmpty,
+                          let href = EPubParser.firstAttributeValue(named: "href", in: attributeDict), !href.isEmpty else {
+                        return
+                    }
+
+                    let mediaType = EPubParser.firstAttributeValue(named: "media-type", in: attributeDict)?.lowercased()
+                    let properties = EPubParser.tokenizedProperties(
+                        EPubParser.firstAttributeValue(named: "properties", in: attributeDict)
+                    )
+                    info.manifestMap[id] = href
+                    info.manifestItems[id] = OPFInfo.ManifestItem(
+                        id: id,
+                        href: href,
+                        mediaType: mediaType,
+                        properties: properties
+                    )
+
+                    if properties.contains("nav"), info.navId == nil {
+                        info.navId = id
+                    }
+                    if properties.contains("nav") {
+                        info.tocCandidateIds.append(id)
+                    }
+                    if mediaType == "application/x-dtbncx+xml" || href.lowercased().hasSuffix(".ncx") {
+                        info.tocCandidateIds.append(id)
+                    }
+                    if properties.contains("cover-image") {
+                        if info.coverId == nil {
+                            info.coverId = id
+                        }
+                        if info.coverHref == nil {
+                            info.coverHref = href
+                        }
+                    }
+                case _ where name == "meta" || name.hasSuffix(":meta"):
+                    if let coverName = EPubParser.firstAttributeValue(named: "name", in: attributeDict)?.lowercased(),
+                       coverName == "cover",
+                       let content = EPubParser.firstAttributeValue(named: "content", in: attributeDict),
+                       !content.isEmpty {
+                        info.coverId = EPubParser.normalizeManifestIdentifier(content)
+                    }
+
+                    if let property = EPubParser.firstAttributeValue(named: "property", in: attributeDict)?.lowercased() {
+                        currentMetaProperty = property
+                        currentMetaRefines = EPubParser.firstAttributeValue(named: "refines", in: attributeDict)
+
+                        if property == "cover-image",
+                           let content = EPubParser.firstAttributeValue(named: "content", in: attributeDict),
+                           !content.isEmpty {
+                            info.coverId = EPubParser.normalizeManifestIdentifier(content)
+                        }
+                    } else {
+                        currentMetaProperty = nil
+                        currentMetaRefines = nil
+                    }
+                default:
+                    break
+                }
+            }
+
+            func parser(_ parser: XMLParser, foundCharacters string: String) {
+                currentText += string
+            }
+
+            func parser(
+                _ parser: XMLParser,
+                didEndElement elementName: String,
+                namespaceURI: String?,
+                qualifiedName qName: String?
+            ) {
+                let name = elementName.lowercased()
+                let trimmedText = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                switch name {
+                case "dc:title", "title":
+                    if info.title == nil, !trimmedText.isEmpty {
+                        info.title = trimmedText
+                    }
+                case "dc:creator", "creator":
+                    if info.author == nil, !trimmedText.isEmpty {
+                        info.author = trimmedText
+                    }
+                case "dc:language", "language":
+                    if info.language == nil, !trimmedText.isEmpty {
+                        info.language = trimmedText
+                    }
+                case _ where name == "meta" || name.hasSuffix(":meta"):
+                    if currentMetaProperty == "cover-image" {
+                        if info.coverId == nil, let normalized = EPubParser.normalizeManifestIdentifier(trimmedText) {
+                            info.coverId = normalized
+                        }
+                        if info.coverId == nil, let currentMetaRefines {
+                            if let normalized = EPubParser.normalizeManifestIdentifier(currentMetaRefines) {
+                                info.coverId = normalized
+                            }
+                        }
+                    }
+                    currentMetaProperty = nil
+                    currentMetaRefines = nil
+                default:
+                    break
+                }
+
+                currentText = ""
+            }
+        }
+
+        let delegate = OPFDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        parser.shouldProcessNamespaces = false
+        parser.shouldResolveExternalEntities = false
+        guard parser.parse() else {
+            DebugLogger.warning("EPubParser: XML解析OPF失败: \(parser.parserError?.localizedDescription ?? "未知错误")")
+            return nil
+        }
+
+        delegate.info.tocCandidateIds = deduplicatedIDSequence(delegate.info.tocCandidateIds)
+        if delegate.info.coverHref == nil,
+           let coverId = delegate.info.coverId,
+           let href = delegate.info.manifestMap[coverId] {
+            delegate.info.coverHref = href
+        }
+        return delegate.info
+    }
+
+    private static func parseOPFWithRegex(_ data: Data) -> OPFInfo {
+        var info = OPFInfo()
+        guard let xmlString = decodeXMLText(data) else {
+            return info
+        }
+
+        info.title = extractXMLTag(xmlString, tag: "dc:title")
+        info.author = extractXMLTag(xmlString, tag: "dc:creator")
+        info.language = extractXMLTag(xmlString, tag: "dc:language")
+
+        if let coverMeta = xmlString.range(of: "<meta\\s+name=['\"]cover['\"]\\s+content=['\"]([^'\"]+)['\"]", options: .regularExpression) {
+            let match = String(xmlString[coverMeta])
+            if let contentRange = match.range(of: "content=['\"]([^'\"]+)['\"]", options: .regularExpression) {
+                var coverId = String(match[contentRange])
+                coverId = coverId.replacingOccurrences(of: "content=\"", with: "")
+                coverId = coverId.replacingOccurrences(of: "content='", with: "")
+                coverId = coverId.replacingOccurrences(of: "\"", with: "")
+                coverId = coverId.replacingOccurrences(of: "'", with: "")
+                info.coverId = normalizeManifestIdentifier(coverId)
+            }
+        }
+
+        let manifestPattern = "<item\\s+([^>]+)>"
+        if let manifestRange = xmlString.range(of: "<manifest>([\\s\\S]*?)</manifest>", options: .regularExpression) {
+            let manifestContent = String(xmlString[manifestRange])
+            let regex = try? NSRegularExpression(pattern: manifestPattern, options: [])
+            let nsString = manifestContent as NSString
+            let results = regex?.matches(
+                in: manifestContent,
+                options: [],
+                range: NSRange(location: 0, length: nsString.length)
+            )
+
+            results?.forEach { result in
+                let itemString = nsString.substring(with: result.range)
+                guard let id = extractAttribute(from: itemString, attribute: "id"),
+                      let href = extractAttribute(from: itemString, attribute: "href") else {
+                    return
+                }
+
+                let mediaType = extractAttribute(from: itemString, attribute: "media-type")?.lowercased()
+                let properties = tokenizedProperties(extractAttribute(from: itemString, attribute: "properties"))
+                info.manifestMap[id] = href
+                info.manifestItems[id] = OPFInfo.ManifestItem(
+                    id: id,
+                    href: href,
+                    mediaType: mediaType,
+                    properties: properties
+                )
+
+                if properties.contains("nav"), info.navId == nil {
+                    info.navId = id
+                }
+                if properties.contains("nav") {
+                    info.tocCandidateIds.append(id)
+                }
+                if mediaType == "application/x-dtbncx+xml" || href.lowercased().hasSuffix(".ncx") {
+                    info.tocCandidateIds.append(id)
+                }
+                if properties.contains("cover-image") {
+                    if info.coverId == nil {
+                        info.coverId = id
+                    }
+                    if info.coverHref == nil {
+                        info.coverHref = href
+                    }
+                }
+            }
+        }
+
         let spinePattern = "<itemref\\s+([^>]+)>"
         if let spineRange = xmlString.range(of: "<spine([\\s\\S]*?)</spine>", options: .regularExpression) {
             let spineContent = String(xmlString[spineRange])
-            
-            // 提取 spine 标签的 toc 属性
+
             if let spineTagRange = xmlString.range(of: "<spine[^>]*>", options: .regularExpression) {
                 let spineTag = String(xmlString[spineTagRange])
                 info.tocId = extractAttribute(from: spineTag, attribute: "toc")
             }
-            
+
             let regex = try? NSRegularExpression(pattern: spinePattern, options: [])
             let nsString = spineContent as NSString
-            let results = regex?.matches(in: spineContent, options: [], range: NSRange(location: 0, length: nsString.length))
-            
+            let results = regex?.matches(
+                in: spineContent,
+                options: [],
+                range: NSRange(location: 0, length: nsString.length)
+            )
+
             results?.forEach { result in
                 let itemString = nsString.substring(with: result.range)
                 if let idref = extractAttribute(from: itemString, attribute: "idref") {
@@ -396,9 +874,13 @@ class EPubParser {
                 }
             }
         }
-        
-        DebugLogger.info("EPubParser: 解析OPF完成 - manifest项: \(info.manifestMap.count), spine项: \(info.spineItems.count), TOC ID: \(info.tocId ?? "无")")
-        
+
+        if info.coverHref == nil,
+           let coverId = info.coverId,
+           let coverHref = info.manifestMap[coverId] {
+            info.coverHref = coverHref
+        }
+        info.tocCandidateIds = deduplicatedIDSequence(info.tocCandidateIds)
         return info
     }
     
@@ -414,14 +896,96 @@ class EPubParser {
     }
     
     private static func extractAttribute(from xml: String, attribute: String) -> String? {
-        let pattern = "\(attribute)=\"([^\"]+)\""
+        let pattern = "\(attribute)\\s*=\\s*['\"]([^'\"]+)['\"]"
         if let range = xml.range(of: pattern, options: .regularExpression) {
             var value = String(xml[range])
             value = value.replacingOccurrences(of: "\(attribute)=\"", with: "")
+            value = value.replacingOccurrences(of: "\(attribute)='", with: "")
             value = value.replacingOccurrences(of: "\"", with: "")
+            value = value.replacingOccurrences(of: "'", with: "")
             return value
         }
         return nil
+    }
+
+    private static func decodeXMLText(_ data: Data) -> String? {
+        let encodings: [String.Encoding] = [
+            .utf8,
+            .utf16,
+            .utf16LittleEndian,
+            .utf16BigEndian,
+            .isoLatin1,
+            .windowsCP1252
+        ]
+
+        for encoding in encodings {
+            if let value = String(data: data, encoding: encoding) {
+                return value
+            }
+        }
+        return nil
+    }
+
+    private static func firstAttributeValue(named attributeName: String, in attributes: [String: String]) -> String? {
+        if let exact = attributes[attributeName] {
+            return exact
+        }
+
+        let lowercasedName = attributeName.lowercased()
+        for (key, value) in attributes {
+            let normalizedKey = key.lowercased()
+            if normalizedKey == lowercasedName || normalizedKey.hasSuffix(":\(lowercasedName)") {
+                return value
+            }
+        }
+        return nil
+    }
+
+    private static func tokenizedProperties(_ propertiesValue: String?) -> Set<String> {
+        guard let propertiesValue else { return [] }
+        let tokens = propertiesValue
+            .split(whereSeparator: { $0.isWhitespace })
+            .map { $0.lowercased() }
+        return Set(tokens)
+    }
+
+    private static func normalizeManifestIdentifier(_ rawValue: String?) -> String? {
+        guard let rawValue else { return nil }
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        var normalized = trimmed
+        while normalized.hasPrefix("#") {
+            normalized.removeFirst()
+        }
+        return normalized.isEmpty ? nil : normalized
+    }
+
+    private static func deduplicatedIDSequence(_ ids: [String]) -> [String] {
+        var seen: Set<String> = []
+        var ordered: [String] = []
+        for id in ids where !id.isEmpty {
+            if seen.insert(id).inserted {
+                ordered.append(id)
+            }
+        }
+        return ordered
+    }
+
+    private static func resolveRelativePathURL(_ href: String, relativeTo baseURL: URL) -> URL {
+        let withoutFragment = href.components(separatedBy: "#").first ?? href
+        let withoutQuery = withoutFragment.components(separatedBy: "?").first ?? withoutFragment
+        let decodedPath = withoutQuery.removingPercentEncoding ?? withoutQuery
+
+        if let absolute = URL(string: decodedPath), absolute.isFileURL {
+            return absolute.standardizedFileURL
+        }
+
+        if let relative = URL(string: decodedPath, relativeTo: baseURL) {
+            return relative.standardizedFileURL
+        }
+
+        return baseURL.appendingPathComponent(decodedPath).standardizedFileURL
     }
 
     // MARK: - 非内容项过滤
@@ -534,27 +1098,79 @@ class EPubParser {
     
     // MARK: - 目录解析
     
-    private static func parseTOC(tocId: String?, manifestMap: [String: String], baseURL: URL, coverId: String?) -> [TOCEntry] {
-        guard let tocId = tocId, let tocHref = manifestMap[tocId] else {
-            DebugLogger.info("EPubParser: 未找到TOC文件引用")
+    private static func parseTOC(opfInfo: OPFInfo, baseURL: URL, coverId: String?) -> [TOCEntry] {
+        let candidates = buildTOCCandidateIds(from: opfInfo)
+        if candidates.isEmpty {
+            DebugLogger.info("EPubParser: 未找到TOC候选项")
             return []
         }
-        
-        let tocURL = baseURL.appendingPathComponent(tocHref)
-        guard let tocData = try? Data(contentsOf: tocURL),
-              let tocString = String(data: tocData, encoding: .utf8) else {
-            DebugLogger.warning("EPubParser: 无法读取TOC文件: \(tocHref)")
-            return []
+
+        for candidateId in candidates {
+            guard let tocHref = opfInfo.manifestMap[candidateId] else { continue }
+            let tocURL = resolveRelativePathURL(tocHref, relativeTo: baseURL)
+            guard let tocData = try? Data(contentsOf: tocURL),
+                  let tocString = decodeXMLText(tocData) else {
+                DebugLogger.warning("EPubParser: 无法读取TOC文件: id=\(candidateId), href=\(tocHref)")
+                continue
+            }
+
+            let mediaType = opfInfo.manifestItems[candidateId]?.mediaType
+            let tocEntries = parseTOCEntries(
+                tocString: tocString,
+                mediaType: mediaType,
+                coverId: coverId
+            )
+
+            if !tocEntries.isEmpty {
+                DebugLogger.info("EPubParser: TOC解析成功 - id=\(candidateId), href=\(tocHref), 条目=\(tocEntries.count)")
+                return tocEntries
+            }
         }
-        
-        // 判断是NCX还是NAV格式
-        if tocString.contains("<ncx") {
+
+        DebugLogger.info("EPubParser: TOC候选项全部解析失败")
+        return []
+    }
+
+    private static func parseTOCEntries(tocString: String, mediaType: String?, coverId: String?) -> [TOCEntry] {
+        let normalizedMediaType = mediaType?.lowercased()
+
+        if normalizedMediaType == "application/x-dtbncx+xml" || tocString.contains("<ncx") {
             return parseNCX(tocString, coverId: coverId)
-        } else if tocString.contains("epub:type=\"toc\"") || tocString.contains("<nav") {
+        }
+        if normalizedMediaType == "application/xhtml+xml"
+            || normalizedMediaType == "text/html"
+            || tocString.contains("epub:type=\"toc\"")
+            || tocString.contains("<nav") {
             return parseNAV(tocString, coverId: coverId)
         }
-        
         return []
+    }
+
+    private static func buildTOCCandidateIds(from info: OPFInfo) -> [String] {
+        var orderedIds: [String] = []
+        func append(_ id: String?) {
+            guard let id, !id.isEmpty, !orderedIds.contains(id) else { return }
+            orderedIds.append(id)
+        }
+
+        // 优先保持 EPUB2 的 spine toc 逻辑，再补 EPUB3 nav 候选
+        append(info.tocId)
+        append(info.navId)
+        info.tocCandidateIds.forEach { append($0) }
+
+        for key in info.manifestItems.keys.sorted() {
+            guard let item = info.manifestItems[key] else { continue }
+            let hrefLower = item.href.lowercased()
+            if item.properties.contains("nav")
+                || item.mediaType == "application/x-dtbncx+xml"
+                || hrefLower.hasSuffix(".ncx")
+                || hrefLower.hasSuffix("nav.xhtml")
+                || hrefLower.contains("toc") {
+                append(item.id)
+            }
+        }
+
+        return orderedIds
     }
     
     private static func parseNCX(_ ncxString: String, coverId: String?) -> [TOCEntry] {
@@ -614,7 +1230,12 @@ class EPubParser {
     
     private static func parseNAV(_ navString: String, coverId: String?) -> [TOCEntry] {
         if let data = navString.data(using: .utf8),
-           let parsed = parseNAVWithXMLParser(data: data, coverId: coverId),
+           let parsed = parseNAVWithXMLParser(data: data, coverId: coverId, requireExplicitTOCNav: true),
+           !parsed.isEmpty {
+            return parsed
+        }
+        if let data = navString.data(using: .utf8),
+           let parsed = parseNAVWithXMLParser(data: data, coverId: coverId, requireExplicitTOCNav: false),
            !parsed.isEmpty {
             return parsed
         }
@@ -623,12 +1244,19 @@ class EPubParser {
     
     private static func parseNAVWithRegex(_ navString: String) -> [TOCEntry] {
         var entries: [TOCEntry] = []
-        
-        guard let navRange = navString.range(of: "<nav[^>]*epub:type=\"toc\"[^>]*>([\\s\\S]*?)</nav>", options: .regularExpression) else {
-            DebugLogger.warning("EPubParser: 未找到epub:type=\"toc\"的nav标签")
+
+        let navRange =
+            navString.range(
+                of: "<nav[^>]*(epub:type|type|role)=\"[^\"]*(toc|doc-toc)[^\"]*\"[^>]*>([\\s\\S]*?)</nav>",
+                options: [.regularExpression, .caseInsensitive]
+            )
+            ?? navString.range(of: "<nav[^>]*>([\\s\\S]*?)</nav>", options: .regularExpression)
+
+        guard let navRange else {
+            DebugLogger.warning("EPubParser: 未找到可解析的nav标签")
             return []
         }
-        
+
         let navContent = String(navString[navRange])
         
         let linkPattern = "<a[^>]+href=\"([^\"]+)\"[^>]*>([^<]+)</a>"
@@ -765,7 +1393,7 @@ class EPubParser {
         return normalizedEntries
     }
     
-    private static func parseNAVWithXMLParser(data: Data, coverId _: String?) -> [TOCEntry]? {
+    private static func parseNAVWithXMLParser(data: Data, coverId _: String?, requireExplicitTOCNav: Bool) -> [TOCEntry]? {
         final class NAVParserDelegate: NSObject, XMLParserDelegate {
             var entries: [TOCEntry] = []
             private var insideTOCNav = false
@@ -774,13 +1402,31 @@ class EPubParser {
             private var currentHref: String?
             private var currentText: String = ""
             private var capturingLinkText = false
+            private let requireExplicitTOCNav: Bool
+            private var hasMatchedExplicitTOCNav = false
+
+            init(requireExplicitTOCNav: Bool) {
+                self.requireExplicitTOCNav = requireExplicitTOCNav
+            }
             
             func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
                 let name = elementName.lowercased()
                 
                 if name == "nav" {
                     navDepth += 1
-                    if let epubType = attributeDict["epub:type"] ?? attributeDict["type"], epubType.contains("toc") {
+                    let navigationRole = (
+                        attributeDict["epub:type"]
+                        ?? attributeDict["type"]
+                        ?? attributeDict["role"]
+                        ?? ""
+                    ).lowercased()
+                    let isExplicitTOCNav = navigationRole.contains("toc") || navigationRole.contains("doc-toc")
+
+                    if isExplicitTOCNav {
+                        insideTOCNav = true
+                        hasMatchedExplicitTOCNav = true
+                    } else if !requireExplicitTOCNav && !hasMatchedExplicitTOCNav && navDepth == 1 {
+                        // 部分EPUB3未标注epub:type=toc，回退到首个nav
                         insideTOCNav = true
                     }
                 }
@@ -845,7 +1491,7 @@ class EPubParser {
             }
         }
         
-        let delegate = NAVParserDelegate()
+        let delegate = NAVParserDelegate(requireExplicitTOCNav: requireExplicitTOCNav)
         let parser = XMLParser(data: data)
         parser.delegate = delegate
         parser.shouldProcessNamespaces = false
@@ -922,7 +1568,7 @@ class EPubParser {
                 continue
             }
             
-            let chapterURL = baseURL.appendingPathComponent(decodedHref)
+            let chapterURL = resolveRelativePathURL(decodedHref, relativeTo: baseURL)
             
             do {
                 let htmlContent = try String(contentsOf: chapterURL, encoding: .utf8)
@@ -1206,7 +1852,7 @@ class EPubParser {
                 }
                 
                 // 构建图片文件的完整路径
-                let imageURL = baseURL.appendingPathComponent(src)
+                let imageURL = resolveRelativePathURL(src, relativeTo: baseURL)
                 
                 // 尝试读取图片数据
                 if let imageData = try? Data(contentsOf: imageURL) {
@@ -1251,10 +1897,15 @@ class EPubParser {
     
     // MARK: - 封面提取
     
-    private static func extractCoverImage(coverId: String?, manifestMap: [String: String], baseURL: URL) -> Data? {
+    private static func extractCoverImage(coverId: String?, coverHref: String?, manifestMap: [String: String], baseURL: URL) -> Data? {
         // 如果有 cover id，尝试查找对应的图片
         if let coverId = coverId, let href = manifestMap[coverId] {
-            let coverURL = baseURL.appendingPathComponent(href)
+            let coverURL = resolveRelativePathURL(href, relativeTo: baseURL)
+            return try? Data(contentsOf: coverURL)
+        }
+
+        if let coverHref {
+            let coverURL = resolveRelativePathURL(coverHref, relativeTo: baseURL)
             return try? Data(contentsOf: coverURL)
         }
         
@@ -1262,7 +1913,7 @@ class EPubParser {
         for (_, href) in manifestMap {
             if href.hasSuffix(".jpg") || href.hasSuffix(".jpeg") || 
                href.hasSuffix(".png") || href.hasSuffix(".gif") {
-                let imageURL = baseURL.appendingPathComponent(href)
+                let imageURL = resolveRelativePathURL(href, relativeTo: baseURL)
                 if let imageData = try? Data(contentsOf: imageURL) {
                     return imageData
                 }
@@ -1346,17 +1997,14 @@ enum EPubParseError: Error {
 extension Data {
     func readUInt16(at offset: Int) -> UInt16 {
         guard offset + 2 <= count else { return 0 }
-        return withUnsafeBytes { bytes in
-            let pointer = bytes.baseAddress!.advanced(by: offset).assumingMemoryBound(to: UInt16.self)
-            return UInt16(littleEndian: pointer.pointee)
-        }
+        return UInt16(self[offset]) | (UInt16(self[offset + 1]) << 8)
     }
     
     func readUInt32(at offset: Int) -> UInt32 {
         guard offset + 4 <= count else { return 0 }
-        return withUnsafeBytes { bytes in
-            let pointer = bytes.baseAddress!.advanced(by: offset).assumingMemoryBound(to: UInt32.self)
-            return UInt32(littleEndian: pointer.pointee)
-        }
+        return UInt32(self[offset])
+            | (UInt32(self[offset + 1]) << 8)
+            | (UInt32(self[offset + 2]) << 16)
+            | (UInt32(self[offset + 3]) << 24)
     }
 }
