@@ -145,7 +145,7 @@ struct SettingsView: View {
                     HStack {
                         Label(NSLocalizedString("app.version", comment: ""), systemImage: "number")
                         Spacer()
-                        Text("1.0.0")
+                        Text("1.0")
                             .foregroundColor(.secondary)
                     }
                 }
@@ -961,7 +961,7 @@ struct AboutView: View {
                         .font(.title)
                         .fontWeight(.bold)
                     
-                    Text("\(NSLocalizedString("app.version", comment: "")) 1.0.0")
+                    Text("\(NSLocalizedString("app.version", comment: "")) 1.0")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
