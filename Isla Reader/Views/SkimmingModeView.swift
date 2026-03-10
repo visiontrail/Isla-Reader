@@ -67,10 +67,9 @@ struct SkimmingModeView: View {
             }
             .overlay(alignment: .top) {
                 if let adNoticeMessage {
-                    adNoticeBanner(adNoticeMessage)
+                    adNoticeBanner(adNoticeMessage, onClose: dismissAdvanceNotice)
                         .padding(.top, 10)
                         .transition(.move(edge: .top).combined(with: .opacity))
-                        .allowsHitTesting(false)
                 }
             }
             .sheet(isPresented: $showingTOC) {
@@ -546,12 +545,35 @@ struct SkimmingModeView: View {
         }
     }
 
-    private func adNoticeBanner(_ message: String) -> some View {
-        Text(message)
-            .font(.footnote.weight(.medium))
-            .foregroundColor(Color(uiColor: .label))
-            .lineLimit(2)
-            .multilineTextAlignment(.leading)
+    @MainActor
+    private func dismissAdvanceNotice() {
+        adNoticeDismissTask?.cancel()
+        adNoticeDismissTask = nil
+        withAnimation(.easeInOut(duration: 0.2)) {
+            adNoticeMessage = nil
+        }
+    }
+
+    private func adNoticeBanner(_ message: String, onClose: @escaping () -> Void) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(message)
+                .font(.footnote.weight(.medium))
+                .foregroundColor(Color(uiColor: .label))
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .layoutPriority(1)
+
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(Color(uiColor: .secondaryLabel))
+                    .frame(width: 22, height: 22)
+                    .background(Color(uiColor: .tertiarySystemFill))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(NSLocalizedString("common.close", comment: "")))
+        }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
             .frame(maxWidth: .infinity, alignment: .leading)
