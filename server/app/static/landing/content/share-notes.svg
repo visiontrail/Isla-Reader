@@ -1,0 +1,67 @@
+<svg width="900" height="560" viewBox="0 0 900 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Share Notes Illustration</title>
+  <desc id="desc">Stylized cards and avatars connected by share arrows to show collaborative note sharing.</desc>
+  <defs>
+    <linearGradient id="bg" x1="100" y1="20" x2="760" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7EEDB"/>
+      <stop offset="1" stop-color="#EEDFC4"/>
+    </linearGradient>
+    <linearGradient id="card" x1="300" y1="80" x2="620" y2="430" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#F5EAD6"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="200" y1="120" x2="700" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3E4F64"/>
+      <stop offset="1" stop-color="#2A3646"/>
+    </linearGradient>
+    <filter id="shadow" x="120" y="52" width="680" height="456" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#21170B" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <rect x="34" y="26" width="832" height="508" rx="34" fill="url(#bg)" stroke="#BFAF93" stroke-opacity="0.42"/>
+
+  <g filter="url(#shadow)">
+    <rect x="176" y="84" width="548" height="392" rx="26" fill="url(#card)" stroke="#CDBB9D" stroke-width="2"/>
+  </g>
+
+  <rect x="214" y="124" width="472" height="62" rx="15" fill="#EFE1C9"/>
+  <rect x="236" y="144" width="182" height="12" rx="6" fill="#6A5A43" fill-opacity="0.72"/>
+  <rect x="430" y="144" width="226" height="12" rx="6" fill="#8A785E" fill-opacity="0.48"/>
+
+  <rect x="214" y="208" width="218" height="228" rx="18" fill="#FBF5E8" stroke="#D2C1A3"/>
+  <rect x="242" y="236" width="98" height="10" rx="5" fill="#6E614C"/>
+  <rect x="242" y="256" width="150" height="8" rx="4" fill="#9B8A70" fill-opacity="0.75"/>
+  <rect x="242" y="273" width="136" height="8" rx="4" fill="#9B8A70" fill-opacity="0.62"/>
+  <rect x="242" y="290" width="122" height="8" rx="4" fill="#9B8A70" fill-opacity="0.52"/>
+  <rect x="242" y="322" width="120" height="34" rx="17" fill="#E7D8BF"/>
+  <rect x="253" y="334" width="36" height="10" rx="5" fill="#6C5C44" fill-opacity="0.7"/>
+  <rect x="297" y="334" width="54" height="10" rx="5" fill="#6C5C44" fill-opacity="0.45"/>
+  <rect x="242" y="368" width="156" height="46" rx="12" fill="#F1E5D0"/>
+
+  <rect x="468" y="208" width="218" height="228" rx="18" fill="#FFF8EB" stroke="#D2C1A3"/>
+  <rect x="496" y="236" width="96" height="10" rx="5" fill="#6E614C"/>
+  <rect x="496" y="256" width="146" height="8" rx="4" fill="#9B8A70" fill-opacity="0.75"/>
+  <rect x="496" y="273" width="134" height="8" rx="4" fill="#9B8A70" fill-opacity="0.62"/>
+  <rect x="496" y="304" width="108" height="34" rx="17" fill="#E7D8BF"/>
+  <rect x="507" y="316" width="32" height="10" rx="5" fill="#6C5C44" fill-opacity="0.7"/>
+  <rect x="546" y="316" width="46" height="10" rx="5" fill="#6C5C44" fill-opacity="0.45"/>
+  <rect x="496" y="350" width="156" height="46" rx="12" fill="#F1E5D0"/>
+
+  <g opacity="0.96">
+    <circle cx="166" cy="414" r="36" fill="url(#accent)"/>
+    <circle cx="738" cy="414" r="36" fill="url(#accent)"/>
+    <circle cx="452" cy="476" r="34" fill="url(#accent)"/>
+  </g>
+
+  <path d="M202 397C246 365 284 350 332 344" stroke="#344257" stroke-width="8" stroke-linecap="round"/>
+  <path d="M695 397C648 364 611 349 565 342" stroke="#344257" stroke-width="8" stroke-linecap="round"/>
+  <path d="M452 444C452 406 452 378 452 350" stroke="#344257" stroke-width="8" stroke-linecap="round"/>
+
+  <path d="M336 333L322 355L348 352" fill="#344257"/>
+  <path d="M564 332L579 355L553 351" fill="#344257"/>
+  <path d="M440 349L464 349L452 327" fill="#344257"/>
+
+  <rect x="345" y="422" width="210" height="44" rx="22" fill="#2F3D52"/>
+  <rect x="385" y="438" width="132" height="12" rx="6" fill="#D8E2F0" fill-opacity="0.88"/>
+</svg>

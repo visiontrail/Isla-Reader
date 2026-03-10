@@ -422,13 +422,37 @@ class EPubParser {
     }
 
     private static func resolveArchiveDestinationURL(archivePath: String, destinationRoot: URL) -> URL? {
-        let candidate = destinationRoot.appendingPathComponent(archivePath).standardizedFileURL
-        let rootPath = destinationRoot.standardizedFileURL.path
-        let candidatePath = candidate.path
-        if candidatePath == rootPath || candidatePath.hasPrefix(rootPath + "/") {
-            return candidate
+        let candidate = destinationRoot.appendingPathComponent(archivePath)
+        let rootPathVariants = equivalentPathVariants(for: destinationRoot)
+        let candidatePathVariants = equivalentPathVariants(for: candidate)
+
+        for rootPath in rootPathVariants {
+            for candidatePath in candidatePathVariants {
+                if candidatePath == rootPath || candidatePath.hasPrefix(rootPath + "/") {
+                    return candidate.standardizedFileURL
+                }
+            }
         }
+
         return nil
+    }
+
+    private static func equivalentPathVariants(for url: URL) -> Set<String> {
+        var variants: Set<String> = []
+
+        let standardizedPath = url.standardizedFileURL.path
+        variants.insert(standardizedPath)
+        variants.insert(url.resolvingSymlinksInPath().standardizedFileURL.path)
+
+        for path in Array(variants) {
+            if path.hasPrefix("/private/") {
+                variants.insert(String(path.dropFirst("/private".count)))
+            } else if path.hasPrefix("/var/") || path.hasPrefix("/tmp/") {
+                variants.insert("/private" + path)
+            }
+        }
+
+        return variants
     }
 
     private static func extractCompressedPayload(for entry: ZIPCentralDirectoryEntry, from data: Data) throws -> Data {

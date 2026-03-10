@@ -24,12 +24,13 @@
     "primaryCta": "機能を見る",
     "secondaryCta": "流れを見る"
   },
-  "vision": "すべての本を対話できるメンターにし、理解・記憶・議論をより速く。",
+  "vision": "本と対話しよう。より速く読み、より深く理解しよう。",
   "facts": [
     { "label": "対応", "value": "iOS / iPadOS（macOS は計画中）" },
     { "label": "保存", "value": "ローカル優先、登録不要" },
     { "label": "読書データ", "value": "端末内のみ" },
-    { "label": "エクスポート", "value": "ハイライトとブックマークを Notion へ" }
+    { "label": "エクスポート", "value": "ハイライトとブックマークを Notion へ" },
+    { "label": "共有ノート", "value": "ハイライトと注釈を仲間に共有" }
   ],
   "features": {
     "title": "機能",

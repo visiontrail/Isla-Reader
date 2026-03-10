@@ -917,15 +917,6 @@
       border-radius: 10px 6px 6px 10px;
       box-shadow: 6px 12px 20px rgba(0,0,0,0.10);
     }
-    .paper-sheet .paper-label {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--muted); margin-bottom: 14px; padding: 6px 10px;
-      border: 1px solid var(--line); border-radius: 999px; background: rgba(0,0,0,0.02);
-    }
-    .paper-sheet .paper-label::before {
-      content: "§"; font-family: "DM Mono", monospace; color: var(--accent); font-size: 12px;
-    }
     .paper-edge {
       position: absolute; inset: 18px -18px auto auto; height: 20px; background:
         linear-gradient(90deg, rgba(20,20,20,0.10) 32%, transparent 32%),
@@ -1096,12 +1087,24 @@
                 </div>
               </div>
             </article>
+            <article class="book-page" data-page-index="5">
+              <div class="book-page-head">
+                <span class="ink-tag" id="share-tag">Share Notes</span>
+                <span class="ink-meta" id="share-meta">Collaborate</span>
+              </div>
+              <h3 id="share-title"></h3>
+              <p id="share-body"></p>
+              <div class="page-illustration">
+                <img id="share-image" src="content/share-notes.svg" alt="Share reading notes with teammates and friends" loading="lazy" />
+                <p class="illustration-caption" id="share-image-caption"></p>
+              </div>
+            </article>
           </div>
           <div class="book-foot">
             <button class="page-corner prev" id="book-prev" type="button" aria-label="Previous page">
               <span id="book-prev-label">Prev</span>
             </button>
-            <div class="page-counter" id="book-counter">01 / 05</div>
+            <div class="page-counter" id="book-counter">01 / 06</div>
             <button class="page-corner next" id="book-next" type="button" aria-label="Next page">
               <span id="book-next-label">Next</span>
             </button>
@@ -1109,7 +1112,7 @@
         </div>
       </div>
       <p class="book-hidden-subtitle" data-key="hero.subtitle">Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with Notion export.</p>
-      <p class="vision" id="vision-line">Make every book a conversational mentor so you understand, remember, and discuss faster.</p>
+      <p class="vision" id="vision-line">Let books talk with you. Read faster, understand deeper.</p>
     </div>
     <div class="outline-hero">
       <div class="bookmark" aria-hidden="true"></div>
@@ -1124,7 +1127,6 @@
   <section class="section" id="features">
     <h2 data-key="features.title">Features</h2>
     <div class="paper-sheet">
-      <div class="paper-label" data-key="labels.chapters">Features</div>
       <div class="grid-3" id="feature-grid"></div>
       <p class="vision" id="features-privacy-note">No required signup. Library stays local; secure key exchange and AI calls remain opt-in.</p>
       <div class="paper-edge" aria-hidden="true"></div>
@@ -1134,7 +1136,6 @@
   <section class="section" id="privacy">
     <h2 data-key="privacy.title">Privacy</h2>
     <div class="paper-sheet ruled">
-      <div class="paper-label" data-key="labels.privacy">Privacy</div>
       <ul class="privacy-list" id="privacy-lines"></ul>
       <div class="paper-edge" aria-hidden="true"></div>
     </div>
@@ -1143,7 +1144,6 @@
   <section class="section" id="workflow">
     <h2 data-key="workflow.title">Workflow</h2>
     <div class="paper-sheet ruled">
-      <div class="paper-label" data-key="labels.notebook">Workflow</div>
       <div class="timeline" id="workflow-grid"></div>
       <div class="paper-edge" aria-hidden="true"></div>
     </div>
@@ -1218,6 +1218,12 @@
     const exportFlowTargetLabel = document.getElementById('export-flow-target-label');
     const exportFlowTargetBody = document.getElementById('export-flow-target-body');
     const exportTrackList = document.getElementById('export-track-list');
+    const shareTag = document.getElementById('share-tag');
+    const shareMeta = document.getElementById('share-meta');
+    const shareTitle = document.getElementById('share-title');
+    const shareBody = document.getElementById('share-body');
+    const shareImage = document.getElementById('share-image');
+    const shareImageCaption = document.getElementById('share-image-caption');
     const bookPages = Array.from(document.querySelectorAll('.book-page'));
 
     let bookOpen = false;
@@ -1333,12 +1339,13 @@
         primaryCta: 'Explore features',
         secondaryCta: 'See workflow'
       },
-      vision: 'Make every book a conversational mentor so you understand, remember, and discuss faster.',
+      vision: 'Let books talk with you. Read faster, understand deeper.',
       facts: [
         { label: 'Platforms', value: 'iOS / iPadOS (macOS planned)' },
         { label: 'Storage', value: 'Local-first, no required signup' },
         { label: 'Reading data', value: 'On-device only' },
-        { label: 'Export', value: 'Notion export for highlights and bookmarks' }
+        { label: 'Export', value: 'Notion export for highlights and bookmarks' },
+        { label: 'Share Notes', value: 'Share highlights and notes with teammates' }
       ],
       features: {
         title: 'Features',
@@ -1439,14 +1446,15 @@
       const facts = t.facts || fallbackEn.facts;
       const storageFact = facts[1] || { label: 'Storage', value: '' };
       const exportFact = facts[3] || { label: 'Export', value: '' };
+      const shareFact = facts[4] || { label: 'Share Notes', value: '' };
       if (lang === 'zh') {
         return {
           openLabel: '翻开',
           coverLabel: '封皮',
           prevLabel: '上一页',
           nextLabel: '下一页',
-          coverStrip: ['AI Summary', 'Skim read', 'Products', 'Export'],
-          coverEmboss: 'summary · skim · products · storage · export',
+          coverStrip: ['AI Summary', 'Skim read', 'Products', 'Export', '分享笔记'],
+          coverEmboss: 'summary · skim · products · storage · export · share',
           summaryTag: 'AI Summary',
           summaryMeta: '流式输出',
           summaryTitle: '这本 App 做了什么',
@@ -1476,7 +1484,13 @@
           exportSourceChips: ['高亮', '书签'],
           exportFlowTargetLabel: 'Notion 目标页',
           exportFlowTargetBody: '把阅读上下文连同摘录一起写入 Notion，减少二次整理。',
-          exportTracks: ['笔记沉淀', '复盘回顾', '写作引用']
+          exportTracks: ['笔记沉淀', '复盘回顾', '写作引用'],
+          shareTag: '分享',
+          shareMeta: '协作',
+          shareTitle: shareFact.value ? `${shareFact.label}: ${shareFact.value}` : shareFact.label,
+          shareBody: '一键把笔记卡片和批注片段分享给同伴、学习小组或社群，让阅读讨论直接围绕同一段上下文展开。',
+          shareImageAlt: '将阅读笔记分享给同伴与小组',
+          shareImageCaption: 'Share Notes：高亮与批注可生成可分享卡片。'
         };
       }
       if (lang === 'ja') {
@@ -1485,8 +1499,8 @@
           coverLabel: '表紙',
           prevLabel: '前へ',
           nextLabel: '次へ',
-          coverStrip: ['AI要約', 'Skim read', '製品', 'エクスポート'],
-          coverEmboss: 'summary · skim · products · storage · export',
+          coverStrip: ['AI要約', 'Skim read', '製品', 'エクスポート', '共有ノート'],
+          coverEmboss: 'summary · skim · products · storage · export · share',
           summaryTag: 'AI要約',
           summaryMeta: 'ストリーミング',
           summaryTitle: 'このアプリでできること',
@@ -1516,7 +1530,13 @@
           exportSourceChips: ['ハイライト', 'ブックマーク'],
           exportFlowTargetLabel: 'Notion 保存先',
           exportFlowTargetBody: '読書時の文脈を保ったまま Notion ページへ追記できます。',
-          exportTracks: ['ノート整理', '振り返り', '執筆フロー']
+          exportTracks: ['ノート整理', '振り返り', '執筆フロー'],
+          shareTag: '共有',
+          shareMeta: '共同作業',
+          shareTitle: shareFact.value ? `${shareFact.label}: ${shareFact.value}` : shareFact.label,
+          shareBody: 'ノートカードや注釈の断片をワンタップで共有し、友人や学習グループと同じ文脈で読書ディスカッションを進められます。',
+          shareImageAlt: '読書ノートを友人やチームに共有',
+          shareImageCaption: 'Share Notes: ハイライトと注釈を共有カード化。'
         };
       }
       if (lang === 'ko') {
@@ -1525,8 +1545,8 @@
           coverLabel: '표지',
           prevLabel: '이전',
           nextLabel: '다음',
-          coverStrip: ['AI 요약', 'Skim read', '제품', '내보내기'],
-          coverEmboss: 'summary · skim · products · storage · export',
+          coverStrip: ['AI 요약', 'Skim read', '제품', '내보내기', '노트 공유'],
+          coverEmboss: 'summary · skim · products · storage · export · share',
           summaryTag: 'AI 요약',
           summaryMeta: '스트리밍',
           summaryTitle: '이 앱이 하는 일',
@@ -1556,7 +1576,13 @@
           exportSourceChips: ['하이라이트', '북마크'],
           exportFlowTargetLabel: 'Notion 대상',
           exportFlowTargetBody: '읽기 맥락과 함께 Notion 페이지로 보내 후처리 시간을 줄입니다.',
-          exportTracks: ['노트 축적', '복습 정리', '작성 인용']
+          exportTracks: ['노트 축적', '복습 정리', '작성 인용'],
+          shareTag: '공유',
+          shareMeta: '협업',
+          shareTitle: shareFact.value ? `${shareFact.label}: ${shareFact.value}` : shareFact.label,
+          shareBody: '노트 카드와 주석 조각을 원터치로 공유해 친구나 스터디 그룹과 같은 문맥에서 바로 토론할 수 있습니다.',
+          shareImageAlt: '읽기 노트를 친구와 팀에 공유',
+          shareImageCaption: 'Share Notes: 하이라이트와 주석을 공유 카드로.'
         };
       }
       return {
@@ -1564,8 +1590,8 @@
         coverLabel: 'Cover',
         prevLabel: 'Prev',
         nextLabel: 'Next',
-        coverStrip: ['AI Summary', 'Skim read', 'Products', 'Export'],
-        coverEmboss: 'summary · skim · products · storage · export',
+        coverStrip: ['AI Summary', 'Skim read', 'Products', 'Export', 'Share Notes'],
+        coverEmboss: 'summary · skim · products · storage · export · share',
         summaryTag: 'AI Summary',
         summaryMeta: 'Streaming',
         summaryTitle: 'What this app does',
@@ -1595,7 +1621,13 @@
         exportSourceChips: ['Highlights', 'Bookmarks'],
         exportFlowTargetLabel: 'Notion destination',
         exportFlowTargetBody: 'Push excerpts into your Notion pages with source context attached.',
-        exportTracks: ['Notes', 'Review', 'Writing']
+        exportTracks: ['Notes', 'Review', 'Writing'],
+        shareTag: 'Share Notes',
+        shareMeta: 'Collaborate',
+        shareTitle: shareFact.value ? `${shareFact.label}: ${shareFact.value}` : shareFact.label,
+        shareBody: 'Share note cards and annotated excerpts with teammates, study partners, or friends so everyone discusses the same passage context.',
+        shareImageAlt: 'Share reading notes with teammates and friends',
+        shareImageCaption: 'Share Notes turns highlights into shareable discussion cards.'
       };
     };
 
@@ -1702,6 +1734,13 @@
       if (exportTrackList) {
         exportTrackList.innerHTML = (b.exportTracks || []).map(line => `<div class="export-track-item">${line}</div>`).join('');
       }
+
+      if (shareTag) shareTag.textContent = b.shareTag || '';
+      if (shareMeta) shareMeta.textContent = b.shareMeta || '';
+      if (shareTitle) shareTitle.textContent = b.shareTitle || '';
+      if (shareBody) shareBody.textContent = b.shareBody || '';
+      if (shareImage) shareImage.setAttribute('alt', b.shareImageAlt || '');
+      if (shareImageCaption) shareImageCaption.textContent = b.shareImageCaption || '';
 
       if (!bookOpen) {
         streamToken += 1;

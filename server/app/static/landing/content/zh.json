@@ -24,12 +24,13 @@
     "primaryCta": "查看功能",
     "secondaryCta": "查看流程"
   },
-  "vision": "让每本书都能对话，读得更快、记得更牢，也更容易讨论。",
+  "vision": "让书本与你对话。阅读更快，理解更深",
   "facts": [
     { "label": "平台", "value": "iOS / iPadOS（未来考虑 macOS）" },
     { "label": "存储", "value": "默认本地，无需注册" },
     { "label": "阅读数据", "value": "仅保存在本机" },
-    { "label": "导出", "value": "书签与高亮可导出到 Notion" }
+    { "label": "导出", "value": "书签与高亮可导出到 Notion" },
+    { "label": "分享笔记", "value": "把高亮与批注分享给同伴" }
   ],
   "features": {
     "title": "功能",

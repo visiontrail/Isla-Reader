@@ -24,12 +24,13 @@
     "primaryCta": "Explore features",
     "secondaryCta": "See workflow"
   },
-  "vision": "Make every book a conversational mentor so you understand, remember, and discuss faster.",
+  "vision": "Let books talk with you. Read faster, understand deeper.",
   "facts": [
     { "label": "Platforms", "value": "iOS / iPadOS (macOS planned)" },
     { "label": "Storage", "value": "Local-first, no required signup" },
     { "label": "Reading data", "value": "On-device only" },
-    { "label": "Export", "value": "Notion export for highlights and bookmarks" }
+    { "label": "Export", "value": "Notion export for highlights and bookmarks" },
+    { "label": "Share Notes", "value": "Share highlights and notes with teammates" }
   ],
   "features": {
     "title": "Features",

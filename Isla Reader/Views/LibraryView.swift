@@ -1600,16 +1600,6 @@ struct ImportBookView: View {
         DebugLogger.info("文件路径: \(url.path)")
         DebugLogger.info("文件扩展名: \(url.pathExtension)")
 
-        // 检查文件属性
-        do {
-            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .isReadableKey, .contentTypeKey])
-            DebugLogger.info("文件大小: \(resourceValues.fileSize ?? 0) bytes")
-            DebugLogger.info("文件可读: \(resourceValues.isReadable ?? false)")
-            DebugLogger.info("文件类型: \(resourceValues.contentType?.identifier ?? "未知")")
-        } catch {
-            DebugLogger.error("获取文件属性失败: \(error.localizedDescription)")
-        }
-
         var securityScopedAccessStarted = false
         if usesSecurityScopedResource {
             DebugLogger.info("尝试开始安全访问文件")
@@ -1621,6 +1611,16 @@ struct ImportBookView: View {
                 return
             }
             DebugLogger.success("成功开始安全访问文件")
+        }
+
+        // 检查文件属性（对 iCloud 文档需先开启安全访问）
+        do {
+            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey, .isReadableKey, .contentTypeKey])
+            DebugLogger.info("文件大小: \(resourceValues.fileSize ?? 0) bytes")
+            DebugLogger.info("文件可读: \(resourceValues.isReadable ?? false)")
+            DebugLogger.info("文件类型: \(resourceValues.contentType?.identifier ?? "未知")")
+        } catch {
+            DebugLogger.error("获取文件属性失败: \(error.localizedDescription)")
         }
 
         Task {
