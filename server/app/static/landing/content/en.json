@@ -41,7 +41,7 @@
       { "title": "Ask While Reading", "body": "Ask about selected text, a chapter, or the whole book—explain, translate, or give examples; selection shortcuts are planned.", "status": "planned" },
       { "title": "Reader Essentials", "body": "TOC, search, bookmarks, highlights, annotations, themes, adjustable fonts and line spacing, night mode." },
       { "title": "Export & Notes", "body": "Export bookmarks and highlights to Notion when needed." },
-      { "title": "Comprehension Checks (planned)", "body": "Diagnostics and quizzes to test recall are designed and planned.", "status": "planned" }
+      { "title": "Share Knowledge Cards to Social Media", "body": "Share knowledge cards to social media platforms with one tap." }
     ],
     "privacyNote": "No required signup. Library stays local; secure key exchange and AI calls remain opt-in."
   },
@@ -58,9 +58,9 @@
   "privacy": {
     "title": "Privacy",
     "lines": [
-      "Local-first by default; your library stays on your device.",
-      "FastAPI key exchange keeps credentials off the client while still anonymizing requests where possible.",
-      "No required registration. AI prompts avoid sending account identifiers; telemetry is minimal and focused on reliability."
+      "Your library stays on your device by default, so you can start reading with peace of mind.",
+      "No sign-up is required to get started, and your reading experience is designed to feel simple and private.",
+      "We keep data collection to a minimum and focus only on what helps improve reliability and the overall experience."
     ]
   },
   "footer": {

@@ -11,7 +11,8 @@ _LANDING_CONTENT_DIR = _LANDING_DIR / "content"
 _ALLOWED_LANDING_CONTENT_IMAGE_EXTS = {".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}
 _ALLOWED_LANDING_COPY_LANGS = {"en", "zh", "ja", "ko"}
 
-LANDING_HTML = (_LANDING_DIR / "index.html").read_text(encoding="utf-8")
+def _read_landing_html() -> str:
+    return (_LANDING_DIR / "index.html").read_text(encoding="utf-8")
 
 PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -670,7 +671,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def marketing_home() -> HTMLResponse:
-    return HTMLResponse(LANDING_HTML, headers={"Cache-Control": "public, max-age=600"})
+    return HTMLResponse(_read_landing_html(), headers={"Cache-Control": "no-store"})
 
 
 @router.get("/content/{lang}.json", include_in_schema=False)
@@ -684,7 +685,7 @@ async def marketing_copy(lang: str):
     if not path.exists():
         raise HTTPException(status_code=404, detail="copy not found")
 
-    return FileResponse(path, media_type="application/json", headers={"Cache-Control": "public, max-age=900"})
+    return FileResponse(path, media_type="application/json", headers={"Cache-Control": "no-store"})
 
 
 @router.get("/content/{filename}", include_in_schema=False)

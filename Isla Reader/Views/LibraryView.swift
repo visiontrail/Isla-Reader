@@ -1091,6 +1091,24 @@ struct HighlightListSheet: View {
                         }
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Picker(
+                            NSLocalizedString("settings.highlight_sort.title", comment: ""),
+                            selection: $appSettings.highlightSortMode
+                        ) {
+                            ForEach(HighlightSortMode.allCases, id: \.rawValue) { mode in
+                                Text(mode.displayName).tag(mode)
+                            }
+                        }
+                    } label: {
+                        Label(
+                            NSLocalizedString("settings.highlight_sort.title", comment: ""),
+                            systemImage: "arrow.up.arrow.down"
+                        )
+                        .labelStyle(.titleAndIcon)
+                    }
+                }
             }
         }
         .sheet(item: $editingHighlight) { highlight in
