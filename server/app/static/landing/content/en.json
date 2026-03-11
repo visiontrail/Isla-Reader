@@ -8,63 +8,63 @@
     "tagline": "Your first AI-Powered Reading Companion"
   },
   "nav": {
-    "features": "Features",
-    "workflow": "Workflow",
+    "features": "Capabilities",
+    "workflow": "How It Works",
     "language": "Language"
   },
   "labels": {
     "fieldnote": "Product note",
-    "chapters": "Features",
-    "notebook": "Workflow",
+    "chapters": "Core Capabilities",
+    "notebook": "How It Works",
     "privacy": "Privacy"
   },
   "hero": {
-    "title": "Your first AI-powered reading companion",
-    "subtitle": "Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with Notion export.",
-    "primaryCta": "Explore features",
-    "secondaryCta": "See workflow"
+    "title": "Read faster, understand deeper",
+    "subtitle": "Lan Read uses AI to map the whole book first, then guide you into the chapters that matter, so understanding, notes, and retention happen naturally.",
+    "primaryCta": "Start Reading Now",
+    "secondaryCta": "See How It Works"
   },
-  "vision": "Let books talk with you. Read faster, understand deeper.",
+  "vision": "Turn reading from input into real understanding",
   "facts": [
     { "label": "Platforms", "value": "iOS / iPadOS (macOS planned)" },
-    { "label": "Storage", "value": "Local-first, no required signup" },
+    { "label": "Storage", "value": "Saved locally by default, no signup required" },
     { "label": "Reading data", "value": "On-device only" },
     { "label": "Export", "value": "Notion export for highlights and bookmarks" },
-    { "label": "Share Notes", "value": "Share highlights and notes with teammates" }
+    { "label": "Share Notes", "value": "Turn highlights and annotations into shareable note cards" }
   ],
   "features": {
-    "title": "Features",
+    "title": "Core Capabilities",
     "items": [
-      { "title": "Local Book Import", "body": "Bring your own ePub or .txt from Files or local storage; keep your library local." },
-      { "title": "Instant AI Summaries", "body": "Open a book to see a concise overview and chapter structure with caching and manual refresh." },
-      { "title": "Skimming Mode", "body": "Chapter skeleton summaries with quick navigation for fast context building." },
-      { "title": "Ask While Reading", "body": "Ask about selected text, a chapter, or the whole book—explain, translate, or give examples; selection shortcuts are planned.", "status": "planned" },
-      { "title": "Reader Essentials", "body": "TOC, search, bookmarks, highlights, annotations, themes, adjustable fonts and line spacing, night mode." },
-      { "title": "Export & Notes", "body": "Export bookmarks and highlights to Notion when needed." },
-      { "title": "Share Knowledge Cards to Social Media", "body": "Share knowledge cards to social media platforms with one tap." }
+      { "title": "Local Book Import", "body": "Import ePub / txt from your device and build a private library." },
+      { "title": "Instant AI Guide", "body": "Open any book to get instant full-book and chapter-level guidance." },
+      { "title": "Skimming Mode", "body": "Use chapter skeletons to build context fast and choose where to dive deep." },
+      { "title": "Understand While Reading", "body": "Explain, translate, and extend understanding anytime while you read.", "status": "planned" },
+      { "title": "Complete Reading Toolkit", "body": "TOC, search, bookmarks, highlights, annotations, and typography controls for everyday reading." },
+      { "title": "Export & Retention", "body": "Export bookmarks and highlights to Notion to continue your organizing and writing flow." },
+      { "title": "Share Knowledge Cards", "body": "Quickly turn highlights and insights from reading into shareable cards." }
     ],
-    "privacyNote": "No required signup. Library stays local; secure key exchange and AI calls remain opt-in."
+    "privacyNote": "No signup required. Start reading first. Your data stays local by default."
   },
   "workflow": {
-    "title": "Workflow",
+    "title": "How It Works",
     "steps": [
-      { "title": "Import", "body": "Add ePub or text files from Files or local storage." },
-      { "title": "Summarize", "body": "Open a book to get the AI overview and chapter skeleton; results are cached for reuse." },
-      { "title": "Read & Ask", "body": "Highlight to ask, translate, or get examples while reading; selection shortcuts are planned." },
-      { "title": "Export", "body": "Export highlights/bookmarks to Notion when needed." },
-      { "title": "Share", "body": "Share note cards and annotated excerpts with teammates or friends." }
+      { "title": "Import", "body": "Import ePub / txt and build your own library." },
+      { "title": "Overview", "body": "Start with a full-book and chapter overview to build context quickly." },
+      { "title": "Read", "body": "Highlight, ask, and deepen understanding as you read." },
+      { "title": "Retain", "body": "Export highlights and notes to Notion to build long-term retention." },
+      { "title": "Share", "body": "Turn discussion-worthy passages into cards and share with others." }
     ]
   },
   "privacy": {
     "title": "Privacy",
     "lines": [
-      "Your library stays on your device by default, so you can start reading with peace of mind.",
-      "No sign-up is required to get started, and your reading experience is designed to feel simple and private.",
-      "We keep data collection to a minimum and focus only on what helps improve reliability and the overall experience."
+      "Your library, annotations, and reading history stay on your device by default.",
+      "Network requests happen only when you actively use AI features or export content.",
+      "We minimize unnecessary data exposure so reading stays private."
     ]
   },
   "footer": {
-    "note": "© 2026 Lan Read — Your first AI-powered reading companion.",
+    "note": "© 2026 Lan Read — Designed for people who read seriously.",
     "home": "Home",
     "privacy": "Privacy",
     "terms": "Terms",
