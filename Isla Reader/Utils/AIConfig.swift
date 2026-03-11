@@ -98,3 +98,43 @@ enum AIConfig {
         return value.replacingOccurrences(of: "\\/", with: "/")
     }
 }
+
+final class AIConsentManager: ObservableObject {
+    static let shared = AIConsentManager()
+
+    @Published var isLaunchConsentPresented = false
+
+    private enum Keys {
+        static let permissionGranted = "aiPrivacyPermissionGranted"
+        static let suppressLaunchPrompt = "aiPrivacySuppressLaunchPrompt"
+    }
+
+    private let defaults: UserDefaults
+
+    private init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    @MainActor
+    func presentLaunchConsentIfNeeded() {
+        guard !defaults.bool(forKey: Keys.suppressLaunchPrompt) else {
+            isLaunchConsentPresented = false
+            return
+        }
+        isLaunchConsentPresented = true
+    }
+
+    @MainActor
+    func recordConsentDecision(granted: Bool, suppressFutureLaunchPrompt: Bool) {
+        defaults.set(granted, forKey: Keys.permissionGranted)
+        defaults.set(suppressFutureLaunchPrompt, forKey: Keys.suppressLaunchPrompt)
+        isLaunchConsentPresented = false
+        DebugLogger.info(
+            "AIConsentManager: updated consent. granted=\(granted), suppressFutureLaunchPrompt=\(suppressFutureLaunchPrompt)"
+        )
+    }
+
+    func hasExplicitPermission() -> Bool {
+        defaults.bool(forKey: Keys.permissionGranted)
+    }
+}

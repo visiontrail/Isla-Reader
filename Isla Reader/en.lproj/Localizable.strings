@@ -341,7 +341,17 @@
 "ai.error.endpoint" = "AI endpoint is invalid.";
 "ai.error.network" = "Network error when contacting AI.";
 "ai.error.parse" = "Unable to parse AI response.";
+"ai.error.permission_required" = "AI features are disabled until you grant data-sharing permission.";
 "ai.disclaimer" = "AI may generate incorrect information";
+"ai.consent.launch.title" = "AI Data Permission";
+"ai.consent.launch.intro" = "LanRead needs your permission before sending selected reading content to AI.";
+"ai.consent.launch.usage" = "How data is used: selected text, chapter excerpts, and prompts are used only for AI summaries, translation, and explanations you request.";
+"ai.consent.launch.location" = "Where data is processed: requests are sent from your device to LanRead-configured cloud AI servers for processing.";
+"ai.consent.launch.third_party" = "Third-party sharing: data may be shared with third-party AI providers to generate responses.";
+"ai.consent.launch.explicit_permission" = "Choose Allow AI Data Sharing to give explicit permission before any AI request is sent.";
+"ai.consent.launch.dont_show_again" = "Don't show this message again";
+"ai.consent.launch.allow" = "Allow AI Data Sharing";
+"ai.consent.launch.decline" = "Not Now";
 
 // Notion OAuth
 "notion.connect" = "Connect Notion";

@@ -341,7 +341,17 @@
 "ai.error.endpoint" = "AI エンドポイントが無効です。";
 "ai.error.network" = "AI サービスへの接続に失敗しました。";
 "ai.error.parse" = "AI レスポンスを解析できませんでした。";
+"ai.error.permission_required" = "データ送信への許可があるまで、AI 機能は利用できません。";
 "ai.disclaimer" = "AI は誤った情報を生成する可能性があります";
+"ai.consent.launch.title" = "AIデータ利用の許可";
+"ai.consent.launch.intro" = "選択した読書コンテンツを AI に送信する前に、LanRead は許可を必要とします。";
+"ai.consent.launch.usage" = "利用目的: 選択テキスト、章の抜粋、プロンプトは、あなたが要求した AI 要約・翻訳・解説のためにのみ使用されます。";
+"ai.consent.launch.location" = "処理場所: リクエストは端末から LanRead が設定したクラウド AI サーバーへ送信され、そこで処理されます。";
+"ai.consent.launch.third_party" = "第三者共有: 応答生成のため、データは第三者 AI 提供者に共有される場合があります。";
+"ai.consent.launch.explicit_permission" = "「AIデータ共有を許可」を選ぶと、AI リクエスト送信前の明示的な許可となります。";
+"ai.consent.launch.dont_show_again" = "今後このメッセージを表示しない";
+"ai.consent.launch.allow" = "AIデータ共有を許可";
+"ai.consent.launch.decline" = "今はしない";
 
 // Notion OAuth
 "notion.connect" = "Notion に接続";

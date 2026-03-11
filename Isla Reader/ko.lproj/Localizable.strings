@@ -341,7 +341,17 @@
 "ai.error.endpoint" = "AI 엔드포인트가 올바르지 않습니다.";
 "ai.error.network" = "AI 서비스 연결에 실패했습니다.";
 "ai.error.parse" = "AI 응답을 해석할 수 없습니다.";
+"ai.error.permission_required" = "데이터 전송 권한을 허용하기 전에는 AI 기능을 사용할 수 없습니다.";
 "ai.disclaimer" = "AI가 잘못된 정보를 생성할 수 있습니다";
+"ai.consent.launch.title" = "AI 데이터 권한 안내";
+"ai.consent.launch.intro" = "선택한 읽기 콘텐츠를 AI로 보내기 전에 LanRead의 권한 요청이 필요합니다.";
+"ai.consent.launch.usage" = "사용 목적: 선택한 텍스트, 챕터 발췌, 프롬프트는 사용자가 요청한 AI 요약, 번역, 설명에만 사용됩니다.";
+"ai.consent.launch.location" = "처리 위치: 요청은 기기에서 LanRead가 구성한 클라우드 AI 서버로 전송되어 처리됩니다.";
+"ai.consent.launch.third_party" = "제3자 공유: 결과 생성을 위해 데이터가 제3자 AI 제공업체와 공유될 수 있습니다.";
+"ai.consent.launch.explicit_permission" = "AI 데이터 공유 허용을 선택하면 AI 요청 전 데이터 전송에 명시적으로 동의하게 됩니다.";
+"ai.consent.launch.dont_show_again" = "이 메시지를 다시 표시하지 않기";
+"ai.consent.launch.allow" = "AI 데이터 공유 허용";
+"ai.consent.launch.decline" = "지금은 하지 않기";
 
 // Notion OAuth
 "notion.connect" = "Notion 연결";

@@ -146,6 +146,7 @@ enum SkimmingModeError: LocalizedError {
     case networkError
     case apiError(String)
     case parseError
+    case permissionRequired
     
     var errorDescription: String? {
         switch self {
@@ -159,6 +160,8 @@ enum SkimmingModeError: LocalizedError {
             return message
         case .parseError:
             return NSLocalizedString("skimming.error.parse", comment: "")
+        case .permissionRequired:
+            return NSLocalizedString("ai.error.permission_required", comment: "")
         }
     }
 }
@@ -441,6 +444,11 @@ final class SkimmingModeService {
     }
     
     private func callAIAPI(prompt: String) async throws -> String {
+        guard AIConsentManager.shared.hasExplicitPermission() else {
+            DebugLogger.warning("SkimmingModeService: 用户未授权，已阻止 AI 请求")
+            throw SkimmingModeError.permissionRequired
+        }
+
         let config: AIConfiguration
         do {
             config = try await AIConfig.current()

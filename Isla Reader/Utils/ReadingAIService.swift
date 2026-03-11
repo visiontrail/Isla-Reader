@@ -12,6 +12,7 @@ enum ReadingAIError: LocalizedError {
     case network
     case api(String)
     case parse
+    case permissionRequired
 
     var errorDescription: String? {
         switch self {
@@ -21,6 +22,8 @@ enum ReadingAIError: LocalizedError {
             return NSLocalizedString("ai.error.network", comment: "Network error")
         case .parse:
             return NSLocalizedString("ai.error.parse", comment: "Failed to parse AI response")
+        case .permissionRequired:
+            return NSLocalizedString("ai.error.permission_required", comment: "AI permission required")
         case .api(let message):
             return message
         }
@@ -59,6 +62,11 @@ final class ReadingAIService {
     // MARK: - Private
 
     private func callAI(with prompt: String, temperature: Double, maxTokens: Int, source: UsageMetricsSource) async throws -> String {
+        guard AIConsentManager.shared.hasExplicitPermission() else {
+            DebugLogger.warning("ReadingAIService: 用户未授权，已阻止 AI 请求")
+            throw ReadingAIError.permissionRequired
+        }
+
         let config: AIConfiguration
         do {
             config = try await AIConfig.current()

@@ -422,6 +422,11 @@ class AISummaryService: ObservableObject {
     }
     
     private func callAIAPI(prompt: String, source: UsageMetricsSource) async throws -> String {
+        guard AIConsentManager.shared.hasExplicitPermission() else {
+            DebugLogger.warning("AISummaryService: 用户未授权，已阻止 AI 请求")
+            throw AISummaryError.permissionRequired
+        }
+
         let config = try await AIConfig.current()
         
         DebugLogger.info("AISummaryService: ===== 开始调用AI API =====")
@@ -753,6 +758,7 @@ enum AISummaryError: Error {
     case apiError(String)
     case networkError
     case parseError
+    case permissionRequired
     
     var localizedDescription: String {
         switch self {
@@ -764,6 +770,8 @@ enum AISummaryError: Error {
             return "网络连接错误"
         case .parseError:
             return "响应解析错误"
+        case .permissionRequired:
+            return LocalizationHelper.localizedString("ai.error.permission_required", comment: "")
         }
     }
 }

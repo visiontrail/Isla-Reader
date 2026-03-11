@@ -341,7 +341,17 @@
 "ai.error.endpoint" = "AI 接口地址无效。";
 "ai.error.network" = "网络异常，无法连接到 AI 服务。";
 "ai.error.parse" = "无法解析 AI 返回内容。";
+"ai.error.permission_required" = "在你授权数据传输前，AI 功能暂不可用。";
 "ai.disclaimer" = "AI 可能生成错误信息";
+"ai.consent.launch.title" = "AI 数据权限提示";
+"ai.consent.launch.intro" = "在将所选阅读内容发送给 AI 前，LanRead 需要先获得你的许可。";
+"ai.consent.launch.usage" = "用途说明：所选文字、章节片段和提示词仅用于你主动发起的 AI 导读、翻译和解释。";
+"ai.consent.launch.location" = "处理位置：请求会从你的设备发送到 LanRead 配置的云端 AI 服务器进行处理。";
+"ai.consent.launch.third_party" = "第三方共享：为生成结果，数据可能会共享给第三方 AI 服务提供商。";
+"ai.consent.launch.explicit_permission" = "点击“同意并继续”即表示你明确授权在发起 AI 请求时传输相关数据。";
+"ai.consent.launch.dont_show_again" = "不再提示";
+"ai.consent.launch.allow" = "同意并继续";
+"ai.consent.launch.decline" = "暂不使用";
 
 // Notion OAuth
 "notion.connect" = "连接 Notion";

@@ -837,20 +837,14 @@
     .outline-hero {
       width: 100%;
       aspect-ratio: 4/3;
-      border: 1px solid var(--line);
+      border: none;
       border-radius: 22px;
       position: relative;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 16% 14%, rgba(255,255,255,0.64), transparent 46%),
-        radial-gradient(circle at 76% 84%, rgba(20,20,20,0.08), transparent 45%),
-        linear-gradient(155deg, #f8f2e6 0%, #ede1cc 52%, #e4d4bc 100%);
-      box-shadow: var(--paper-shadow);
+      overflow: visible;
+      background: transparent;
+      box-shadow: none;
       isolation: isolate;
-      padding: 20px 16px 14px;
-      display: grid;
-      grid-template-rows: 1fr auto;
-      gap: 8px;
+      padding: 6px 6px 10px;
     }
     .outline-hero::before,
     .outline-hero::after {
@@ -861,7 +855,8 @@
       pointer-events: none;
     }
     .outline-hero::before {
-      border: 1px solid rgba(20,20,20,0.1);
+      border: none;
+      display: none;
       z-index: -1;
     }
     .outline-hero::after {
@@ -870,12 +865,13 @@
       background: linear-gradient(90deg, rgba(20,20,20,0.16) 0, rgba(20,20,20,0.03) 60%, transparent 100%);
       filter: blur(10px);
       opacity: 0.38;
+      display: none;
       z-index: -1;
     }
     .fan-stage {
       position: relative;
       width: 100%;
-      min-height: clamp(286px, 30vw, 370px);
+      min-height: clamp(300px, 32vw, 390px);
       perspective: 1800px;
       cursor: pointer;
     }
@@ -883,16 +879,14 @@
       position: absolute;
       inset: 0;
       pointer-events: none;
-      background:
-        radial-gradient(circle at 25% 30%, rgba(255,255,255,0.45), transparent 36%),
-        radial-gradient(circle at 75% 80%, rgba(30,24,14,0.09), transparent 42%);
+      background: radial-gradient(circle at 74% 78%, rgba(30,24,14,0.07), transparent 44%);
       transition: transform .28s ease;
     }
     .fan-card {
       position: absolute;
-      left: 46%;
+      left: 28%;
       bottom: 8px;
-      width: min(56%, 250px);
+      width: min(48%, 211px);
       aspect-ratio: 390 / 844;
       border-radius: 28px;
       overflow: hidden;
@@ -901,7 +895,7 @@
       box-shadow:
         0 16px 32px rgba(16,12,6,0.25),
         0 6px 14px rgba(16,12,6,0.2);
-      transform-origin: 14% 92%;
+      transform-origin: 10% 92%;
       opacity: 0;
       transition:
         transform .62s cubic-bezier(0.24, 0.74, 0.12, 1),
@@ -927,8 +921,8 @@
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      object-position: center top;
+      object-fit: contain;
+      object-position: center center;
     }
     .fan-card.is-visible {
       opacity: 1;
@@ -941,17 +935,6 @@
     }
     .fan-card.is-flipping {
       animation: fanFlip .46s cubic-bezier(0.22, 0.75, 0.18, 1) forwards;
-    }
-    .fan-status {
-      margin: 0;
-      text-align: center;
-      font-family: "DM Mono", monospace;
-      font-size: 11px;
-      letter-spacing: 0.09em;
-      text-transform: uppercase;
-      color: #5f5648;
-      min-height: 1.4em;
-      user-select: none;
     }
     @keyframes fanFlip {
       0% { filter: brightness(1); }
@@ -1032,8 +1015,8 @@
       .lang-switch { width: 100%; justify-content: flex-end; }
       .book-3d { aspect-ratio: 5 / 4.5; }
       .outline-hero { aspect-ratio: 5 / 4.2; }
-      .fan-stage { min-height: 350px; }
-      .fan-card { width: min(54%, 228px); left: 44%; }
+      .fan-stage { min-height: 360px; }
+      .fan-card { width: min(51%, 213px); left: 32%; }
       .book-cover h1 { max-width: min(18ch, calc(100% - 18px)); }
       .book-pages { inset: 12px 12px 58px; }
       .book-page { padding: 15px 14px 16px; }
@@ -1051,10 +1034,9 @@
       .cta-row { margin-top: 14px; }
     }
     @media (max-width: 520px) {
-      .outline-hero { padding: 16px 12px 11px; }
-      .fan-stage { min-height: 305px; }
-      .fan-card { width: min(58%, 206px); border-radius: 24px; left: 46%; }
-      .fan-status { font-size: 10px; letter-spacing: 0.08em; }
+      .outline-hero { padding: 4px 4px 8px; }
+      .fan-stage { min-height: 324px; }
+      .fan-card { width: min(53%, 192px); border-radius: 24px; left: 34%; }
       .book-cover { padding: 16px 14px 14px; }
       .cover-strip span { font-size: 10px; }
       .cover-open-corner { width: 74px; height: 70px; right: 8px; bottom: 8px; }
@@ -1214,7 +1196,6 @@
     <div class="outline-hero" id="screenshot-fan">
       <div class="fan-glow" id="lines"></div>
       <div class="fan-stage" id="screenshot-fan-stage" aria-label="Lan Read iPhone screenshots"></div>
-      <p class="fan-status" id="screenshot-fan-status">Loading iPhone screenshots...</p>
     </div>
   </section>
 
@@ -1322,7 +1303,6 @@
     const shareImageCaption = document.getElementById('share-image-caption');
     const screenshotFan = document.getElementById('screenshot-fan');
     const screenshotFanStage = document.getElementById('screenshot-fan-stage');
-    const screenshotFanStatus = document.getElementById('screenshot-fan-status');
     const bookPages = Array.from(document.querySelectorAll('.book-page'));
 
     let bookOpen = false;
@@ -1333,6 +1313,7 @@
     let screenshotCards = [];
     let screenshotCardIndex = 0;
     let screenshotFanTimer = null;
+    let screenshotFanResizeFrame = null;
 
     const setText = (selector, value) => {
       const node = document.querySelector(selector);
@@ -1861,11 +1842,6 @@
       updateBookControls(currentBookPage);
     };
 
-    const setScreenshotStatus = (text) => {
-      if (!screenshotFanStatus) return;
-      screenshotFanStatus.textContent = text || '';
-    };
-
     const clearScreenshotFanTimer = () => {
       if (!screenshotFanTimer) return;
       clearInterval(screenshotFanTimer);
@@ -1873,39 +1849,53 @@
     };
 
     const layoutScreenshotFan = () => {
-      if (!screenshotCards.length) return;
+      if (!screenshotCards.length || !screenshotFanStage) return;
 
       const total = screenshotCards.length;
-      const visibleSlots = Math.min(5, total);
+      const visibleSlots = Math.min(6, total);
+      const stageRect = screenshotFanStage.getBoundingClientRect();
+      const sampleCardWidth = screenshotCards[0]?.getBoundingClientRect().width || stageRect.width * 0.48;
+      const stagePadding = Math.max(10, Math.min(22, stageRect.width * 0.04));
+      const baseLeft = Math.max(
+        stagePadding,
+        Math.min(stageRect.width * 0.24, stageRect.width - sampleCardWidth - stagePadding)
+      );
+      const stackDepth = Math.max(1, visibleSlots - 1);
+      const availableX = Math.max(24, stageRect.width - baseLeft - sampleCardWidth - stagePadding);
+      const xStep = Math.max(10, Math.min(34, availableX / stackDepth));
+      const yStep = Math.max(5, Math.min(10, xStep * 0.22));
+      const zStep = Math.max(48, Math.min(92, xStep * 2.2));
+
       screenshotCards.forEach((card, index) => {
         const delta = (index - screenshotCardIndex + total) % total;
         const visible = delta < visibleSlots;
 
         card.classList.toggle('is-visible', visible);
         card.classList.toggle('is-active', delta === 0);
+        card.style.left = `${baseLeft}px`;
         if (!visible) {
+          const hiddenX = (stackDepth + 1) * xStep + 28;
+          const hiddenY = (stackDepth + 1) * yStep + 30;
+          const hiddenZ = -(stackDepth + 1) * zStep - 160;
           card.style.opacity = '0';
           card.style.zIndex = '1';
-          card.style.transform = 'translate3d(190px, 96px, -420px) rotateZ(17deg) rotateY(-18deg) scale(0.82)';
+          card.style.transform = `translate3d(${hiddenX}px, ${hiddenY}px, ${hiddenZ}px) rotateZ(24deg) rotateY(-22deg) scale(0.8)`;
           return;
         }
 
-        const x = delta * 34;
-        const y = delta * 10;
-        const z = -delta * 85;
-        const rotateZ = -7 + delta * 4.6;
-        const rotateY = -delta * 5.6;
-        const scale = 1 - delta * 0.034;
-        const opacity = 1 - delta * 0.17;
+        const x = delta * xStep;
+        const y = delta * yStep;
+        const z = -delta * zStep;
+        const rotateZ = -10 + delta * 5.6;
+        const rotateY = -delta * 5.8;
+        const scale = 1 - delta * 0.024;
+        const opacity = 1 - delta * 0.15;
 
         card.style.zIndex = String(120 - delta);
         card.style.opacity = String(Math.max(0.24, opacity));
         card.style.transform = `translate3d(${x}px, ${y}px, ${z}px) rotateZ(${rotateZ}deg) rotateY(${rotateY}deg) scale(${scale})`;
       });
 
-      const current = String(screenshotCardIndex + 1).padStart(2, '0');
-      const totalText = String(screenshotCards.length).padStart(2, '0');
-      setScreenshotStatus(`iPhone Screens ${current}/${totalText}`);
     };
 
     const stepScreenshotFan = () => {
@@ -1928,14 +1918,21 @@
     const renderScreenshotFan = (imageUrls = []) => {
       if (!screenshotFanStage) return;
       screenshotFanStage.innerHTML = '';
+      const ratioFallback = 390 / 844;
       screenshotCards = imageUrls.map((url, index) => {
         const card = document.createElement('figure');
         card.className = 'fan-card';
+        card.style.aspectRatio = `${ratioFallback}`;
 
         const img = document.createElement('img');
         img.src = url;
         img.alt = `Lan Read iPhone screenshot ${index + 1}`;
         img.loading = index === 0 ? 'eager' : 'lazy';
+        img.addEventListener('load', () => {
+          if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+            card.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+          }
+        });
         card.appendChild(img);
         screenshotFanStage.appendChild(card);
         return card;
@@ -1948,22 +1945,17 @@
 
     const loadScreenshotFan = async () => {
       if (!screenshotFan) return;
-      setScreenshotStatus('Loading iPhone screenshots...');
 
       try {
         const response = await fetch('/showcase/iphone', { cache: 'no-store' });
         if (!response.ok) throw new Error('Failed to fetch screenshot list');
         const payload = await response.json();
         const files = Array.isArray(payload?.images) ? payload.images : [];
-        if (!files.length) {
-          setScreenshotStatus('No iPhone screenshots found');
-          return;
-        }
+        if (!files.length) return;
         const imageUrls = files.map((filename) => `/showcase/iphone/${encodeURIComponent(filename)}`);
         renderScreenshotFan(imageUrls);
       } catch (error) {
         console.warn('Unable to load screenshot fan assets', error);
-        setScreenshotStatus('Unable to load screenshots');
       }
     };
 
@@ -2114,6 +2106,14 @@
       screenshotFan.addEventListener('focusin', clearScreenshotFanTimer);
       screenshotFan.addEventListener('focusout', startScreenshotFanLoop);
     }
+    window.addEventListener('resize', () => {
+      if (!screenshotCards.length) return;
+      if (screenshotFanResizeFrame) cancelAnimationFrame(screenshotFanResizeFrame);
+      screenshotFanResizeFrame = requestAnimationFrame(() => {
+        layoutScreenshotFan();
+        screenshotFanResizeFrame = null;
+      });
+    });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         clearScreenshotFanTimer();

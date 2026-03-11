@@ -17,6 +17,7 @@ struct MainTabView: View {
     @StateObject private var appSettings = AppSettings.shared
     @StateObject private var reminderCoordinator = ReadingReminderCoordinator.shared
     @StateObject private var updatePromptCoordinator = AppUpdatePromptCoordinator.shared
+    @StateObject private var aiConsentManager = AIConsentManager.shared
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
@@ -81,6 +82,7 @@ struct MainTabView: View {
         .onAppear {
             guard !hasTriggeredLaunchUpdateCheck else { return }
             hasTriggeredLaunchUpdateCheck = true
+            aiConsentManager.presentLaunchConsentIfNeeded()
             updatePromptCoordinator.checkForUpdateIfNeeded(trigger: .launch)
         }
         .onOpenURL { url in
@@ -88,6 +90,16 @@ struct MainTabView: View {
                 return
             }
             reminderCoordinator.requestContinueReading(triggeredByReminder: false)
+        }
+        .sheet(isPresented: $aiConsentManager.isLaunchConsentPresented) {
+            AIPrivacyLaunchConsentSheet(
+                onAllow: { dontShowAgain in
+                    aiConsentManager.recordConsentDecision(granted: true, suppressFutureLaunchPrompt: dontShowAgain)
+                },
+                onDecline: { dontShowAgain in
+                    aiConsentManager.recordConsentDecision(granted: false, suppressFutureLaunchPrompt: dontShowAgain)
+                }
+            )
         }
         .alert(item: $updatePromptCoordinator.activePrompt) { prompt in
             if prompt.isMandatory {
@@ -175,6 +187,86 @@ struct MainTabView: View {
         let raw = url.absoluteString
         let fallbackRaw = raw.replacingOccurrences(of: "itms-apps://", with: "https://")
         return URL(string: fallbackRaw)
+    }
+}
+
+private struct AIPrivacyLaunchConsentSheet: View {
+    @State private var dontShowAgain = false
+
+    let onAllow: (Bool) -> Void
+    let onDecline: (Bool) -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Label(localized("ai.consent.launch.title"), systemImage: "shield.lefthalf.filled")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                Text(localized("ai.consent.launch.intro"))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    consentLine(icon: "person.text.rectangle", text: localized("ai.consent.launch.usage"))
+                    consentLine(icon: "server.rack", text: localized("ai.consent.launch.location"))
+                    consentLine(icon: "link", text: localized("ai.consent.launch.third_party"))
+                    consentLine(icon: "checkmark.seal", text: localized("ai.consent.launch.explicit_permission"))
+                }
+
+                Toggle(isOn: $dontShowAgain) {
+                    Text(localized("ai.consent.launch.dont_show_again"))
+                        .font(.subheadline)
+                }
+                .toggleStyle(.switch)
+                .padding(.top, 4)
+
+                Spacer(minLength: 0)
+
+                VStack(spacing: 12) {
+                    Button(action: { onAllow(dontShowAgain) }) {
+                        Text(localized("ai.consent.launch.allow"))
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button(action: { onDecline(dontShowAgain) }) {
+                        Text(localized("ai.consent.launch.decline"))
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .padding(20)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(localized("app.name"))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .interactiveDismissDisabled(true)
+    }
+
+    private func consentLine(icon: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .foregroundColor(.blue)
+                .frame(width: 18)
+            Text(text)
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func localized(_ key: String) -> String {
+        LocalizationHelper.localizedString(key, comment: "")
     }
 }
 
