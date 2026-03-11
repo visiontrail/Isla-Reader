@@ -172,6 +172,10 @@ final class DataResetService {
         for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("skimming_last_chapter_") {
             defaults.removeObject(forKey: key)
         }
+
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("skimming_ad_progress_") {
+            defaults.removeObject(forKey: key)
+        }
         
         defaults.synchronize()
     }

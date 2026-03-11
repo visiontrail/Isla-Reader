@@ -59,6 +59,7 @@ struct SkimmingModeView: View {
             }
             .preferredColorScheme(appSettings.theme.colorScheme)
             .onAppear {
+                restoreAdProgressState()
                 loadChapters()
                 if appSettings.areAdsEnabled {
                     RewardedInterstitialAdManager.shared.loadAd()
@@ -68,7 +69,10 @@ struct SkimmingModeView: View {
                 adNoticeDismissTask?.cancel()
             }
             .onChange(of: appSettings.areAdsEnabled) { enabled in
-                guard !enabled else { return }
+                if enabled {
+                    updateInterstitialReadinessIfNeeded(for: currentChapterIndex)
+                    return
+                }
                 pendingInterstitialBeforeNextChapter = false
                 dismissAdvanceNotice()
             }
@@ -466,6 +470,7 @@ struct SkimmingModeView: View {
     private func incrementSkimmingUsageAndPrepareAdIfNeeded(for chapterIndex: Int) {
         skimmingAIRequestCount += 1
         DebugLogger.info("SkimmingModeView: 略读AI调用计数 = \(skimmingAIRequestCount)")
+        persistAdProgressState()
         updateInterstitialReadinessIfNeeded(for: chapterIndex)
     }
 
@@ -473,6 +478,7 @@ struct SkimmingModeView: View {
     private func incrementForwardChapterSwipeCountAndPrepareAdIfNeeded(for chapterIndex: Int) {
         forwardChapterSwipeCount += 1
         DebugLogger.info("SkimmingModeView: 前进滑动章节计数 = \(forwardChapterSwipeCount)")
+        persistAdProgressState()
         updateInterstitialReadinessIfNeeded(for: chapterIndex)
     }
 
@@ -507,6 +513,7 @@ struct SkimmingModeView: View {
             case .presented:
                 pendingInterstitialBeforeNextChapter = false
                 interstitialPresentedCount += 1
+                persistAdProgressState()
                 DebugLogger.info("SkimmingModeView: 已在章节切换前展示奖励插屏广告")
                 updateInterstitialReadinessIfNeeded(for: currentChapterIndex)
             case .skippedNotReady:
@@ -521,6 +528,7 @@ struct SkimmingModeView: View {
     private func maybeShowThirdAdvanceNotice(forTriggerCount triggerCount: Int) {
         guard !thirdNoticeShownTriggerCounts.contains(triggerCount) else { return }
         thirdNoticeShownTriggerCounts.insert(triggerCount)
+        persistAdProgressState()
 
         let availability = RewardedInterstitialAdManager.shared.availabilityStatus()
         switch availability {
@@ -599,6 +607,31 @@ struct SkimmingModeView: View {
                     .stroke(Color.white.opacity(0.16), lineWidth: 1)
             )
             .padding(.horizontal, 16)
+    }
+
+    @MainActor
+    private func restoreAdProgressState() {
+        let adProgress = service.adProgress(for: book)
+        skimmingAIRequestCount = adProgress.skimmingAIRequestCount
+        forwardChapterSwipeCount = adProgress.forwardChapterSwipeCount
+        interstitialPresentedCount = adProgress.interstitialPresentedCount
+        thirdNoticeShownTriggerCounts = Set(adProgress.thirdNoticeShownTriggerCounts)
+
+        DebugLogger.info(
+            "SkimmingModeView: 已恢复广告计数。AI计数=\(skimmingAIRequestCount), 滑动计数=\(forwardChapterSwipeCount), 已展示=\(interstitialPresentedCount)"
+        )
+        updateInterstitialReadinessIfNeeded(for: currentChapterIndex)
+    }
+
+    @MainActor
+    private func persistAdProgressState() {
+        let adProgress = SkimmingAdProgress(
+            skimmingAIRequestCount: skimmingAIRequestCount,
+            forwardChapterSwipeCount: forwardChapterSwipeCount,
+            interstitialPresentedCount: interstitialPresentedCount,
+            thirdNoticeShownTriggerCounts: Array(thirdNoticeShownTriggerCounts)
+        )
+        service.storeAdProgress(adProgress, for: book)
     }
 }
 

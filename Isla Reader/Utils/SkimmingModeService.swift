@@ -115,6 +115,31 @@ struct SkimmingChapterSummary: Codable, Identifiable, Hashable {
     }
 }
 
+struct SkimmingAdProgress: Codable, Equatable {
+    var skimmingAIRequestCount: Int
+    var forwardChapterSwipeCount: Int
+    var interstitialPresentedCount: Int
+    var thirdNoticeShownTriggerCounts: [Int]
+
+    static let empty = SkimmingAdProgress(
+        skimmingAIRequestCount: 0,
+        forwardChapterSwipeCount: 0,
+        interstitialPresentedCount: 0,
+        thirdNoticeShownTriggerCounts: []
+    )
+
+    func normalized() -> SkimmingAdProgress {
+        SkimmingAdProgress(
+            skimmingAIRequestCount: max(0, skimmingAIRequestCount),
+            forwardChapterSwipeCount: max(0, forwardChapterSwipeCount),
+            interstitialPresentedCount: max(0, interstitialPresentedCount),
+            thirdNoticeShownTriggerCounts: Array(
+                Set(thirdNoticeShownTriggerCounts.filter { $0 > 0 })
+            ).sorted()
+        )
+    }
+}
+
 enum SkimmingModeError: LocalizedError {
     case metadataMissing
     case metadataCorrupted
@@ -146,6 +171,7 @@ final class SkimmingModeService {
     private var cache: [String: SkimmingChapterSummary] = [:]
     private let defaults = UserDefaults.standard
     private let skimmingProgressKeyPrefix = "skimming_last_chapter_"
+    private let skimmingAdProgressKeyPrefix = "skimming_ad_progress_"
     
     private init() {}
     
@@ -279,6 +305,31 @@ final class SkimmingModeService {
         guard index >= 0 else { return }
         defaults.set(index, forKey: skimmingProgressKey(for: book))
     }
+
+    func adProgress(for book: Book) -> SkimmingAdProgress {
+        let key = skimmingAdProgressKey(for: book)
+        guard let data = defaults.data(forKey: key) else {
+            return .empty
+        }
+
+        do {
+            return try JSONDecoder().decode(SkimmingAdProgress.self, from: data).normalized()
+        } catch {
+            DebugLogger.warning("SkimmingModeService: 广告进度反序列化失败，已重置 - \(error.localizedDescription)")
+            defaults.removeObject(forKey: key)
+            return .empty
+        }
+    }
+
+    func storeAdProgress(_ progress: SkimmingAdProgress, for book: Book) {
+        let normalizedProgress = progress.normalized()
+        do {
+            let data = try JSONEncoder().encode(normalizedProgress)
+            defaults.set(data, forKey: skimmingAdProgressKey(for: book))
+        } catch {
+            DebugLogger.warning("SkimmingModeService: 广告进度序列化失败，已跳过保存 - \(error.localizedDescription)")
+        }
+    }
     
     func clearInMemoryCache() {
         cacheLock.lock()
@@ -289,13 +340,15 @@ final class SkimmingModeService {
     func clearStoredProgress(for bookIds: [UUID]) {
         guard !bookIds.isEmpty else { return }
         for id in bookIds {
-            let key = skimmingProgressKey(for: id)
-            defaults.removeObject(forKey: key)
+            defaults.removeObject(forKey: skimmingProgressKey(for: id))
+            defaults.removeObject(forKey: skimmingAdProgressKey(for: id))
         }
     }
-    
+
     func clearAllStoredProgress() {
-        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(skimmingProgressKeyPrefix) {
+        for key in defaults.dictionaryRepresentation().keys where
+            key.hasPrefix(skimmingProgressKeyPrefix) || key.hasPrefix(skimmingAdProgressKeyPrefix)
+        {
             defaults.removeObject(forKey: key)
         }
     }
@@ -477,6 +530,14 @@ final class SkimmingModeService {
     
     private func skimmingProgressKey(for bookId: UUID) -> String {
         "\(skimmingProgressKeyPrefix)\(bookId.uuidString)"
+    }
+
+    private func skimmingAdProgressKey(for book: Book) -> String {
+        skimmingAdProgressKey(for: book.id)
+    }
+
+    private func skimmingAdProgressKey(for bookId: UUID) -> String {
+        "\(skimmingAdProgressKeyPrefix)\(bookId.uuidString)"
     }
     
     // MARK: - Persistence Methods
