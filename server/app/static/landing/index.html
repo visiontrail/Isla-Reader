@@ -835,41 +835,127 @@
       mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.9), rgba(0,0,0,0.2));
     }
     .outline-hero {
-      width: 100%; aspect-ratio: 4/3; border: 1px solid var(--line); border-radius: 22px;
-      position: relative; overflow: visible; background: var(--panel);
+      width: 100%;
+      aspect-ratio: 4/3;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 16% 14%, rgba(255,255,255,0.64), transparent 46%),
+        radial-gradient(circle at 76% 84%, rgba(20,20,20,0.08), transparent 45%),
+        linear-gradient(155deg, #f8f2e6 0%, #ede1cc 52%, #e4d4bc 100%);
       box-shadow: var(--paper-shadow);
+      isolation: isolate;
+      padding: 20px 16px 14px;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 8px;
     }
-    .outline-hero::before, .outline-hero::after {
-      content: ""; position: absolute; inset: -12px; border: 1px solid var(--line);
-      border-radius: 24px; background: var(--panel); z-index: -1;
-      box-shadow: 0 14px 40px rgba(0,0,0,0.06);
+    .outline-hero::before,
+    .outline-hero::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 16px;
+      pointer-events: none;
     }
-    .outline-hero::before { transform: rotate(-1deg); opacity: 0.7; }
-    .outline-hero::after { transform: rotate(1.4deg); opacity: 0.5; }
-    .outline-hero .lines {
-      position: absolute; inset: 0;
-      background-image:
-        linear-gradient(90deg, rgba(0,0,0,0.10) 1px, transparent 1px),
-        linear-gradient(rgba(0,0,0,0.10) 1px, transparent 1px);
-      background-size: 36px 36px;
-      animation: drift 18s linear infinite;
+    .outline-hero::before {
+      border: 1px solid rgba(20,20,20,0.1);
+      z-index: -1;
     }
-    .outline-hero .orb {
-      position: absolute; width: 160px; height: 160px; border: 1px solid var(--accent);
-      border-radius: 50%; top: 22%; left: 18%;
-      box-shadow: 0 0 0 14px rgba(0,0,0,0.06);
-      filter: drop-shadow(0 0 22px rgba(0,0,0,0.12));
-      background: radial-gradient(circle at 40% 40%, rgba(0,0,0,0.05), transparent 60%);
+    .outline-hero::after {
+      inset: auto 18px 12px;
+      height: 26px;
+      background: linear-gradient(90deg, rgba(20,20,20,0.16) 0, rgba(20,20,20,0.03) 60%, transparent 100%);
+      filter: blur(10px);
+      opacity: 0.38;
+      z-index: -1;
     }
-    .outline-hero .chip {
-      position: absolute; width: 200px; height: 120px; border: 1px solid var(--line);
-      right: 12%; bottom: 18%; border-radius: 14px; background: rgba(0,0,0,0.02);
-      display: grid; grid-template-rows: repeat(3, 1fr); gap: 6px; padding: 14px;
+    .fan-stage {
+      position: relative;
+      width: 100%;
+      min-height: clamp(286px, 30vw, 370px);
+      perspective: 1800px;
+      cursor: pointer;
     }
-    .chip .bar { border: 1px solid var(--line); border-radius: 8px; }
-    @keyframes drift {
-      0% { transform: translate3d(0,0,0); }
-      100% { transform: translate3d(-36px,-36px,0); }
+    .fan-glow {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 25% 30%, rgba(255,255,255,0.45), transparent 36%),
+        radial-gradient(circle at 75% 80%, rgba(30,24,14,0.09), transparent 42%);
+      transition: transform .28s ease;
+    }
+    .fan-card {
+      position: absolute;
+      left: 46%;
+      bottom: 8px;
+      width: min(56%, 250px);
+      aspect-ratio: 390 / 844;
+      border-radius: 28px;
+      overflow: hidden;
+      border: 1px solid rgba(21,18,13,0.34);
+      background: #111;
+      box-shadow:
+        0 16px 32px rgba(16,12,6,0.25),
+        0 6px 14px rgba(16,12,6,0.2);
+      transform-origin: 14% 92%;
+      opacity: 0;
+      transition:
+        transform .62s cubic-bezier(0.24, 0.74, 0.12, 1),
+        opacity .42s ease,
+        filter .42s ease,
+        box-shadow .42s ease;
+      backface-visibility: hidden;
+      pointer-events: none;
+    }
+    .fan-card::before {
+      content: "";
+      position: absolute;
+      top: 9px;
+      left: 50%;
+      width: 34%;
+      height: 4px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.28);
+      z-index: 2;
+    }
+    .fan-card img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+    .fan-card.is-visible {
+      opacity: 1;
+      filter: saturate(1.04);
+    }
+    .fan-card.is-active {
+      box-shadow:
+        0 24px 44px rgba(12,8,3,0.32),
+        0 10px 18px rgba(12,8,3,0.2);
+    }
+    .fan-card.is-flipping {
+      animation: fanFlip .46s cubic-bezier(0.22, 0.75, 0.18, 1) forwards;
+    }
+    .fan-status {
+      margin: 0;
+      text-align: center;
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: #5f5648;
+      min-height: 1.4em;
+      user-select: none;
+    }
+    @keyframes fanFlip {
+      0% { filter: brightness(1); }
+      100% { filter: brightness(0.84); opacity: 0.04; }
     }
     .section { max-width: 1180px; margin: 0 auto 120px; padding: 0 28px; position: relative; z-index: 2; }
     .section h2 { font-size: 26px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
@@ -945,6 +1031,9 @@
       nav { padding: 12px 18px; flex-wrap: wrap; }
       .lang-switch { width: 100%; justify-content: flex-end; }
       .book-3d { aspect-ratio: 5 / 4.5; }
+      .outline-hero { aspect-ratio: 5 / 4.2; }
+      .fan-stage { min-height: 350px; }
+      .fan-card { width: min(54%, 228px); left: 44%; }
       .book-cover h1 { max-width: min(18ch, calc(100% - 18px)); }
       .book-pages { inset: 12px 12px 58px; }
       .book-page { padding: 15px 14px 16px; }
@@ -962,6 +1051,10 @@
       .cta-row { margin-top: 14px; }
     }
     @media (max-width: 520px) {
+      .outline-hero { padding: 16px 12px 11px; }
+      .fan-stage { min-height: 305px; }
+      .fan-card { width: min(58%, 206px); border-radius: 24px; left: 46%; }
+      .fan-status { font-size: 10px; letter-spacing: 0.08em; }
       .book-cover { padding: 16px 14px 14px; }
       .cover-strip span { font-size: 10px; }
       .cover-open-corner { width: 74px; height: 70px; right: 8px; bottom: 8px; }
@@ -1118,13 +1211,10 @@
       <p class="book-hidden-subtitle" data-key="hero.subtitle">Import ePub or text, open to see AI summaries, skim chapters fast, and ask questions as you read. Local-first by default with Notion export.</p>
       <p class="vision" id="vision-line">Let books talk with you. Read faster, understand deeper.</p>
     </div>
-    <div class="outline-hero">
-      <div class="bookmark" aria-hidden="true"></div>
-      <div class="lines" id="lines"></div>
-      <div class="orb"></div>
-      <div class="chip">
-        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-      </div>
+    <div class="outline-hero" id="screenshot-fan">
+      <div class="fan-glow" id="lines"></div>
+      <div class="fan-stage" id="screenshot-fan-stage" aria-label="Lan Read iPhone screenshots"></div>
+      <p class="fan-status" id="screenshot-fan-status">Loading iPhone screenshots...</p>
     </div>
   </section>
 
@@ -1169,11 +1259,13 @@
 
   <script>
     const lines = document.getElementById('lines');
-    window.addEventListener('mousemove', (e) => {
-      const x = (e.clientX / window.innerWidth - 0.5) * 10;
-      const y = (e.clientY / window.innerHeight - 0.5) * 10;
-      lines.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-    });
+    if (lines) {
+      window.addEventListener('mousemove', (e) => {
+        const x = (e.clientX / window.innerWidth - 0.5) * 10;
+        const y = (e.clientY / window.innerHeight - 0.5) * 10;
+        lines.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      });
+    }
 
     const languageSelect = document.getElementById('language');
     const featureGrid = document.getElementById('feature-grid');
@@ -1228,6 +1320,9 @@
     const shareBody = document.getElementById('share-body');
     const shareImage = document.getElementById('share-image');
     const shareImageCaption = document.getElementById('share-image-caption');
+    const screenshotFan = document.getElementById('screenshot-fan');
+    const screenshotFanStage = document.getElementById('screenshot-fan-stage');
+    const screenshotFanStatus = document.getElementById('screenshot-fan-status');
     const bookPages = Array.from(document.querySelectorAll('.book-page'));
 
     let bookOpen = false;
@@ -1235,6 +1330,9 @@
     let streamTimer = null;
     let streamToken = 0;
     let currentBookLocale = null;
+    let screenshotCards = [];
+    let screenshotCardIndex = 0;
+    let screenshotFanTimer = null;
 
     const setText = (selector, value) => {
       const node = document.querySelector(selector);
@@ -1763,6 +1861,112 @@
       updateBookControls(currentBookPage);
     };
 
+    const setScreenshotStatus = (text) => {
+      if (!screenshotFanStatus) return;
+      screenshotFanStatus.textContent = text || '';
+    };
+
+    const clearScreenshotFanTimer = () => {
+      if (!screenshotFanTimer) return;
+      clearInterval(screenshotFanTimer);
+      screenshotFanTimer = null;
+    };
+
+    const layoutScreenshotFan = () => {
+      if (!screenshotCards.length) return;
+
+      const total = screenshotCards.length;
+      const visibleSlots = Math.min(5, total);
+      screenshotCards.forEach((card, index) => {
+        const delta = (index - screenshotCardIndex + total) % total;
+        const visible = delta < visibleSlots;
+
+        card.classList.toggle('is-visible', visible);
+        card.classList.toggle('is-active', delta === 0);
+        if (!visible) {
+          card.style.opacity = '0';
+          card.style.zIndex = '1';
+          card.style.transform = 'translate3d(190px, 96px, -420px) rotateZ(17deg) rotateY(-18deg) scale(0.82)';
+          return;
+        }
+
+        const x = delta * 34;
+        const y = delta * 10;
+        const z = -delta * 85;
+        const rotateZ = -7 + delta * 4.6;
+        const rotateY = -delta * 5.6;
+        const scale = 1 - delta * 0.034;
+        const opacity = 1 - delta * 0.17;
+
+        card.style.zIndex = String(120 - delta);
+        card.style.opacity = String(Math.max(0.24, opacity));
+        card.style.transform = `translate3d(${x}px, ${y}px, ${z}px) rotateZ(${rotateZ}deg) rotateY(${rotateY}deg) scale(${scale})`;
+      });
+
+      const current = String(screenshotCardIndex + 1).padStart(2, '0');
+      const totalText = String(screenshotCards.length).padStart(2, '0');
+      setScreenshotStatus(`iPhone Screens ${current}/${totalText}`);
+    };
+
+    const stepScreenshotFan = () => {
+      if (screenshotCards.length <= 1) return;
+      const currentCard = screenshotCards[screenshotCardIndex];
+      if (currentCard) {
+        currentCard.classList.add('is-flipping');
+        setTimeout(() => currentCard.classList.remove('is-flipping'), 450);
+      }
+      screenshotCardIndex = (screenshotCardIndex + 1) % screenshotCards.length;
+      layoutScreenshotFan();
+    };
+
+    const startScreenshotFanLoop = () => {
+      clearScreenshotFanTimer();
+      if (screenshotCards.length <= 1) return;
+      screenshotFanTimer = setInterval(stepScreenshotFan, 2300);
+    };
+
+    const renderScreenshotFan = (imageUrls = []) => {
+      if (!screenshotFanStage) return;
+      screenshotFanStage.innerHTML = '';
+      screenshotCards = imageUrls.map((url, index) => {
+        const card = document.createElement('figure');
+        card.className = 'fan-card';
+
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = `Lan Read iPhone screenshot ${index + 1}`;
+        img.loading = index === 0 ? 'eager' : 'lazy';
+        card.appendChild(img);
+        screenshotFanStage.appendChild(card);
+        return card;
+      });
+
+      screenshotCardIndex = 0;
+      layoutScreenshotFan();
+      startScreenshotFanLoop();
+    };
+
+    const loadScreenshotFan = async () => {
+      if (!screenshotFan) return;
+      setScreenshotStatus('Loading iPhone screenshots...');
+
+      try {
+        const response = await fetch('/showcase/iphone', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Failed to fetch screenshot list');
+        const payload = await response.json();
+        const files = Array.isArray(payload?.images) ? payload.images : [];
+        if (!files.length) {
+          setScreenshotStatus('No iPhone screenshots found');
+          return;
+        }
+        const imageUrls = files.map((filename) => `/showcase/iphone/${encodeURIComponent(filename)}`);
+        renderScreenshotFan(imageUrls);
+      } catch (error) {
+        console.warn('Unable to load screenshot fan assets', error);
+        setScreenshotStatus('Unable to load screenshots');
+      }
+    };
+
     const openBook = () => {
       if (bookOpen || !heroBook) return;
       bookOpen = true;
@@ -1874,7 +2078,7 @@
     };
 
     (async () => {
-      await Promise.all([loadLanguageFile('en'), loadLanguageFile('zh'), loadLanguageFile('ja'), loadLanguageFile('ko')]);
+      await Promise.all([loadLanguageFile('en'), loadLanguageFile('zh'), loadLanguageFile('ja'), loadLanguageFile('ko'), loadScreenshotFan()]);
       applyLanguage(initialLanguage());
       setBookPage(0);
     })();
@@ -1898,6 +2102,25 @@
     if (bookPrevButton) {
       bookPrevButton.addEventListener('click', () => flipBookPage('prev'));
     }
+    if (screenshotFanStage) {
+      screenshotFanStage.addEventListener('click', () => {
+        stepScreenshotFan();
+        startScreenshotFanLoop();
+      });
+    }
+    if (screenshotFan) {
+      screenshotFan.addEventListener('mouseenter', clearScreenshotFanTimer);
+      screenshotFan.addEventListener('mouseleave', startScreenshotFanLoop);
+      screenshotFan.addEventListener('focusin', clearScreenshotFanTimer);
+      screenshotFan.addEventListener('focusout', startScreenshotFanLoop);
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        clearScreenshotFanTimer();
+      } else {
+        startScreenshotFanLoop();
+      }
+    });
   </script>
 </body>
 </html>

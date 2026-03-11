@@ -15,6 +15,8 @@ struct SettingsView: View {
     @State private var showingDataManagement = false
     @State private var showingNotionAuth = false
     @State private var reminderAlert: DataAlert?
+    private let settingsRowIconSpacing: CGFloat = 12
+    private let settingsRowIconWidth: CGFloat = 20
     
     var body: some View {
         NavigationStack {
@@ -22,8 +24,10 @@ struct SettingsView: View {
                 // Language
                 Section(NSLocalizedString("settings.language", comment: "")) {
                     HStack {
-                        Label("", systemImage: "globe")
-                        Text(NSLocalizedString("settings.language", comment: ""))
+                        settingsRowLabel(
+                            NSLocalizedString("settings.language", comment: ""),
+                            systemImage: "globe"
+                        )
                         Spacer()
                         Picker("", selection: $appSettings.language) {
                             ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
@@ -34,8 +38,10 @@ struct SettingsView: View {
                     }
                     
                     HStack {
-                        Label("", systemImage: "character.bubble")
-                        Text(NSLocalizedString("settings.translation.target_language", comment: ""))
+                        settingsRowLabel(
+                            NSLocalizedString("settings.translation.target_language", comment: ""),
+                            systemImage: "character.bubble"
+                        )
                         Spacer()
                         Picker("", selection: $appSettings.translationLanguage) {
                             ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
@@ -49,15 +55,21 @@ struct SettingsView: View {
                 // Reading Settings
                 Section(NSLocalizedString("reading.settings.title", comment: "")) {
                     NavigationLink(destination: ReadingSettingsView()) {
-                        Label(NSLocalizedString("settings.reading_preferences", comment: ""), systemImage: "textformat")
+                        settingsRowLabel(
+                            NSLocalizedString("settings.reading_preferences", comment: ""),
+                            systemImage: "textformat"
+                        )
                     }
                     
                     NavigationLink(destination: ThemeSettingsView()) {
-                        Label(NSLocalizedString("settings.theme.appearance", comment: ""), systemImage: "paintbrush")
+                        settingsRowLabel(
+                            NSLocalizedString("settings.theme.appearance", comment: ""),
+                            systemImage: "paintbrush"
+                        )
                     }
 
                     NavigationLink(destination: HighlightSortSettingsView()) {
-                        Label {
+                        settingsRowLeading(systemImage: "arrow.up.arrow.down") {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(NSLocalizedString("settings.highlight_sort.title", comment: ""))
                                     .foregroundColor(.primary)
@@ -65,9 +77,6 @@ struct SettingsView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                        } icon: {
-                            Image(systemName: "arrow.up.arrow.down")
-                                .foregroundColor(.accentColor)
                         }
                     }
 
@@ -86,8 +95,9 @@ struct SettingsView: View {
                 // Data & Sync
                 Section(NSLocalizedString("settings.data_and_sync", comment: "")) {
                     Button(action: { showingNotionAuth = true }) {
-                        HStack(spacing: 12) {
+                        HStack(spacing: settingsRowIconSpacing) {
                             NotionWorkspaceIconView(iconValue: notionSessionManager.workspaceIcon, size: 20)
+                                .frame(width: settingsRowIconWidth, alignment: .center)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(NSLocalizedString("notion.connect", comment: ""))
@@ -101,15 +111,20 @@ struct SettingsView: View {
                     }
 
                     Button(action: { showingDataManagement = true }) {
-                        Label(NSLocalizedString("settings.data_management", comment: ""), systemImage: "externaldrive")
-                            .foregroundColor(.primary)
+                        settingsRowLabel(
+                            NSLocalizedString("settings.data_management", comment: ""),
+                            systemImage: "externaldrive"
+                        )
                     }
                 }
                 
                 // Notifications
                 Section(NSLocalizedString("settings.notifications", comment: "")) {
                     HStack {
-                        Label(NSLocalizedString("reading_reminder.daily", comment: ""), systemImage: "bell")
+                        settingsRowLabel(
+                            NSLocalizedString("reading_reminder.daily", comment: ""),
+                            systemImage: "bell"
+                        )
                         Spacer()
                         Toggle("", isOn: $appSettings.isReadingReminderEnabled)
                     }
@@ -140,12 +155,17 @@ struct SettingsView: View {
                 // About
                 Section(NSLocalizedString("settings.about", comment: "")) {
                     Button(action: { showingAbout = true }) {
-                        Label(NSLocalizedString("app.about.title", comment: ""), systemImage: "info.circle")
-                            .foregroundColor(.primary)
+                        settingsRowLabel(
+                            NSLocalizedString("app.about.title", comment: ""),
+                            systemImage: "info.circle"
+                        )
                     }
                     
                     HStack {
-                        Label(NSLocalizedString("app.version", comment: ""), systemImage: "number")
+                        settingsRowLabel(
+                            NSLocalizedString("app.version", comment: ""),
+                            systemImage: "number"
+                        )
                         Spacer()
                         Text("1.0")
                             .foregroundColor(.secondary)
@@ -155,11 +175,17 @@ struct SettingsView: View {
                 // Support
                 Section(NSLocalizedString("settings.support", comment: "")) {
                     Link(destination: URL(string: "mailto:support@isla-reader.top")!) {
-                        Label(NSLocalizedString("app.contact_us", comment: ""), systemImage: "envelope")
+                        settingsRowLabel(
+                            NSLocalizedString("app.contact_us", comment: ""),
+                            systemImage: "envelope"
+                        )
                     }
                     
                     Link(destination: URL(string: "https://isla-reader.top/privacy")!) {
-                        Label(NSLocalizedString("app.privacy_policy", comment: ""), systemImage: "hand.raised")
+                        settingsRowLabel(
+                            NSLocalizedString("app.privacy_policy", comment: ""),
+                            systemImage: "hand.raised"
+                        )
                     }
                 }
             }
@@ -274,6 +300,25 @@ struct SettingsView: View {
             get: { appSettings.readingReminderTime },
             set: { appSettings.setReadingReminderTime($0) }
         )
+    }
+
+    private func settingsRowLabel(_ title: String, systemImage: String) -> some View {
+        settingsRowLeading(systemImage: systemImage) {
+            Text(title)
+                .foregroundColor(.primary)
+        }
+    }
+
+    private func settingsRowLeading<Content: View>(
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: settingsRowIconSpacing) {
+            Image(systemName: systemImage)
+                .foregroundColor(.accentColor)
+                .frame(width: settingsRowIconWidth, alignment: .center)
+            content()
+        }
     }
 
     private var highlightSortSubtitle: String {

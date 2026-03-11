@@ -1,14 +1,17 @@
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 router = APIRouter(tags=["public"])
 
 _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _LANDING_DIR = _STATIC_DIR / "landing"
 _LANDING_CONTENT_DIR = _LANDING_DIR / "content"
+_SERVER_STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
+_IPHONE_SCREENSHOT_DIR = _SERVER_STATIC_DIR / "screenshot" / "iPhone"
 _ALLOWED_LANDING_CONTENT_IMAGE_EXTS = {".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}
+_ALLOWED_IPHONE_SCREENSHOT_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".avif"}
 _ALLOWED_LANDING_COPY_LANGS = {"en", "zh", "ja", "ko"}
 
 def _read_landing_html() -> str:
@@ -700,6 +703,40 @@ async def marketing_content_asset(filename: str):
 
     base = _LANDING_CONTENT_DIR.resolve()
     path = (_LANDING_CONTENT_DIR / filename).resolve()
+    if base not in path.parents:
+        raise HTTPException(status_code=404, detail="asset not found")
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="asset not found")
+
+    return FileResponse(path, headers={"Cache-Control": "public, max-age=900"})
+
+
+@router.get("/showcase/iphone", include_in_schema=False)
+async def iphone_showcase_manifest():
+    if not _IPHONE_SCREENSHOT_DIR.exists() or not _IPHONE_SCREENSHOT_DIR.is_dir():
+        return JSONResponse({"images": []}, headers={"Cache-Control": "no-store"})
+
+    images = sorted(
+        [
+            path.name
+            for path in _IPHONE_SCREENSHOT_DIR.iterdir()
+            if path.is_file() and path.suffix.lower() in _ALLOWED_IPHONE_SCREENSHOT_IMAGE_EXTS
+        ]
+    )
+    return JSONResponse({"images": images}, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/showcase/iphone/{filename}", include_in_schema=False)
+async def iphone_showcase_asset(filename: str):
+    if not filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=404, detail="asset not found")
+
+    ext = Path(filename).suffix.lower()
+    if ext not in _ALLOWED_IPHONE_SCREENSHOT_IMAGE_EXTS:
+        raise HTTPException(status_code=404, detail="asset not found")
+
+    base = _IPHONE_SCREENSHOT_DIR.resolve()
+    path = (_IPHONE_SCREENSHOT_DIR / filename).resolve()
     if base not in path.parents:
         raise HTTPException(status_code=404, detail="asset not found")
     if not path.exists() or not path.is_file():
