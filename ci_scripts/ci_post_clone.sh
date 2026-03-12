@@ -1,14 +1,32 @@
 #!/bin/sh
 set -eu
 
-workspace="${CI_WORKSPACE:-$PWD}"
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+repo_root="$(CDPATH= cd -- "$script_dir/.." && pwd)"
+
+resolve_workspace() {
+    for candidate in "${CI_WORKSPACE-}" "${CI_PRIMARY_REPOSITORY_PATH-}" "$repo_root" "$PWD"; do
+        [ -n "$candidate" ] || continue
+        if [ -f "$candidate/Config/Base.xcconfig" ]; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+    done
+
+    printf '%s\n' "$repo_root"
+}
+
+workspace="$(resolve_workspace)"
 config_dir="$workspace/Config"
 config_file="$config_dir/AISecrets.xcconfig"
 
 mkdir -p "$config_dir"
 
 printf 'ci_post_clone: PWD=%s\n' "$PWD"
+printf 'ci_post_clone: script_dir=%s\n' "$script_dir"
+printf 'ci_post_clone: repo_root=%s\n' "$repo_root"
 printf 'ci_post_clone: CI_WORKSPACE=%s\n' "${CI_WORKSPACE-<unset>}"
+printf 'ci_post_clone: CI_PRIMARY_REPOSITORY_PATH=%s\n' "${CI_PRIMARY_REPOSITORY_PATH-<unset>}"
 printf 'ci_post_clone: workspace=%s\n' "$workspace"
 printf 'ci_post_clone: config_file=%s\n' "$config_file"
 if [ ! -f "$workspace/Config/Base.xcconfig" ]; then
