@@ -48,8 +48,4 @@ append_if_set ADMOB_INTERSTITIAL_AD_UNIT_ID ADMOB_INTERSTITIAL_AD_UNIT_ID
 
 append_if_set ADS_SWIFT_FLAGS ADS_SWIFT_FLAGS
 
-if [ -n "${ADS_SWIFT_FLAGS-}" ]; then
-    printf 'OTHER_SWIFT_FLAGS = \\$(inherited) \\$(ADS_SWIFT_FLAGS)\n' >> "$config_file"
-fi
-
 printf 'Generated %s\n' "$config_file"
