@@ -31,6 +31,8 @@ enum AIConfigError: LocalizedError {
 
 enum AIConfig {
     static func current() async throws -> AIConfiguration {
+        var secureServerFailureReason: String?
+
         do {
             let serverConfig = try await SecureAPIKeyService.shared.fetchAIConfiguration()
             DebugLogger.success("AIConfig: 已通过安全服务器获取 AI 配置")
@@ -39,11 +41,17 @@ enum AIConfig {
             DebugLogger.info("AIConfig: 服务器 API Key = \(maskedKey(serverConfig.apiKey))")
             return AIConfiguration(endpoint: serverConfig.endpoint, apiKey: serverConfig.apiKey, model: serverConfig.model)
         } catch let error as SecureServerConfigError {
-            DebugLogger.info("AIConfig: 安全服务器未配置或配置无效，将尝试使用本地配置。原因：\(error.localizedDescription)")
+            let reason = error.localizedDescription
+            secureServerFailureReason = reason
+            DebugLogger.info("AIConfig: 安全服务器未配置或配置无效，将尝试使用本地配置。原因：\(reason)")
         } catch let error as SecureAPIKeyError {
-            DebugLogger.warning("AIConfig: 无法通过安全服务器获取 AI 配置，将尝试使用本地配置。原因：\(error.localizedDescription)")
+            let reason = error.localizedDescription
+            secureServerFailureReason = reason
+            DebugLogger.warning("AIConfig: 无法通过安全服务器获取 AI 配置，将尝试使用本地配置。原因：\(reason)")
         } catch {
-            DebugLogger.warning("AIConfig: 安全服务器请求失败，将尝试使用本地配置。原因：\(error.localizedDescription)")
+            let reason = error.localizedDescription
+            secureServerFailureReason = reason
+            DebugLogger.warning("AIConfig: 安全服务器请求失败，将尝试使用本地配置。原因：\(reason)")
         }
 
         let endpoint = trimmedValue(for: "AIAPIEndpoint")
@@ -62,11 +70,17 @@ enum AIConfig {
         if !missingKeys.isEmpty {
             let joinedKeys = missingKeys.joined(separator: ", ")
             DebugLogger.error("AIConfig: 配置缺失 \(joinedKeys) 且未能从安全服务器获取 AI 配置")
+            if let reason = secureServerFailureReason {
+                throw AIConfigError.serverRequestFailed("\(reason)；并且本地配置缺少：\(joinedKeys)")
+            }
             throw AIConfigError.missing(keys: missingKeys)
         }
 
         if apiKey.isEmpty {
             DebugLogger.error("AIConfig: 本地 API Key 为空且未能从安全服务器获取 AI 配置")
+            if let reason = secureServerFailureReason {
+                throw AIConfigError.serverRequestFailed("\(reason)；并且本地 AIAPIKey 未配置")
+            }
             throw AIConfigError.serverRequestFailed("安全服务器不可用且 AIAPIKey 未配置")
         }
 

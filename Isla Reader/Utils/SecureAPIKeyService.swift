@@ -132,10 +132,23 @@ final class SecureAPIKeyService {
                 throw SecureAPIKeyError.decodingFailed
             }
 
+            let apiKey = responsePayload.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            let endpoint = responsePayload.apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+            let model = responsePayload.model.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            var missingFields: [String] = []
+            if apiKey.isEmpty { missingFields.append("api_key") }
+            if endpoint.isEmpty { missingFields.append("api_endpoint") }
+            if model.isEmpty { missingFields.append("model") }
+
+            if !missingFields.isEmpty {
+                throw SecureAPIKeyError.server(message: "响应缺少字段：\(missingFields.joined(separator: ", "))")
+            }
+
             let aiConfig = SecureAIConfiguration(
-                apiKey: responsePayload.apiKey,
-                endpoint: responsePayload.apiEndpoint,
-                model: responsePayload.model
+                apiKey: apiKey,
+                endpoint: endpoint,
+                model: model
             )
 
             await cache.store(aiConfig)
