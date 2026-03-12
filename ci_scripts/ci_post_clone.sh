@@ -7,6 +7,14 @@ config_file="$config_dir/AISecrets.xcconfig"
 
 mkdir -p "$config_dir"
 
+printf 'ci_post_clone: PWD=%s\n' "$PWD"
+printf 'ci_post_clone: CI_WORKSPACE=%s\n' "${CI_WORKSPACE-<unset>}"
+printf 'ci_post_clone: workspace=%s\n' "$workspace"
+printf 'ci_post_clone: config_file=%s\n' "$config_file"
+if [ ! -f "$workspace/Config/Base.xcconfig" ]; then
+    echo "warning: Base.xcconfig not found at $workspace/Config/Base.xcconfig" >&2
+fi
+
 escape_for_xcconfig() {
     # Avoid accidental comment parsing for URLs (//) in xcconfig.
     printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/\//\\\//g'
@@ -16,9 +24,10 @@ append_if_set() {
     var_name="$1"
     key_name="$2"
     eval "raw_value=\${$var_name-}"
+    trimmed_value="$(printf '%s' "${raw_value}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
 
-    if [ -n "${raw_value}" ]; then
-        escaped_value="$(escape_for_xcconfig "$raw_value")"
+    if [ -n "${trimmed_value}" ]; then
+        escaped_value="$(escape_for_xcconfig "$trimmed_value")"
         printf '%s = %s\n' "$key_name" "$escaped_value" >> "$config_file"
     fi
 }
@@ -26,8 +35,13 @@ append_if_set() {
 report_var_state() {
     var_name="$1"
     eval "raw_value=\${$var_name-}"
-    if [ -n "${raw_value}" ]; then
-        printf 'ci_post_clone: %s=SET(len=%s)\n' "$var_name" "${#raw_value}"
+    trimmed_value="$(printf '%s' "${raw_value}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    if [ -n "${trimmed_value}" ]; then
+        if [ "${trimmed_value}" != "${raw_value}" ]; then
+            printf 'ci_post_clone: %s=SET(trimmed,len=%s)\n' "$var_name" "${#trimmed_value}"
+        else
+            printf 'ci_post_clone: %s=SET(len=%s)\n' "$var_name" "${#trimmed_value}"
+        fi
     else
         printf 'ci_post_clone: %s=EMPTY\n' "$var_name"
     fi
@@ -36,7 +50,8 @@ report_var_state() {
 is_non_empty_var() {
     var_name="$1"
     eval "raw_value=\${$var_name-}"
-    [ -n "${raw_value}" ]
+    trimmed_value="$(printf '%s' "${raw_value}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    [ -n "${trimmed_value}" ]
 }
 
 cat > "$config_file" <<EOC
