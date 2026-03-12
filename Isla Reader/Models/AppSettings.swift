@@ -334,7 +334,7 @@ class AppSettings: ObservableObject {
     }
     
     private init() {
-        let storedLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language") ?? "") ?? .en
+        let storedLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language") ?? "") ?? .system
         let storedTranslationLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "translation_language") ?? "")
         
         self.language = storedLanguage
@@ -370,7 +370,7 @@ class AppSettings: ObservableObject {
             defaults.removeObject(forKey: key)
         }
         
-        language = .en
+        language = .system
         translationLanguage = language
         theme = .system
         readingFontSize = .medium

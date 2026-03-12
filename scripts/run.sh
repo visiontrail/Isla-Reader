@@ -23,6 +23,8 @@ BUILD_DIR="./build"
 CONFIGURATION="Debug"
 DEFAULT_SIMULATOR="iPhone 16"
 PRESERVE_SIM_DATA="${PRESERVE_SIM_DATA:-0}"
+SYNC_SIM_DATA_FROM="${SYNC_SIM_DATA_FROM:-}"
+SYNC_SIM_DATA_FORCE="${SYNC_SIM_DATA_FORCE:-0}"
 
 # 获取脚本所在目录的父目录（项目根目录）
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -53,11 +55,31 @@ if [ "$PRESERVE_SIM_DATA" = "1" ]; then
 else
     echo -e "${YELLOW}🗑️  数据策略: 卸载后全新安装（会清空模拟器数据）${NC}"
 fi
+if [ -n "$SYNC_SIM_DATA_FROM" ]; then
+    if [ "$SYNC_SIM_DATA_FORCE" = "1" ]; then
+        echo -e "${YELLOW}🔁 数据同步: 每次强制从 '$SYNC_SIM_DATA_FROM' 覆盖同步${NC}"
+    else
+        echo -e "${YELLOW}🔁 数据同步: 从 '$SYNC_SIM_DATA_FROM' 首次同步（目标已有数据则跳过）${NC}"
+    fi
+fi
 echo ""
+
+find_simulator_udid() {
+    local target_name="$1"
+    xcrun simctl list devices available | awk -v name="$target_name" '
+        index($0, name " (") > 0 && $0 !~ /unavailable/ {
+            if (match($0, /\(([A-F0-9-]+)\)/)) {
+                udid = substr($0, RSTART + 1, RLENGTH - 2)
+                print udid
+                exit
+            }
+        }
+    '
+}
 
 # 查找模拟器 UDID
 echo -e "${BLUE}🔍 查找模拟器...${NC}"
-SIMULATOR_UDID=$(xcrun simctl list devices available | grep "$SIMULATOR_NAME" | grep -v "unavailable" | head -1 | grep -o -E '\([A-F0-9-]+\)' | tr -d '()')
+SIMULATOR_UDID=$(find_simulator_udid "$SIMULATOR_NAME")
 
 if [ -z "$SIMULATOR_UDID" ]; then
     echo -e "${RED}❌ 错误: 未找到模拟器 '$SIMULATOR_NAME'${NC}"
@@ -132,6 +154,41 @@ fi
 xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH"
 echo -e "${GREEN}✅ 应用安装成功${NC}"
 echo ""
+
+if [ -n "$SYNC_SIM_DATA_FROM" ] && [ "$SYNC_SIM_DATA_FROM" != "$SIMULATOR_NAME" ]; then
+    echo -e "${YELLOW}📂 同步应用数据到目标模拟器...${NC}"
+    SOURCE_SIMULATOR_UDID=$(find_simulator_udid "$SYNC_SIM_DATA_FROM")
+    if [ -z "$SOURCE_SIMULATOR_UDID" ]; then
+        echo -e "${YELLOW}⚠️  未找到源模拟器 '$SYNC_SIM_DATA_FROM'，跳过数据同步${NC}"
+    else
+        xcrun simctl terminate "$SOURCE_SIMULATOR_UDID" "$BUNDLE_ID" 2>/dev/null || true
+        xcrun simctl terminate "$SIMULATOR_UDID" "$BUNDLE_ID" 2>/dev/null || true
+
+        SOURCE_DATA_CONTAINER=$(xcrun simctl get_app_container "$SOURCE_SIMULATOR_UDID" "$BUNDLE_ID" data 2>/dev/null || true)
+        TARGET_DATA_CONTAINER=$(xcrun simctl get_app_container "$SIMULATOR_UDID" "$BUNDLE_ID" data 2>/dev/null || true)
+
+        if [ -z "$SOURCE_DATA_CONTAINER" ]; then
+            echo -e "${YELLOW}⚠️  源模拟器未安装应用或无数据容器，跳过数据同步${NC}"
+        elif [ -z "$TARGET_DATA_CONTAINER" ]; then
+            echo -e "${YELLOW}⚠️  目标模拟器数据容器不可用，跳过数据同步${NC}"
+        else
+            SHOULD_SYNC=1
+            if [ "$SYNC_SIM_DATA_FORCE" != "1" ]; then
+                TARGET_DATA_HAS_CONTENT=$(find "$TARGET_DATA_CONTAINER" -mindepth 1 -maxdepth 1 ! -name "tmp" ! -name ".com.apple.mobile_container_manager.metadata.plist" -print -quit 2>/dev/null || true)
+                if [ -n "$TARGET_DATA_HAS_CONTENT" ]; then
+                    SHOULD_SYNC=0
+                    echo -e "${YELLOW}ℹ️  目标模拟器已有数据，保留现状并跳过同步${NC}"
+                fi
+            fi
+
+            if [ "$SHOULD_SYNC" = "1" ]; then
+                rsync -a --delete --exclude 'tmp/' "$SOURCE_DATA_CONTAINER/" "$TARGET_DATA_CONTAINER/"
+                echo -e "${GREEN}✅ 数据同步完成${NC}"
+            fi
+        fi
+    fi
+    echo ""
+fi
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${CYAN}📋 应用控制台日志输出（按 Ctrl+C 退出）:${NC}"
