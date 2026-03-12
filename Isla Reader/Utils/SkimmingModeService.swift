@@ -405,7 +405,7 @@ final class SkimmingModeService {
     
     private func buildPrompt(book: Book, chapter: SkimmingChapterMetadata) -> String {
         let chapterExcerpt = chapter.content
-        let language = AppSettings.shared.language == .en ? "English" : "Simplified Chinese"
+        let language = AppSettings.shared.language.aiOutputLanguageName()
         
         return """
         You are IslaBooks' inspectional reading coach.
@@ -528,8 +528,22 @@ final class SkimmingModeService {
         }
     }
     
+    static func cacheKey(
+        bookID: UUID,
+        chapterOrder: Int,
+        language: AppLanguage = AppSettings.shared.language,
+        preferredLocalizations: [String] = Bundle.main.preferredLocalizations,
+        localeIdentifier: String = Locale.current.identifier
+    ) -> String {
+        let cacheLanguage = language.cacheIdentifier(
+            preferredLocalizations: preferredLocalizations,
+            localeIdentifier: localeIdentifier
+        )
+        return "\(bookID.uuidString)-\(chapterOrder)-\(cacheLanguage)"
+    }
+
     private func cacheKey(for book: Book, chapter: SkimmingChapterMetadata) -> String {
-        "\(book.id.uuidString)-\(chapter.order)"
+        Self.cacheKey(bookID: book.id, chapterOrder: chapter.order)
     }
     
     private func skimmingProgressKey(for book: Book) -> String {

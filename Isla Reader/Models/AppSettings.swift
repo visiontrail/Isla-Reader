@@ -145,6 +145,75 @@ public enum AppLanguage: String, CaseIterable {
             return Locale(identifier: "ko")
         }
     }
+
+    func resolved(
+        preferredLocalizations: [String] = Bundle.main.preferredLocalizations,
+        localeIdentifier: String = Locale.current.identifier
+    ) -> AppLanguage {
+        guard self == .system else { return self }
+
+        if let preferredLocalization = preferredLocalizations.first,
+           let matchedLanguage = AppLanguage.from(identifier: preferredLocalization) {
+            return matchedLanguage
+        }
+
+        if let localeLanguage = AppLanguage.from(identifier: localeIdentifier) {
+            return localeLanguage
+        }
+
+        return .en
+    }
+
+    func aiOutputLanguageName(
+        preferredLocalizations: [String] = Bundle.main.preferredLocalizations,
+        localeIdentifier: String = Locale.current.identifier
+    ) -> String {
+        switch resolved(
+            preferredLocalizations: preferredLocalizations,
+            localeIdentifier: localeIdentifier
+        ) {
+        case .system, .en:
+            return "English"
+        case .zhHans:
+            return "Simplified Chinese"
+        case .ja:
+            return "Japanese"
+        case .ko:
+            return "Korean"
+        }
+    }
+
+    func cacheIdentifier(
+        preferredLocalizations: [String] = Bundle.main.preferredLocalizations,
+        localeIdentifier: String = Locale.current.identifier
+    ) -> String {
+        resolved(
+            preferredLocalizations: preferredLocalizations,
+            localeIdentifier: localeIdentifier
+        ).rawValue
+    }
+
+    private static func from(identifier: String) -> AppLanguage? {
+        let normalized = identifier.lowercased()
+
+        if normalized.hasPrefix("en") {
+            return .en
+        }
+
+        if normalized.hasPrefix("zh") {
+            return .zhHans
+        }
+
+        if normalized.hasPrefix("ja") {
+            return .ja
+        }
+
+        if normalized.hasPrefix("ko") {
+            return .ko
+        }
+
+        return nil
+    }
 }
 
 public enum HighlightSortMode: String, CaseIterable {
