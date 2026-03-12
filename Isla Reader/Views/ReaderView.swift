@@ -1538,9 +1538,13 @@ struct ReaderView: View {
             
             do {
                 try viewContext.save()
+#if DEBUG
                 print("✅ Reading progress saved: Chapter \(currentChapterIndex), Page \(safeChapterPageIndex(currentChapterIndex)), GlobalPage \(currentGlobalPage)/\(totalBookPages), Progress: \(String(format: "%.1f%%", progress.progressPercentage * 100))")
+#endif
             } catch {
+#if DEBUG
                 print("❌ Failed to save reading progress: \(error)")
+#endif
             }
         }
     }
@@ -1816,7 +1820,9 @@ struct ReaderView: View {
                 ReadingDailyStatsStore.shared.addReadingSeconds(elapsedSeconds)
                 syncLiveActivityReadingProgressIfNeeded(reason: "updateReadingTime")
             } catch {
+#if DEBUG
                 print("Failed to save reading time: \(error)")
+#endif
             }
         }
 
