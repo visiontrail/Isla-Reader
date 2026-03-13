@@ -24,6 +24,14 @@ struct NotionSyncPayload: Codable, Sendable {
     let eventDate: Date
 }
 
+struct NotionSyncBookMetadata: Equatable, Sendable {
+    let id: String
+    let title: String
+    let author: String
+    let statusRaw: String?
+    let progressPercentage: Double?
+}
+
 struct NotionSyncQueueTask: Sendable {
     let id: UUID
     let operationType: NotionSyncOperationType
@@ -728,25 +736,7 @@ final class NotionSyncEngine {
         guard let coordinator = context.persistentStoreCoordinator else { return }
         guard coordinator === persistentStoreCoordinator else { return }
 
-        var touchedBooks: [String: (title: String, author: String, statusRaw: String?, progressPercentage: Double?)] = [:]
-
-        let insertedHighlights = context.insertedObjects.compactMap { $0 as? Highlight }
-        for highlight in insertedHighlights {
-            collectBookInfo(from: highlight, into: &touchedBooks)
-        }
-
-        let updatedHighlights = context.updatedObjects.compactMap { $0 as? Highlight }
-        for highlight in updatedHighlights where !highlight.isInserted {
-            guard shouldSyncUpdatedHighlight(highlight) else {
-                continue
-            }
-            collectBookInfo(from: highlight, into: &touchedBooks)
-        }
-
-        let deletedHighlights = context.deletedObjects.compactMap { $0 as? Highlight }
-        for highlight in deletedHighlights {
-            collectBookInfo(from: highlight, into: &touchedBooks)
-        }
+        let touchedBooks = collectTouchedBookInfo(in: context)
 
         var enqueuedCount = 0
         for (bookID, metadata) in touchedBooks {
@@ -775,6 +765,46 @@ final class NotionSyncEngine {
         }
     }
 
+    func collectTouchedBookInfo(in context: NSManagedObjectContext) -> [String: NotionSyncBookMetadata] {
+        let deletedBookObjectIDs = Set(
+            context.deletedObjects.compactMap { ($0 as? Book)?.objectID }
+        )
+
+        var touchedBooks: [String: NotionSyncBookMetadata] = [:]
+
+        let insertedHighlights = context.insertedObjects.compactMap { $0 as? Highlight }
+        for highlight in insertedHighlights {
+            collectBookInfo(
+                from: highlight,
+                skippingDeletedBookObjectIDs: deletedBookObjectIDs,
+                into: &touchedBooks
+            )
+        }
+
+        let updatedHighlights = context.updatedObjects.compactMap { $0 as? Highlight }
+        for highlight in updatedHighlights where !highlight.isInserted {
+            guard shouldSyncUpdatedHighlight(highlight) else {
+                continue
+            }
+            collectBookInfo(
+                from: highlight,
+                skippingDeletedBookObjectIDs: deletedBookObjectIDs,
+                into: &touchedBooks
+            )
+        }
+
+        let deletedHighlights = context.deletedObjects.compactMap { $0 as? Highlight }
+        for highlight in deletedHighlights {
+            collectBookInfo(
+                from: highlight,
+                skippingDeletedBookObjectIDs: deletedBookObjectIDs,
+                into: &touchedBooks
+            )
+        }
+
+        return touchedBooks
+    }
+
     private func shouldSyncUpdatedHighlight(_ highlight: Highlight) -> Bool {
         let relevantKeys: Set<String> = ["selectedText", "note", "chapter"]
         let changedKeys = Set(highlight.changedValues().keys)
@@ -783,38 +813,114 @@ final class NotionSyncEngine {
 
     private func collectBookInfo(
         from highlight: Highlight,
-        into touchedBooks: inout [String: (title: String, author: String, statusRaw: String?, progressPercentage: Double?)]
+        skippingDeletedBookObjectIDs deletedBookObjectIDs: Set<NSManagedObjectID>,
+        into touchedBooks: inout [String: NotionSyncBookMetadata]
     ) {
-        guard let bookInfo = extractBookInfo(from: highlight) else {
+        guard let bookInfo = extractBookInfo(
+            from: highlight,
+            skippingDeletedBookObjectIDs: deletedBookObjectIDs
+        ) else {
             return
         }
 
-        touchedBooks[bookInfo.id] = (
-            title: bookInfo.title,
-            author: bookInfo.author,
-            statusRaw: bookInfo.statusRaw,
-            progressPercentage: bookInfo.progressPercentage
-        )
+        touchedBooks[bookInfo.id] = bookInfo
     }
 
     private func extractBookInfo(
-        from highlight: Highlight
-    ) -> (id: String, title: String, author: String, statusRaw: String?, progressPercentage: Double?)? {
-        let book = highlight.book
-        let id = book.id.uuidString.trimmingCharacters(in: .whitespacesAndNewlines)
+        from highlight: Highlight,
+        skippingDeletedBookObjectIDs deletedBookObjectIDs: Set<NSManagedObjectID>
+    ) -> NotionSyncBookMetadata? {
+        guard let book = relatedBook(for: highlight) else {
+            return nil
+        }
+        guard !book.isDeleted else {
+            return nil
+        }
+        guard !deletedBookObjectIDs.contains(book.objectID) else {
+            return nil
+        }
+
+        guard let bookID = uuidValue(forKey: "id", on: book) else {
+            return nil
+        }
+
+        let id = bookID.uuidString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !id.isEmpty else { return nil }
 
-        let title = normalize(book.title) ?? "Untitled"
-        let author = normalize(book.author) ?? "Unknown"
-        let statusRaw = normalize(book.libraryItem?.statusRaw) ?? ReadingStatus.wantToRead.rawValue
-        let progressPercentage = normalizeProgress(book.readingProgress?.progressPercentage)
-        return (id, title, author, statusRaw, progressPercentage)
+        let title = normalize(stringValue(forKey: #keyPath(Book.title), on: book)) ?? "Untitled"
+        let author = normalize(stringValue(forKey: #keyPath(Book.author), on: book)) ?? "Unknown"
+        let libraryItem = relationshipValue(forKey: #keyPath(Book.libraryItem), on: book) as LibraryItem?
+        let readingProgress = relationshipValue(forKey: #keyPath(Book.readingProgress), on: book) as ReadingProgress?
+        let statusRaw = normalize(stringValue(forKey: #keyPath(LibraryItem.statusRaw), on: libraryItem))
+            ?? ReadingStatus.wantToRead.rawValue
+        let progressPercentage = normalizeProgress(doubleValue(forKey: #keyPath(ReadingProgress.progressPercentage), on: readingProgress))
+        return NotionSyncBookMetadata(
+            id: id,
+            title: title,
+            author: author,
+            statusRaw: statusRaw,
+            progressPercentage: progressPercentage
+        )
     }
 
     private func normalize(_ raw: String?) -> String? {
         guard let raw else { return nil }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func relatedBook(for highlight: Highlight) -> Book? {
+        relationshipValue(forKey: #keyPath(Highlight.book), on: highlight)
+    }
+
+    private func relationshipValue<T: NSManagedObject>(forKey key: String, on object: NSManagedObject?) -> T? {
+        guard let object else { return nil }
+        if object.isDeleted {
+            return object.committedValues(forKeys: [key])[key] as? T
+        }
+        if let currentValue = object.value(forKey: key) as? T {
+            return currentValue
+        }
+        return object.committedValues(forKeys: [key])[key] as? T
+    }
+
+    private func stringValue(forKey key: String, on object: NSManagedObject?) -> String? {
+        if object?.isDeleted == true {
+            return object?.committedValues(forKeys: [key])[key] as? String
+        }
+        if let currentValue = object?.value(forKey: key) as? String {
+            return currentValue
+        }
+        return object?.committedValues(forKeys: [key])[key] as? String
+    }
+
+    private func uuidValue(forKey key: String, on object: NSManagedObject?) -> UUID? {
+        if object?.isDeleted == true {
+            return object?.committedValues(forKeys: [key])[key] as? UUID
+        }
+        if let currentValue = object?.value(forKey: key) as? UUID {
+            return currentValue
+        }
+        return object?.committedValues(forKeys: [key])[key] as? UUID
+    }
+
+    private func doubleValue(forKey key: String, on object: NSManagedObject?) -> Double? {
+        if object?.isDeleted == true {
+            if let committedValue = object?.committedValues(forKeys: [key])[key] as? NSNumber {
+                return committedValue.doubleValue
+            }
+            return object?.committedValues(forKeys: [key])[key] as? Double
+        }
+        if let currentValue = object?.value(forKey: key) as? NSNumber {
+            return currentValue.doubleValue
+        }
+        if let committedValue = object?.committedValues(forKeys: [key])[key] as? NSNumber {
+            return committedValue.doubleValue
+        }
+        if let currentValue = object?.value(forKey: key) as? Double {
+            return currentValue
+        }
+        return object?.committedValues(forKeys: [key])[key] as? Double
     }
 
     private func normalizeProgress(_ progress: Double?) -> Double {
