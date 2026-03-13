@@ -14,7 +14,7 @@ final class DataBackupService {
     private init() {}
     
     func exportAllDataExceptBooks(context: NSManagedObjectContext) async throws -> URL {
-        try await context.perform { [self] in
+        try await context.perform {
             DebugLogger.info("DataBackupService: 开始导出全部非书籍数据")
             
             let bookRequest: NSFetchRequest<Book> = Book.fetchRequest()
@@ -42,7 +42,7 @@ final class DataBackupService {
                 return AnnotationSnapshot(from: annotation, book: book)
             }
             
-            let readingData = self.makeReadingDataBackup(books: books)
+            let readingData = Self.makeReadingDataBackup(books: books)
             let notes = NotesBackup(
                 version: 1,
                 exportedAt: Date(),
@@ -56,7 +56,7 @@ final class DataBackupService {
                 notes: notes
             )
             
-            let url = try self.writeJSON(payload, prefix: "AllData")
+            let url = try Self.writeJSON(payload, prefix: "AllData")
             DebugLogger.success("DataBackupService: 全部非书籍数据导出完成 - \(url.lastPathComponent)")
             return url
         }
@@ -160,7 +160,7 @@ final class DataBackupService {
     
     // MARK: - Helpers
 
-    private func makeReadingDataBackup(books: [Book]) -> ReadingDataBackup {
+    private static func makeReadingDataBackup(books: [Book]) -> ReadingDataBackup {
         let bookPayloads = books.map { book in
             BookReadingData(
                 checksum: book.checksum,
@@ -182,26 +182,26 @@ final class DataBackupService {
     }
 
     private func decodeReadingDataBackup(from data: Data) throws -> ReadingDataBackup {
-        if let combined = try? decoder.decode(CombinedDataBackup.self, from: data) {
+        if let combined = try? Self.decoder.decode(CombinedDataBackup.self, from: data) {
             return combined.readingData
         }
-        return try decoder.decode(ReadingDataBackup.self, from: data)
+        return try Self.decoder.decode(ReadingDataBackup.self, from: data)
     }
     
-    private var encoder: JSONEncoder {
+    private static var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return encoder
     }
     
-    private var decoder: JSONDecoder {
+    private static var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }
     
-    private func writeJSON<T: Encodable>(_ value: T, prefix: String) throws -> URL {
+    private static func writeJSON<T: Encodable>(_ value: T, prefix: String) throws -> URL {
         let data = try encoder.encode(value)
         let fileName = "LanRead-\(prefix)-\(Self.timestampString()).json"
         let targetURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)

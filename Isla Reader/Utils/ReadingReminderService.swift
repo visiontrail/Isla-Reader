@@ -124,13 +124,13 @@ final class ReadingReminderService {
             content: content,
             trigger: trigger
         )
+        let scheduledTime = Self.formattedTime(hour: normalizedHour, minute: normalizedMinute)
         
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             notificationCenter.add(request) { error in
                 if let error = error {
                     DebugLogger.error("Failed to schedule reading reminder", error: error)
                 } else {
-                    let scheduledTime = self.formattedTime(hour: normalizedHour, minute: normalizedMinute)
                     DebugLogger.info("Scheduled reading reminder at \(scheduledTime) local time.")
                 }
                 continuation.resume()
@@ -159,7 +159,7 @@ final class ReadingReminderService {
         return content
     }
 
-    private func formattedTime(hour: Int, minute: Int) -> String {
+    private static func formattedTime(hour: Int, minute: Int) -> String {
         String(format: "%02d:%02d", hour, minute)
     }
 }
