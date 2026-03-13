@@ -151,45 +151,128 @@ private enum AdLoadMetricsRecorder {
     }
 }
 
+private enum AdMobInfoPlistKey: String {
+    case banner = "AdMobBannerAdUnitID"
+    case interstitial = "AdMobInterstitialAdUnitID"
+    case rewardedInterstitial = "AdMobRewardedInterstitialAdUnitID"
+    case rewardedInterstitialFallbackEnabled = "AdMobEnableRewardedInterstitialFallback"
+}
+
+enum AdMobRuntimeConfiguration {
+    static func normalizedAdUnitID(from rawValue: String) -> String {
+        var value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        while let quote = value.first, value.last == quote, (quote == "\"" || quote == "'") {
+            value = String(value.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        return value.replacingOccurrences(of: "\\/", with: "/")
+    }
+
+    static func isAdMobAppID(_ value: String) -> Bool {
+        value.range(of: #"^ca-app-pub-\d{16}~\d+$"#, options: .regularExpression) != nil
+    }
+
+    static func isWellFormedAdUnitID(_ value: String) -> Bool {
+        value.range(of: #"^ca-app-pub-\d{16}/\d{10}$"#, options: .regularExpression) != nil
+    }
+
+    static func parseBooleanFlag(_ rawValue: String?) -> Bool {
+        guard let rawValue else { return false }
+
+        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if value.isEmpty || value.hasPrefix("$(") {
+            return false
+        }
+
+        switch value {
+        case "1", "true", "yes", "on":
+            return true
+        case "0", "false", "no", "off":
+            return false
+        default:
+            DebugLogger.warning("AdMob: 无法解析布尔开关值 \(rawValue)，将按 false 处理")
+            return false
+        }
+    }
+
+    static func isRequestTypeMismatch(_ error: NSError) -> Bool {
+        error.domain == "com.google.admob"
+            && error.code == 0
+            && error.localizedDescription.localizedCaseInsensitiveContains("Cannot determine request type")
+    }
+
+    static func redactedAdUnitID(_ value: String) -> String {
+        guard let slashIndex = value.lastIndex(of: "/") else {
+            return value
+        }
+
+        let publisherPrefix = value[..<value.index(after: slashIndex)]
+        let suffix = value.suffix(4)
+        return "\(publisherPrefix)****\(suffix)"
+    }
+}
+
+private enum AdMobFeatureFlags {
+    static let isRewardedInterstitialFallbackEnabled: Bool = {
+        let rawValue = Bundle.main.object(forInfoDictionaryKey: AdMobInfoPlistKey.rewardedInterstitialFallbackEnabled.rawValue) as? String
+        let isEnabled = AdMobRuntimeConfiguration.parseBooleanFlag(rawValue)
+        if isEnabled {
+            DebugLogger.info("AdMob: Rewarded interstitial fallback enabled")
+        }
+        return isEnabled
+    }()
+}
+
 enum AdMobAdUnitIDs {
     static var fixedBanner: String? {
-        resolvedID(for: "AdMobBannerAdUnitID")
+        resolvedID(for: .banner)
     }
 
     static var rewardedInterstitial: String? {
-        resolvedID(for: "AdMobRewardedInterstitialAdUnitID")
+        resolvedID(for: .rewardedInterstitial)
     }
 
     static var interstitial: String? {
-        resolvedID(for: "AdMobInterstitialAdUnitID")
+        resolvedID(for: .interstitial)
     }
 
-    private static func resolvedID(for infoPlistKey: String) -> String? {
+    private static func resolvedID(for infoPlistKey: AdMobInfoPlistKey) -> String? {
         guard AppSettings.shared.areAdsEnabled else {
-            DebugLogger.info("AdMob: 广告已关闭，跳过读取广告位 \(infoPlistKey)")
+            DebugLogger.info("AdMob: 广告已关闭，跳过读取广告位 \(infoPlistKey.rawValue)")
             return nil
         }
 
-        guard let raw = Bundle.main.object(forInfoDictionaryKey: infoPlistKey) as? String else {
-            DebugLogger.warning("AdMob: Info.plist 缺少键 \(infoPlistKey)，已跳过广告请求")
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: infoPlistKey.rawValue) as? String else {
+            DebugLogger.warning("AdMob: Info.plist 缺少键 \(infoPlistKey.rawValue)，已跳过广告请求")
             return nil
         }
 
-        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = AdMobRuntimeConfiguration.normalizedAdUnitID(from: raw)
 
         if value.isEmpty {
-            DebugLogger.warning("AdMob: \(infoPlistKey) 为空，已跳过广告请求")
+            DebugLogger.warning("AdMob: \(infoPlistKey.rawValue) 为空，已跳过广告请求")
             return nil
         }
 
         if value.hasPrefix("$(") {
-            DebugLogger.warning("AdMob: \(infoPlistKey) 未通过 xcconfig 替换，已跳过广告请求")
+            DebugLogger.warning("AdMob: \(infoPlistKey.rawValue) 未通过 xcconfig 替换，已跳过广告请求")
+            return nil
+        }
+
+        if AdMobRuntimeConfiguration.isAdMobAppID(value) {
+            DebugLogger.warning("AdMob: \(infoPlistKey.rawValue) 看起来是 App ID 而不是广告位 ID，已跳过广告请求")
+            return nil
+        }
+
+        if !AdMobRuntimeConfiguration.isWellFormedAdUnitID(value) {
+            DebugLogger.warning("AdMob: \(infoPlistKey.rawValue) 格式非法 (\(value))，已跳过广告请求")
             return nil
         }
 
         // Google 官方测试广告位 ID，发布不可使用
         if value.contains("ca-app-pub-3940256099942544") {
-            DebugLogger.warning("AdMob: \(infoPlistKey) 为测试广告位 ID，发布版禁用广告请求")
+            DebugLogger.warning("AdMob: \(infoPlistKey.rawValue) 为测试广告位 ID，发布版禁用广告请求")
             return nil
         }
 
@@ -209,6 +292,7 @@ struct BannerAdView: UIViewRepresentable {
         bannerView.adUnitID = adUnitID
         bannerView.delegate = context.coordinator
         bannerView.rootViewController = UIViewController.topMostViewController()
+        DebugLogger.info("AdMob: Start loading banner adUnitID=\(AdMobRuntimeConfiguration.redactedAdUnitID(adUnitID))")
         bannerView.load(GADRequest())
         return bannerView
     }
@@ -230,6 +314,9 @@ struct BannerAdView: UIViewRepresentable {
             DebugLogger.error("AdMob: Banner failed to load - adUnitID=\(bannerView.adUnitID ?? "nil") adSize=\(bannerView.adSize.size), message=\(nsError.localizedDescription)")
 
             AdMobDiagnostics.log(error: nsError, context: "Banner load failure")
+            if AdMobRuntimeConfiguration.isRequestTypeMismatch(nsError) {
+                DebugLogger.warning("AdMob: Banner 广告位与 banner 请求类型不匹配，请检查 Xcode Cloud 中的 AdMobBannerAdUnitID")
+            }
 
             let responseInfo = (nsError.userInfo[GADErrorUserInfoKeyResponseInfo] as? GADResponseInfo) ?? bannerView.responseInfo
             AdMobDiagnostics.log(responseInfo: responseInfo, context: "Banner load failure")
@@ -258,6 +345,7 @@ final class RewardedInterstitialAdManager: NSObject {
     private var interstitialAd: GADInterstitialAd?
     private var isRewardedLoading = false
     private var isInterstitialLoading = false
+    private var isRewardedFallbackSuppressedForCurrentLaunch = false
 
     private override init() {
         super.init()
@@ -363,13 +451,19 @@ final class RewardedInterstitialAdManager: NSObject {
         guard interstitialAd == nil else { return }
         guard !isInterstitialLoading else { return }
         guard let interstitialAdUnitID = AdMobAdUnitIDs.interstitial else {
-            DebugLogger.warning("AdMob: 未配置插屏广告位，尝试奖励插屏兜底 (trigger=\(trigger))")
-            loadFallbackRewardedIfNeeded(trigger: "interstitial_unconfigured")
+            if canUseRewardedFallback {
+                DebugLogger.warning("AdMob: 未配置插屏广告位，尝试奖励插屏兜底 (trigger=\(trigger))")
+                loadFallbackRewardedIfNeeded(trigger: "interstitial_unconfigured")
+            } else {
+                DebugLogger.warning("AdMob: 未配置插屏广告位，且奖励插屏兜底已关闭，跳过全屏广告请求 (trigger=\(trigger))")
+            }
             return
         }
 
         isInterstitialLoading = true
-        DebugLogger.info("AdMob: Start loading primary interstitial (trigger=\(trigger))")
+        DebugLogger.info(
+            "AdMob: Start loading primary interstitial (trigger=\(trigger), adUnitID=\(AdMobRuntimeConfiguration.redactedAdUnitID(interstitialAdUnitID)))"
+        )
 
         GADInterstitialAd.load(withAdUnitID: interstitialAdUnitID, request: GADRequest()) { [weak self] ad, error in
             guard let self else { return }
@@ -379,11 +473,23 @@ final class RewardedInterstitialAdManager: NSObject {
                 DebugLogger.error("AdMob: Failed to load primary interstitial - \(error.localizedDescription)")
                 self.interstitialAd = nil
                 let nsError = error as NSError
+                AdMobDiagnostics.log(error: nsError, context: "Primary interstitial load failure")
+                let responseInfo = nsError.userInfo[GADErrorUserInfoKeyResponseInfo] as? GADResponseInfo
+                AdMobDiagnostics.log(responseInfo: responseInfo, context: "Primary interstitial load failure")
                 AdLoadMetricsRecorder.record(.interstitial, statusCode: nsError.code, error: nsError)
 
+                if AdMobRuntimeConfiguration.isRequestTypeMismatch(nsError) {
+                    DebugLogger.warning("AdMob: AdMobInterstitialAdUnitID 与 interstitial 请求类型不匹配，请检查 Xcode Cloud 配置")
+                    return
+                }
+
                 if nsError.code == GADErrorCode.noFill.rawValue {
-                    DebugLogger.info("AdMob: Interstitial no-fill, trying rewarded interstitial fallback")
-                    self.loadFallbackRewardedIfNeeded(trigger: "interstitial_nofill")
+                    if self.canUseRewardedFallback {
+                        DebugLogger.info("AdMob: Interstitial no-fill, trying rewarded interstitial fallback")
+                        self.loadFallbackRewardedIfNeeded(trigger: "interstitial_nofill")
+                    } else {
+                        DebugLogger.info("AdMob: Interstitial no-fill, rewarded interstitial fallback disabled")
+                    }
                 }
                 return
             }
@@ -392,12 +498,15 @@ final class RewardedInterstitialAdManager: NSObject {
             self.interstitialAd?.fullScreenContentDelegate = self
             self.rewardedAd = nil
             DebugLogger.success("AdMob: Primary interstitial is ready")
-            AdLoadMetricsRecorder.record(.interstitial, statusCode: 200)
+            let responseInfo = ad?.responseInfo
+            AdMobDiagnostics.log(responseInfo: responseInfo, context: "Primary interstitial load success")
+            AdLoadMetricsRecorder.record(.interstitial, statusCode: 200, responseId: responseInfo?.responseIdentifier)
         }
     }
 
     private func loadFallbackRewardedIfNeeded(trigger: String) {
         guard AppSettings.shared.areAdsEnabled else { return }
+        guard canUseRewardedFallback else { return }
         guard rewardedAd == nil else { return }
         guard !isRewardedLoading else { return }
         guard let rewardedAdUnitID = AdMobAdUnitIDs.rewardedInterstitial else {
@@ -406,7 +515,9 @@ final class RewardedInterstitialAdManager: NSObject {
         }
 
         isRewardedLoading = true
-        DebugLogger.info("AdMob: Start loading rewarded interstitial fallback (trigger=\(trigger))")
+        DebugLogger.info(
+            "AdMob: Start loading rewarded interstitial fallback (trigger=\(trigger), adUnitID=\(AdMobRuntimeConfiguration.redactedAdUnitID(rewardedAdUnitID)))"
+        )
 
         GADRewardedInterstitialAd.load(
             withAdUnitID: rewardedAdUnitID,
@@ -418,15 +529,31 @@ final class RewardedInterstitialAdManager: NSObject {
                 DebugLogger.error("AdMob: Failed to load rewarded interstitial fallback - \(error.localizedDescription)")
                 self.rewardedAd = nil
                 let nsError = error as NSError
+                AdMobDiagnostics.log(error: nsError, context: "Rewarded interstitial fallback load failure")
+                let responseInfo = nsError.userInfo[GADErrorUserInfoKeyResponseInfo] as? GADResponseInfo
+                AdMobDiagnostics.log(responseInfo: responseInfo, context: "Rewarded interstitial fallback load failure")
                 AdLoadMetricsRecorder.record(.rewardedInterstitial, statusCode: nsError.code, error: nsError)
+
+                if AdMobRuntimeConfiguration.isRequestTypeMismatch(nsError) {
+                    self.isRewardedFallbackSuppressedForCurrentLaunch = true
+                    DebugLogger.warning(
+                        "AdMob: AdMobRewardedInterstitialAdUnitID 与 rewarded interstitial 请求类型不匹配，已在本次启动中停用兜底。请检查 Xcode Cloud 配置。"
+                    )
+                }
                 return
             }
 
             self.rewardedAd = ad
             self.rewardedAd?.fullScreenContentDelegate = self
             DebugLogger.success("AdMob: Rewarded interstitial fallback is ready")
-            AdLoadMetricsRecorder.record(.rewardedInterstitial, statusCode: 200)
+            let responseInfo = ad?.responseInfo
+            AdMobDiagnostics.log(responseInfo: responseInfo, context: "Rewarded interstitial fallback load success")
+            AdLoadMetricsRecorder.record(.rewardedInterstitial, statusCode: 200, responseId: responseInfo?.responseIdentifier)
         }
+    }
+
+    private var canUseRewardedFallback: Bool {
+        AdMobFeatureFlags.isRewardedInterstitialFallbackEnabled && !isRewardedFallbackSuppressedForCurrentLaunch
     }
 
     private static func adTypeDescription(for ad: GADFullScreenPresentingAd) -> String {

@@ -14,6 +14,8 @@
 	<string>$(ADMOB_INTERSTITIAL_AD_UNIT_ID)</string>
 	<key>AdMobRewardedInterstitialAdUnitID</key>
 	<string>$(ADMOB_REWARDED_INTERSTITIAL_AD_UNIT_ID)</string>
+	<key>AdMobEnableRewardedInterstitialFallback</key>
+	<string>$(ADMOB_ENABLE_REWARDED_INTERSTITIAL_FALLBACK)</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

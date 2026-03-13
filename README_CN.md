@@ -139,6 +139,8 @@ cp Config/AISecrets.xcconfig.example Config/AISecrets.xcconfig
 推荐生产式配置：
 - 填写安全服务配置（`SECURE_SERVER_BASE_URL`、`SECURE_SERVER_CLIENT_ID`、`SECURE_SERVER_CLIENT_SECRET`、`SECURE_SERVER_REQUIRE_TLS`）
 - 由后端下发 `api_endpoint`、`model`、`api_key`
+- 填写 AdMob 广告位（`ADMOB_BANNER_AD_UNIT_ID`、`ADMOB_INTERSTITIAL_AD_UNIT_ID`、`ADMOB_REWARDED_INTERSTITIAL_AD_UNIT_ID`）
+- 在奖励插屏广告位尚未通过实体机归档包验证前，保持 `ADMOB_ENABLE_REWARDED_INTERSTITIAL_FALLBACK = NO`
 
 本地兜底配置：
 - 填写 `AI_API_ENDPOINT`、`AI_MODEL`、`AI_API_KEY`

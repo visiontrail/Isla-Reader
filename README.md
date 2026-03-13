@@ -139,6 +139,8 @@ cp Config/AISecrets.xcconfig.example Config/AISecrets.xcconfig
 Recommended production-style setup:
 - Fill secure server values (`SECURE_SERVER_BASE_URL`, `SECURE_SERVER_CLIENT_ID`, `SECURE_SERVER_CLIENT_SECRET`, `SECURE_SERVER_REQUIRE_TLS`)
 - Let backend return `api_endpoint`, `model`, `api_key`
+- Fill AdMob unit IDs (`ADMOB_BANNER_AD_UNIT_ID`, `ADMOB_INTERSTITIAL_AD_UNIT_ID`, `ADMOB_REWARDED_INTERSTITIAL_AD_UNIT_ID`)
+- Keep `ADMOB_ENABLE_REWARDED_INTERSTITIAL_FALLBACK = NO` until the rewarded-interstitial unit has been verified on a physical-device/archive build
 
 Fallback local-only setup:
 - Fill `AI_API_ENDPOINT`, `AI_MODEL`, `AI_API_KEY`

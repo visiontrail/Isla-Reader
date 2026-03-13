@@ -22,6 +22,8 @@ SECURE_SERVER_METRICS_TOKEN =
 ADMOB_BANNER_AD_UNIT_ID =
 ADMOB_REWARDED_INTERSTITIAL_AD_UNIT_ID =
 ADMOB_INTERSTITIAL_AD_UNIT_ID =
+// Keep rewarded fallback off unless the rewarded-interstitial unit has been verified on device builds.
+ADMOB_ENABLE_REWARDED_INTERSTITIAL_FALLBACK = NO
 
 // Advertising build toggle: keep empty by default for cloud-safe builds.
 // Set `ADS_SWIFT_FLAGS = -DLANREAD_ADS_DISABLED` for an ad-free build variant.
