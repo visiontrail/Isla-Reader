@@ -231,7 +231,7 @@
 "ai.summary.book.prompt.book_info" = "책 정보：";
 "ai.summary.book.prompt.content_excerpt" = "책 내용 발췌：";
 "ai.summary.book.prompt.requirements" = "다음을 생성해 주세요：";
-"ai.summary.book.prompt.requirement1" = "1. 주요 내용, 핵심 개념 및 독서 가치를 포함하는 200-300자의 전체 책 요약";
+"ai.summary.book.prompt.requirement1" = "1. 주요 내용, 핵심 개념 및 독서 가치를 포함하는 100-150자의 전체 책 요약";
 "ai.summary.book.prompt.requirement2" = "2. 3-5개의 핵심 포인트";
 "ai.summary.book.prompt.requirement3" = "3. 간결하고 명확하며 책 내용을 빠르게 이해하는 데 적합";
 "ai.summary.book.prompt.format" = "형식 요구사항：";

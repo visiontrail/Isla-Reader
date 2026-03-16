@@ -231,7 +231,7 @@
 "ai.summary.book.prompt.book_info" = "书籍信息：";
 "ai.summary.book.prompt.content_excerpt" = "书籍内容节选：";
 "ai.summary.book.prompt.requirements" = "请生成：";
-"ai.summary.book.prompt.requirement1" = "1. 一份200-300字的全书导读摘要，包含主要内容、核心观点和阅读价值";
+"ai.summary.book.prompt.requirement1" = "1. 一份100-150字的全书导读摘要，包含主要内容、核心观点和阅读价值";
 "ai.summary.book.prompt.requirement2" = "2. 3-5个关键要点";
 "ai.summary.book.prompt.requirement3" = "3. 简洁明了，适合快速了解书籍内容";
 "ai.summary.book.prompt.format" = "格式要求：";

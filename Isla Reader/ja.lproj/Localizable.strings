@@ -231,7 +231,7 @@
 "ai.summary.book.prompt.book_info" = "書籍情報：";
 "ai.summary.book.prompt.content_excerpt" = "書籍内容抜粋：";
 "ai.summary.book.prompt.requirements" = "次を生成してください：";
-"ai.summary.book.prompt.requirement1" = "1. 主な内容、核心概念、読書価値を含む200-300文字の全書要約";
+"ai.summary.book.prompt.requirement1" = "1. 主な内容、核心概念、読書価値を含む100-150文字の全書要約";
 "ai.summary.book.prompt.requirement2" = "2. 3-5個のキーポイント";
 "ai.summary.book.prompt.requirement3" = "3. 簡潔明瞭で、書籍内容を素早く理解するのに適している";
 "ai.summary.book.prompt.format" = "フォーマット要件：";

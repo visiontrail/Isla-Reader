@@ -231,7 +231,7 @@
 "ai.summary.book.prompt.book_info" = "Book Information:";
 "ai.summary.book.prompt.content_excerpt" = "Book Content Excerpt:";
 "ai.summary.book.prompt.requirements" = "Please generate:";
-"ai.summary.book.prompt.requirement1" = "1. A 200-300 word book summary including main content, core ideas, and reading value";
+"ai.summary.book.prompt.requirement1" = "1. A 100-150 word book summary including main content, core ideas, and reading value";
 "ai.summary.book.prompt.requirement2" = "2. 3-5 key points";
 "ai.summary.book.prompt.requirement3" = "3. Clear and concise, suitable for quickly understanding the book content";
 "ai.summary.book.prompt.format" = "Format requirements:";
