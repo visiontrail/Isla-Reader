@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -65,6 +66,9 @@ def test_metrics_clear_removes_retained_events_and_persisted_file(_configure_tes
         before_clear = client.get("/admin/metrics/data", params={"granularity": "day"})
         assert before_clear.status_code == 200
         assert before_clear.json()["totals"]["count"] == 1
+        before_meta = before_clear.json()["meta"]
+        assert before_meta["windowTimezone"] == "UTC"
+        assert datetime.fromisoformat(before_meta["windowStart"]) < datetime.fromisoformat(before_meta["windowEnd"])
 
         clear_response = client.post("/admin/metrics/clear")
         assert clear_response.status_code == 200
@@ -74,6 +78,8 @@ def test_metrics_clear_removes_retained_events_and_persisted_file(_configure_tes
         assert after_clear.status_code == 200
         assert after_clear.json()["totals"]["count"] == 0
         assert after_clear.json()["meta"]["retained"] == 0
+        assert "windowStart" in after_clear.json()["meta"]
+        assert "windowEnd" in after_clear.json()["meta"]
 
     assert metrics_file.exists()
     assert metrics_file.read_text(encoding="utf-8") == ""

@@ -32,6 +32,11 @@ GRANULARITY_CONFIG: Dict[str, Dict[str, object]] = {
 }
 
 
+def _isoformat_seconds(ts: datetime) -> str:
+    normalized = ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+    return normalized.astimezone(timezone.utc).isoformat(timespec="seconds")
+
+
 def _resolve_granularity(name: Optional[str]) -> Tuple[str, Dict[str, object]]:
     key = (name or "").lower()
     if key not in GRANULARITY_CONFIG:
@@ -270,6 +275,9 @@ class MetricsStore:
                 "rpsWindowSeconds": int(rps_window.total_seconds()),
                 "granularity": granularity_key,
                 "windowLabel": window_label,
+                "windowStart": _isoformat_seconds(window_start),
+                "windowEnd": _isoformat_seconds(now),
+                "windowTimezone": "UTC",
                 "windowHours": int(window.total_seconds() // 3600),
                 "timelineBucket": bucket,
                 "timelineLabel": timeline_label,

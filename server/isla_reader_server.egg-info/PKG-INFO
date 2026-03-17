@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: isla-reader-server
+Version: 0.1.0
+Summary: Secure service endpoints for LanRead.
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.110.0
+Requires-Dist: uvicorn[standard]>=0.27.0
+Requires-Dist: pydantic-settings>=2.2.1
+Requires-Dist: httpx>=0.27.0

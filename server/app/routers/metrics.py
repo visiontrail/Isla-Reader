@@ -464,20 +464,31 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       background: linear-gradient(120deg, #8ef6ff, #7ec3ff);
       color: #0b1021;
       font-weight: 700;
+      font: inherit;
+      line-height: 1.2;
       width: 100%;
+      appearance: none;
     }
     .btn {
       width: auto;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
       padding: 10px 14px;
+      min-height: 42px;
       background: linear-gradient(120deg, #8ef6ff, #7ec3ff);
       color: #0b1021;
       text-decoration: none;
       border-radius: 12px;
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
+      font: inherit;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
+      vertical-align: middle;
+      appearance: none;
     }
     .btn.ghost {
       background: rgba(255,255,255,0.06);
@@ -516,6 +527,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       color: #0b1021;
       box-shadow: var(--shadow);
       border-color: transparent;
+    }
+    .aggregation-meta {
+      margin: -2px 0 12px;
+    }
+    .aggregation-meta strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .actions-row {
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
     }
   </style>
 </head>
@@ -560,12 +584,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <button type="button" class="chip-button" data-granularity="month">Monthly</button>
         </div>
       </div>
+      <div class="metric-sub aggregation-meta" id="granularity-window">Start: - · End: -</div>
 
       <div class="grid">
         <div class="glass card">
           <h3>Total Calls</h3>
           <div class="metric-value" id="total-calls">-</div>
-          <div class="metric-sub">Range: <span id="range-label">Past 24h</span></div>
+          <div class="metric-sub"><span id="range-label">Past 24h</span></div>
         </div>
         <div class="glass card">
           <h3>Success Rate</h3>
@@ -638,7 +663,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       <div class="section-title">
         <h2>Recent Calls</h2>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <div class="actions-row">
           <div class="pill">Past 7 days</div>
           <a class="btn ghost" href="/admin/update-policy">Update Policy</a>
           <button type="button" class="btn ghost" id="export-button">Export CSV</button>
@@ -683,7 +708,28 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const granularityButtons = document.querySelectorAll('[data-granularity]');
     const timelineRange = document.getElementById('timeline-range');
     const rangeLabel = document.getElementById('range-label');
+    const granularityWindow = document.getElementById('granularity-window');
     let currentGranularity = 'day';
+
+    function formatWindowDateTime(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      try {
+        return new Intl.DateTimeFormat(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+          timeZoneName: 'short'
+        }).format(date);
+      } catch (_) {
+        return date.toLocaleString();
+      }
+    }
 
     function syncGranularityUI(granularity) {
       if (granularity) {
@@ -848,11 +894,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     function applyMeta(meta = {}) {
       const windowLabel = meta.windowLabel || 'Past 24 hours';
       const bucketHint = meta.timelineLabel || (meta.timelineBucket === 'day' ? 'Daily buckets' : 'Hourly buckets');
+      const windowStart = formatWindowDateTime(meta.windowStart);
+      const windowEnd = formatWindowDateTime(meta.windowEnd);
       if (rangeLabel) {
-        rangeLabel.textContent = windowLabel;
+        rangeLabel.textContent = `${windowLabel} · ${windowStart} to ${windowEnd}`;
       }
       if (timelineRange) {
         timelineRange.textContent = `${windowLabel} · ${bucketHint}`;
+      }
+      if (granularityWindow) {
+        granularityWindow.innerHTML = `<strong>Start:</strong> ${windowStart} <strong>End:</strong> ${windowEnd}`;
       }
       if (meta.granularity) {
         syncGranularityUI(meta.granularity);
