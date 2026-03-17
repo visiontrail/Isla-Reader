@@ -390,6 +390,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       gap: 6px;
       align-items: flex-end;
       height: 160px;
+      padding-top: 10px;
+      position: relative;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 0 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background:
+        linear-gradient(to top, rgba(255,255,255,0.08) 1px, transparent 1px) 0 100% / 100% 33.33% no-repeat,
+        linear-gradient(to top, rgba(255,255,255,0.06) 1px, transparent 1px) 0 66.66% / 100% 33.33% no-repeat,
+        linear-gradient(to top, rgba(255,255,255,0.04) 1px, transparent 1px) 0 33.33% / 100% 33.33% no-repeat;
+      pointer-events: none;
     }
     .bar {
       flex: 1;
@@ -399,6 +412,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       position: relative;
       overflow: hidden;
       border: 1px solid var(--border);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .bar:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 14px 28px rgba(0,0,0,0.22);
     }
     .bar .fail {
       position: absolute;
@@ -416,6 +434,52 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       color: #0b1021;
       font-weight: 700;
       text-shadow: 0 1px 2px rgba(255,255,255,0.4);
+    }
+    .timeline-axis {
+      display: grid;
+      align-items: start;
+      gap: 6px;
+      margin-top: 10px;
+      min-height: 18px;
+    }
+    .timeline-axis span {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+    .timeline-caption {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .timeline-empty {
+      height: 160px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+    }
+    .timeline-legend {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .timeline-legend::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(142, 246, 255, 0.95), rgba(142, 246, 255, 0.35));
+      box-shadow: 16px 0 0 rgba(255,95,109,0.7);
+      margin-right: 18px;
+      flex-shrink: 0;
     }
     .section-title {
       display: flex;
@@ -659,6 +723,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
       <div class="glass card">
         <div class="timeline" id="timeline"></div>
+        <div class="timeline-axis" id="timeline-axis"></div>
+        <div class="metric-sub timeline-caption">
+          <span id="timeline-caption">X-axis: bucket start time</span>
+          <span class="timeline-legend">Blue = total calls, red = failed calls</span>
+        </div>
       </div>
 
       <div class="section-title">
@@ -707,6 +776,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const clearButton = document.getElementById('clear-button');
     const granularityButtons = document.querySelectorAll('[data-granularity]');
     const timelineRange = document.getElementById('timeline-range');
+    const timelineAxis = document.getElementById('timeline-axis');
+    const timelineCaption = document.getElementById('timeline-caption');
     const rangeLabel = document.getElementById('range-label');
     const granularityWindow = document.getElementById('granularity-window');
     let currentGranularity = 'day';
@@ -844,6 +915,36 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       return Number(value || 0).toLocaleString();
     }
 
+    function formatBucketLabel(value, bucketType) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      try {
+        if (bucketType === 'day') {
+          return new Intl.DateTimeFormat(undefined, {
+            month: 'short',
+            day: 'numeric'
+          }).format(date);
+        }
+        return new Intl.DateTimeFormat(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          hour12: false
+        }).format(date);
+      } catch (_) {
+        return bucketType === 'day' ? date.toLocaleDateString() : date.toLocaleString();
+      }
+    }
+
+    function browserTimezoneLabel() {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time';
+      } catch (_) {
+        return 'local time';
+      }
+    }
+
     function escapeText(value) {
       return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -901,6 +1002,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
       if (timelineRange) {
         timelineRange.textContent = `${windowLabel} · ${bucketHint}`;
+      }
+      if (timelineCaption) {
+        const axisUnit = meta.timelineBucket === 'day' ? 'day' : 'hour';
+        timelineCaption.textContent = `X-axis: ${axisUnit} bucket start time (${browserTimezoneLabel()})`;
       }
       if (granularityWindow) {
         granularityWindow.innerHTML = `<strong>Start:</strong> ${windowStart} <strong>End:</strong> ${windowEnd}`;
@@ -961,10 +1066,27 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       });
     }
 
-    function renderTimeline(buckets) {
+    function renderTimeline(buckets, meta = {}) {
       const container = document.getElementById('timeline');
+      const axis = timelineAxis;
       container.innerHTML = '';
+      if (axis) axis.innerHTML = '';
+      if (!buckets.length) {
+        container.innerHTML = '<div class="timeline-empty">No activity in the selected window.</div>';
+        container.style.display = 'block';
+        if (axis) axis.style.display = 'none';
+        return;
+      }
+      container.style.display = 'flex';
+      if (axis) axis.style.display = 'grid';
       const maxCount = Math.max(...buckets.map((b) => b.count), 1);
+      const bucketType = meta.timelineBucket || 'hour';
+      const desiredTickCount = bucketType === 'day' ? 6 : 5;
+      const tickStep = Math.max(1, Math.ceil((buckets.length - 1) / Math.max(1, desiredTickCount - 1)));
+      const tickIndexes = new Set([0, buckets.length - 1]);
+      for (let index = tickStep; index < buckets.length - 1; index += tickStep) {
+        tickIndexes.add(index);
+      }
       buckets.forEach((bucket) => {
         const bar = document.createElement('div');
         bar.className = 'bar';
@@ -978,9 +1100,20 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const label = document.createElement('span');
         label.textContent = bucket.count;
         bar.appendChild(label);
-        bar.title = `${bucket.bucket} UTC`;
+        bar.title = `${formatBucketLabel(bucket.bucket, bucketType)} | total ${formatNumber(bucket.count)} | failed ${formatNumber(bucket.failures)}`;
         container.appendChild(bar);
       });
+      if (axis) {
+        axis.style.gridTemplateColumns = `repeat(${buckets.length}, minmax(12px, 1fr))`;
+        [...tickIndexes]
+          .sort((a, b) => a - b)
+          .forEach((index) => {
+            const tick = document.createElement('span');
+            tick.textContent = formatBucketLabel(buckets[index].bucket, bucketType);
+            tick.style.gridColumn = `${index + 1}`;
+            axis.appendChild(tick);
+          });
+      }
     }
 
     function renderRecent(rows) {
@@ -1015,7 +1148,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       setTotals(data.totals || {}, data.meta || {});
       renderInterfaces(data.interfaces || []);
       renderSources(data.sources || []);
-      renderTimeline(data.timeline || []);
+      renderTimeline(data.timeline || [], data.meta || {});
       renderRecent(data.recent || []);
     }
 
