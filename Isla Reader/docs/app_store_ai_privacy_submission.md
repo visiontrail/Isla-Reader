@@ -21,21 +21,32 @@ Use this in **App Store Connect > App Review Information > Notes**:
 ```text
 For AI features, LanRead asks for explicit consent before any AI request is sent.
 
+How to verify quickly:
+1) Open app launch or Settings > AI Data & Privacy.
+2) The consent screen shows data categories, purpose, and third-party recipient identity (provider name + endpoint host) before sharing.
+3) Decline blocks AI requests; Allow enables AI requests.
+
 Data sent (only after user consent and user action):
-- Selected reading text/chapter excerpt
-- User prompt for AI summary/translation/explanation
+- Selected reading text/chapter excerpts
+- User prompt for AI summary/translation/explanation/skimming
+- Minimal request metadata needed for response delivery (for example language/model/request ID)
 
 Third-party recipient disclosure:
-- The consent screen shows the currently configured third-party AI provider name and endpoint host before data sharing.
-- This information is also available in Settings > AI Data & Privacy.
+- Recipient identity is shown in-app before sharing: current third-party AI provider name + endpoint host.
+- The same disclosure is available in Settings > AI Data & Privacy.
+- Privacy policy also describes AI recipient and handling scope.
 
-User control:
-- Users can decline and continue using non-AI reading features.
-- AI requests are blocked until consent is granted.
-- Users can change consent later in Settings.
+Data use and retention:
+- Purpose is limited to user-requested AI output generation.
+- Uploaded text is not persisted on LanRead server.
+- AI outputs remain on device unless user exports them.
+
+Third-party protection:
+- We require third-party AI processors to provide confidentiality and security protections equal to or stronger than our policy.
 
 Privacy Policy:
 - https://isla-reader.top/privacy
+- Policy updated: 2026-03-17
 ```
 
 ## Reply to Rejection Template
@@ -46,12 +57,19 @@ Hello App Review Team,
 Thank you for the feedback. We have updated the app to comply with Guidelines 5.1.1(i) and 5.1.2(i):
 
 1) Before any AI request is sent, the app now shows an explicit consent screen.
-2) The consent screen now clearly identifies the third-party AI provider (name + endpoint host) that receives user-selected text/prompts.
-3) The screen explains what data is sent and for what purpose.
-4) AI requests are blocked until the user grants permission.
+2) The consent screen clearly identifies the third-party AI recipient (provider name + endpoint host) before sharing.
+3) The screen explains data categories, purpose of processing, and explicit opt-in requirement.
+4) AI requests are blocked until permission is granted.
 5) Users can review and change AI data permission anytime in Settings > AI Data & Privacy.
-6) The same data collection/use/sharing details are reflected in our privacy policy:
+6) Our privacy policy now explicitly describes:
+   - what AI-related data is sent,
+   - how the data is used,
+   - who receives the data (third-party AI recipient),
+   - retention scope and user controls,
+   - equivalent-or-stronger protection requirements for third-party processors.
+7) Updated privacy policy:
    https://isla-reader.top/privacy
+   (Updated on 2026-03-17)
 
-Please review build 1.0.1 again. Thank you.
+Please review build [NEW_BUILD_NUMBER] again. Thank you.
 ```
