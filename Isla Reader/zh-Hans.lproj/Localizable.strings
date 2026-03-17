@@ -3,6 +3,14 @@
 "tab.settings" = "设置";
 "reading.settings.title" = "阅读设置";
 "settings.data_and_sync" = "数据与同步";
+"settings.ai_privacy.section" = "AI 数据与隐私";
+"settings.ai_privacy.manage_title" = "AI 数据权限";
+"settings.ai_privacy.status_allowed" = "状态：已允许";
+"settings.ai_privacy.status_not_allowed" = "状态：未允许";
+"settings.ai_privacy.provider_label" = "当前第三方 AI 提供方";
+"settings.ai_privacy.provider_loading" = "正在加载提供方信息...";
+"settings.ai_privacy.provider_unknown" = "暂时无法识别提供方，请先查看隐私政策。";
+"settings.ai_privacy.provider_location_format" = "地域说明：%@";
 "settings.notifications" = "通知提醒";
 "settings.about" = "关于";
 "settings.support" = "支持";
@@ -347,11 +355,19 @@
 "ai.consent.launch.intro" = "在将所选阅读内容发送给 AI 前，LanRead 需要先获得你的许可。";
 "ai.consent.launch.usage" = "用途说明：所选文字、章节片段和提示词仅用于你主动发起的 AI 导读、翻译和解释。";
 "ai.consent.launch.location" = "处理位置：请求会从你的设备发送到 LanRead 配置的云端 AI 服务器进行处理。";
-"ai.consent.launch.third_party" = "第三方共享：为生成结果，数据可能会共享给第三方 AI 服务提供商。";
+"ai.consent.launch.third_party" = "第三方共享：为生成结果，所选文字与提示词仅会发送给下方标明的 AI 服务提供方。";
+"ai.consent.launch.third_party_provider_loading" = "第三方 AI 提供方：识别中...";
+"ai.consent.launch.third_party_provider_format" = "第三方 AI 提供方：%@";
+"ai.consent.launch.third_party_provider_location_format" = "地域说明：%@";
+"ai.consent.launch.third_party_provider_unknown" = "第三方 AI 提供方：暂时无法识别。启用前请先查看隐私政策。";
 "ai.consent.launch.explicit_permission" = "点击“同意并继续”即表示你明确授权在发起 AI 请求时传输相关数据。";
 "ai.consent.launch.dont_show_again" = "不再提示";
+"ai.consent.launch.privacy_policy_link" = "查看隐私政策";
+"ai.consent.launch.manage_in_settings" = "你可以稍后在“设置 > AI 数据与隐私”中查看并修改该权限。";
 "ai.consent.launch.allow" = "同意并继续";
 "ai.consent.launch.decline" = "暂不使用";
+"ai.provider.location.us" = "us：接入点与数据存储均位于美国（弗吉尼亚）地域，模型推理计算资源在全球范围内动态调度。";
+"ai.provider.location.intl" = "intl：接入点与数据存储均位于新加坡地域，模型推理计算资源在全球范围内动态调度（不含中国内地）。";
 
 // Notion OAuth
 "notion.connect" = "连接 Notion";

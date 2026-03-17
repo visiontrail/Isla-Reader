@@ -198,6 +198,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8443 --no-access-log --ssl-keyfile ce
 
 - 核心阅读数据默认保存在本地设备（Core Data + 本地 EPUB 文件）。
 - AI 与 Notion 同步功能需要网络。
+- 在发送任何 AI 请求前，LanRead 会先获取你的明确授权，并在应用内展示当前第三方 AI 提供方。
+- 你可随时在 `设置 > AI 数据与隐私` 查看/修改 AI 数据权限与提供方信息。
 - 本地阅读核心能力不需要账号。
 - 可在设置中执行导出、导入与重置。
 

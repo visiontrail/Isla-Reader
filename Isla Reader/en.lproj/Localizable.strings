@@ -3,6 +3,14 @@
 "tab.settings" = "Settings";
 "reading.settings.title" = "Reading Settings";
 "settings.data_and_sync" = "Data & Sync";
+"settings.ai_privacy.section" = "AI Data & Privacy";
+"settings.ai_privacy.manage_title" = "AI Data Permission";
+"settings.ai_privacy.status_allowed" = "Status: Allowed";
+"settings.ai_privacy.status_not_allowed" = "Status: Not Allowed";
+"settings.ai_privacy.provider_label" = "Current third-party AI provider";
+"settings.ai_privacy.provider_loading" = "Loading provider information...";
+"settings.ai_privacy.provider_unknown" = "Unable to detect provider right now. See Privacy Policy for details.";
+"settings.ai_privacy.provider_location_format" = "Region details: %@";
 "settings.notifications" = "Notifications";
 "settings.about" = "About";
 "settings.support" = "Support";
@@ -347,11 +355,19 @@
 "ai.consent.launch.intro" = "LanRead needs your permission before sending selected reading content to AI.";
 "ai.consent.launch.usage" = "How data is used: selected text, chapter excerpts, and prompts are used only for AI summaries, translation, and explanations you request.";
 "ai.consent.launch.location" = "Where data is processed: requests are sent from your device to LanRead-configured cloud AI servers for processing.";
-"ai.consent.launch.third_party" = "Third-party sharing: data may be shared with third-party AI providers to generate responses.";
+"ai.consent.launch.third_party" = "Third-party sharing: selected text and prompts are sent only to the AI provider identified below to generate responses.";
+"ai.consent.launch.third_party_provider_loading" = "Third-party AI provider: detecting...";
+"ai.consent.launch.third_party_provider_format" = "Third-party AI provider: %@";
+"ai.consent.launch.third_party_provider_location_format" = "Region details: %@";
+"ai.consent.launch.third_party_provider_unknown" = "Third-party AI provider: temporarily unavailable. Please review the Privacy Policy before enabling AI.";
 "ai.consent.launch.explicit_permission" = "Choose Allow AI Data Sharing to give explicit permission before any AI request is sent.";
 "ai.consent.launch.dont_show_again" = "Don't show this message again";
+"ai.consent.launch.privacy_policy_link" = "Review Privacy Policy";
+"ai.consent.launch.manage_in_settings" = "You can review and update this permission later in Settings > AI Data & Privacy.";
 "ai.consent.launch.allow" = "Allow AI Data Sharing";
 "ai.consent.launch.decline" = "Not Now";
+"ai.provider.location.us" = "us: endpoint and data storage are both in the United States (Virginia), and model inference compute is dynamically scheduled globally.";
+"ai.provider.location.intl" = "intl: endpoint and data storage are both in Singapore, and model inference compute is dynamically scheduled globally (excluding mainland China).";
 
 // Notion OAuth
 "notion.connect" = "Connect Notion";

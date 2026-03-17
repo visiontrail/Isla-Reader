@@ -3,6 +3,14 @@
 "tab.settings" = "設定";
 "reading.settings.title" = "読書設定";
 "settings.data_and_sync" = "データと同期";
+"settings.ai_privacy.section" = "AI データとプライバシー";
+"settings.ai_privacy.manage_title" = "AIデータ利用許可";
+"settings.ai_privacy.status_allowed" = "状態: 許可済み";
+"settings.ai_privacy.status_not_allowed" = "状態: 未許可";
+"settings.ai_privacy.provider_label" = "現在の第三者AI提供者";
+"settings.ai_privacy.provider_loading" = "提供者情報を読み込み中...";
+"settings.ai_privacy.provider_unknown" = "提供者を特定できません。プライバシーポリシーを確認してください。";
+"settings.ai_privacy.provider_location_format" = "リージョン情報: %@";
 "settings.notifications" = "通知";
 "settings.about" = "情報";
 "settings.support" = "サポート";
@@ -347,11 +355,19 @@
 "ai.consent.launch.intro" = "選択した読書コンテンツを AI に送信する前に、LanRead は許可を必要とします。";
 "ai.consent.launch.usage" = "利用目的: 選択テキスト、章の抜粋、プロンプトは、あなたが要求した AI 要約・翻訳・解説のためにのみ使用されます。";
 "ai.consent.launch.location" = "処理場所: リクエストは端末から LanRead が設定したクラウド AI サーバーへ送信され、そこで処理されます。";
-"ai.consent.launch.third_party" = "第三者共有: 応答生成のため、データは第三者 AI 提供者に共有される場合があります。";
+"ai.consent.launch.third_party" = "第三者共有: 応答生成のため、選択テキストとプロンプトは以下に明記された AI 提供者にのみ送信されます。";
+"ai.consent.launch.third_party_provider_loading" = "第三者AI提供者: 確認中...";
+"ai.consent.launch.third_party_provider_format" = "第三者AI提供者: %@";
+"ai.consent.launch.third_party_provider_location_format" = "リージョン情報: %@";
+"ai.consent.launch.third_party_provider_unknown" = "第三者AI提供者: 現在確認できません。有効化前にプライバシーポリシーを確認してください。";
 "ai.consent.launch.explicit_permission" = "「AIデータ共有を許可」を選ぶと、AI リクエスト送信前の明示的な許可となります。";
 "ai.consent.launch.dont_show_again" = "今後このメッセージを表示しない";
+"ai.consent.launch.privacy_policy_link" = "プライバシーポリシーを確認";
+"ai.consent.launch.manage_in_settings" = "この許可は後で「設定 > AI データとプライバシー」から変更できます。";
 "ai.consent.launch.allow" = "AIデータ共有を許可";
 "ai.consent.launch.decline" = "今はしない";
+"ai.provider.location.us" = "us: 接続先とデータ保存先はいずれも米国（バージニア）で、モデル推論の計算資源はグローバルに動的スケジューリングされます。";
+"ai.provider.location.intl" = "intl: 接続先とデータ保存先はいずれもシンガポールで、モデル推論の計算資源はグローバルに動的スケジューリングされます（中国本土を除く）。";
 
 // Notion OAuth
 "notion.connect" = "Notion に接続";

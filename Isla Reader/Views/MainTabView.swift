@@ -192,6 +192,10 @@ struct MainTabView: View {
 
 private struct AIPrivacyLaunchConsentSheet: View {
     @State private var dontShowAgain = false
+    @State private var providerDisclosureText: String = LocalizationHelper.localizedString(
+        "ai.consent.launch.third_party_provider_loading",
+        comment: ""
+    )
 
     let onAllow: (Bool) -> Void
     let onDecline: (Bool) -> Void
@@ -211,6 +215,7 @@ private struct AIPrivacyLaunchConsentSheet: View {
                     consentLine(icon: "person.text.rectangle", text: localized("ai.consent.launch.usage"))
                     consentLine(icon: "server.rack", text: localized("ai.consent.launch.location"))
                     consentLine(icon: "link", text: localized("ai.consent.launch.third_party"))
+                    consentLine(icon: "building.2", text: providerDisclosureText)
                     consentLine(icon: "checkmark.seal", text: localized("ai.consent.launch.explicit_permission"))
                 }
 
@@ -220,6 +225,15 @@ private struct AIPrivacyLaunchConsentSheet: View {
                 }
                 .toggleStyle(.switch)
                 .padding(.top, 4)
+
+                Link(destination: privacyPolicyURL) {
+                    Text(localized("ai.consent.launch.privacy_policy_link"))
+                        .font(.subheadline)
+                }
+
+                Text(localized("ai.consent.launch.manage_in_settings"))
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
 
                 Spacer(minLength: 0)
 
@@ -252,6 +266,22 @@ private struct AIPrivacyLaunchConsentSheet: View {
             }
         }
         .interactiveDismissDisabled(true)
+        .task {
+            let descriptor = await AIConfig.currentProviderDescriptor()
+            if descriptor.isUnknown {
+                providerDisclosureText = localized("ai.consent.launch.third_party_provider_unknown")
+                return
+            }
+
+            let format = localized("ai.consent.launch.third_party_provider_format")
+            var disclosureText = String(format: format, descriptor.displayNameWithHost)
+            if let endpointLocation = descriptor.endpointLocation {
+                let locationDescription = localized(endpointLocation.descriptionLocalizationKey)
+                let locationFormat = localized("ai.consent.launch.third_party_provider_location_format")
+                disclosureText += "\n" + String(format: locationFormat, locationDescription)
+            }
+            providerDisclosureText = disclosureText
+        }
     }
 
     private func consentLine(icon: String, text: String) -> some View {
@@ -267,6 +297,10 @@ private struct AIPrivacyLaunchConsentSheet: View {
 
     private func localized(_ key: String) -> String {
         LocalizationHelper.localizedString(key, comment: "")
+    }
+
+    private var privacyPolicyURL: URL {
+        URL(string: "https://isla-reader.top/privacy")!
     }
 }
 

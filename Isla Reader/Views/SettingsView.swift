@@ -10,11 +10,13 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @StateObject private var appSettings = AppSettings.shared
+    @StateObject private var aiConsentManager = AIConsentManager.shared
     @EnvironmentObject private var notionSessionManager: NotionSessionManager
     @State private var showingAbout = false
     @State private var showingDataManagement = false
     @State private var showingNotionAuth = false
     @State private var reminderAlert: DataAlert?
+    @State private var aiProviderDisplayText = NSLocalizedString("settings.ai_privacy.provider_loading", comment: "")
     private let settingsRowIconSpacing: CGFloat = 12
     private let settingsRowIconWidth: CGFloat = 20
     
@@ -117,6 +119,43 @@ struct SettingsView: View {
                         )
                     }
                 }
+
+                Section(NSLocalizedString("settings.ai_privacy.section", comment: "")) {
+                    Button(action: {
+                        Task { @MainActor in
+                            aiConsentManager.presentLaunchConsentManually()
+                        }
+                    }) {
+                        settingsRowLeading(systemImage: "shield.lefthalf.filled") {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(NSLocalizedString("settings.ai_privacy.manage_title", comment: ""))
+                                    .foregroundColor(.primary)
+                                Text(aiPermissionStatusText)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
+                    HStack(spacing: settingsRowIconSpacing) {
+                        Image(systemName: "building.2")
+                            .foregroundColor(.secondary)
+                            .frame(width: settingsRowIconWidth, alignment: .center)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(NSLocalizedString("settings.ai_privacy.provider_label", comment: ""))
+                            Text(aiProviderDisplayText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Link(destination: privacyPolicyURL) {
+                        settingsRowLabel(
+                            NSLocalizedString("app.privacy_policy", comment: ""),
+                            systemImage: "hand.raised"
+                        )
+                    }
+                }
                 
                 // Notifications
                 Section(NSLocalizedString("settings.notifications", comment: "")) {
@@ -210,6 +249,7 @@ struct SettingsView: View {
                 )
             }
             .onAppear {
+                loadAIProviderDisclosure()
                 Task {
                     let hasPermission = await ReadingReminderService.shared.refreshReminderIfNeeded(
                         isEnabled: appSettings.isReadingReminderEnabled,
@@ -365,6 +405,35 @@ struct SettingsView: View {
             Image(systemName: "chevron.right")
                 .foregroundColor(.secondary)
                 .font(.caption)
+        }
+    }
+
+    private var privacyPolicyURL: URL {
+        URL(string: "https://isla-reader.top/privacy")!
+    }
+
+    private var aiPermissionStatusText: String {
+        aiConsentManager.isPermissionGranted()
+        ? NSLocalizedString("settings.ai_privacy.status_allowed", comment: "")
+        : NSLocalizedString("settings.ai_privacy.status_not_allowed", comment: "")
+    }
+
+    private func loadAIProviderDisclosure() {
+        Task {
+            let descriptor = await AIConfig.currentProviderDescriptor()
+            await MainActor.run {
+                if descriptor.isUnknown {
+                    aiProviderDisplayText = NSLocalizedString("settings.ai_privacy.provider_unknown", comment: "")
+                } else {
+                    var disclosureText = descriptor.displayNameWithHost
+                    if let endpointLocation = descriptor.endpointLocation {
+                        let locationDescription = NSLocalizedString(endpointLocation.descriptionLocalizationKey, comment: "")
+                        let locationFormat = NSLocalizedString("settings.ai_privacy.provider_location_format", comment: "")
+                        disclosureText += "\n" + String(format: locationFormat, locationDescription)
+                    }
+                    aiProviderDisplayText = disclosureText
+                }
+            }
         }
     }
 }

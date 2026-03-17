@@ -198,6 +198,8 @@ See full server deployment/security details in [server/README.md](server/README.
 
 - Core reading data is stored locally on device (Core Data + local EPUB files).
 - AI calls and Notion sync require network.
+- Before any AI request is sent, LanRead asks for explicit consent and discloses the current third-party AI provider in-app.
+- AI permission and provider details are always available in `Settings > AI Data & Privacy`.
 - No account is required for local reading features.
 - You control export/import/reset from Settings.
 

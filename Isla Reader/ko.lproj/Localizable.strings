@@ -3,6 +3,14 @@
 "tab.settings" = "설정";
 "reading.settings.title" = "읽기 설정";
 "settings.data_and_sync" = "데이터 및 동기화";
+"settings.ai_privacy.section" = "AI 데이터 및 개인정보";
+"settings.ai_privacy.manage_title" = "AI 데이터 권한";
+"settings.ai_privacy.status_allowed" = "상태: 허용됨";
+"settings.ai_privacy.status_not_allowed" = "상태: 허용 안 함";
+"settings.ai_privacy.provider_label" = "현재 제3자 AI 제공업체";
+"settings.ai_privacy.provider_loading" = "제공업체 정보를 불러오는 중...";
+"settings.ai_privacy.provider_unknown" = "제공업체를 확인할 수 없습니다. 개인정보 처리방침을 확인하세요.";
+"settings.ai_privacy.provider_location_format" = "리전 안내: %@";
 "settings.notifications" = "알림";
 "settings.about" = "정보";
 "settings.support" = "지원";
@@ -347,11 +355,19 @@
 "ai.consent.launch.intro" = "선택한 읽기 콘텐츠를 AI로 보내기 전에 LanRead의 권한 요청이 필요합니다.";
 "ai.consent.launch.usage" = "사용 목적: 선택한 텍스트, 챕터 발췌, 프롬프트는 사용자가 요청한 AI 요약, 번역, 설명에만 사용됩니다.";
 "ai.consent.launch.location" = "처리 위치: 요청은 기기에서 LanRead가 구성한 클라우드 AI 서버로 전송되어 처리됩니다.";
-"ai.consent.launch.third_party" = "제3자 공유: 결과 생성을 위해 데이터가 제3자 AI 제공업체와 공유될 수 있습니다.";
+"ai.consent.launch.third_party" = "제3자 공유: 응답 생성을 위해 선택한 텍스트와 프롬프트는 아래에 표시된 AI 제공업체에만 전송됩니다.";
+"ai.consent.launch.third_party_provider_loading" = "제3자 AI 제공업체: 확인 중...";
+"ai.consent.launch.third_party_provider_format" = "제3자 AI 제공업체: %@";
+"ai.consent.launch.third_party_provider_location_format" = "리전 안내: %@";
+"ai.consent.launch.third_party_provider_unknown" = "제3자 AI 제공업체: 현재 확인할 수 없습니다. 활성화 전 개인정보 처리방침을 확인하세요.";
 "ai.consent.launch.explicit_permission" = "AI 데이터 공유 허용을 선택하면 AI 요청 전 데이터 전송에 명시적으로 동의하게 됩니다.";
 "ai.consent.launch.dont_show_again" = "이 메시지를 다시 표시하지 않기";
+"ai.consent.launch.privacy_policy_link" = "개인정보 처리방침 보기";
+"ai.consent.launch.manage_in_settings" = "이 권한은 나중에 설정 > AI 데이터 및 개인정보에서 변경할 수 있습니다.";
 "ai.consent.launch.allow" = "AI 데이터 공유 허용";
 "ai.consent.launch.decline" = "지금은 하지 않기";
+"ai.provider.location.us" = "us: 접속 엔드포인트와 데이터 저장 위치는 모두 미국(버지니아)이며, 모델 추론 연산 자원은 전 세계에서 동적으로 스케줄링됩니다.";
+"ai.provider.location.intl" = "intl: 접속 엔드포인트와 데이터 저장 위치는 모두 싱가포르이며, 모델 추론 연산 자원은 전 세계에서 동적으로 스케줄링됩니다(중국 본토 제외).";
 
 // Notion OAuth
 "notion.connect" = "Notion 연결";

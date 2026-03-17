@@ -11,6 +11,116 @@ struct AIConfiguration {
     let model: String
 }
 
+struct AIEndpointLocationDescriptor {
+    let code: String
+    let descriptionLocalizationKey: String
+}
+
+private struct AIEndpointLocationRule {
+    let code: String
+    let descriptionLocalizationKey: String
+    let hostPatterns: [String]
+
+    func matches(host: String) -> Bool {
+        hostPatterns.contains { pattern in
+            host == pattern || host.hasSuffix(".\(pattern)")
+        }
+    }
+}
+
+private enum AIEndpointLocationRegistry {
+    // Extend this list when adding new endpoint regions.
+    static let rules: [AIEndpointLocationRule] = [
+        AIEndpointLocationRule(
+            code: "us",
+            descriptionLocalizationKey: "ai.provider.location.us",
+            hostPatterns: ["dashscope-us.aliyuncs.com"]
+        ),
+        AIEndpointLocationRule(
+            code: "intl",
+            descriptionLocalizationKey: "ai.provider.location.intl",
+            hostPatterns: ["dashscope-intl.aliyuncs.com"]
+        )
+    ]
+
+    static func resolve(host: String) -> AIEndpointLocationDescriptor? {
+        guard let matched = rules.first(where: { $0.matches(host: host) }) else {
+            return nil
+        }
+        return AIEndpointLocationDescriptor(
+            code: matched.code,
+            descriptionLocalizationKey: matched.descriptionLocalizationKey
+        )
+    }
+}
+
+struct AIProviderDescriptor {
+    let providerName: String
+    let host: String
+    let endpointLocation: AIEndpointLocationDescriptor?
+
+    var displayNameWithHost: String {
+        "\(providerName) (\(host))"
+    }
+
+    var isUnknown: Bool {
+        providerName == AIProviderDescriptor.unknown.providerName &&
+        host == AIProviderDescriptor.unknown.host
+    }
+
+    static var unknown: AIProviderDescriptor {
+        AIProviderDescriptor(providerName: "Unknown Provider", host: "Unknown Host", endpointLocation: nil)
+    }
+
+    static func from(endpoint: String) -> AIProviderDescriptor? {
+        guard let url = URL(string: endpoint), let host = url.host else {
+            return nil
+        }
+
+        let normalizedHost = host.lowercased()
+        let providerName = inferProviderName(from: normalizedHost)
+        let endpointLocation = AIEndpointLocationRegistry.resolve(host: normalizedHost)
+        return AIProviderDescriptor(providerName: providerName, host: host, endpointLocation: endpointLocation)
+    }
+
+    private static func inferProviderName(from host: String) -> String {
+        if host.contains("azure") && host.contains("openai") {
+            return "Microsoft Azure OpenAI"
+        }
+        if host.contains("openai") {
+            return "OpenAI"
+        }
+        if host.contains("anthropic") {
+            return "Anthropic"
+        }
+        if host.contains("googleapis") || host.contains("gemini") || host.contains("generativelanguage") {
+            return "Google AI"
+        }
+        if host.contains("x.ai") || host.contains("xai") {
+            return "xAI"
+        }
+        if host.contains("deepseek") {
+            return "DeepSeek"
+        }
+        if host.contains("moonshot") || host.contains("kimi") {
+            return "Moonshot AI"
+        }
+        if host.contains("zhipu") {
+            return "Zhipu AI"
+        }
+        if host.contains("qianfan") || host.contains("wenxin") || host.contains("baidu") {
+            return "Baidu AI"
+        }
+        if host.contains("dashscope") || host.contains("aliyun") || host.contains("tongyi") {
+            return "Alibaba Cloud (DashScope)"
+        }
+        if host.contains("volcengine") || host.contains("doubao") {
+            return "Volcengine (Doubao)"
+        }
+        return "Custom AI Provider"
+    }
+}
+
 enum AIConfigError: LocalizedError {
     case missing(keys: [String])
     case serverConfig(String)
@@ -86,6 +196,29 @@ enum AIConfig {
 
         return AIConfiguration(endpoint: endpoint, apiKey: apiKey, model: model)
     }
+
+    static func endpointForDisclosure() async -> String? {
+        do {
+            let serverConfig = try await SecureAPIKeyService.shared.fetchAIConfiguration()
+            let endpoint = serverConfig.endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !endpoint.isEmpty {
+                return endpoint
+            }
+        } catch {
+            DebugLogger.info("AIConfig: provider disclosure fallback to local endpoint. reason=\(error.localizedDescription)")
+        }
+
+        let localEndpoint = trimmedValue(for: "AIAPIEndpoint")
+        return localEndpoint.isEmpty ? nil : localEndpoint
+    }
+
+    static func currentProviderDescriptor() async -> AIProviderDescriptor {
+        guard let endpoint = await endpointForDisclosure(),
+              let descriptor = AIProviderDescriptor.from(endpoint: endpoint) else {
+            return .unknown
+        }
+        return descriptor
+    }
     
     private static func maskedKey(_ key: String) -> String {
         guard key.count > 8 else { return String(repeating: "*", count: key.count) }
@@ -121,8 +254,10 @@ final class AIConsentManager: ObservableObject {
     private enum Keys {
         static let permissionGranted = "aiPrivacyPermissionGranted"
         static let suppressLaunchPrompt = "aiPrivacySuppressLaunchPrompt"
+        static let consentVersion = "aiPrivacyConsentVersion"
     }
 
+    private let requiredConsentVersion = 2
     private let defaults: UserDefaults
 
     private init(defaults: UserDefaults = .standard) {
@@ -131,6 +266,11 @@ final class AIConsentManager: ObservableObject {
 
     @MainActor
     func presentLaunchConsentIfNeeded() {
+        if needsConsentRefresh() {
+            defaults.set(false, forKey: Keys.permissionGranted)
+            defaults.set(false, forKey: Keys.suppressLaunchPrompt)
+        }
+
         guard !defaults.bool(forKey: Keys.suppressLaunchPrompt) else {
             isLaunchConsentPresented = false
             return
@@ -139,16 +279,30 @@ final class AIConsentManager: ObservableObject {
     }
 
     @MainActor
+    func presentLaunchConsentManually() {
+        isLaunchConsentPresented = true
+    }
+
+    @MainActor
     func recordConsentDecision(granted: Bool, suppressFutureLaunchPrompt: Bool) {
         defaults.set(granted, forKey: Keys.permissionGranted)
         defaults.set(suppressFutureLaunchPrompt, forKey: Keys.suppressLaunchPrompt)
+        defaults.set(requiredConsentVersion, forKey: Keys.consentVersion)
         isLaunchConsentPresented = false
         DebugLogger.info(
             "AIConsentManager: updated consent. granted=\(granted), suppressFutureLaunchPrompt=\(suppressFutureLaunchPrompt)"
         )
     }
 
+    func isPermissionGranted() -> Bool {
+        hasExplicitPermission()
+    }
+
     func hasExplicitPermission() -> Bool {
-        defaults.bool(forKey: Keys.permissionGranted)
+        defaults.bool(forKey: Keys.permissionGranted) && !needsConsentRefresh()
+    }
+
+    private func needsConsentRefresh() -> Bool {
+        defaults.integer(forKey: Keys.consentVersion) < requiredConsentVersion
     }
 }

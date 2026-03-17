@@ -128,6 +128,26 @@ else
     warn "Cannot verify terms/privacy hosting artifacts in repo"
 fi
 
+section "2.1) AI privacy disclosure (5.1.1(i), 5.1.2(i))"
+
+if has_pattern "ai\\.consent\\.launch\\.third_party_provider_format|ai\\.consent\\.launch\\.privacy_policy_link" "Isla Reader/en.lproj/Localizable.strings"; then
+    pass "AI consent copy includes provider disclosure + privacy policy entry"
+else
+    fail "AI consent copy is missing provider disclosure/privacy policy localization keys"
+fi
+
+if has_pattern "settings\\.ai_privacy\\.section|settings\\.ai_privacy\\.manage_title" "Isla Reader/en.lproj/Localizable.strings" "Isla Reader/Views/SettingsView.swift"; then
+    pass "Settings includes AI privacy management entry"
+else
+    fail "Missing AI privacy management entry in Settings"
+fi
+
+if has_pattern "requiredConsentVersion|aiPrivacyConsentVersion|presentLaunchConsentIfNeeded" "Isla Reader/Utils/AIConfig.swift"; then
+    pass "Consent versioning marker detected"
+else
+    warn "No consent versioning marker detected; re-consent after policy copy changes may be skipped"
+fi
+
 section "3) Privacy label + ATT consistency"
 
 has_admob=false

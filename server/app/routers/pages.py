@@ -1,7 +1,10 @@
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+
+from ..config import get_settings
 
 router = APIRouter(tags=["public"])
 
@@ -13,6 +16,50 @@ _IPHONE_SCREENSHOT_DIR = _SERVER_STATIC_DIR / "screenshot" / "iPhone"
 _ALLOWED_LANDING_CONTENT_IMAGE_EXTS = {".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}
 _ALLOWED_IPHONE_SCREENSHOT_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".avif"}
 _ALLOWED_LANDING_COPY_LANGS = {"en", "zh", "ja", "ko"}
+
+
+def _infer_ai_provider_name(host: str) -> str:
+    normalized = host.lower()
+    if "azure" in normalized and "openai" in normalized:
+        return "Microsoft Azure OpenAI"
+    if "openai" in normalized:
+        return "OpenAI"
+    if "anthropic" in normalized:
+        return "Anthropic"
+    if "googleapis" in normalized or "gemini" in normalized or "generativelanguage" in normalized:
+        return "Google AI"
+    if "x.ai" in normalized or "xai" in normalized:
+        return "xAI"
+    if "deepseek" in normalized:
+        return "DeepSeek"
+    if "moonshot" in normalized or "kimi" in normalized:
+        return "Moonshot AI"
+    if "zhipu" in normalized:
+        return "Zhipu AI"
+    if "qianfan" in normalized or "wenxin" in normalized or "baidu" in normalized:
+        return "Baidu AI"
+    if "dashscope" in normalized or "aliyun" in normalized or "tongyi" in normalized:
+        return "Alibaba Cloud (DashScope)"
+    if "volcengine" in normalized or "doubao" in normalized:
+        return "Volcengine (Doubao)"
+    return "Custom AI Provider"
+
+
+def _current_ai_provider_context() -> tuple[str, str]:
+    try:
+        endpoint = get_settings().api_endpoint.strip()
+    except Exception:
+        return "Configured AI Provider", "configured endpoint"
+
+    if not endpoint:
+        return "Configured AI Provider", "configured endpoint"
+
+    host = urlparse(endpoint).hostname
+    if not host:
+        return "Configured AI Provider", "configured endpoint"
+
+    return _infer_ai_provider_name(host), host
+
 
 def _read_landing_html() -> str:
     return (_LANDING_DIR / "index.html").read_text(encoding="utf-8")
@@ -192,7 +239,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
       <div class="paper-label" id="privacy-label">Privacy</div>
       <h1 id="privacy-title">Privacy &amp; Data Use</h1>
       <p class="lead" id="privacy-lead">We collect only the minimum data needed to provide reading and AI features. Books and reading content stay on your device by default, and required network traffic is encrypted. This policy applies to the Lan Read iOS app and its companion backend (isla-reader.top).</p>
-      <div class="meta-line"><span class="dot"></span><span id="privacy-updated">Updated: 2026-02-05</span></div>
+      <div class="meta-line"><span class="dot"></span><span id="privacy-updated">Updated: 2026-03-17</span></div>
 
       <div class="privacy-stack" style="margin-top: 18px;">
         <div class="privacy-card">
@@ -320,7 +367,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           label: 'Privacy',
           title: 'Privacy & Data Use',
           lead: 'We collect only the minimum data needed to provide reading and AI features. Books and reading content stay on your device by default, and required network traffic is encrypted. This policy applies to the Lan Read iOS app and its companion backend (isla-reader.top).',
-          updated: 'Updated: 2026-02-05'
+          updated: 'Updated: 2026-03-17'
         },
         sections: {
           principles: {
@@ -344,11 +391,12 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI Feature Uploads',
             items: [
-              'When you use translation, explanation, AI summary, or skimming, we send the relevant text over HTTPS to the model configured by the app to generate results.',
-              'Uploaded content is limited to the book passages you request to process plus necessary prompt context; it excludes account identifiers and ad identifiers.',
-              'API keys can be issued by the secure server (isla-reader.top/v1/keys/ai); this server does not store your book content and only signs and forwards credentials.',
-              'We do not persist uploaded text on the server; generated summaries/key points remain on your device.',
-              'Third-party model providers may handle data under their own privacy policies.'
+              'Before any AI upload, the app shows an explicit consent screen and no data is sent until you tap Allow. You can revoke or change this in Settings > AI Data & Privacy.',
+              'Current third-party AI recipient: __AI_PROVIDER_NAME__ (__AI_PROVIDER_HOST__). The same recipient identity is shown in-app before sharing.',
+              'Data sent for AI: selected text/chapter excerpts, your prompt, and minimal request metadata needed to return results (for example language/model/request ID). We do not send your contacts, photos, or unrelated device files.',
+              'Purpose of processing: generate the summary, translation, explanation, or skimming output you requested.',
+              'API keys can be issued by the secure server (isla-reader.top/v1/keys/ai); this server does not store your book content and only signs and forwards credentials. Uploaded text is not persisted on our server; generated summaries/key points remain on your device unless you export them.',
+              'We require third-party AI processors to provide confidentiality and security protections that are the same as or stronger than this policy, and we review their privacy commitments before use.'
             ]
           },
           notion: {
@@ -396,7 +444,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           label: '隐私 · Privacy',
           title: '隐私与数据使用',
           lead: '我们仅收集提供阅读与 AI 功能所需的最少数据。默认情况下书籍与阅读内容保留在你的设备上，必要的网络传输会加密。本政策适用于 Lan Read iOS 应用及其配套后端（isla-reader.top）。',
-          updated: '更新日期：2026-02-05'
+          updated: '更新日期：2026-03-17'
         },
         sections: {
           principles: {
@@ -420,11 +468,12 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI 功能上传',
             items: [
-              '当你使用翻译、解释、AI 摘要或略读功能时，我们会通过 HTTPS 将相关文本发送到应用配置的大模型生成结果。',
-              '上传内容仅限你请求处理的书籍片段及必要的提示上下文；不包含账号标识或广告标识。',
-              'API 密钥可由安全服务器（isla-reader.top/v1/keys/ai）签发；该服务器不存储你的书籍内容，只负责签名与转发凭证。',
-              '我们不会在服务器持久化上传文本；生成的摘要/要点保留在你的设备上。',
-              '第三方模型提供方可能在其隐私政策下处理数据，请在使用前查阅。'
+              '在任何 AI 数据上传前，应用会先展示明确同意弹窗；只有你点击同意后才会发送。你可在“设置 > AI 数据与隐私”随时修改或撤销。',
+              '当前第三方 AI 接收方：__AI_PROVIDER_NAME__（__AI_PROVIDER_HOST__）。该接收方身份也会在应用内传输前展示。',
+              'AI 传输数据包括：你选中的文本/章节片段、你的提示词，以及返回结果所需的最小请求元数据（如语言/模型/请求 ID）。我们不会上传通讯录、相册或无关设备文件。',
+              '处理目的仅限于生成你主动发起的摘要、翻译、解释和略读结果。',
+              'API 密钥可由安全服务器（isla-reader.top/v1/keys/ai）签发；该服务器不存储你的书籍内容，只负责签名与转发凭证。我们不会在服务器持久化上传文本；除非你主动导出，生成结果默认保留在设备本地。',
+              '我们要求第三方 AI 处理方提供不低于本政策的保密与安全保护，并在接入前审查其隐私承诺。'
             ]
           },
           notion: {
@@ -472,7 +521,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           label: 'プライバシー · Privacy',
           title: 'プライバシーとデータ利用',
           lead: '本アプリは読書とAI機能に必要な最小限のデータのみを収集します。書籍と読書内容は原則として端末内に保存され、必要な通信は暗号化されます。本ポリシーは Lan Read iOS アプリとそのバックエンド（isla-reader.top）に適用されます。',
-          updated: '更新日：2026-02-05'
+          updated: '更新日：2026-03-17'
         },
         sections: {
           principles: {
@@ -496,11 +545,12 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI 機能の送信',
             items: [
-              '翻訳／解説／AI要約／スキミングを使う際、関連テキストを HTTPS でアプリ側が設定した大規模モデルへ送信します。',
-              '送信内容は必要な書籍の抜粋とプロンプト文脈のみで、アカウントIDや広告IDは含みません。',
-              'API キーは安全なサーバー（isla-reader.top/v1/keys/ai）から発行可能で、書籍内容は保存せず署名と転送のみを行います。',
-              'サーバーに送信テキストを永続保存しません。生成結果は端末に保存されます。',
-              '外部のモデル提供者は各社のプライバシーポリシーに従ってデータを扱う場合があります。'
+              'AI 送信の前に、アプリで明示的な同意画面を表示し、許可を押すまでデータは送信されません。設定 > AI データとプライバシーから後で変更・撤回できます。',
+              '現在の第三者 AI 送信先：__AI_PROVIDER_NAME__（__AI_PROVIDER_HOST__）。この送信先情報は送信前にアプリ内にも表示されます。',
+              'AI に送信されるデータ：選択した本文/章抜粋、入力プロンプト、結果返却に必要な最小メタデータ（例：言語/モデル/request ID）。連絡先・写真・無関係ファイルは送信しません。',
+              '利用目的は、あなたが要求した要約・翻訳・解説・スキミング結果の生成に限定されます。',
+              'API キーは安全サーバー（isla-reader.top/v1/keys/ai）経由で発行可能で、サーバーは書籍本文を保存せず署名と転送のみを行います。送信本文はサーバーに永続保存しません。生成結果はエクスポートしない限り端末に保持されます。',
+              '第三者 AI 事業者には本ポリシーと同等以上の機密性・安全性保護を契約で求め、利用前にプライバシー方針を確認します。'
             ]
           },
           notion: {
@@ -548,7 +598,7 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           label: '개인정보 · Privacy',
           title: '개인정보 및 데이터 사용',
           lead: '독서 및 AI 기능에 필요한 최소한의 데이터만 수집합니다. 기본적으로 책과 독서 내용은 기기 내에 보관되며 필요한 네트워크 통신은 암호화됩니다. 이 정책은 Lan Read iOS 앱과 동반 백엔드(isla-reader.top)에 적용됩니다.',
-          updated: '업데이트: 2026-02-05'
+          updated: '업데이트: 2026-03-17'
         },
         sections: {
           principles: {
@@ -572,11 +622,12 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
           ai: {
             title: 'AI 기능 업로드',
             items: [
-              '번역/설명/AI 요약/스키밍을 사용할 때 관련 텍스트를 HTTPS로 앱에서 설정한 대규모 모델에 전송합니다.',
-              '전송 내용은 요청한 책 구간과 필요한 프롬프트 컨텍스트만 포함하며, 계정/광고 식별자는 제외됩니다.',
-              'API 키는 보안 서버(isla-reader.top/v1/keys/ai)에서 발급될 수 있으며, 서버는 책 내용을 저장하지 않고 서명과 전달만 수행합니다.',
-              '업로드된 텍스트를 서버에 영구 저장하지 않으며, 생성 결과는 기기에 보관됩니다.',
-              '제3자 모델 제공자가 자체 개인정보처리방침에 따라 데이터를 처리할 수 있습니다.'
+              'AI 전송 전에는 앱에서 명시적 동의 화면을 먼저 보여주며, 허용을 누르기 전까지 데이터는 전송되지 않습니다. 설정 > AI 데이터 및 개인정보에서 언제든 변경/철회할 수 있습니다.',
+              '현재 제3자 AI 수신자: __AI_PROVIDER_NAME__ (__AI_PROVIDER_HOST__). 이 수신자 정보는 전송 전에 앱에서도 동일하게 표시됩니다.',
+              'AI 전송 데이터: 선택한 텍스트/장 발췌, 사용자 프롬프트, 결과 반환에 필요한 최소 메타데이터(예: 언어/모델/request ID). 연락처, 사진, 무관한 기기 파일은 전송하지 않습니다.',
+              '처리 목적은 사용자가 요청한 요약/번역/설명/스키밍 결과 생성으로 제한됩니다.',
+              'API 키는 보안 서버(isla-reader.top/v1/keys/ai)에서 발급될 수 있으며, 서버는 책 내용을 저장하지 않고 서명과 전달만 수행합니다. 업로드 본문은 서버에 영구 저장하지 않으며, 생성 결과는 사용자가 내보내기 전까지 기기에 보관됩니다.',
+              '제3자 AI 처리자에게는 본 정책과 동일하거나 그 이상의 기밀성/보안 보호를 계약으로 요구하고, 사용 전 개인정보 약속을 검토합니다.'
             ]
           },
           notion: {
@@ -670,6 +721,15 @@ PRIVACY_POLICY_HTML = """<!DOCTYPE html>
 </body>
 </html>
 """
+
+
+def _render_privacy_policy_html() -> str:
+    provider_name, provider_host = _current_ai_provider_context()
+    return (
+        PRIVACY_POLICY_HTML
+        .replace("__AI_PROVIDER_NAME__", provider_name)
+        .replace("__AI_PROVIDER_HOST__", provider_host)
+    )
 
 
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
@@ -779,4 +839,4 @@ async def landing_terms_of_use():
 
 @router.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
 async def privacy_policy() -> HTMLResponse:
-    return HTMLResponse(PRIVACY_POLICY_HTML, headers={"Cache-Control": "public, max-age=3600"})
+    return HTMLResponse(_render_privacy_policy_html(), headers={"Cache-Control": "public, max-age=3600"})
