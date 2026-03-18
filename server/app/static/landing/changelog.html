@@ -9,56 +9,84 @@
   <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f3f1eb;
-      --panel: #fffdf8;
-      --paper-edge: #e8e1d5;
-      --line: rgba(20,20,20,0.12);
-      --text: #14110f;
-      --muted: #5a5d61;
-      --accent: #14110f;
+      --bg: #f8f3e9;
+      --panel: rgba(255, 251, 245, 0.9);
+      --paper-edge: #e4d7c4;
+      --line: rgba(46,36,23,0.1);
+      --text: #16110c;
+      --muted: #645b52;
+      --accent: #16110c;
       --radius: 18px;
-      --grid: 120px;
-      --paper-shadow: 0 20px 60px rgba(0,0,0,0.08);
+      --paper-shadow: 0 26px 80px rgba(79,60,34,0.12);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       color: var(--text);
       background:
-        radial-gradient(circle at 18% 16%, rgba(0,0,0,0.025), transparent 32%),
-        radial-gradient(circle at 78% 8%, rgba(0,0,0,0.018), transparent 30%),
-        var(--bg);
+        radial-gradient(circle at 50% -4%, rgba(255,255,255,0.92), rgba(255,255,255,0) 36%),
+        radial-gradient(circle at 14% 22%, rgba(188,166,136,0.24), rgba(188,166,136,0) 34%),
+        radial-gradient(circle at 86% 10%, rgba(159,138,113,0.14), rgba(159,138,113,0) 30%),
+        radial-gradient(circle at 50% 112%, rgba(255,255,255,0.66), rgba(255,255,255,0) 38%),
+        linear-gradient(180deg, #fcf9f2 0%, #f7f1e7 52%, #f0e7d9 100%);
       font-family: "Epilogue", "DM Mono", system-ui, -apple-system, sans-serif;
       min-height: 100vh;
       overflow-x: hidden;
     }
     .grain {
       position: fixed;
-      inset: 0;
+      inset: -2%;
       pointer-events: none;
-      opacity: 0.12;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+      opacity: 0.11;
+      background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0.04'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='320' height='320' filter='url(%23n)' opacity='0.95'/%3E%3C/svg%3E"),
+        linear-gradient(180deg, rgba(255,255,255,0.3), rgba(255,255,255,0) 34%, rgba(112,86,56,0.025) 100%);
+      background-size: 300px 300px, 100% 100%;
       mix-blend-mode: multiply;
+      filter: contrast(103%) brightness(103%);
       z-index: 5;
     }
     .grid {
       position: fixed;
-      inset: 0;
+      inset: -12% -10%;
       pointer-events: none;
       z-index: 1;
-      background-image:
-        linear-gradient(var(--line) 1px, transparent 1px),
-        linear-gradient(90deg, var(--line) 1px, transparent 1px);
-      background-size: var(--grid) var(--grid);
-      mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 42%, rgba(0,0,0,0) 70%);
+      background:
+        radial-gradient(ellipse at 8% 42%, rgba(112,88,58,0.08) 0%, rgba(112,88,58,0) 50%),
+        radial-gradient(ellipse at 91% 14%, rgba(128,105,76,0.07) 0%, rgba(128,105,76,0) 46%),
+        radial-gradient(ellipse at 50% 115%, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0) 52%);
+      filter: blur(14px);
+      opacity: 0.78;
+    }
+    .grid::before,
+    .grid::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(126,102,72,0.11) 0%, rgba(126,102,72,0.035) 30%, rgba(126,102,72,0) 74%);
+      filter: blur(34px);
+    }
+    .grid::before {
+      left: -8%;
+      top: 18%;
+      width: min(42vw, 560px);
+      aspect-ratio: 1.9 / 1;
+    }
+    .grid::after {
+      right: -8%;
+      top: -2%;
+      width: min(40vw, 520px);
+      aspect-ratio: 1.95 / 1;
+      opacity: 0.62;
     }
     header {
       position: sticky;
       top: 0;
       z-index: 10;
-      backdrop-filter: blur(14px);
-      background: rgba(255,253,248,0.90);
+      backdrop-filter: blur(18px);
+      background: rgba(251,247,239,0.72);
       border-bottom: 1px solid var(--line);
+      box-shadow: 0 10px 26px rgba(88,66,38,0.06);
     }
     nav {
       max-width: 1180px;
@@ -265,7 +293,7 @@
       border-top: 1px solid var(--line);
       padding: 30px 28px 60px;
       color: var(--muted);
-      background: rgba(247,248,250,0.8);
+      background: rgba(251,247,239,0.66);
       position: relative;
       z-index: 2;
     }
@@ -276,8 +304,8 @@
   </style>
 </head>
 <body>
-  <div class="grid"></div>
-  <div class="grain"></div>
+  <div class="grid" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
 
   <header>
     <nav>

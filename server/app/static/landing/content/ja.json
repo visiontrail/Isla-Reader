@@ -55,6 +55,58 @@
       { "title": "共有", "body": "議論したい内容をカード化して他者と共有。" }
     ]
   },
+  "download": {
+    "title": "ダウンロード",
+    "kicker": "APP DOWNLOAD",
+    "heading": "読み始めるデバイスを選ぶ",
+    "lead": "デバイスを選び、読書画面の雰囲気を見てから、準備ができたら App Store へ進めます。",
+    "points": [
+      "iPhone と iPad は同じユニバーサルアプリで、ローカル優先ライブラリをそのまま共有します。",
+      "登録なしですぐ読み始められ、書籍・ハイライト・読書履歴は既定で端末内に残ります。",
+      "App Store リンクはサーバー側の更新ポリシー設定から読み込むため、公開先が変わってもトップページを再編集する必要がありません。"
+    ],
+    "cta": {
+      "primaryEyebrow": "利用可能",
+      "primaryTitle": "iPhone / iPad 版をダウンロード",
+      "primaryMeta": "App Store のユニバーサル購入。",
+      "primaryUnavailable": "サーバーでストアリンクが設定されると、ここにダウンロード導線が表示されます。",
+      "secondaryEyebrow": "次の計画",
+      "secondaryTitle": "Mac 版",
+      "secondaryMeta": "まずは iPhone と iPad の読書体験を磨き込む方針です。"
+    },
+    "platforms": [
+      {
+        "id": "iphone",
+        "label": "iPhone",
+        "eyebrow": "軽快な読書",
+        "title": "本をすばやく開き、先に全体をつかんで、そのまま読み進める。",
+        "body": "",
+        "screenTag": "iPhone 画面",
+        "screenTitle": "先に把握して、すぐ印を付ける",
+        "screenBody": "片手でも章の流れと重要点を追いやすい設計です。"
+      },
+      {
+        "id": "ipad",
+        "label": "iPad",
+        "eyebrow": "没入して読む",
+        "title": "より広い画面で、構造も文脈も落ち着いて追える。",
+        "body": "",
+        "screenTag": "iPad 画面",
+        "screenTitle": "本の構造を一度に広く見る",
+        "screenBody": "より穏やかで長く続けやすい読書リズムです。"
+      },
+      {
+        "id": "mac",
+        "label": "Mac",
+        "eyebrow": "計画中",
+        "title": "Mac はロードマップにあります。",
+        "body": "",
+        "screenTag": "Mac 計画",
+        "screenTitle": "大きな画面での読書は今後の展開",
+        "screenBody": "先にモバイル基盤を固め、その後にデスクトップへ進みます。"
+      }
+    ]
+  },
   "privacy": {
     "title": "プライバシー",
     "lines": [

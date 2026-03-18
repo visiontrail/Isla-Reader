@@ -55,6 +55,58 @@
       { "title": "공유", "body": "논의할 가치가 있는 내용을 카드로 정리해 다른 사람과 공유합니다." }
     ]
   },
+  "download": {
+    "title": "다운로드",
+    "kicker": "APP DOWNLOAD",
+    "heading": "읽기를 시작할 기기를 선택하세요",
+    "lead": "기기를 고르고 읽기 화면의 분위기를 확인한 뒤, 준비되면 바로 App Store로 이동할 수 있습니다.",
+    "points": [
+      "iPhone과 iPad는 하나의 유니버설 앱으로 제공되며, 같은 로컬 우선 라이브러리를 이어서 사용합니다.",
+      "가입 없이 바로 읽기를 시작할 수 있고, 책·하이라이트·읽기 기록은 기본적으로 기기에 남습니다.",
+      "App Store 링크는 서버의 업데이트 정책 설정에서 읽어오므로, 배포 주소가 바뀌어도 홈 화면을 다시 수정할 필요가 없습니다."
+    ],
+    "cta": {
+      "primaryEyebrow": "지금 이용 가능",
+      "primaryTitle": "iPhone / iPad용 다운로드",
+      "primaryMeta": "App Store 유니버설 구매.",
+      "primaryUnavailable": "서버에 스토어 링크가 설정되면 이 위치에 다운로드 버튼이 나타납니다.",
+      "secondaryEyebrow": "다음 단계",
+      "secondaryTitle": "Mac 버전",
+      "secondaryMeta": "우선은 iPhone과 iPad 읽기 경험을 더 완성도 있게 다듬는 데 집중합니다."
+    },
+    "platforms": [
+      {
+        "id": "iphone",
+        "label": "iPhone",
+        "eyebrow": "가벼운 읽기",
+        "title": "책을 빠르게 열고, 먼저 큰 흐름을 보고, 그대로 이어서 읽습니다.",
+        "body": "",
+        "screenTag": "iPhone 화면",
+        "screenTitle": "먼저 훑고, 바로 표시하고, 문맥 유지",
+        "screenBody": "한 손으로도 챕터 흐름과 핵심 포인트를 따라가기 쉽게 설계했습니다."
+      },
+      {
+        "id": "ipad",
+        "label": "iPad",
+        "eyebrow": "몰입 독서",
+        "title": "더 넓은 화면에서 구조와 문맥을 차분하게 따라갑니다.",
+        "body": "",
+        "screenTag": "iPad 화면",
+        "screenTitle": "책의 구조를 한 번에 더 넓게 보기",
+        "screenBody": "더 안정적이고 길게 이어가기 좋은 읽기 리듬입니다."
+      },
+      {
+        "id": "mac",
+        "label": "Mac",
+        "eyebrow": "로드맵",
+        "title": "Mac은 계획에 있습니다.",
+        "body": "",
+        "screenTag": "Mac 계획",
+        "screenTitle": "큰 화면 읽기는 이후 단계에 포함됩니다",
+        "screenBody": "먼저 모바일 기반을 단단히 만들고, 그다음 데스크톱으로 이어갑니다."
+      }
+    ]
+  },
   "privacy": {
     "title": "개인정보",
     "lines": [

@@ -13,6 +13,10 @@ _LANDING_DIR = _STATIC_DIR / "landing"
 _LANDING_CONTENT_DIR = _LANDING_DIR / "content"
 _SERVER_STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
 _IPHONE_SCREENSHOT_DIR = _SERVER_STATIC_DIR / "screenshot" / "iPhone"
+_DOWNLOAD_BADGE_FILES = {
+    "download-app-store.svg": "download app store.svg",
+    "download-mac-app-store.svg": "download mac app store.svg",
+}
 _ALLOWED_LANDING_CONTENT_IMAGE_EXTS = {".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}
 _ALLOWED_IPHONE_SCREENSHOT_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".avif"}
 _ALLOWED_LANDING_COPY_LANGS = {"en", "zh", "ja", "ko"}
@@ -763,6 +767,23 @@ async def marketing_content_asset(filename: str):
 
     base = _LANDING_CONTENT_DIR.resolve()
     path = (_LANDING_CONTENT_DIR / filename).resolve()
+    if base not in path.parents:
+        raise HTTPException(status_code=404, detail="asset not found")
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="asset not found")
+
+    return FileResponse(path, headers={"Cache-Control": "public, max-age=900"})
+
+
+@router.get("/badges/{filename}", include_in_schema=False)
+async def marketing_badge_asset(filename: str):
+    """Serve curated download badge assets used by the landing page."""
+    mapped_name = _DOWNLOAD_BADGE_FILES.get(filename)
+    if not mapped_name:
+        raise HTTPException(status_code=404, detail="asset not found")
+
+    path = (_SERVER_STATIC_DIR / mapped_name).resolve()
+    base = _SERVER_STATIC_DIR.resolve()
     if base not in path.parents:
         raise HTTPException(status_code=404, detail="asset not found")
     if not path.exists() or not path.is_file():

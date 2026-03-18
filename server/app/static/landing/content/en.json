@@ -55,6 +55,58 @@
       { "title": "Share", "body": "Turn discussion-worthy passages into cards and share with others." }
     ]
   },
+  "download": {
+    "title": "Download",
+    "kicker": "App Download",
+    "heading": "Choose the device you want to start reading on",
+    "lead": "Choose a device, preview the reading surface, and head to the App Store when you're ready.",
+    "points": [
+      "One universal app for iPhone and iPad, with the same local-first reading library.",
+      "Start without sign-up and keep books, highlights, and reading history on-device by default.",
+      "This section reads the App Store link from the server update policy, so the download target stays current."
+    ],
+    "cta": {
+      "primaryEyebrow": "Available now",
+      "primaryTitle": "Download for iPhone & iPad",
+      "primaryMeta": "Universal purchase on the App Store.",
+      "primaryUnavailable": "App Store link will appear here after it is configured on the server.",
+      "secondaryEyebrow": "Planned next",
+      "secondaryTitle": "Mac version",
+      "secondaryMeta": "The current focus is a polished iPhone and iPad reading experience first."
+    },
+    "platforms": [
+      {
+        "id": "iphone",
+        "label": "iPhone",
+        "eyebrow": "Pocket reading",
+        "title": "Open a book fast, get the overview, keep moving.",
+        "body": "",
+        "screenTag": "iPhone surface",
+        "screenTitle": "Skim, highlight, keep context",
+        "screenBody": "Fast chapter mapping and one-hand reading flow."
+      },
+      {
+        "id": "ipad",
+        "label": "iPad",
+        "eyebrow": "Long-form focus",
+        "title": "Spread out on a larger canvas for deeper reading.",
+        "body": "",
+        "screenTag": "iPad surface",
+        "screenTitle": "See more of the book at once",
+        "screenBody": "Comfortable long sessions with a calmer visual rhythm."
+      },
+      {
+        "id": "mac",
+        "label": "Mac",
+        "eyebrow": "Roadmap",
+        "title": "Mac is planned.",
+        "body": "",
+        "screenTag": "Mac planning",
+        "screenTitle": "Bigger-screen reading is on the roadmap",
+        "screenBody": "Desktop comes after the mobile reading foundation is solid."
+      }
+    ]
+  },
   "privacy": {
     "title": "Privacy",
     "lines": [

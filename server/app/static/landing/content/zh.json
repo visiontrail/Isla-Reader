@@ -55,6 +55,58 @@
       { "title": "分享", "body": "把值得讨论的内容整理成卡片，与他人共享。" }
     ]
   },
+  "download": {
+    "title": "下载",
+    "kicker": "APP 下载",
+    "heading": "选择你想开始阅读的设备",
+    "lead": "先选设备，看看哪种阅读界面更适合你，准备好时直接前往 App Store。",
+    "points": [
+      "iPhone 与 iPad 共用同一个应用，延续同样的本地优先书库体验。",
+      "无需注册即可开始阅读，书籍、高亮与阅读记录默认保留在本机。",
+      "这里的 App Store 链接会读取服务端更新策略配置，后续上架地址变更时无需重改首页。"
+    ],
+    "cta": {
+      "primaryEyebrow": "现已可用",
+      "primaryTitle": "下载 iPhone / iPad 版",
+      "primaryMeta": "通过 App Store 通用购买。",
+      "primaryUnavailable": "服务端配置商店链接后，这里会自动显示可下载入口。",
+      "secondaryEyebrow": "下一步",
+      "secondaryTitle": "Mac 版本",
+      "secondaryMeta": "当前阶段会先把 iPhone 与 iPad 的阅读体验打磨完整。"
+    },
+    "platforms": [
+      {
+        "id": "iphone",
+        "label": "iPhone",
+        "eyebrow": "轻量阅读",
+        "title": "快速打开一本书，先看导读，再继续往下读。",
+        "body": "",
+        "screenTag": "iPhone 界面",
+        "screenTitle": "先略读，再标记，再保持上下文",
+        "screenBody": "单手也能顺畅完成章节浏览与重点记录。"
+      },
+      {
+        "id": "ipad",
+        "label": "iPad",
+        "eyebrow": "沉浸阅读",
+        "title": "在更大的画布上，读得更稳，也看得更全。",
+        "body": "",
+        "screenTag": "iPad 界面",
+        "screenTitle": "一次看到更多书的结构",
+        "screenBody": "更舒展的阅读节奏，适合深度投入。"
+      },
+      {
+        "id": "mac",
+        "label": "Mac",
+        "eyebrow": "规划中",
+        "title": "Mac 已在路线图中。",
+        "body": "",
+        "screenTag": "Mac 规划",
+        "screenTitle": "更大屏的阅读体验正在规划",
+        "screenBody": "先把移动端基础做好，再进入桌面扩展。"
+      }
+    ]
+  },
   "privacy": {
     "title": "隐私",
     "lines": [

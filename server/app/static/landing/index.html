@@ -9,45 +9,72 @@
   <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;500;700&family=DM+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f3f1eb;
-      --panel: #fffdf8;
-      --paper-edge: #e8e1d5;
-      --line: rgba(20,20,20,0.12);
-      --text: #14110f;
-      --muted: #5a5d61;
-      --accent: #14110f;
+      --bg: #f8f3e9;
+      --panel: rgba(255, 251, 245, 0.9);
+      --paper-edge: #e4d7c4;
+      --line: rgba(46,36,23,0.1);
+      --text: #16110c;
+      --muted: #645b52;
+      --accent: #16110c;
       --radius: 18px;
-      --grid: 120px;
-      --paper-shadow: 0 20px 60px rgba(0,0,0,0.08);
+      --paper-shadow: 0 26px 80px rgba(79,60,34,0.12);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0; color: var(--text);
       background:
-        radial-gradient(circle at 18% 16%, rgba(0,0,0,0.025), transparent 32%),
-        radial-gradient(circle at 78% 8%, rgba(0,0,0,0.018), transparent 30%),
-        var(--bg);
+        radial-gradient(circle at 50% -4%, rgba(255,255,255,0.92), rgba(255,255,255,0) 36%),
+        radial-gradient(circle at 14% 22%, rgba(188,166,136,0.24), rgba(188,166,136,0) 34%),
+        radial-gradient(circle at 86% 10%, rgba(159,138,113,0.14), rgba(159,138,113,0) 30%),
+        radial-gradient(circle at 50% 112%, rgba(255,255,255,0.66), rgba(255,255,255,0) 38%),
+        linear-gradient(180deg, #fcf9f2 0%, #f7f1e7 52%, #f0e7d9 100%);
       font-family: "Epilogue", "DM Mono", system-ui, -apple-system, sans-serif;
       min-height: 100vh; overflow-x: hidden;
     }
     .grain {
-      position: fixed; inset: 0; pointer-events: none; opacity: 0.12;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
-      mix-blend-mode: multiply; z-index: 5;
+      position: fixed; inset: -2%; pointer-events: none; opacity: 0.11;
+      background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0.04'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='320' height='320' filter='url(%23n)' opacity='0.95'/%3E%3C/svg%3E"),
+        linear-gradient(180deg, rgba(255,255,255,0.3), rgba(255,255,255,0) 34%, rgba(112,86,56,0.025) 100%);
+      background-size: 300px 300px, 100% 100%;
+      mix-blend-mode: multiply; filter: contrast(103%) brightness(103%); z-index: 5;
     }
     .grid {
-      position: fixed; inset: 0; pointer-events: none; z-index: 1;
-      background-image:
-        linear-gradient(var(--line) 1px, transparent 1px),
-        linear-gradient(90deg, var(--line) 1px, transparent 1px);
-      background-size: var(--grid) var(--grid);
-      mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 42%, rgba(0,0,0,0) 70%);
+      position: fixed; inset: -12% -10%; pointer-events: none; z-index: 1;
+      background:
+        radial-gradient(ellipse at 8% 42%, rgba(112,88,58,0.08) 0%, rgba(112,88,58,0) 50%),
+        radial-gradient(ellipse at 91% 14%, rgba(128,105,76,0.07) 0%, rgba(128,105,76,0) 46%),
+        radial-gradient(ellipse at 50% 115%, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0) 52%);
+      filter: blur(14px);
+      opacity: 0.78;
+    }
+    .grid::before,
+    .grid::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(126,102,72,0.11) 0%, rgba(126,102,72,0.035) 30%, rgba(126,102,72,0) 74%);
+      filter: blur(34px);
+    }
+    .grid::before {
+      left: -8%;
+      top: 18%;
+      width: min(42vw, 560px);
+      aspect-ratio: 1.9 / 1;
+    }
+    .grid::after {
+      right: -8%;
+      top: -2%;
+      width: min(40vw, 520px);
+      aspect-ratio: 1.95 / 1;
+      opacity: 0.62;
     }
     header {
       position: sticky; top: 0; z-index: 10;
-      backdrop-filter: blur(14px);
-      background: rgba(255,253,248,0.90);
+      backdrop-filter: blur(18px);
+      background: rgba(251,247,239,0.72);
       border-bottom: 1px solid var(--line);
+      box-shadow: 0 10px 26px rgba(88,66,38,0.06);
     }
     nav {
       max-width: 1180px; margin: 0 auto; padding: 14px 28px;
@@ -962,7 +989,7 @@
     .step span { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center;
       border: 1px solid var(--accent); border-radius: 50%; color: var(--accent); font-weight: 600; margin-bottom: 12px; }
     footer {
-      border-top: 1px solid var(--line); padding: 30px 28px 60px; color: var(--muted); background: rgba(247,248,250,0.8);
+      border-top: 1px solid var(--line); padding: 30px 28px 60px; color: var(--muted); background: rgba(251,247,239,0.66);
       position: relative; z-index: 2;
     }
 
@@ -1008,6 +1035,430 @@
       font-family: "DM Mono", monospace;
     }
     .privacy-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; color: var(--muted); line-height: 1.6; }
+    .download-sheet {
+      padding: 26px;
+    }
+    .download-panel-kicker,
+    .download-panel-title {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      clip: rect(0 0 0 0);
+      overflow: hidden;
+    }
+    .download-card-kicker {
+      margin: 0;
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .download-panel {
+      position: relative;
+      min-height: 448px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 20px;
+      overflow: hidden;
+      background:
+        linear-gradient(160deg, rgba(255,255,255,0.58), rgba(243,233,217,0.62)),
+        rgba(255,251,245,0.74);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.44);
+    }
+    .download-panel::before,
+    .download-panel::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(18px);
+    }
+    .download-panel::before {
+      left: -6%;
+      top: -10%;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(205,183,154,0.3), rgba(205,183,154,0));
+    }
+    .download-panel::after {
+      right: -4%;
+      bottom: -16%;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(126,102,72,0.16), rgba(126,102,72,0));
+    }
+    .download-switch {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .download-switch-item {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.52);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .download-switch-item::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(22,17,12,0.18);
+      box-shadow: 0 0 0 4px rgba(22,17,12,0.05);
+    }
+    .download-switch-item.is-active {
+      color: var(--accent);
+      background: rgba(22,17,12,0.06);
+      border-color: rgba(22,17,12,0.18);
+      transform: translateY(-1px);
+    }
+    .download-switch-item.is-active::before {
+      background: var(--accent);
+      box-shadow: 0 0 0 5px rgba(22,17,12,0.08);
+    }
+    .download-stage {
+      position: relative;
+      min-height: 350px;
+    }
+    .download-card {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: minmax(320px, 520px) minmax(220px, 280px);
+      justify-content: center;
+      gap: clamp(20px, 2.8vw, 40px);
+      align-items: center;
+      border: 1px solid rgba(22,17,12,0.12);
+      border-radius: 24px;
+      padding: 22px;
+      background: rgba(255,255,255,0.72);
+      box-shadow: 0 22px 48px rgba(54,39,16,0.08);
+      opacity: 0;
+      transform: translateY(12px) scale(0.985);
+      pointer-events: none;
+      transition: opacity .28s ease, transform .34s ease;
+    }
+    .download-card.is-active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .download-card-copy {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      min-width: 0;
+      max-width: 34rem;
+    }
+    .download-card-copy h3 {
+      margin: 0;
+      font-size: clamp(28px, 2.6vw, 36px);
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+      font-family: "Newsreader", "Epilogue", serif;
+      max-width: none;
+      text-wrap: balance;
+    }
+    .download-card-copy p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.62;
+      max-width: 34ch;
+    }
+    .download-card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .download-badge-link,
+    .download-badge-disabled {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+      transition: transform .2s ease, filter .2s ease, opacity .2s ease;
+    }
+    .download-badge-link:hover {
+      transform: translateY(-1px);
+      filter: drop-shadow(0 10px 18px rgba(43,33,24,0.12));
+    }
+    .download-badge-link:focus-visible,
+    .download-badge-disabled:focus-visible {
+      outline: 2px solid rgba(22,17,12,0.36);
+      outline-offset: 4px;
+      border-radius: 14px;
+    }
+    .download-badge-link img,
+    .download-badge-disabled img {
+      display: block;
+      width: auto;
+      height: 52px;
+      max-width: 100%;
+    }
+    .download-badge-disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
+    }
+    .download-badge-disabled::after {
+      content: attr(data-status);
+      position: absolute;
+      right: 10px;
+      bottom: -9px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(22,17,12,0.14);
+      background: rgba(255,251,245,0.96);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.2;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      box-shadow: 0 6px 14px rgba(43,33,24,0.08);
+    }
+    .device-scene {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 280px;
+      padding: 8px;
+      width: 100%;
+      max-width: 320px;
+      justify-self: center;
+    }
+    .device-shadow {
+      position: absolute;
+      left: 50%;
+      bottom: 10px;
+      width: 76%;
+      height: 34px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(47,35,19,0.22), rgba(47,35,19,0));
+      filter: blur(10px);
+    }
+    .device-shell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(20,20,20,0.2);
+      background: linear-gradient(180deg, #28211a, #17120d);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.08),
+        0 24px 42px rgba(24,18,9,0.16);
+    }
+    .device-screen {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      border: 1px solid rgba(20,20,20,0.12);
+      background:
+        radial-gradient(circle at 78% 16%, rgba(255,255,255,0.36), rgba(255,255,255,0) 28%),
+        linear-gradient(180deg, #fbf4e6, #efe0c8 100%);
+      color: #2b2118;
+      display: grid;
+      align-content: space-between;
+      gap: 14px;
+      padding: 18px 16px 16px;
+    }
+    .device-screen::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(rgba(58,50,40,0.08) 1px, transparent 1px);
+      background-size: 100% 30px;
+      opacity: 0.25;
+      pointer-events: none;
+    }
+    .device-ui-tag,
+    .device-ui-copy,
+    .device-bars {
+      position: relative;
+      z-index: 1;
+    }
+    .device-ui-tag {
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(43,33,24,0.68);
+    }
+    .device-ui-title {
+      position: relative;
+      z-index: 1;
+      display: block;
+      font-family: "Newsreader", serif;
+      font-size: clamp(24px, 2.2vw, 32px);
+      line-height: 1.02;
+      letter-spacing: -0.03em;
+      max-width: 9ch;
+    }
+    .device-ui-copy {
+      font-size: 13px;
+      line-height: 1.55;
+      color: rgba(43,33,24,0.72);
+      max-width: 18ch;
+    }
+    .device-bars {
+      display: grid;
+      gap: 8px;
+      width: min(100%, 170px);
+    }
+    .device-bars span {
+      display: block;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(43,33,24,0.14);
+    }
+    .device-bars span:nth-child(1) { width: 78%; }
+    .device-bars span:nth-child(2) { width: 100%; }
+    .device-bars span:nth-child(3) { width: 62%; }
+    .download-card[data-platform="iphone"] .device-shell {
+      width: 186px;
+      height: 324px;
+      border-radius: 36px;
+      padding: 14px;
+    }
+    .download-card[data-platform="iphone"] {
+      grid-template-columns: minmax(320px, 500px) 236px;
+      gap: clamp(18px, 2.2vw, 32px);
+    }
+    .download-card[data-platform="iphone"] .device-shell::before {
+      content: "";
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      width: 34%;
+      height: 12px;
+      transform: translateX(-50%);
+      border-radius: 0 0 12px 12px;
+      background: rgba(0,0,0,0.64);
+      z-index: 2;
+    }
+    .download-card[data-platform="iphone"] .device-screen {
+      border-radius: 24px;
+    }
+    .download-card[data-platform="iphone"] .download-card-copy h3,
+    .download-card[data-platform="ipad"] .download-card-copy h3,
+    .download-card[data-platform="mac"] .download-card-copy h3 {
+      max-width: 15ch;
+    }
+    .download-card[data-platform="ipad"] {
+      grid-template-columns: minmax(320px, 540px) 284px;
+      gap: clamp(20px, 2.4vw, 34px);
+    }
+    html:lang(zh-Hans) .download-card-copy h3,
+    html:lang(ja) .download-card-copy h3,
+    html:lang(ko) .download-card-copy h3 {
+      max-width: 13.4em;
+      text-wrap: pretty;
+      line-break: strict;
+    }
+    html:lang(zh-Hans) .download-card[data-platform="iphone"] .download-card-copy h3 {
+      max-width: 15.8em;
+    }
+    html:lang(zh-Hans) .download-card[data-platform="ipad"] .download-card-copy h3 {
+      max-width: 15.1em;
+    }
+    html:lang(zh-Hans) .download-card-copy p,
+    html:lang(ja) .download-card-copy p,
+    html:lang(ko) .download-card-copy p {
+      max-width: 24em;
+      text-wrap: pretty;
+      line-break: strict;
+    }
+    .download-card[data-platform="ipad"] .device-shell {
+      width: 252px;
+      height: 324px;
+      border-radius: 30px;
+      padding: 16px;
+    }
+    .download-card[data-platform="ipad"] .device-shell::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      width: 7px;
+      height: 7px;
+      transform: translateY(-50%);
+      border-radius: 50%;
+      background: rgba(255,255,255,0.24);
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.2);
+    }
+    .download-card[data-platform="ipad"] .device-screen {
+      border-radius: 20px;
+    }
+    .download-card[data-platform="mac"] .device-shell {
+      width: min(100%, 332px);
+      height: 198px;
+      border-radius: 20px 20px 14px 14px;
+      padding: 10px 10px 14px;
+      align-self: center;
+    }
+    .download-card[data-platform="mac"] {
+      grid-template-columns: minmax(320px, 520px) minmax(260px, 332px);
+      gap: clamp(20px, 2.4vw, 34px);
+    }
+    .download-card[data-platform="mac"] .device-scene {
+      max-width: 332px;
+    }
+    .download-card[data-platform="mac"] .device-shell::before {
+      content: "";
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      width: 38px;
+      height: 4px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.22);
+    }
+    .download-card[data-platform="mac"] .device-shell::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -18px;
+      width: 128%;
+      height: 20px;
+      transform: translateX(-50%);
+      border-radius: 0 0 20px 20px;
+      background: linear-gradient(180deg, #d6c9b4, #bba98b);
+      box-shadow: 0 12px 18px rgba(42,31,14,0.12);
+    }
+    .download-card[data-platform="mac"] .device-screen {
+      border-radius: 12px 12px 9px 9px;
+      padding: 16px 18px 14px;
+    }
+    .download-card[data-platform="mac"] .device-ui-title {
+      font-size: clamp(20px, 1.9vw, 30px);
+      max-width: 11ch;
+    }
+    .download-card[data-platform="mac"] .device-ui-copy {
+      max-width: 24ch;
+    }
+    .download-card[data-platform="mac"] .device-bars {
+      width: min(100%, 220px);
+    }
+    .download-card[data-platform="mac"] .device-bars span:nth-child(1) { width: 56%; }
+    .download-card[data-platform="mac"] .device-bars span:nth-child(2) { width: 88%; }
+    .download-card[data-platform="mac"] .device-bars span:nth-child(3) { width: 44%; }
 
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; margin-top: 46px; }
@@ -1032,6 +1483,33 @@
       .page-corner.prev::before { border-width: 44px 0 0 60px; }
       .page-corner.next::before { border-width: 0 60px 44px 0; }
       .cta-row { margin-top: 14px; }
+      .download-sheet {
+        padding: 20px;
+      }
+      .download-panel {
+        min-height: 0;
+      }
+      .download-stage {
+        min-height: 0;
+      }
+      .download-card {
+        position: relative;
+        display: none;
+        grid-template-columns: 1fr;
+      }
+      .download-card.is-active {
+        display: grid;
+      }
+      .download-card-copy h3,
+      .download-card-copy p {
+        max-width: none;
+      }
+      .download-card-actions {
+        margin-top: 6px;
+      }
+      .device-scene {
+        min-height: 240px;
+      }
     }
     @media (max-width: 520px) {
       .outline-hero { padding: 4px 4px 8px; }
@@ -1051,12 +1529,37 @@
         justify-self: center;
         transform: rotate(90deg);
       }
+      .download-panel {
+        padding: 14px;
+      }
+      .download-card {
+        padding: 18px;
+      }
+      .download-card-copy h3 {
+        font-size: 28px;
+      }
+      .download-badge-link img,
+      .download-badge-disabled img {
+        height: 48px;
+      }
+      .download-card[data-platform="iphone"] .device-shell {
+        width: 170px;
+        height: 296px;
+      }
+      .download-card[data-platform="ipad"] .device-shell {
+        width: 224px;
+        height: 288px;
+      }
+      .download-card[data-platform="mac"] .device-shell {
+        width: min(100%, 312px);
+        height: 188px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="grid"></div>
-  <div class="grain"></div>
+  <div class="grid" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
   <header>
     <nav>
       <div class="logo"><div class="dot"></div><span class="logo-wordmark" data-key="brand.name">Lan Read</span></div>
@@ -1208,6 +1711,19 @@
     </div>
   </section>
 
+  <section class="section" id="download">
+    <h2 data-key="download.title">Download</h2>
+    <div class="paper-sheet download-sheet">
+      <div class="download-panel">
+        <span class="download-panel-kicker" data-key="download.kicker">App Download</span>
+        <span class="download-panel-title" id="download-heading">Choose the device you want to start reading on</span>
+        <div class="download-switch" id="download-switch" aria-label="Download platforms"></div>
+        <div class="download-stage" id="download-stage"></div>
+      </div>
+      <div class="paper-edge" aria-hidden="true"></div>
+    </div>
+  </section>
+
   <section class="section" id="privacy">
     <h2 data-key="privacy.title">Privacy</h2>
     <div class="paper-sheet ruled">
@@ -1255,6 +1771,9 @@
     const privacyLines = document.getElementById('privacy-lines');
     const visionLine = document.getElementById('vision-line');
     const featuresPrivacyNote = document.getElementById('features-privacy-note');
+    const downloadHeading = document.getElementById('download-heading');
+    const downloadSwitch = document.getElementById('download-switch');
+    const downloadStage = document.getElementById('download-stage');
     const heroBook = document.getElementById('hero-book');
     const bookOpenTrigger = document.getElementById('book-open-trigger');
     const bookPrevButton = document.getElementById('book-prev');
@@ -1310,6 +1829,8 @@
     let streamTimer = null;
     let streamToken = 0;
     let currentBookLocale = null;
+    let currentDownloadPlatform = 'iphone';
+    let currentDownloadData = null;
     let screenshotCards = [];
     let screenshotCardIndex = 0;
     let screenshotFanTimer = null;
@@ -1368,6 +1889,50 @@
 
     const cjkPattern = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af]/;
     const latinPattern = /[A-Za-z]/;
+    const downloadBadgeAssets = {
+      appStore: {
+        href: 'https://apps.apple.com/us/app/lanread/id6759909721',
+        image: '/badges/download-app-store.svg',
+        alt: 'Download on the App Store'
+      },
+      macAppStore: {
+        image: '/badges/download-mac-app-store.svg',
+        alt: 'Download on the Mac App Store'
+      }
+    };
+    const downloadBadgeStatus = {
+      en: 'Coming soon',
+      zh: '即将推出',
+      ja: '近日公开',
+      ko: '곧 제공'
+    };
+    const renderDownloadBadgeMarkup = (platformId, macBadgeStatus) => {
+      if (platformId === 'mac') {
+        return `
+          <span
+            class="download-badge-disabled"
+            role="img"
+            aria-label="${escapeHtml(`${downloadBadgeAssets.macAppStore.alt} · ${macBadgeStatus}`)}"
+            data-status="${escapeHtml(macBadgeStatus)}"
+            tabindex="0"
+          >
+            <img src="${downloadBadgeAssets.macAppStore.image}" alt="" loading="lazy" />
+          </span>
+        `;
+      }
+
+      return `
+        <a
+          class="download-badge-link"
+          href="${downloadBadgeAssets.appStore.href}"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="${escapeHtml(downloadBadgeAssets.appStore.alt)}"
+        >
+          <img src="${downloadBadgeAssets.appStore.image}" alt="${escapeHtml(downloadBadgeAssets.appStore.alt)}" loading="lazy" />
+        </a>
+      `;
+    };
 
     const escapeHtml = (value = '') => value
       .replace(/&/g, '&amp;')
@@ -1453,6 +2018,58 @@
           { title: 'Share', body: 'Share note cards and annotated excerpts with teammates or friends.' }
         ]
       },
+      download: {
+        title: 'Download',
+        kicker: 'App Download',
+        heading: 'Choose the device you want to start reading on',
+        lead: 'Pick a surface, preview how Lan Read feels there, and jump into the App Store when you are ready to begin.',
+        points: [
+          'One universal app for iPhone and iPad, with the same local-first reading library.',
+          'Start without sign-up and keep books, highlights, and reading history on-device by default.',
+          'This section reads the App Store link from the server update policy, so the download target stays current.'
+        ],
+        cta: {
+          primaryEyebrow: 'Available now',
+          primaryTitle: 'Download for iPhone & iPad',
+          primaryMeta: 'Universal purchase on the App Store.',
+          primaryUnavailable: 'App Store link will appear here after it is configured on the server.',
+          secondaryEyebrow: 'Planned next',
+          secondaryTitle: 'Mac version',
+          secondaryMeta: 'The current focus is a polished iPhone and iPad reading experience first.'
+        },
+        platforms: [
+          {
+            id: 'iphone',
+            label: 'iPhone',
+            eyebrow: 'Pocket reading',
+            title: 'Open a book fast, get the overview, keep moving.',
+            body: '',
+            screenTag: 'iPhone surface',
+            screenTitle: 'Skim, highlight, keep context',
+            screenBody: 'Fast chapter mapping and one-hand reading flow.'
+          },
+          {
+            id: 'ipad',
+            label: 'iPad',
+            eyebrow: 'Long-form focus',
+            title: 'Spread out on a larger canvas for deeper reading.',
+            body: '',
+            screenTag: 'iPad surface',
+            screenTitle: 'See more of the book at once',
+            screenBody: 'Comfortable long sessions with a calmer visual rhythm.'
+          },
+          {
+            id: 'mac',
+            label: 'Mac',
+            eyebrow: 'Roadmap',
+            title: 'Mac is planned.',
+            body: '',
+            screenTag: 'Mac planning',
+            screenTitle: 'Bigger-screen reading is on the roadmap',
+            screenBody: 'Desktop comes after the mobile reading foundation is solid.'
+          }
+        ]
+      },
       privacy: {
         title: 'Privacy',
         lines: [
@@ -1524,6 +2141,78 @@
       if (!privacyLines) return;
       privacyLines.innerHTML = (privacy?.lines || []).map(line => `<li>${line}</li>`).join('');
       setText('[data-key="privacy.title"]', privacy?.title);
+    };
+
+    const normalizeDownloadPlatform = (platforms = []) => {
+      if (!platforms.length) return 'iphone';
+      if (platforms.some((item) => item?.id === currentDownloadPlatform)) return currentDownloadPlatform;
+      return platforms[0]?.id || 'iphone';
+    };
+
+    const syncDownloadPlatformUI = () => {
+      const platforms = currentDownloadData?.platforms || [];
+      currentDownloadPlatform = normalizeDownloadPlatform(platforms);
+
+      document.querySelectorAll('[data-download-platform]').forEach((node) => {
+        node.classList.toggle('is-active', node.getAttribute('data-download-platform') === currentDownloadPlatform);
+      });
+      document.querySelectorAll('.download-card').forEach((node) => {
+        node.classList.toggle('is-active', node.getAttribute('data-platform') === currentDownloadPlatform);
+      });
+    };
+
+    const renderDownload = (download, lang = 'en') => {
+      const d = download || fallbackEn.download;
+      currentDownloadData = d;
+      const platforms = Array.isArray(d?.platforms) ? d.platforms : [];
+      currentDownloadPlatform = normalizeDownloadPlatform(platforms);
+      const macBadgeStatus = downloadBadgeStatus[lang] || downloadBadgeStatus.en;
+
+      setText('[data-key="download.title"]', d?.title);
+      setText('[data-key="download.kicker"]', d?.kicker);
+      if (downloadHeading) downloadHeading.textContent = d?.heading || '';
+      if (downloadSwitch) {
+        downloadSwitch.innerHTML = platforms.map((platform) => `
+          <button
+            class="download-switch-item${platform.id === currentDownloadPlatform ? ' is-active' : ''}"
+            type="button"
+            data-download-platform="${escapeHtml(platform.id || '')}"
+          >
+            <span>${escapeHtml(platform.label || '')}</span>
+          </button>
+        `).join('');
+      }
+      if (downloadStage) {
+        downloadStage.innerHTML = platforms.map((platform) => `
+          <article class="download-card${platform.id === currentDownloadPlatform ? ' is-active' : ''}" data-platform="${escapeHtml(platform.id || '')}">
+            <div class="download-card-copy">
+              <span class="download-card-kicker">${escapeHtml(platform.eyebrow || '')}</span>
+              <h3>${escapeHtml(platform.title || '')}</h3>
+              ${platform.body ? `<p>${escapeHtml(platform.body || '')}</p>` : ''}
+              <div class="download-card-actions">
+                ${renderDownloadBadgeMarkup(platform.id, macBadgeStatus)}
+              </div>
+            </div>
+            <div class="device-scene">
+              <div class="device-shadow" aria-hidden="true"></div>
+              <div class="device-shell">
+                <div class="device-screen">
+                  <span class="device-ui-tag">${escapeHtml(platform.screenTag || platform.label || '')}</span>
+                  <strong class="device-ui-title">${escapeHtml(platform.screenTitle || '')}</strong>
+                  <span class="device-ui-copy">${escapeHtml(platform.screenBody || '')}</span>
+                  <div class="device-bars" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+        `).join('');
+      }
+
+      syncDownloadPlatformUI();
     };
 
     const bookLocale = (lang, t) => {
@@ -2054,6 +2743,7 @@
 
       renderFacts(t.facts);
       renderFeatures(t.features, chosen);
+      renderDownload(t.download, chosen);
       renderWorkflow(t.workflow);
       renderPrivacy(t.privacy);
       renderBook(t, chosen);
@@ -2076,6 +2766,14 @@
     })();
 
     languageSelect.addEventListener('change', (e) => applyLanguage(e.target.value));
+    if (downloadSwitch) {
+      downloadSwitch.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-download-platform]');
+        if (!target) return;
+        currentDownloadPlatform = target.getAttribute('data-download-platform') || currentDownloadPlatform;
+        syncDownloadPlatformUI();
+      });
+    }
     if (bookOpenTrigger) {
       bookOpenTrigger.addEventListener('click', (e) => {
         e.preventDefault();
