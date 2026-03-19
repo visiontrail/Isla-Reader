@@ -11,6 +11,7 @@ router = APIRouter(tags=["public"])
 _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _LANDING_DIR = _STATIC_DIR / "landing"
 _LANDING_CONTENT_DIR = _LANDING_DIR / "content"
+_APP_ADS_TXT_PATH = _STATIC_DIR / "app-ads.txt"
 _SERVER_STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
 _IPHONE_SCREENSHOT_DIR = _SERVER_STATIC_DIR / "screenshot" / "iPhone"
 _DOWNLOAD_BADGE_FILES = {
@@ -739,6 +740,18 @@ def _render_privacy_policy_html() -> str:
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def marketing_home() -> HTMLResponse:
     return HTMLResponse(_read_landing_html(), headers={"Cache-Control": "no-store"})
+
+
+@router.get("/app-ads.txt", include_in_schema=False)
+async def app_ads_txt():
+    if not _APP_ADS_TXT_PATH.exists():
+        raise HTTPException(status_code=404, detail="app-ads.txt not found")
+
+    return FileResponse(
+        _APP_ADS_TXT_PATH,
+        media_type="text/plain",
+        headers={"Cache-Control": "public, max-age=900"},
+    )
 
 
 @router.get("/content/{lang}.json", include_in_schema=False)
