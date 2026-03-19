@@ -79,8 +79,11 @@
 "progress.time_range.month" = "This Month";
 "progress.time_range.year" = "This Year";
 "progress.reading_time" = "Reading Time";
+"progress.detailed_reading_time" = "Deep Reading Time";
+"progress.skimming_reading_time" = "Skimming Time";
 "progress.average_progress" = "Average Progress";
 "progress.books_read" = "Books Read";
+"progress.completed_books" = "Completed Books";
 "progress.goal_achievement" = "Goal Achievement";
 "progress.recent_reads" = "Recently Read";
 "progress.title" = "Reading Statistics";

@@ -73,13 +73,25 @@ struct ReadingProgressView: View {
     }
     
     private var totalReadingTime: Int64 {
-        recentlyReadEntries.reduce(0) { $0 + $1.progress.totalReadingTime }
+        totalDetailedReadingTime + totalSkimmingReadingTime
+    }
+
+    private var totalDetailedReadingTime: Int64 {
+        recentlyReadEntries.reduce(0) { $0 + $1.progress.effectiveDetailedReadingTime }
+    }
+
+    private var totalSkimmingReadingTime: Int64 {
+        recentlyReadEntries.reduce(0) { $0 + $1.progress.skimmingReadingTime }
     }
     
     private var averageProgress: Double {
         guard !recentlyReadEntries.isEmpty else { return 0 }
         let total = recentlyReadEntries.reduce(0.0) { $0 + $1.progress.progressPercentage }
         return total / Double(recentlyReadEntries.count)
+    }
+
+    private var completedBooksCount: Int {
+        recentlyReadEntries.filter { isCompleted($0) }.count
     }
     
     var body: some View {
@@ -101,10 +113,17 @@ struct ReadingProgressView: View {
                         GridItem(.flexible())
                     ], spacing: 16) {
                         StatCard(
-                            title: "progress.reading_time",
-                            value: formatReadingTime(totalReadingTime),
+                            title: "progress.detailed_reading_time",
+                            value: formatReadingTime(totalDetailedReadingTime),
                             icon: "clock",
                             color: .blue
+                        )
+
+                        StatCard(
+                            title: "progress.skimming_reading_time",
+                            value: formatReadingTime(totalSkimmingReadingTime),
+                            icon: "bolt.horizontal.circle",
+                            color: .teal
                         )
                         
                         StatCard(
@@ -119,6 +138,13 @@ struct ReadingProgressView: View {
                             value: "\(recentlyReadEntries.count)",
                             icon: "books.vertical",
                             color: .orange
+                        )
+
+                        StatCard(
+                            title: "progress.completed_books",
+                            value: "\(completedBooksCount)",
+                            icon: "checkmark.seal",
+                            color: .indigo
                         )
                         
                         StatCard(
@@ -179,6 +205,7 @@ struct ReadingProgressView: View {
             }
             .onAppear {
                 cleanupInvalidReadingProgresses()
+                migrateLegacyReadingTimeBucketsIfNeeded()
             }
         }
     }
@@ -252,6 +279,29 @@ struct ReadingProgressView: View {
             DebugLogger.error("ReadingProgressView: 清理失效阅读记录失败", error: error)
             viewContext.rollback()
         }
+    }
+
+    private func migrateLegacyReadingTimeBucketsIfNeeded() {
+        let migratedCount = readingProgresses.reduce(0) { count, progress in
+            count + (progress.migrateLegacyReadingTimeBucketsIfNeeded() ? 1 : 0)
+        }
+
+        guard migratedCount > 0 else { return }
+
+        do {
+            try viewContext.save()
+            DebugLogger.info("ReadingProgressView: 已迁移 \(migratedCount) 条旧版阅读时长数据")
+        } catch {
+            DebugLogger.error("ReadingProgressView: 迁移旧版阅读时长数据失败", error: error)
+            viewContext.rollback()
+        }
+    }
+
+    private func isCompleted(_ entry: RecentlyReadEntry) -> Bool {
+        if let libraryItem = entry.book.libraryItem {
+            return libraryItem.status == .finished
+        }
+        return entry.progress.progressPercentage >= 0.99
     }
 }
 

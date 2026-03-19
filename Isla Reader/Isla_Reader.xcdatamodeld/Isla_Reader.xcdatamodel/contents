@@ -96,6 +96,8 @@
         <attribute name="progressPercentage" optional="NO" attributeType="Double" usesScalarValueType="YES"/>
         <attribute name="lastReadAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="totalReadingTime" optional="NO" attributeType="Integer 64" usesScalarValueType="YES"/>
+        <attribute name="detailedReadingTime" optional="NO" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="skimmingReadingTime" optional="NO" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="book" destinationEntity="Book" inverseName="readingProgress" inverseEntity="Book" minCount="1" maxCount="1" deletionRule="Nullify" optional="NO" toMany="NO"/>

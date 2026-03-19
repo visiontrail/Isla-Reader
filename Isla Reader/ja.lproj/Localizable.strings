@@ -79,8 +79,11 @@
 "progress.time_range.month" = "今月";
 "progress.time_range.year" = "今年";
 "progress.reading_time" = "読書時間";
+"progress.detailed_reading_time" = "精読時間";
+"progress.skimming_reading_time" = "略読時間";
 "progress.average_progress" = "平均進捗";
 "progress.books_read" = "読んだ本";
+"progress.completed_books" = "読了した本";
 "progress.goal_achievement" = "目標達成";
 "progress.recent_reads" = "最近の読書";
 "progress.title" = "読書統計";

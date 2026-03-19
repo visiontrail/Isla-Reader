@@ -79,8 +79,11 @@
 "progress.time_range.month" = "本月";
 "progress.time_range.year" = "今年";
 "progress.reading_time" = "阅读时长";
+"progress.detailed_reading_time" = "细读时长";
+"progress.skimming_reading_time" = "略读时长";
 "progress.average_progress" = "平均进度";
 "progress.books_read" = "阅读书籍";
+"progress.completed_books" = "完成阅读";
 "progress.goal_achievement" = "目标达成";
 "progress.recent_reads" = "最近阅读";
 "progress.title" = "阅读统计";

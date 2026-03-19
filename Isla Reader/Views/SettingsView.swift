@@ -179,14 +179,14 @@ struct SettingsView: View {
                             )
                             .labelsHidden()
                         }
+                    }
 
-                        Stepper(value: $appSettings.dailyReadingGoal, in: 10...180, step: 5) {
-                            HStack {
-                                Text(NSLocalizedString("settings.daily_goal", comment: ""))
-                                Spacer()
-                                Text("\(appSettings.dailyReadingGoal) \(NSLocalizedString("common.minutes", comment: ""))")
-                                    .foregroundColor(.secondary)
-                            }
+                    Stepper(value: $appSettings.dailyReadingGoal, in: 10...180, step: 5) {
+                        HStack {
+                            Text(NSLocalizedString("settings.daily_goal", comment: ""))
+                            Spacer()
+                            Text("\(appSettings.dailyReadingGoal) \(NSLocalizedString("common.minutes", comment: ""))")
+                                .foregroundColor(.secondary)
                         }
                     }
                 }

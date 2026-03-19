@@ -139,6 +139,8 @@ class BookImportService: ObservableObject {
             readingProgress.progressPercentage = 0.0
             readingProgress.lastReadAt = Date()
             readingProgress.totalReadingTime = 0
+            readingProgress.detailedReadingTime = 0
+            readingProgress.skimmingReadingTime = 0
             readingProgress.createdAt = Date()
             readingProgress.updatedAt = Date()
             // 显式设置反向关系

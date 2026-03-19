@@ -101,6 +101,8 @@ final class DataBackupService {
                     progress.progressPercentage = snapshot.progressPercentage
                     progress.lastReadAt = snapshot.lastReadAt
                     progress.totalReadingTime = snapshot.totalReadingTime
+                    progress.detailedReadingTime = snapshot.detailedReadingTime ?? snapshot.totalReadingTime
+                    progress.skimmingReadingTime = snapshot.skimmingReadingTime ?? 0
                     progress.updatedAt = snapshot.updatedAt
                     progress.book = book
                     updatedProgress += 1
@@ -257,6 +259,8 @@ private struct ReadingProgressSnapshot: Codable {
     let progressPercentage: Double
     let lastReadAt: Date
     let totalReadingTime: Int64
+    let detailedReadingTime: Int64?
+    let skimmingReadingTime: Int64?
     let createdAt: Date
     let updatedAt: Date
     
@@ -268,6 +272,8 @@ private struct ReadingProgressSnapshot: Codable {
         progressPercentage = progress.progressPercentage
         lastReadAt = progress.lastReadAt
         totalReadingTime = progress.totalReadingTime
+        detailedReadingTime = progress.effectiveDetailedReadingTime
+        skimmingReadingTime = progress.skimmingReadingTime
         createdAt = progress.createdAt
         updatedAt = progress.updatedAt
     }

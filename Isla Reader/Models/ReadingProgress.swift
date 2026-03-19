@@ -26,6 +26,8 @@ extension ReadingProgress {
     @NSManaged public var progressPercentage: Double
     @NSManaged public var lastReadAt: Date
     @NSManaged public var totalReadingTime: Int64 // in seconds
+    @NSManaged public var detailedReadingTime: Int64 // in seconds
+    @NSManaged public var skimmingReadingTime: Int64 // in seconds
     @NSManaged public var createdAt: Date
     @NSManaged public var updatedAt: Date
     
@@ -35,6 +37,24 @@ extension ReadingProgress {
 }
 
 extension ReadingProgress: Identifiable {
+    var effectiveDetailedReadingTime: Int64 {
+        if detailedReadingTime == 0 && skimmingReadingTime == 0 && totalReadingTime > 0 {
+            return totalReadingTime
+        }
+        return detailedReadingTime
+    }
+
+    @discardableResult
+    func migrateLegacyReadingTimeBucketsIfNeeded() -> Bool {
+        guard detailedReadingTime == 0,
+              skimmingReadingTime == 0,
+              totalReadingTime > 0 else {
+            return false
+        }
+
+        detailedReadingTime = totalReadingTime
+        return true
+    }
     
     var formattedProgress: String {
         return String(format: "%.1f%%", progressPercentage * 100)

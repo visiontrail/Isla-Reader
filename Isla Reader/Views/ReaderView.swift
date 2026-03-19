@@ -1485,6 +1485,8 @@ struct ReaderView: View {
             progress.createdAt = Date()
             progress.updatedAt = Date()
             progress.totalReadingTime = 0
+            progress.detailedReadingTime = 0
+            progress.skimmingReadingTime = 0
             progress.book = book
             book.readingProgress = progress
         }
@@ -1806,13 +1808,18 @@ struct ReaderView: View {
             progress.createdAt = Date()
             progress.updatedAt = Date()
             progress.totalReadingTime = 0
+            progress.detailedReadingTime = 0
+            progress.skimmingReadingTime = 0
             progress.book = book
             book.readingProgress = progress
         }
         
         if let progress = book.readingProgress {
+            progress.migrateLegacyReadingTimeBucketsIfNeeded()
+
             // Add elapsed time to total
             progress.totalReadingTime += Int64(elapsedSeconds)
+            progress.detailedReadingTime += Int64(elapsedSeconds)
             progress.updatedAt = Date()
             
             do {

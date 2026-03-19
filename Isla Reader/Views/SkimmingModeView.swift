@@ -6,12 +6,15 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct SkimmingModeView: View {
     let book: Book
     
     @StateObject private var appSettings = AppSettings.shared
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.scenePhase) private var scenePhase
     @State private var chapters: [SkimmingChapterMetadata] = []
     @State private var isLoadingChapters = true
     @State private var loadError: String?
@@ -32,10 +35,15 @@ struct SkimmingModeView: View {
     @State private var loadingSwipeOffset: CGFloat = 0
     @State private var didShowLoadingNoticeInCurrentDrag = false
     @State private var didNavigateBackwardInCurrentDrag = false
+    @State private var readingStartTime: Date?
+    @State private var isActivelyReading = false
+    @State private var readingHeartbeatTask: Task<Void, Never>?
+    @State private var lastPublishedLiveActivityMinute: Int = -1
     
     private let service = SkimmingModeService.shared
     private let preloadAheadChapterCount = 3
     private let chapterLoadingNoticeCooldown: TimeInterval = 1.5
+    private let readingHeartbeatIntervalNanoseconds: UInt64 = 15_000_000_000
     
     private enum NavigationTarget: Hashable {
         case startFromChapter(BookmarkLocation)
@@ -61,12 +69,20 @@ struct SkimmingModeView: View {
             .onAppear {
                 restoreAdProgressState()
                 loadChapters()
+                startReadingSession()
+                startReadingHeartbeat()
+                syncLiveActivityReadingProgressIfNeeded(reason: "skimming.onAppear")
                 if appSettings.areAdsEnabled {
                     RewardedInterstitialAdManager.shared.loadAd()
                 }
             }
             .onDisappear {
+                stopReadingHeartbeat()
+                endReadingSession()
                 adNoticeDismissTask?.cancel()
+            }
+            .onChange(of: scenePhase) { newPhase in
+                handleScenePhaseChange(newPhase)
             }
             .onChange(of: appSettings.areAdsEnabled) { enabled in
                 if enabled {
@@ -632,6 +648,169 @@ struct SkimmingModeView: View {
             thirdNoticeShownTriggerCounts: Array(thirdNoticeShownTriggerCounts)
         )
         service.storeAdProgress(adProgress, for: book)
+    }
+
+    // MARK: - Reading Time Tracking
+
+    private func startReadingSession() {
+        readingStartTime = Date()
+        isActivelyReading = true
+        syncLiveActivityReadingProgressIfNeeded(reason: "skimming.startReadingSession")
+
+        if let libraryItem = book.libraryItem,
+           (libraryItem.status == .wantToRead || libraryItem.status == .paused) {
+            libraryItem.status = .reading
+            libraryItem.lastAccessedAt = Date()
+
+            do {
+                try viewContext.save()
+                DebugLogger.info("SkimmingModeView: Updated status to 'reading'")
+            } catch {
+                DebugLogger.error("SkimmingModeView: Failed to update reading status: \(error)")
+            }
+        }
+    }
+
+    private func endReadingSession() {
+        updateReadingTime()
+        readingStartTime = nil
+        isActivelyReading = false
+        syncLiveActivityReadingProgressIfNeeded(reason: "skimming.endReadingSession")
+    }
+
+    private func pauseReadingSession() {
+        updateReadingTime()
+        readingStartTime = nil
+        isActivelyReading = false
+        syncLiveActivityReadingProgressIfNeeded(reason: "skimming.pauseReadingSession")
+    }
+
+    private func resumeReadingSession() {
+        readingStartTime = Date()
+        isActivelyReading = true
+        syncLiveActivityReadingProgressIfNeeded(reason: "skimming.resumeReadingSession")
+    }
+
+    private func updateReadingTime(resetStartTime: Bool = false) {
+        guard let startTime = readingStartTime, isActivelyReading else { return }
+
+        let now = Date()
+        let timeElapsed = now.timeIntervalSince(startTime)
+        guard timeElapsed > 1 else { return }
+
+        let elapsedSeconds = Int(timeElapsed.rounded(.down))
+        guard elapsedSeconds > 0 else { return }
+
+        let progress = readingProgress(for: now)
+        progress.migrateLegacyReadingTimeBucketsIfNeeded()
+        progress.totalReadingTime += Int64(elapsedSeconds)
+        progress.skimmingReadingTime += Int64(elapsedSeconds)
+        progress.lastReadAt = now
+        progress.updatedAt = now
+
+        if let libraryItem = book.libraryItem {
+            libraryItem.lastAccessedAt = now
+        }
+
+        do {
+            try viewContext.save()
+            ReadingDailyStatsStore.shared.addReadingSeconds(elapsedSeconds)
+            syncLiveActivityReadingProgressIfNeeded(reason: "skimming.updateReadingTime")
+        } catch {
+            DebugLogger.error("SkimmingModeView: Failed to save reading time: \(error)")
+        }
+
+        if resetStartTime {
+            readingStartTime = now
+        }
+    }
+
+    private func readingProgress(for now: Date) -> ReadingProgress {
+        if let existingProgress = book.readingProgress {
+            return existingProgress
+        }
+
+        let progress = ReadingProgress(context: viewContext)
+        progress.id = UUID()
+        progress.currentPage = 0
+        progress.currentChapter =
+            chapters.indices.contains(currentChapterIndex) ? chapters[currentChapterIndex].title : nil
+        progress.currentPosition = nil
+        progress.progressPercentage = 0
+        progress.lastReadAt = now
+        progress.totalReadingTime = 0
+        progress.detailedReadingTime = 0
+        progress.skimmingReadingTime = 0
+        progress.createdAt = now
+        progress.updatedAt = now
+        progress.book = book
+        book.readingProgress = progress
+        return progress
+    }
+
+    private func handleScenePhaseChange(_ phase: ScenePhase) {
+        switch phase {
+        case .active:
+            if !isActivelyReading {
+                resumeReadingSession()
+            }
+        case .inactive, .background:
+            if isActivelyReading {
+                pauseReadingSession()
+            }
+        @unknown default:
+            break
+        }
+    }
+
+    private func startReadingHeartbeat() {
+        readingHeartbeatTask?.cancel()
+        readingHeartbeatTask = Task { @MainActor in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: readingHeartbeatIntervalNanoseconds)
+                } catch {
+                    return
+                }
+                guard isActivelyReading else { continue }
+                updateReadingTime(resetStartTime: true)
+            }
+        }
+    }
+
+    private func stopReadingHeartbeat() {
+        readingHeartbeatTask?.cancel()
+        readingHeartbeatTask = nil
+    }
+
+    private func syncLiveActivityReadingProgressIfNeeded(reason: String) {
+        let minutesReadToday = currentLiveActivityMinutesReadToday()
+        guard minutesReadToday != lastPublishedLiveActivityMinute else {
+            return
+        }
+        lastPublishedLiveActivityMinute = minutesReadToday
+        DebugLogger.info(
+            "[LiveActivityFlow] Syncing Live Activity reading progress from SkimmingModeView. " +
+            "reason=\(reason), minutesReadToday=\(minutesReadToday), goalMinutes=\(appSettings.dailyReadingGoal)"
+        )
+        Task {
+            await ReadingLiveActivityManager.shared.updateIfNeeded(
+                goalMinutes: appSettings.dailyReadingGoal,
+                minutesReadToday: minutesReadToday,
+                deepLink: ReadingReminderConstants.defaultDeepLink
+            )
+        }
+    }
+
+    private func currentLiveActivityMinutesReadToday() -> Int {
+        var totalSeconds = ReadingDailyStatsStore.shared.todayReadingSeconds()
+        if let startTime = readingStartTime, isActivelyReading {
+            let inFlightSeconds = Int(Date().timeIntervalSince(startTime).rounded(.down))
+            if inFlightSeconds > 0 {
+                totalSeconds += inFlightSeconds
+            }
+        }
+        return max(0, totalSeconds / 60)
     }
 }
 
