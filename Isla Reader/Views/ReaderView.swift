@@ -83,6 +83,7 @@ struct ReaderView: View {
     @State private var lastWebContentTapTime: Date?
     private let swipePagingEnabled = true
     private let tapNavigationEdgeRatio: CGFloat = 0.24
+    private let chapterPreloadWindow = 2
     @State private var pageTurnAnimationStyle: PageTurnAnimationStyle = .fade
     
     private var effectiveColorScheme: ColorScheme {
@@ -190,6 +191,19 @@ struct ReaderView: View {
             if pendingTOCNavigation?.chapterIndex != currentChapterIndex {
                 currentTOCFragment = nil
             }
+            preloadNearbyChapterHTML(around: currentChapterIndex)
+        }
+        .onChange(of: appSettings.readingFontSize) { _ in
+            preloadNearbyChapterHTML(around: currentChapterIndex)
+        }
+        .onChange(of: appSettings.lineSpacing) { _ in
+            preloadNearbyChapterHTML(around: currentChapterIndex)
+        }
+        .onChange(of: appSettings.pageMargins) { _ in
+            preloadNearbyChapterHTML(around: currentChapterIndex)
+        }
+        .onChange(of: effectiveColorScheme) { _ in
+            preloadNearbyChapterHTML(around: currentChapterIndex)
         }
         .confirmationDialog(
             deletingNoteOnly ? NSLocalizedString("highlight.action.delete_note_confirm", comment: "") : NSLocalizedString("highlight.action.delete_highlight_confirm", comment: ""),
@@ -316,6 +330,7 @@ struct ReaderView: View {
             let activeHighlightNavigation = pendingHighlightNavigation?.chapterIndex == index ? pendingHighlightNavigation : nil
             
             ReaderWebView(
+                contentID: chapter.order,
                 htmlContent: chapter.htmlContent,
                 appSettings: appSettings,
                 isDarkMode: effectiveColorScheme == .dark,
@@ -432,6 +447,27 @@ struct ReaderView: View {
         let cleaned = fragment.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return nil }
         return cleaned.hasPrefix("#") ? String(cleaned.dropFirst()) : cleaned
+    }
+
+    private func preloadNearbyChapterHTML(around index: Int) {
+        guard !chapters.isEmpty else { return }
+        guard chapters.indices.contains(index) else { return }
+
+        let minIndex = max(0, index - 1)
+        let maxIndex = min(chapters.count - 1, index + chapterPreloadWindow)
+        let candidateIndices = Array(minIndex...maxIndex)
+
+        for chapterIndex in candidateIndices {
+            let chapter = chapters[chapterIndex]
+            ReaderWebView.preloadChapterHTML(
+                contentID: chapter.order,
+                htmlContent: chapter.htmlContent,
+                fontSize: appSettings.readingFontSize.fontSize,
+                lineSpacing: appSettings.lineSpacing,
+                isDarkMode: effectiveColorScheme == .dark,
+                pageMargins: Int(appSettings.pageMargins)
+            )
+        }
     }
 
     private func handleTOCSelection(chapterIndex: Int, fragment: String?) {
@@ -1393,6 +1429,7 @@ struct ReaderView: View {
                     }
                     
                     self.isLoading = false
+                    self.preloadNearbyChapterHTML(around: self.currentChapterIndex)
                 }
             } catch {
                 DispatchQueue.main.async {

@@ -258,6 +258,151 @@ struct EPubParserEPUB3Tests {
         #expect(metadata.coverImageData == coverBytes)
         #expect(metadata.chapters[0].htmlContent.contains("data:image/png;base64,"))
     }
+
+    @Test
+    func filtersMeaninglessNestedNumericTOCEntries() throws {
+        let epubURL = try makeEPUBFile(
+            contentOPF: """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="bookid">
+              <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+                <dc:identifier id="bookid">urn:uuid:test-epub2-filter-numeric</dc:identifier>
+                <dc:title>EPUB2 Filter Numeric TOC</dc:title>
+                <dc:creator>LanRead QA</dc:creator>
+                <dc:language>zh</dc:language>
+              </metadata>
+              <manifest>
+                <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+                <item id="ch1" href="text/ch1.xhtml" media-type="application/xhtml+xml"/>
+              </manifest>
+              <spine toc="ncx">
+                <itemref idref="ch1"/>
+              </spine>
+            </package>
+            """,
+            additionalEntries: [
+                ZIPEntry(
+                    path: "OEBPS/toc.ncx",
+                    data: Data(
+                        """
+                        <?xml version="1.0" encoding="UTF-8"?>
+                        <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+                          <navMap>
+                            <navPoint id="p1" playOrder="1">
+                              <navLabel><text>第一篇 心理史学家</text></navLabel>
+                              <content src="text/ch1.xhtml#part1"/>
+                              <navPoint id="n1" playOrder="2">
+                                <navLabel><text>1</text></navLabel>
+                                <content src="text/ch1.xhtml#sigil_toc_id_1"/>
+                              </navPoint>
+                              <navPoint id="n2" playOrder="3">
+                                <navLabel><text>2</text></navLabel>
+                                <content src="text/ch1.xhtml#sigil_toc_id_2"/>
+                              </navPoint>
+                            </navPoint>
+                            <navPoint id="p2" playOrder="4">
+                              <navLabel><text>第二篇 百科全书编者</text></navLabel>
+                              <content src="text/ch1.xhtml#part2"/>
+                            </navPoint>
+                          </navMap>
+                        </ncx>
+                        """.utf8
+                    )
+                ),
+                ZIPEntry(
+                    path: "OEBPS/text/ch1.xhtml",
+                    data: Data(
+                        """
+                        <?xml version="1.0" encoding="UTF-8"?>
+                        <html xmlns="http://www.w3.org/1999/xhtml">
+                          <head><title>Chapter One</title></head>
+                          <body>
+                            <h1 id="part1">第一篇 心理史学家</h1>
+                            <p>Alpha</p>
+                            <h1 id="part2">第二篇 百科全书编者</h1>
+                            <p>Beta</p>
+                          </body>
+                        </html>
+                        """.utf8
+                    )
+                )
+            ]
+        )
+        defer { try? FileManager.default.removeItem(at: epubURL) }
+
+        let metadata = try EPubParser.parseEPub(from: epubURL)
+
+        #expect(metadata.tocItems.count == 2)
+        #expect(metadata.tocItems.map(\.title) == ["第一篇 心理史学家", "第二篇 百科全书编者"])
+    }
+
+    @Test
+    func keepsSemanticNumberedNestedTOCEntries() throws {
+        let epubURL = try makeEPUBFile(
+            contentOPF: """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="bookid">
+              <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+                <dc:identifier id="bookid">urn:uuid:test-epub2-keep-semantic-numbered</dc:identifier>
+                <dc:title>EPUB2 Keep Semantic TOC</dc:title>
+                <dc:creator>LanRead QA</dc:creator>
+                <dc:language>zh</dc:language>
+              </metadata>
+              <manifest>
+                <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+                <item id="ch1" href="text/ch1.xhtml" media-type="application/xhtml+xml"/>
+              </manifest>
+              <spine toc="ncx">
+                <itemref idref="ch1"/>
+              </spine>
+            </package>
+            """,
+            additionalEntries: [
+                ZIPEntry(
+                    path: "OEBPS/toc.ncx",
+                    data: Data(
+                        """
+                        <?xml version="1.0" encoding="UTF-8"?>
+                        <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+                          <navMap>
+                            <navPoint id="p1" playOrder="1">
+                              <navLabel><text>第一篇 将军</text></navLabel>
+                              <content src="text/ch1.xhtml#part1"/>
+                              <navPoint id="n1" playOrder="2">
+                                <navLabel><text>01 寻找魔术师</text></navLabel>
+                                <content src="text/ch1.xhtml#sigil_toc_id_1"/>
+                              </navPoint>
+                            </navPoint>
+                          </navMap>
+                        </ncx>
+                        """.utf8
+                    )
+                ),
+                ZIPEntry(
+                    path: "OEBPS/text/ch1.xhtml",
+                    data: Data(
+                        """
+                        <?xml version="1.0" encoding="UTF-8"?>
+                        <html xmlns="http://www.w3.org/1999/xhtml">
+                          <head><title>Chapter One</title></head>
+                          <body>
+                            <h1 id="part1">第一篇 将军</h1>
+                            <h2 id="sigil_toc_id_1">01 寻找魔术师</h2>
+                            <p>正文</p>
+                          </body>
+                        </html>
+                        """.utf8
+                    )
+                )
+            ]
+        )
+        defer { try? FileManager.default.removeItem(at: epubURL) }
+
+        let metadata = try EPubParser.parseEPub(from: epubURL)
+
+        #expect(metadata.tocItems.count == 2)
+        #expect(metadata.tocItems.map(\.title) == ["第一篇 将军", "01 寻找魔术师"])
+    }
 }
 
 private extension EPubParserEPUB3Tests {

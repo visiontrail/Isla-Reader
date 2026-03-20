@@ -60,6 +60,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private var lastAppliedTOCNavigationToken: Int = -1
     private var lastAppliedHighlightNavigationToken: Int = -1
     private var lastHandledSelectionActionID: UUID?
+    private var pendingHTMLLoadToken: Int = 0
     
     init(_ parent: ReaderWebView) {
         self.parent = parent
@@ -414,6 +415,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
 
     // Reset flags when reloading HTML content
     func prepareForNewLoad() {
+        pendingHTMLLoadToken += 1
         self.didApplyPagination = false
         self.isLoaded = false
         self.isPaginationReady = false
@@ -429,6 +431,19 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     func updateHighlights(_ highlights: [ReaderHighlight]) {
         pendingHighlights = highlights
         applyHighlightsIfReady(on: webView)
+    }
+
+    func loadHTMLAsync(cacheKey: String, htmlContent: String, css: String, on webView: WKWebView) {
+        pendingHTMLLoadToken += 1
+        let requestToken = pendingHTMLLoadToken
+
+        ReaderWebView.renderHTMLAsync(cacheKey: cacheKey, htmlContent: htmlContent, css: css) { [weak self, weak webView] html in
+            DispatchQueue.main.async {
+                guard let self, let webView else { return }
+                guard requestToken == self.pendingHTMLLoadToken else { return }
+                webView.loadHTMLString(html, baseURL: nil)
+            }
+        }
     }
 
     func applyTOCNavigationIfNeeded(on webView: WKWebView?) {
@@ -650,6 +665,18 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
 
 // MARK: - Reader WebView
 struct ReaderWebView: UIViewRepresentable {
+    private static let renderedHTMLCache: NSCache<NSString, NSString> = {
+        let cache = NSCache<NSString, NSString>()
+        cache.countLimit = 12
+        return cache
+    }()
+    private static let htmlRenderQueue = DispatchQueue(
+        label: "lanread.reader.html-render",
+        qos: .userInitiated,
+        attributes: .concurrent
+    )
+
+    let contentID: Int
     let htmlContent: String
     let appSettings: AppSettings
     let isDarkMode: Bool
@@ -668,6 +695,89 @@ struct ReaderWebView: UIViewRepresentable {
     var onHighlightTap: ((HighlightTapInfo) -> Void)?
     var onLoadFinished: (() -> Void)?
     var onInteractionChange: ((Bool) -> Void)?
+
+    static func preloadChapterHTML(
+        contentID: Int,
+        htmlContent: String,
+        fontSize: CGFloat,
+        lineSpacing: Double,
+        isDarkMode: Bool,
+        pageMargins: Int
+    ) {
+        let styleSignature = makeStyleSignature(
+            fontSize: fontSize,
+            lineSpacing: lineSpacing,
+            isDarkMode: isDarkMode,
+            pageMargins: pageMargins
+        )
+        let cacheKey = makeCacheKey(contentID: contentID, styleSignature: styleSignature)
+        if renderedHTMLCache.object(forKey: cacheKey as NSString) != nil {
+            return
+        }
+
+        let css = getMobileOptimizedCSS(
+            fontSize: fontSize,
+            lineSpacing: lineSpacing,
+            isDarkMode: isDarkMode,
+            pageMargins: pageMargins
+        )
+        renderHTMLAsync(cacheKey: cacheKey, htmlContent: htmlContent, css: css, completion: { _ in })
+    }
+
+    fileprivate static func renderHTMLAsync(
+        cacheKey: String,
+        htmlContent: String,
+        css: String,
+        completion: @escaping (String) -> Void
+    ) {
+        if let cached = renderedHTMLCache.object(forKey: cacheKey as NSString) {
+            completion(cached as String)
+            return
+        }
+
+        htmlRenderQueue.async {
+            let html = buildFullHTML(htmlContent: htmlContent, css: css)
+            renderedHTMLCache.setObject(html as NSString, forKey: cacheKey as NSString)
+            completion(html)
+        }
+    }
+
+    private static func buildFullHTML(htmlContent: String, css: String) -> String {
+        """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+                \(css)
+            </style>
+        </head>
+        <body>
+            <div class="reader-content">
+                <div class="reader-book-root">
+                    \(htmlContent)
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    }
+
+    private static func makeStyleSignature(
+        fontSize: CGFloat,
+        lineSpacing: Double,
+        isDarkMode: Bool,
+        pageMargins: Int
+    ) -> String {
+        let roundedFont = Int(fontSize.rounded())
+        let roundedLineSpacing = String(format: "%.3f", lineSpacing)
+        return "font:\(roundedFont)|line:\(roundedLineSpacing)|theme:\(isDarkMode ? "dark" : "light")|margin:\(pageMargins)"
+    }
+
+    private static func makeCacheKey(contentID: Int, styleSignature: String) -> String {
+        "chapter:\(contentID)|\(styleSignature)"
+    }
     
     func makeCoordinator() -> WebViewCoordinator {
         WebViewCoordinator(self)
@@ -745,14 +855,29 @@ struct ReaderWebView: UIViewRepresentable {
         // Sync latest SwiftUI state to coordinator
         context.coordinator.updateParent(self)
         context.coordinator.updateHighlights(highlights)
-        // Compute a signature that represents the visual content (chapter html + typography settings + theme)
-        let signature = "sig::\(htmlContent.hashValue):\(appSettings.readingFontSize.fontSize):\(appSettings.lineSpacing):\(isDarkMode ? "dark" : "light"):\(Int(appSettings.pageMargins))"
+        let styleSignature = Self.makeStyleSignature(
+            fontSize: appSettings.readingFontSize.fontSize,
+            lineSpacing: appSettings.lineSpacing,
+            isDarkMode: isDarkMode,
+            pageMargins: Int(appSettings.pageMargins)
+        )
+        let cacheKey = Self.makeCacheKey(contentID: contentID, styleSignature: styleSignature)
+        let signature = "sig::\(cacheKey)"
         if container.accessibilityHint != signature {
             DebugLogger.info("[HighlightNav] updateUIView: 签名变化，重新加载 HTML, highlightToken=\(highlightNavigationToken), highlightOffset=\(highlightTextOffset.map(String.init) ?? "nil")")
             container.accessibilityHint = signature
-            let html = generateFullHTML()
             context.coordinator.prepareForNewLoad()
-            webView.loadHTMLString(html, baseURL: nil)
+            let css = getMobileOptimizedCSS()
+            if let cachedHTML = Self.renderedHTMLCache.object(forKey: cacheKey as NSString) {
+                webView.loadHTMLString(cachedHTML as String, baseURL: nil)
+            } else {
+                context.coordinator.loadHTMLAsync(
+                    cacheKey: cacheKey,
+                    htmlContent: htmlContent,
+                    css: css,
+                    on: webView
+                )
+            }
         } else {
             DebugLogger.info("[HighlightNav] updateUIView: 签名未变，走 else 分支, highlightToken=\(highlightNavigationToken), highlightOffset=\(highlightTextOffset.map(String.init) ?? "nil")")
             // 内容未重载：若页码变化则执行滑动动画；若未变化则确保位置同步
@@ -766,46 +891,34 @@ struct ReaderWebView: UIViewRepresentable {
 
         context.coordinator.performSelectionActionIfNeeded(selectionAction, on: webView)
     }
-    
-    private func generateFullHTML() -> String {
-        let css = getMobileOptimizedCSS()
-        
-        return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <style>
-                \(css)
-            </style>
-        </head>
-        <body>
-            <div class="reader-content">
-                <div class="reader-book-root">
-                    \(htmlContent)
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-    }
-    
+
     private func getMobileOptimizedCSS() -> String {
-        // 根据用户设置和主题生成CSS
-        let fontSize = appSettings.readingFontSize.fontSize
+        Self.getMobileOptimizedCSS(
+            fontSize: appSettings.readingFontSize.fontSize,
+            lineSpacing: appSettings.lineSpacing,
+            isDarkMode: isDarkMode,
+            pageMargins: Int(appSettings.pageMargins)
+        )
+    }
+
+    private static func getMobileOptimizedCSS(
+        fontSize: CGFloat,
+        lineSpacing: Double,
+        isDarkMode: Bool,
+        pageMargins: Int
+    ) -> String {
         let lineHeight: Double
-        if appSettings.lineSpacing <= 1.0 {
+        if lineSpacing <= 1.0 {
             // Increase sensitivity below 1.0 so each slider step has clearer visual impact.
-            lineHeight = 0.9 + (appSettings.lineSpacing * 0.55)
+            lineHeight = 0.9 + (lineSpacing * 0.55)
         } else {
-            lineHeight = 1.45 + ((appSettings.lineSpacing - 1.0) * 0.34)
+            lineHeight = 1.45 + ((lineSpacing - 1.0) * 0.34)
         }
         let backgroundColor = isDarkMode ? "#0d0d12" : "#fafafa"
         let textColor = isDarkMode ? "rgba(255, 255, 255, 0.87)" : "rgba(0, 0, 0, 0.87)"
         let linkColor = isDarkMode ? "#64b5f6" : "#1976d2"
-        let pageMargin = Int(appSettings.pageMargins)
-        
+        let pageMargin = Int(pageMargins)
+
         return """
         /* 基础样式 - 移动端优化 */
         :root {

@@ -169,6 +169,19 @@ enum SkimmingModeError: LocalizedError {
 final class SkimmingModeService {
     static let shared = SkimmingModeService()
     
+    private enum SkimmingPromptStrategy: String {
+        case knownByModel = "known_by_model"
+        case fullChapterFallback = "full_chapter_fallback"
+    }
+
+    private struct SkimmingPromptContext {
+        let strategy: SkimmingPromptStrategy
+        let chapterContent: String
+        let decisionReason: String
+        let originalChapterLength: Int
+        let cleanedChapterLength: Int
+    }
+
     private let decoder = JSONDecoder()
     private let cacheLock = NSLock()
     private var cache: [String: SkimmingChapterSummary] = [:]
@@ -358,16 +371,48 @@ final class SkimmingModeService {
     
     func generateSkimmingSummary(for book: Book, chapter: SkimmingChapterMetadata) async throws -> SkimmingChapterSummary {
         if let cached = cachedSummary(for: book, chapter: chapter) {
+            DebugLogger.info(
+                "SkimmingModeService: 略读流程[缓存命中] book=\(book.displayTitle), chapter=\(chapter.title), order=\(chapter.order)"
+            )
             return cached
         }
+
+        DebugLogger.info(
+            "SkimmingModeService: 略读流程[开始] book=\(book.displayTitle), author=\(book.displayAuthor), chapter=\(chapter.title), order=\(chapter.order), 原始章节长度=\(chapter.content.count) 字符"
+        )
         
-        let prompt = buildPrompt(book: book, chapter: chapter)
+        let modelKnowsChapter: Bool
+        do {
+            DebugLogger.info("SkimmingModeService: 略读流程[步骤1] 开始章节知识探测")
+            modelKnowsChapter = try await checkModelKnowledge(for: book, chapter: chapter)
+            DebugLogger.info(
+                "SkimmingModeService: 略读流程[步骤1结果] 章节知识探测结果 = \(modelKnowsChapter ? "YES(模型称已知)" : "NO(模型称未知)")"
+            )
+        } catch {
+            DebugLogger.warning("SkimmingModeService: 章节知识探测失败，按未知处理 - \(error.localizedDescription)")
+            modelKnowsChapter = false
+            DebugLogger.info("SkimmingModeService: 略读流程[步骤1结果] 章节知识探测异常，强制按 NO 处理")
+        }
+        
+        let context = buildPromptContext(for: chapter, modelKnowsChapter: modelKnowsChapter)
+        DebugLogger.info(
+            """
+            SkimmingModeService: 略读流程[步骤2] 上下文策略判定完成
+            - strategy = \(context.strategy.rawValue)
+            - reason = \(context.decisionReason)
+            - 原始章节长度 = \(context.originalChapterLength) 字符
+            - 清洗后章节长度 = \(context.cleanedChapterLength) 字符
+            - 最终注入提示词章节长度 = \(context.chapterContent.count) 字符
+            """
+        )
+        
+        let prompt = buildPrompt(book: book, chapter: chapter, context: context)
         DebugLogger.info("SkimmingModeService: === 略读提示词开始 ===")
         DebugLogger.info("\n\(prompt)")
         DebugLogger.info("SkimmingModeService: === 略读提示词结束 ===")
         DebugLogger.info("SkimmingModeService: 提示词长度 = \(prompt.count) 字符")
         
-        let response = try await callAIAPI(prompt: prompt)
+        let response = try await callAIAPI(prompt: prompt, source: .skimming)
         let summary = try parseSummary(from: response, fallbackTitle: chapter.title)
         store(summary: summary, for: book, chapter: chapter)
         return summary
@@ -403,9 +448,126 @@ final class SkimmingModeService {
         )
     }
     
-    private func buildPrompt(book: Book, chapter: SkimmingChapterMetadata) -> String {
-        let chapterExcerpt = chapter.content
+    private func checkModelKnowledge(for book: Book, chapter: SkimmingChapterMetadata) async throws -> Bool {
+        let normalizedBookTitle = normalizeTitle(book.displayTitle)
+        let normalizedAuthor = normalizeTitle(book.displayAuthor)
+        let normalizedChapterTitle = normalizeTitle(chapter.title)
+
+        DebugLogger.info(
+            """
+            SkimmingModeService: 章节知识探测输入
+            - bookTitle = \(normalizedBookTitle)
+            - author = \(normalizedAuthor)
+            - chapterTitle = \(normalizedChapterTitle)
+            - chapterOrder = \(chapter.order)
+            """
+        )
+        
+        let prompt = """
+        You are doing a binary knowledge check for a specific book chapter.
+        
+        Book title: \(normalizedBookTitle)
+        Author: \(normalizedAuthor)
+        Chapter title: \(normalizedChapterTitle)
+        Chapter order: \(chapter.order)
+        
+        Reply with exactly one uppercase word:
+        YES
+        or
+        NO
+        
+        Rules:
+        - Reply YES only if your training knowledge is sufficient to produce a reliable structure-first skimming summary for this chapter without chapter text.
+        - If uncertain, reply NO.
+        - Do not output anything else.
+        """
+
+        DebugLogger.info("SkimmingModeService: === 章节知识探测提示词开始 ===")
+        DebugLogger.info("\n\(prompt)")
+        DebugLogger.info("SkimmingModeService: === 章节知识探测提示词结束 ===")
+        DebugLogger.info("SkimmingModeService: 章节知识探测提示词长度 = \(prompt.count) 字符")
+        
+        let response = try await callAIAPI(
+            prompt: prompt,
+            source: .skimming,
+            temperature: 0.0,
+            maxTokens: 8
+        )
+        
+        let normalized = response
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+
+        DebugLogger.info(
+            "SkimmingModeService: 章节知识探测响应 raw=\(response.trimmingCharacters(in: .whitespacesAndNewlines)), normalized=\(normalized)"
+        )
+        
+        if normalized.hasPrefix("YES") {
+            return true
+        }
+        
+        if normalized.hasPrefix("NO") {
+            return false
+        }
+        
+        DebugLogger.warning("SkimmingModeService: 章节知识探测响应无法识别，按 NO 处理。原始响应 = \(response)")
+        return false
+    }
+
+    private func buildPromptContext(for chapter: SkimmingChapterMetadata, modelKnowsChapter: Bool) -> SkimmingPromptContext {
+        if modelKnowsChapter {
+            return SkimmingPromptContext(
+                strategy: .knownByModel,
+                chapterContent: "",
+                decisionReason: "knowledge_check=YES",
+                originalChapterLength: chapter.content.count,
+                cleanedChapterLength: 0
+            )
+        }
+
+        let cleanedContent = cleanAndCompressText(chapter.content)
+        
+        return SkimmingPromptContext(
+            strategy: .fullChapterFallback,
+            chapterContent: cleanedContent,
+            decisionReason: "knowledge_check=NO_or_error",
+            originalChapterLength: chapter.content.count,
+            cleanedChapterLength: cleanedContent.count
+        )
+    }
+
+    private func buildPrompt(book: Book, chapter: SkimmingChapterMetadata, context: SkimmingPromptContext) -> String {
         let language = AppSettings.shared.language.aiOutputLanguageName()
+        
+        let contextPolicy: String
+        switch context.strategy {
+        case .knownByModel:
+            contextPolicy = """
+            Strategy: The model reported it already knows this chapter from training knowledge.
+            Generate the skimming summary directly using prior knowledge and keep the current output JSON format.
+            If uncertain, stay high-level and avoid fabricated details.
+            """
+        case .fullChapterFallback:
+            contextPolicy = """
+            Strategy: The model reported it does not know this chapter.
+            Use the full chapter content provided below after local cleaning/compression.
+            Do not invent details that are not grounded in the chapter content.
+            """
+        }
+        
+        let chapterContentSection: String
+        if context.chapterContent.isEmpty {
+            chapterContentSection = """
+            CHAPTER CONTENT:
+            Not provided (knowledge-first path).
+            """
+        } else {
+            chapterContentSection = """
+            CHAPTER CONTENT START
+            \(context.chapterContent)
+            CHAPTER CONTENT END
+            """
+        }
         
         return """
         You are IslaBooks' inspectional reading coach.
@@ -416,6 +578,9 @@ final class SkimmingModeService {
         - Chapter Title: \(chapter.title)
         - Chapter Order: \(chapter.order)
         - Reading Goal: expose architecture, thesis, transitions, and entry questions for deeper study.
+        
+        CONTEXT POLICY:
+        \(contextPolicy)
         
         OUTPUT FORMAT: respond ONLY with valid JSON matching this schema:
         {
@@ -437,13 +602,124 @@ final class SkimmingModeService {
         - Align tone with LanRead docs/reading_interaction_design.md guidance on "略读模式".
         - Respect How to Read a Book inspectional reading mindset: emphasize skeleton first, questions second, details last.
         
-        CHAPTER CONTENT START
-        \(chapterExcerpt)
-        CHAPTER CONTENT END
+        \(chapterContentSection)
         """
     }
     
-    private func callAIAPI(prompt: String) async throws -> String {
+    private func cleanAndCompressText(_ text: String) -> String {
+        var normalized = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .replacingOccurrences(of: "\u{00A0}", with: " ")
+            .replacingOccurrences(of: "\u{200B}", with: "")
+        
+        normalized = normalized.replacingOccurrences(of: #"[ \t]+"#, with: " ", options: .regularExpression)
+        
+        let rawLines = normalized.components(separatedBy: .newlines)
+        var lineFrequency: [String: Int] = [:]
+        for rawLine in rawLines {
+            let trimmed = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            lineFrequency[trimmed, default: 0] += 1
+        }
+        
+        var cleanedLines: [String] = []
+        var previousWasEmpty = false
+        
+        for rawLine in rawLines {
+            var line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if line.isEmpty {
+                if !previousWasEmpty {
+                    cleanedLines.append("")
+                    previousWasEmpty = true
+                }
+                continue
+            }
+            
+            if shouldDropNoiseLine(line) || shouldDropRepeatedHeaderOrFooterLine(line, frequency: lineFrequency) {
+                continue
+            }
+            
+            line = line.replacingOccurrences(of: #"[-=*~_•·]{6,}"#, with: " ", options: .regularExpression)
+            line = line.replacingOccurrences(of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)
+            line = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            guard !line.isEmpty else {
+                continue
+            }
+            
+            cleanedLines.append(line)
+            previousWasEmpty = false
+        }
+        
+        return cleanedLines
+            .joined(separator: "\n")
+            .replacingOccurrences(of: #"\n{3,}"#, with: "\n\n", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private func shouldDropNoiseLine(_ line: String) -> Bool {
+        if line.range(of: #"^[-=*~_•·]{4,}$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        if line.range(of: #"^\d{1,4}$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        if line.range(of: #"^(?i:page)\s*\d+(\s*/\s*\d+)?$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        if line.range(of: #"^(?i:p\.)\s*\d+$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        if line.range(of: #"^第\s*\d+\s*页$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        if line.range(of: #"^[^\p{L}\p{N}]{6,}$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        return false
+    }
+    
+    private func shouldDropRepeatedHeaderOrFooterLine(_ line: String, frequency: [String: Int]) -> Bool {
+        guard let count = frequency[line], count >= 3 else {
+            return false
+        }
+        
+        guard line.count <= 80 else {
+            return false
+        }
+        
+        if line.range(of: #"[.!?。！？；;]"#, options: .regularExpression) != nil {
+            return false
+        }
+        
+        let words = line.split(whereSeparator: \.isWhitespace).count
+        return words <= 12
+    }
+    
+    private func normalizeTitle(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "\r\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\u{00A0}", with: " ")
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private func callAIAPI(
+        prompt: String,
+        source: UsageMetricsSource = .skimming,
+        temperature: Double = 0.4,
+        maxTokens: Int = 1200
+    ) async throws -> String {
         guard AIConsentManager.shared.hasExplicitPermission() else {
             DebugLogger.warning("SkimmingModeService: 用户未授权，已阻止 AI 请求")
             throw SkimmingModeError.permissionRequired
@@ -463,8 +739,8 @@ final class SkimmingModeService {
         var body: [String: Any] = [
             "model": config.model,
             "messages": [["role": "user", "content": prompt]],
-            "temperature": 0.4,
-            "max_tokens": 1200
+            "temperature": temperature,
+            "max_tokens": maxTokens
         ]
         if AICompatibilityOptions.shouldExplicitlyDisableThinking(for: config.endpoint) {
             body["enable_thinking"] = false
@@ -495,7 +771,7 @@ final class SkimmingModeService {
                 requestBytes: requestBytes,
                 tokens: tokensUsed,
                 retryCount: 0,
-                source: .skimming,
+                source: source,
                 errorReason: errorReason
             )
         }

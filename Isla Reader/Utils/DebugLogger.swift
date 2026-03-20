@@ -17,14 +17,9 @@ class DebugLogger {
     
     func log(_ message: String, level: OSLogType = .default, function: String = #function, file: String = #file, line: Int = #line) {
         let fileName = URL(fileURLWithPath: file).lastPathComponent
-        let logMessage = "[\(fileName):\(line)] \(function) - \(message)"
+        let logMessage = "[\(getCurrentTimestamp())] [\(fileName):\(line)] \(function) - \(message)"
         
         logger.log(level: level, "\(logMessage)")
-        
-        // 同时输出到控制台以便在Xcode中查看
-#if DEBUG
-        print("🔍 [\(getCurrentTimestamp())] \(logMessage)")
-#endif
     }
     
     func logError(_ message: String, error: Error? = nil, function: String = #function, file: String = #file, line: Int = #line) {
