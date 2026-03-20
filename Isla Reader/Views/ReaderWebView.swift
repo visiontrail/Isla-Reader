@@ -1435,7 +1435,23 @@ struct ReaderWebView: UIViewRepresentable {
             updateEdgeOverlay();
         });
         
-        window.addEventListener('scroll', function(){ updateEdgeOverlay(); }, { passive: true });
+        var selectionRectSyncScheduled = false;
+        function syncSelectionRectAfterScrollIfNeeded() {
+            if (selectionRectSyncScheduled) { return; }
+            selectionRectSyncScheduled = true;
+            requestAnimationFrame(function() {
+                selectionRectSyncScheduled = false;
+                updateEdgeOverlay();
+                try {
+                    const selection = window.getSelection ? window.getSelection() : null;
+                    if (!selection || selection.rangeCount === 0) { return; }
+                    const text = selection.toString ? selection.toString().trim() : '';
+                    if (!text) { return; }
+                    notifySelectionChange();
+                } catch (e) {}
+            });
+        }
+        window.addEventListener('scroll', syncSelectionRectAfterScrollIfNeeded, { passive: true });
         
         // 使用轻量防抖避免图片等资源异步加载时频繁重排导致的闪动
         var resizeTimer = null;

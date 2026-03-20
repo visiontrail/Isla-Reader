@@ -145,6 +145,9 @@
 "reader.note.add" = "添加笔记";
 "reader.ai.translate" = "翻译";
 "reader.ai.explain" = "AI 解释";
+"reader.ai.ask" = "问问 AI";
+"reader.ai.question.placeholder" = "针对这段内容输入你的问题...";
+"reader.ai.question.send" = "发送";
 "common.copy" = "复制";
 "reader.text_actions" = "文本操作";
 "highlight.action.title" = "高亮详情";
@@ -342,6 +345,7 @@
 "reader.copy.selection_required" = "请选择要复制的内容";
 "reader.copy.success" = "已复制到剪贴板";
 "reader.ai.selection_required" = "请选择文字后使用 AI";
+"reader.ai.question.empty" = "请先输入问题";
 "reader.highlight.failed" = "标记失败，请重试";
 "reader.highlight.saved" = "已高亮所选内容";
 "reader.highlight.saved_with_note" = "已添加带笔记的高亮";

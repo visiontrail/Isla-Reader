@@ -59,6 +59,21 @@ final class ReadingAIService {
         return try await callAI(with: prompt, temperature: 0.5, maxTokens: 520, source: .inlineExplain)
     }
 
+    func ask(question: String, about text: String, locale: AppLanguage) async throws -> String {
+        let languageName = displayName(for: locale)
+        let prompt = """
+        You are an assistant embedded in an eBook reader. In \(languageName), answer the reader's question based only on the excerpt when possible. Keep the answer concise, clear, and practical.
+
+        Question:
+        \(question)
+
+        Excerpt:
+        \(text)
+        """
+
+        return try await callAI(with: prompt, temperature: 0.45, maxTokens: 620, source: .inlineQuestion)
+    }
+
     // MARK: - Private
 
     private func callAI(with prompt: String, temperature: Double, maxTokens: Int, source: UsageMetricsSource) async throws -> String {

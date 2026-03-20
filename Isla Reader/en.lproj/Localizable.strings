@@ -145,6 +145,9 @@
 "reader.note.add" = "Add Note";
 "reader.ai.translate" = "Translate";
 "reader.ai.explain" = "AI Explain";
+"reader.ai.ask" = "Ask AI";
+"reader.ai.question.placeholder" = "Ask about this selection...";
+"reader.ai.question.send" = "Send";
 "common.copy" = "Copy";
 "reader.text_actions" = "Text Actions";
 "highlight.action.title" = "Highlight Details";
@@ -342,6 +345,7 @@
 "reader.copy.selection_required" = "Select text before copying.";
 "reader.copy.success" = "Copied to clipboard.";
 "reader.ai.selection_required" = "Select text before using AI.";
+"reader.ai.question.empty" = "Enter a question first.";
 "reader.highlight.failed" = "Highlight failed, please try again.";
 "reader.highlight.saved" = "Highlighted selection.";
 "reader.highlight.saved_with_note" = "Added highlight with note.";

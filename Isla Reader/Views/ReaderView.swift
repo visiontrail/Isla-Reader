@@ -53,6 +53,7 @@ struct ReaderView: View {
     @State private var showingNoteEditor = false
     @State private var noteDraft = ""
     @State private var showingAIResponse = false
+    @State private var customAIQuestionDraft = ""
     @State private var aiResponseTitle = ""
     @State private var aiResponseContent = ""
     @State private var aiActionInFlight: AIAction?
@@ -81,6 +82,7 @@ struct ReaderView: View {
     @State private var pendingTapWorkItem: DispatchWorkItem?
     @State private var lastNavigationTapTime: Date?
     @State private var lastWebContentTapTime: Date?
+    @FocusState private var isCustomQuestionFieldFocused: Bool
     private let swipePagingEnabled = true
     private let tapNavigationEdgeRatio: CGFloat = 0.24
     private let chapterPreloadWindow = 2
@@ -93,6 +95,7 @@ struct ReaderView: View {
     private enum AIAction {
         case translate
         case explain
+        case custom(question: String)
     }
 
     private enum AIInsertionTarget {
@@ -201,6 +204,12 @@ struct ReaderView: View {
         }
         .onChange(of: appSettings.pageMargins) { _ in
             preloadNearbyChapterHTML(around: currentChapterIndex)
+        }
+        .onChange(of: selectedTextInfo) { info in
+            if info == nil {
+                customAIQuestionDraft = ""
+                isCustomQuestionFieldFocused = false
+            }
         }
         .onChange(of: effectiveColorScheme) { _ in
             preloadNearbyChapterHTML(around: currentChapterIndex)
@@ -645,98 +654,118 @@ struct ReaderView: View {
 
     // MARK: - Selection & Notes
 
-    private func selectionToolbar(for info: SelectedTextInfo, in geometry: GeometryProxy) -> some View {
-        let safeTop = geometry.safeAreaInsets.top + 12
-        let safeBottom = geometry.size.height - geometry.safeAreaInsets.bottom - 16
-        let fallbackRect = CGRect(x: geometry.size.width / 2, y: geometry.size.height * 0.25, width: 0, height: 0)
-        let hasFiniteRect =
-            info.rect.minX.isFinite &&
-            info.rect.minY.isFinite &&
-            info.rect.width.isFinite &&
-            info.rect.height.isFinite
-        let sourceRect = (hasFiniteRect && info.rect != .zero) ? info.rect : fallbackRect
-        let toolbarHeight: CGFloat = 64
-        let spacingAboveSelection: CGFloat = 12
-        let spacingBelowSelection = dynamicSpacingBelowSelection
-        let upperRegionThreshold = geometry.size.height * 0.45
-        let normalizedMinY = min(max(sourceRect.minY, safeTop), safeBottom)
-        let normalizedMaxY = min(max(sourceRect.maxY, safeTop), safeBottom)
-        let normalizedMidY = min(max(sourceRect.midY, safeTop), safeBottom)
-        let minCenterY = safeTop + toolbarHeight / 2
-        let maxCenterY = safeBottom - toolbarHeight / 2
-        let validMaxCenterY = max(maxCenterY, minCenterY)
-        let preferBelow = normalizedMidY <= upperRegionThreshold
-        let aboveY = normalizedMinY - toolbarHeight / 2 - spacingAboveSelection
-        let belowY = normalizedMaxY + toolbarHeight / 2 + spacingBelowSelection
-        var preferredY = preferBelow ? belowY : aboveY
-        if preferredY < minCenterY || preferredY > maxCenterY {
-            preferredY = preferBelow ? aboveY : belowY
-        }
-        let clampedY = min(max(preferredY, minCenterY), validMaxCenterY)
-        let toolbarWidth = min(max(geometry.size.width - 24, 260), 760)
+    private func selectionToolbar(for _: SelectedTextInfo, in geometry: GeometryProxy) -> some View {
+        let toolbarWidth = min(max(geometry.size.width - 16, 320), 820)
+        let panelOnTop = shouldPlaceSelectionPanelAtTop(in: geometry)
+        let panelAlignment: Alignment = panelOnTop ? .top : .bottom
+        let toolbarTopPadding = geometry.safeAreaInsets.top + (showingToolbar ? 88 : 12)
+        let toolbarBottomPadding = geometry.safeAreaInsets.bottom + (showingToolbar ? 124 : 12)
+        let trimmedQuestion = customAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let canSubmitQuestion = !trimmedQuestion.isEmpty && !isLoadingAIResponse
 
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                selectionActionButton(
-                    title: NSLocalizedString("reader.highlight.action", comment: ""),
-                    systemImage: "highlighter",
-                    tint: .yellow.opacity(0.9),
-                    action: { commitHighlight(note: nil) }
-                )
+        return VStack(spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    selectionActionButton(
+                        title: NSLocalizedString("reader.highlight.action", comment: ""),
+                        systemImage: "highlighter",
+                        tint: .yellow.opacity(0.9),
+                        action: { commitHighlight(note: nil) }
+                    )
 
-                selectionActionButton(
-                    title: NSLocalizedString("reader.note.add", comment: ""),
-                    systemImage: "note.text",
-                    tint: .blue.opacity(0.9),
-                    action: { prepareNoteEditor() }
-                )
+                    selectionActionButton(
+                        title: NSLocalizedString("reader.note.add", comment: ""),
+                        systemImage: "note.text",
+                        tint: .blue.opacity(0.9),
+                        action: { prepareNoteEditor() }
+                    )
 
-                selectionActionButton(
-                    title: NSLocalizedString("common.copy", comment: ""),
-                    systemImage: "doc.on.doc",
-                    tint: .secondary,
-                    action: { handleCopySelectedText() }
-                )
+                    selectionActionButton(
+                        title: NSLocalizedString("common.copy", comment: ""),
+                        systemImage: "doc.on.doc",
+                        tint: .secondary,
+                        action: { handleCopySelectedText() }
+                    )
 
-                selectionActionButton(
-                    title: NSLocalizedString("reader.ai.translate", comment: ""),
-                    systemImage: "globe",
-                    tint: .green,
-                    action: { startAIRequest(.translate) }
-                )
+                    selectionActionButton(
+                        title: NSLocalizedString("reader.ai.translate", comment: ""),
+                        systemImage: "globe",
+                        tint: .green,
+                        action: { startAIRequest(.translate) }
+                    )
 
-                selectionActionButton(
-                    title: NSLocalizedString("reader.ai.explain", comment: ""),
-                    systemImage: "brain.head.profile",
-                    tint: .purple,
-                    action: { startAIRequest(.explain) }
-                )
+                    selectionActionButton(
+                        title: NSLocalizedString("reader.ai.explain", comment: ""),
+                        systemImage: "brain.head.profile",
+                        tint: .purple,
+                        action: { startAIRequest(.explain) }
+                    )
+                }
+                .padding(.horizontal, 10)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
             }
+
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color.blue.opacity(0.9))
+                    .frame(width: 24, height: 24)
+
+                TextField(
+                    NSLocalizedString("reader.ai.question.placeholder", comment: ""),
+                    text: $customAIQuestionDraft
+                )
+                .textInputAutocapitalization(.sentences)
+                .submitLabel(.send)
+                .focused($isCustomQuestionFieldFocused)
+                .onSubmit {
+                    submitCustomAIQuestion()
+                }
+
+                Button {
+                    submitCustomAIQuestion()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(canSubmitQuestion ? Color.blue : Color.secondary.opacity(0.22))
+                            .frame(width: 30, height: 30)
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .disabled(!canSubmitQuestion)
+                .accessibilityLabel(NSLocalizedString("reader.ai.question.send", comment: ""))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.68))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                    )
+            )
             .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.bottom, 8)
         }
         .frame(width: toolbarWidth)
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 8)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 8)
-        .position(x: geometry.size.width / 2, y: clampedY)
-        .animation(.spring(response: 0.32, dampingFraction: 0.85), value: selectedTextInfo)
-    }
-    
-    private var dynamicSpacingBelowSelection: CGFloat {
-        let estimatedLineHeight = appSettings.readingFontSize.fontSize * webLineHeightMultiplier
-        let spacing = 18 + (estimatedLineHeight * 0.75)
-        return min(max(spacing, 34), 56)
-    }
-    
-    private var webLineHeightMultiplier: CGFloat {
-        let lineSpacing = appSettings.lineSpacing
-        if lineSpacing <= 1.0 {
-            return 0.9 + CGFloat(lineSpacing * 0.55)
-        }
-        return 1.45 + CGFloat((lineSpacing - 1.0) * 0.34)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(Color.primary.opacity(0.09))
+        )
+        .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: panelAlignment)
+        .padding(.top, panelOnTop ? toolbarTopPadding : 0)
+        .padding(.bottom, panelOnTop ? 0 : toolbarBottomPadding)
+        .transition(.move(edge: panelOnTop ? .top : .bottom).combined(with: .opacity))
+        .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.84, blendDuration: 0.08), value: selectedTextInfo)
+        .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.84, blendDuration: 0.08), value: panelOnTop)
     }
 
     private func selectionActionButton(title: String, systemImage: String, tint: Color, action: @escaping () -> Void) -> some View {
@@ -746,17 +775,40 @@ struct ReaderView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(tint)
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.primary.opacity(0.05))
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.65))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
             )
         }
         .buttonStyle(.plain)
+    }
+
+    private func shouldPlaceSelectionPanelAtTop(in geometry: GeometryProxy) -> Bool {
+        guard let info = selectedTextInfo else { return false }
+        let hasFiniteRect =
+            info.rect.minX.isFinite &&
+            info.rect.minY.isFinite &&
+            info.rect.width.isFinite &&
+            info.rect.height.isFinite &&
+            info.rect != .zero
+        guard hasFiniteRect else { return false }
+
+        let topReserved = geometry.safeAreaInsets.top + (showingToolbar ? 88 : 0)
+        let bottomReserved = geometry.safeAreaInsets.bottom + (showingToolbar ? 124 : 0)
+        let safeTop = topReserved
+        let safeBottom = max(safeTop + 1, geometry.size.height - bottomReserved)
+        let clampedMaxY = min(max(info.rect.maxY, safeTop), safeBottom)
+        let threshold = safeTop + (safeBottom - safeTop) * 0.62
+        return clampedMaxY >= threshold
     }
 
     private func handleHighlightTap(_ info: HighlightTapInfo) {
@@ -855,9 +907,29 @@ struct ReaderView: View {
         }
         guard !isLoadingAIResponse else { return }
 
+        let customQuestion: String?
+        switch action {
+        case .custom(let question):
+            let trimmedQuestion = question.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedQuestion.isEmpty else {
+                showHint(NSLocalizedString("reader.ai.question.empty", comment: ""))
+                return
+            }
+            customQuestion = trimmedQuestion
+        default:
+            customQuestion = nil
+        }
+
         aiActionInFlight = action
         aiInsertionTarget = targetHighlight != nil ? .highlight(targetHighlight!) : (selectedTextInfo != nil ? .selection : nil)
-        aiResponseTitle = action == .translate ? NSLocalizedString("reader.ai.translate", comment: "") : NSLocalizedString("reader.ai.explain", comment: "")
+        switch action {
+        case .translate:
+            aiResponseTitle = NSLocalizedString("reader.ai.translate", comment: "")
+        case .explain:
+            aiResponseTitle = NSLocalizedString("reader.ai.explain", comment: "")
+        case .custom:
+            aiResponseTitle = NSLocalizedString("reader.ai.ask", comment: "")
+        }
         aiResponseContent = ""
         aiErrorMessage = nil
         showingAIResponse = true
@@ -872,6 +944,12 @@ struct ReaderView: View {
                     result = try await ReadingAIService.shared.translate(text: text, targetLanguage: appSettings.translationLanguage)
                 case .explain:
                     result = try await ReadingAIService.shared.explain(text: text, locale: appSettings.language)
+                case .custom:
+                    result = try await ReadingAIService.shared.ask(
+                        question: customQuestion ?? "",
+                        about: text,
+                        locale: appSettings.language
+                    )
                 }
 
                 await MainActor.run {
@@ -886,6 +964,17 @@ struct ReaderView: View {
                 }
             }
         }
+    }
+
+    private func submitCustomAIQuestion() {
+        let question = customAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !question.isEmpty else {
+            showHint(NSLocalizedString("reader.ai.question.empty", comment: ""))
+            return
+        }
+        customAIQuestionDraft = ""
+        isCustomQuestionFieldFocused = false
+        startAIRequest(.custom(question: question))
     }
 
     private var canInsertAIContent: Bool {

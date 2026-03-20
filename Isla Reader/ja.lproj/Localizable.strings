@@ -145,6 +145,9 @@
 "reader.note.add" = "メモを追加";
 "reader.ai.translate" = "翻訳";
 "reader.ai.explain" = "AI 解説";
+"reader.ai.ask" = "AI に質問";
+"reader.ai.question.placeholder" = "この選択部分について質問...";
+"reader.ai.question.send" = "送信";
 "common.copy" = "コピー";
 "reader.text_actions" = "テキスト操作";
 "highlight.action.title" = "ハイライト詳細";
@@ -342,6 +345,7 @@
 "reader.copy.selection_required" = "コピーするテキストを選択してください。";
 "reader.copy.success" = "クリップボードにコピーしました。";
 "reader.ai.selection_required" = "AI を使う前にテキストを選択してください。";
+"reader.ai.question.empty" = "質問を入力してください。";
 "reader.highlight.failed" = "ハイライトに失敗しました。もう一度お試しください。";
 "reader.highlight.saved" = "選択範囲をハイライトしました。";
 "reader.highlight.saved_with_note" = "メモ付きのハイライトを追加しました。";
