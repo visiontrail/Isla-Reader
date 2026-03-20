@@ -32,6 +32,22 @@ class AISummaryService: ObservableObject {
     @Published var currentSummary: String = ""
     @Published var error: String?
     
+    private enum SummaryContextStrategy: String {
+        case knownByModel = "known_by_model"
+        case summaryLikeChapters = "summary_like_chapters"
+        case sampledChapters = "sampled_chapters"
+    }
+    
+    private struct SummaryPromptContext {
+        let strategy: SummaryContextStrategy
+        let tableOfContents: String
+        let content: String
+        let selectedChapterCount: Int
+    }
+    
+    private let summaryLikeChapterContentLimit = 700
+    private let sampledChapterContentLimit = 500
+    
     private init() {}
     
     func generateSummary(for book: Book) async throws -> BookSummary {
@@ -200,12 +216,7 @@ class AISummaryService: ObservableObject {
         DebugLogger.info("AISummaryService: 书籍 = \(book.displayTitle)")
         DebugLogger.info("AISummaryService: 章节数 = \(chapters.count)")
         
-        // 构建提示词
-        let prompt = buildSummaryPrompt(book: book, chapters: chapters)
-        DebugLogger.info("AISummaryService: 已构建提示词")
-        
-        // 调用AI API（这里使用模拟实现）
-        let response = try await callAIAPI(prompt: prompt, source: .startReading)
+        let response = try await generateBookSummaryRawResponse(book: book, chapters: chapters)
         DebugLogger.success("AISummaryService: AI API调用成功")
         
         // 解析响应
@@ -249,11 +260,7 @@ class AISummaryService: ObservableObject {
         DebugLogger.info("AISummaryService: 开始流式生成摘要")
         DebugLogger.info("AISummaryService: 书籍 = \(book.displayTitle)")
         
-        let prompt = buildSummaryPrompt(book: book, chapters: chapters)
-        DebugLogger.info("AISummaryService: 流式生成提示词已构建")
-        
-        // 模拟流式API调用
-        let fullSummary = try await callAIAPI(prompt: prompt, source: .startReading)
+        let fullSummary = try await generateBookSummaryRawResponse(book: book, chapters: chapters)
         DebugLogger.success("AISummaryService: 流式API调用完成")
         DebugLogger.info("AISummaryService: 完整摘要长度 = \(fullSummary.count)")
         
@@ -314,7 +321,109 @@ class AISummaryService: ObservableObject {
         DebugLogger.success("AISummaryService: 流式输出完成")
     }
     
-    private func buildSummaryPrompt(book: Book, chapters: [Chapter]) -> String {
+    private func generateBookSummaryRawResponse(book: Book, chapters: [Chapter]) async throws -> String {
+        let modelKnowsBook = try await checkModelKnowledge(for: book)
+        let context = buildSummaryPromptContext(chapters: chapters, modelKnowsBook: modelKnowsBook)
+        
+        DebugLogger.info(
+            "AISummaryService: 摘要上下文策略 = \(context.strategy.rawValue), 选中章节数 = \(context.selectedChapterCount)"
+        )
+        
+        let prompt = buildSummaryPrompt(book: book, chapters: chapters, context: context)
+        DebugLogger.info("AISummaryService: 已构建提示词")
+        
+        return try await callAIAPI(prompt: prompt, source: .startReading)
+    }
+    
+    private func checkModelKnowledge(for book: Book) async throws -> Bool {
+        let title = normalizeTitle(book.displayTitle)
+        DebugLogger.info("AISummaryService: 开始检测模型是否已知书籍 - \(title)")
+        
+        let prompt = """
+        You are doing a binary knowledge check for a book title.
+        
+        Book title: \(title)
+        Author: \(normalizeTitle(book.displayAuthor))
+        
+        Reply with exactly one uppercase word:
+        YES
+        or
+        NO
+        
+        Rules:
+        - If uncertain, reply NO.
+        - Do not output anything else.
+        """
+        DebugLogger.info("AISummaryService: === 书籍知识探测提示词 (Knowledge Probe Prompt) 开始 ===")
+        DebugLogger.info("\n\(prompt)")
+        DebugLogger.info("AISummaryService: === 书籍知识探测提示词 (Knowledge Probe Prompt) 结束 ===")
+        
+        let response = try await callAIAPI(
+            prompt: prompt,
+            source: .startReading,
+            temperature: 0.0,
+            maxTokens: 8
+        )
+        DebugLogger.info("AISummaryService: 书籍知识探测原始响应 = \(response)")
+        
+        let normalized = response
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        
+        DebugLogger.info("AISummaryService: 书籍知识探测响应 = \(normalized)")
+        
+        if normalized.hasPrefix("YES") {
+            return true
+        }
+        if normalized.hasPrefix("NO") {
+            DebugLogger.warning("AISummaryService: 书籍知识探测判定为 NO。判定依据：模型原始响应以 NO 开头；并且探测提示词规则要求“不确定时返回 NO”。")
+            return false
+        }
+        
+        DebugLogger.warning("AISummaryService: 无法识别知识探测响应，按 NO 处理。原始响应 = \(response)")
+        return false
+    }
+    
+    private func buildSummaryPromptContext(chapters: [Chapter], modelKnowsBook: Bool) -> SummaryPromptContext {
+        let orderedChapters = chapters.sorted { $0.order < $1.order }
+        
+        if modelKnowsBook {
+            return SummaryPromptContext(
+                strategy: .knownByModel,
+                tableOfContents: "",
+                content: "",
+                selectedChapterCount: 0
+            )
+        }
+        
+        let toc = buildTableOfContents(from: orderedChapters)
+        let summaryChapters = findSummaryLikeChapters(in: orderedChapters)
+        
+        if !summaryChapters.isEmpty {
+            let content = buildChapterContentBlock(
+                chapters: summaryChapters,
+                maxCharactersPerChapter: summaryLikeChapterContentLimit
+            )
+            return SummaryPromptContext(
+                strategy: .summaryLikeChapters,
+                tableOfContents: toc,
+                content: content,
+                selectedChapterCount: summaryChapters.count
+            )
+        }
+        
+        let sampledChapters = pickSampledChapters(from: orderedChapters)
+        let sampledContent = buildChapterContentBlock(chapters: sampledChapters, maxCharactersPerChapter: sampledChapterContentLimit)
+        
+        return SummaryPromptContext(
+            strategy: .sampledChapters,
+            tableOfContents: toc,
+            content: sampledContent,
+            selectedChapterCount: sampledChapters.count
+        )
+    }
+    
+    private func buildSummaryPrompt(book: Book, chapters: [Chapter], context: SummaryPromptContext) -> String {
         DebugLogger.info("AISummaryService: 开始构建摘要提示词")
         DebugLogger.info("AISummaryService: 当前应用语言设置 = \(AppSettings.shared.language.rawValue)")
         
@@ -324,18 +433,32 @@ class AISummaryService: ObservableObject {
         let chapterCount = LocalizationHelper.localizedString("ai.summary.chapter_count", comment: "")
         
         let bookInfo = """
-        \(bookName) \(book.displayTitle)
-        \(author) \(book.displayAuthor)
+        \(bookName) \(normalizeTitle(book.displayTitle))
+        \(author) \(normalizeTitle(book.displayAuthor))
         \(chapterCount) \(chapters.count)
         """
         
-        // Include more chapters and more content per chapter for better summary
-        // Use up to 10 chapters with 2000 chars each to provide comprehensive context
-        let chaptersToInclude = min(chapters.count, 10)
-        let content = chapters.prefix(chaptersToInclude).map { chapter in
-            let contentPreview = String(chapter.content.prefix(2000))
-            return "【\(chapter.title)】\n\(contentPreview)\(chapter.content.count > 2000 ? "..." : "")"
-        }.joined(separator: "\n\n")
+        let contextPolicy: String
+        switch context.strategy {
+        case .knownByModel:
+            contextPolicy = """
+            Strategy: The model reported that it already knows this book.
+            Generate the summary directly from prior knowledge. No book excerpt is provided.
+            If uncertain, stay high-level and avoid fabricated details.
+            """
+        case .summaryLikeChapters:
+            contextPolicy = """
+            Strategy: The model reported that it does not know this book.
+            Use only the provided table of contents and summary-like chapters (preface/introduction/abstract/conclusion/afterword).
+            Do not invent details that are not grounded in the provided context.
+            """
+        case .sampledChapters:
+            contextPolicy = """
+            Strategy: The model reported that it does not know this book and no summary-like chapters were found.
+            Use only the provided table of contents and sampled excerpts (first 2 + middle 2 + last 2 chapters, each compressed).
+            Do not invent details that are not grounded in the provided context.
+            """
+        }
         
         // Get localized prompt strings
         let promptTitle = LocalizationHelper.localizedString("ai.summary.book.prompt.title", comment: "")
@@ -350,25 +473,35 @@ class AISummaryService: ObservableObject {
         let format2 = LocalizationHelper.localizedString("ai.summary.book.prompt.format2", comment: "")
         let language = LocalizationHelper.localizedString("ai.summary.book.prompt.language", comment: "")
         
-        let prompt = """
-        \(promptTitle)
+        var promptSections: [String] = [
+            promptTitle,
+            "\(bookInfoLabel)\n\(bookInfo)",
+            "Context Policy:\n\(contextPolicy)"
+        ]
         
-        \(bookInfoLabel)
-        \(bookInfo)
+        if !context.tableOfContents.isEmpty {
+            promptSections.append("Table of Contents (cleaned):\n\(context.tableOfContents)")
+        }
         
-        \(contentExcerpt)
-        \(content)
+        if !context.content.isEmpty {
+            promptSections.append("\(contentExcerpt)\n\(context.content)")
+        }
         
-        \(requirements)
-        \(requirement1)
-        \(requirement2)
-        \(requirement3)
+        promptSections.append(
+            """
+            \(requirements)
+            \(requirement1)
+            \(requirement2)
+            \(requirement3)
+            
+            \(format)
+            \(format1)
+            \(format2)
+            \(language)
+            """
+        )
         
-        \(format)
-        \(format1)
-        \(format2)
-        \(language)
-        """
+        let prompt = promptSections.joined(separator: "\n\n")
         
         DebugLogger.info("AISummaryService: === 提示词 (Prompt) 开始 ===")
         DebugLogger.info("\n\(prompt)")
@@ -376,6 +509,147 @@ class AISummaryService: ObservableObject {
         DebugLogger.info("AISummaryService: 提示词总长度 = \(prompt.count) 字符")
         
         return prompt
+    }
+    
+    private func buildTableOfContents(from chapters: [Chapter]) -> String {
+        chapters.enumerated().map { index, chapter in
+            "\(index + 1). \(normalizeTitle(chapter.title))"
+        }.joined(separator: "\n")
+    }
+    
+    private func buildChapterContentBlock(chapters: [Chapter], maxCharactersPerChapter: Int) -> String {
+        chapters.map { chapter in
+            let title = normalizeTitle(chapter.title)
+            let cleaned = cleanAndCompressText(chapter.content)
+            let excerpt = String(cleaned.prefix(maxCharactersPerChapter))
+            let suffix = cleaned.count > maxCharactersPerChapter ? "..." : ""
+            return "【\(title)】\n\(excerpt)\(suffix)"
+        }.joined(separator: "\n\n")
+    }
+    
+    private func pickSampledChapters(from chapters: [Chapter]) -> [Chapter] {
+        let count = chapters.count
+        guard count > 0 else { return [] }
+        
+        if count <= 6 {
+            return chapters
+        }
+        
+        var selectedIndices = Set<Int>()
+        
+        selectedIndices.insert(0)
+        selectedIndices.insert(1)
+        
+        let middleLeft = max(0, (count / 2) - 1)
+        let middleRight = min(count - 1, middleLeft + 1)
+        selectedIndices.insert(middleLeft)
+        selectedIndices.insert(middleRight)
+        
+        selectedIndices.insert(max(0, count - 2))
+        selectedIndices.insert(max(0, count - 1))
+        
+        return selectedIndices
+            .sorted()
+            .map { chapters[$0] }
+    }
+    
+    private func findSummaryLikeChapters(in chapters: [Chapter]) -> [Chapter] {
+        chapters.filter { chapter in
+            let title = normalizeTitle(chapter.title).lowercased()
+            return summaryLikeKeywords.contains { keyword in
+                title.contains(keyword)
+            }
+        }
+    }
+    
+    private var summaryLikeKeywords: [String] {
+        [
+            "前言", "序言", "序章", "导言", "引言", "内容提要", "提要", "摘要", "概述", "总论", "总览", "结语", "结论", "后记", "跋", "尾声", "附录",
+            "preface", "foreword", "prologue", "introduction", "abstract", "overview", "summary", "synopsis", "conclusion", "afterword", "epilogue",
+            "acknowledg", "about this book", "final thoughts", "closing remarks",
+            "まえがき", "はじめに", "序文", "序章", "導入", "要約", "概要", "結論", "終章", "あとがき", "エピローグ",
+            "서문", "머리말", "프롤로그", "도입", "요약", "개요", "결론", "맺음말", "후기", "에필로그"
+        ]
+    }
+    
+    private func normalizeTitle(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "\r\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\u{00A0}", with: " ")
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private func cleanAndCompressText(_ text: String) -> String {
+        var normalized = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .replacingOccurrences(of: "\u{00A0}", with: " ")
+            .replacingOccurrences(of: "\u{200B}", with: "")
+        
+        normalized = normalized.replacingOccurrences(of: #"[ \t]+"#, with: " ", options: .regularExpression)
+        
+        let rawLines = normalized.components(separatedBy: .newlines)
+        var cleanedLines: [String] = []
+        var previousWasEmpty = false
+        
+        for rawLine in rawLines {
+            var line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if line.isEmpty {
+                if !previousWasEmpty {
+                    cleanedLines.append("")
+                    previousWasEmpty = true
+                }
+                continue
+            }
+            
+            if shouldDropNoiseLine(line) {
+                continue
+            }
+            
+            line = line.replacingOccurrences(of: #"[-=*~_•·]{6,}"#, with: " ", options: .regularExpression)
+            line = line.replacingOccurrences(of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)
+            line = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            guard !line.isEmpty else {
+                continue
+            }
+            
+            cleanedLines.append(line)
+            previousWasEmpty = false
+        }
+        
+        return cleanedLines
+            .joined(separator: "\n")
+            .replacingOccurrences(of: #"\n{3,}"#, with: "\n\n", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private func shouldDropNoiseLine(_ line: String) -> Bool {
+        if line.range(of: #"^[-=*~_•·]{4,}$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        if line.range(of: #"^\d{1,4}$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        if line.range(of: #"^(?i:page)\s*\d+(\s*/\s*\d+)?$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        if line.range(of: #"^(?i:p\.)\s*\d+$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        if line.range(of: #"^第\s*\d+\s*页$"#, options: .regularExpression) != nil {
+            return true
+        }
+        
+        return false
     }
     
     private func buildChapterSummaryPrompt(chapter: Chapter) -> String {
@@ -396,9 +670,10 @@ class AISummaryService: ObservableObject {
         // Include full chapter content or more substantial portion for accurate summary
         // Use up to 5000 characters or full content if shorter
         let maxContentLength = 5000
-        let contentToUse = chapter.content.count > maxContentLength ? 
-            String(chapter.content.prefix(maxContentLength)) + "..." : 
-            chapter.content
+        let cleanedContent = cleanAndCompressText(chapter.content)
+        let contentToUse = cleanedContent.count > maxContentLength ?
+            String(cleanedContent.prefix(maxContentLength)) + "..." :
+            cleanedContent
         
         let prompt = """
         \(promptTitle)
@@ -421,7 +696,12 @@ class AISummaryService: ObservableObject {
         return prompt
     }
     
-    private func callAIAPI(prompt: String, source: UsageMetricsSource) async throws -> String {
+    private func callAIAPI(
+        prompt: String,
+        source: UsageMetricsSource,
+        temperature: Double = 0.7,
+        maxTokens: Int = 2000
+    ) async throws -> String {
         guard AIConsentManager.shared.hasExplicitPermission() else {
             DebugLogger.warning("AISummaryService: 用户未授权，已阻止 AI 请求")
             throw AISummaryError.permissionRequired
@@ -442,14 +722,17 @@ class AISummaryService: ObservableObject {
         }
         
         // Prepare the request body
-        let requestBody: [String: Any] = [
+        var requestBody: [String: Any] = [
             "model": config.model,
             "messages": [
                 ["role": "user", "content": prompt]
             ],
-            "temperature": 0.7,
-            "max_tokens": 2000
+            "temperature": temperature,
+            "max_tokens": maxTokens
         ]
+        if AICompatibilityOptions.shouldExplicitlyDisableThinking(for: config.endpoint) {
+            requestBody["enable_thinking"] = false
+        }
         
         DebugLogger.info("AISummaryService: 准备API请求体")
         

@@ -460,12 +460,15 @@ final class SkimmingModeService {
             throw SkimmingModeError.apiError("Invalid API endpoint")
         }
         
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": config.model,
             "messages": [["role": "user", "content": prompt]],
             "temperature": 0.4,
             "max_tokens": 1200
         ]
+        if AICompatibilityOptions.shouldExplicitlyDisableThinking(for: config.endpoint) {
+            body["enable_thinking"] = false
+        }
         
         guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
             throw SkimmingModeError.apiError("Unable to encode request body")

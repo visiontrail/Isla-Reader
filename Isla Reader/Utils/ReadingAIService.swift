@@ -80,7 +80,7 @@ final class ReadingAIService {
             throw ReadingAIError.invalidEndpoint
         }
 
-        let requestBody: [String: Any] = [
+        var requestBody: [String: Any] = [
             "model": config.model,
             "messages": [
                 ["role": "system", "content": "You are an assistant embedded in an eBook reader. Keep answers concise and reader-friendly."],
@@ -89,6 +89,9 @@ final class ReadingAIService {
             "temperature": temperature,
             "max_tokens": maxTokens
         ]
+        if AICompatibilityOptions.shouldExplicitlyDisableThinking(for: config.endpoint) {
+            requestBody["enable_thinking"] = false
+        }
 
         guard let jsonData = try? JSONSerialization.data(withJSONObject: requestBody) else {
             DebugLogger.error("ReadingAIService: 请求体序列化失败")

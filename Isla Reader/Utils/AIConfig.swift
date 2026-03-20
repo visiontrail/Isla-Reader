@@ -246,6 +246,15 @@ enum AIConfig {
     }
 }
 
+enum AICompatibilityOptions {
+    static func shouldExplicitlyDisableThinking(for endpoint: String) -> Bool {
+        guard let host = URL(string: endpoint)?.host?.lowercased() else {
+            return false
+        }
+        return host.contains("dashscope") || host.contains("aliyun") || host.contains("tongyi")
+    }
+}
+
 final class AIConsentManager: ObservableObject {
     static let shared = AIConsentManager()
 
