@@ -738,6 +738,12 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                     self.lastDisplayedPageIndex = clamped
                     self.updateCurrentPageIndex(clamped)
                     self.parent.onTextSelection?(parsedSelection)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        webView.resignFirstResponder()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            _ = webView.becomeFirstResponder()
+                        }
+                    }
                 }
             }
         }
@@ -2218,20 +2224,75 @@ struct ReaderWebView: UIViewRepresentable {
             return /[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uac00-\\ud7af]/.test(char);
         }
 
+        function findLineEndOffset(startOffset, segments) {
+            if (!segments || segments.length === 0) { return null; }
+            var startBoundary = locateOffsetBoundary(startOffset, segments, true);
+            if (!startBoundary || !startBoundary.node) { return null; }
+
+            var nodeLen = (startBoundary.node.textContent || '').length;
+            var probeEnd = Math.min(startBoundary.offset + 1, nodeLen);
+            if (probeEnd <= startBoundary.offset) { return null; }
+
+            var probeRange = document.createRange();
+            probeRange.setStart(startBoundary.node, startBoundary.offset);
+            probeRange.setEnd(startBoundary.node, probeEnd);
+            var rects = probeRange.getClientRects();
+            probeRange.detach();
+
+            if (!rects || rects.length === 0) { return null; }
+            var startTop = rects[0].top;
+            var lineThreshold = Math.max(rects[0].height * 0.5, 2);
+
+            var lastSameLineOffset = startOffset + 1;
+            var charsScanned = 0;
+            var maxChars = 200;
+
+            for (var i = 0; i < segments.length && charsScanned < maxChars; i++) {
+                var seg = segments[i];
+                if (seg.end <= startOffset + 1) { continue; }
+
+                var text = seg.node.textContent || '';
+                var localStart = Math.max(0, (startOffset + 1) - seg.start);
+
+                for (var j = localStart; j < text.length && charsScanned < maxChars; j++) {
+                    charsScanned++;
+                    var charEnd = Math.min(j + 1, text.length);
+                    if (charEnd <= j) { continue; }
+                    var charRange = document.createRange();
+                    charRange.setStart(seg.node, j);
+                    charRange.setEnd(seg.node, charEnd);
+                    var charRects = charRange.getClientRects();
+                    charRange.detach();
+
+                    if (!charRects || charRects.length === 0) { continue; }
+                    if (Math.abs(charRects[0].top - startTop) > lineThreshold) {
+                        return lastSameLineOffset;
+                    }
+                    lastSameLineOffset = seg.start + j + 1;
+                }
+            }
+
+            return lastSameLineOffset;
+        }
+
         function findSeedSelectionEndOffset(startOffset, segments) {
             if (!segments || segments.length === 0) { return null; }
-            const boundary = locateOffsetBoundary(startOffset, segments, true);
-            if (!boundary || !boundary.node) { return null; }
 
-            const text = boundary.node.textContent || '';
-            const safeOffset = Math.max(0, Math.min(boundary.offset, Math.max(text.length - 1, 0)));
-            const leadingChar = text.charAt(safeOffset);
+            var lineEnd = findLineEndOffset(startOffset, segments);
+            if (lineEnd !== null && lineEnd > startOffset) {
+                return lineEnd;
+            }
+
+            var boundary = locateOffsetBoundary(startOffset, segments, true);
+            if (!boundary || !boundary.node) { return null; }
+            var text = boundary.node.textContent || '';
+            var safeOffset = Math.max(0, Math.min(boundary.offset, Math.max(text.length - 1, 0)));
+            var leadingChar = text.charAt(safeOffset);
             if (!leadingChar) { return null; }
             if (isCJKCharacter(leadingChar)) {
                 return startOffset + 1;
             }
-
-            const wordEnd = findWordEndOffset(startOffset, segments);
+            var wordEnd = findWordEndOffset(startOffset, segments);
             if (wordEnd !== null && wordEnd > startOffset) {
                 return wordEnd;
             }
@@ -2258,6 +2319,7 @@ struct ReaderWebView: UIViewRepresentable {
                 return { success: false, reason: 'busy' };
             }
             isContinuingSelectionToNextPage = true;
+            var rafScheduled = false;
             try {
                 const nativePayload = serializeSelection();
                 if (!selectionHasText(nativePayload)) {
@@ -2304,7 +2366,32 @@ struct ReaderWebView: UIViewRepresentable {
                 scrollToPage(nextPage, false);
                 isRestoringSelectionPage = false;
 
-                if (!applyNativeSelectionRange(nextStartOffset, targetEndOffset, segments)) {
+                var selectionApplied = false;
+                var seedText = extractTextFromOffsets(nextStartOffset, targetEndOffset, segments);
+                if (seedText && seedText.trim().length > 0 && typeof window.find === 'function') {
+                    var startBoundary = locateOffsetBoundary(nextStartOffset, segments, true);
+                    if (startBoundary && startBoundary.node) {
+                        focusReaderDocument();
+                        var _sel = window.getSelection();
+                        if (_sel) {
+                            _sel.collapse(startBoundary.node, startBoundary.offset);
+                            try {
+                                selectionApplied = withSelectionScrollUnlocked(function() {
+                                    var savedScroll = getScrollLeft();
+                                    var found = !!window.find(seedText, true, false, false, false, false, false);
+                                    if (getScrollLeft() !== savedScroll) {
+                                        window.scrollTo(savedScroll, 0);
+                                    }
+                                    return found;
+                                });
+                            } catch(e) {}
+                        }
+                    }
+                }
+                if (!selectionApplied) {
+                    selectionApplied = applyNativeSelectionRange(nextStartOffset, targetEndOffset, segments);
+                }
+                if (!selectionApplied) {
                     return { success: false, reason: 'seed-selection-apply-failed' };
                 }
 
@@ -2318,29 +2405,70 @@ struct ReaderWebView: UIViewRepresentable {
                 lastStableSelectionPayload = cloneSelectionPayload(updated);
                 updateSelectionVisualOverlay(updated);
 
+                rafScheduled = true;
                 requestAnimationFrame(function() {
-                    isContinuingSelectionToNextPage = true;
                     try {
-                        const refreshedSegments = buildTextSegments();
-                        if (!applyNativeSelectionRange(nextStartOffset, targetEndOffset, refreshedSegments)) { return; }
-                        const refreshedNative = serializeSelection();
-                        if (!selectionHasText(refreshedNative)) { return; }
-                        const refreshed = buildEffectiveSelectionPayload(refreshedNative, refreshedSegments);
-                        refreshed.pageIndex = nextPage;
-                        refreshed.canContinueToNextPage = shouldOfferContinueSelectionToNextPage(refreshed);
-                        lastStableSelectionPayload = cloneSelectionPayload(refreshed);
-                        updateSelectionVisualOverlay(refreshed);
-                        window.webkit.messageHandlers.textSelection.postMessage(refreshed);
-                    } catch (e) {
-                    } finally {
+                        focusReaderDocument();
+                        var currentNative = serializeSelection();
+                        if (selectionHasText(currentNative)) {
+                            var refreshedSegments = buildTextSegments();
+                            var refreshed = buildEffectiveSelectionPayload(currentNative, refreshedSegments);
+                            refreshed.pageIndex = nextPage;
+                            refreshed.canContinueToNextPage = shouldOfferContinueSelectionToNextPage(refreshed);
+                            lastStableSelectionPayload = cloneSelectionPayload(refreshed);
+                            updateSelectionVisualOverlay(refreshed);
+                            try { window.webkit.messageHandlers.textSelection.postMessage(refreshed); } catch (e) {}
+                        } else {
+                            var freshSegments = buildTextSegments();
+                            var reapplied2 = false;
+                            var freshSeedText = extractTextFromOffsets(nextStartOffset, targetEndOffset, freshSegments);
+                            if (freshSeedText && freshSeedText.trim().length > 0 && typeof window.find === 'function') {
+                                var sb = locateOffsetBoundary(nextStartOffset, freshSegments, true);
+                                if (sb && sb.node) {
+                                    focusReaderDocument();
+                                    var s2 = window.getSelection();
+                                    if (s2) {
+                                        s2.collapse(sb.node, sb.offset);
+                                        try {
+                                            reapplied2 = withSelectionScrollUnlocked(function() {
+                                                var sv = getScrollLeft();
+                                                var found = !!window.find(freshSeedText, true, false, false, false, false, false);
+                                                if (getScrollLeft() !== sv) { window.scrollTo(sv, 0); }
+                                                return found;
+                                            });
+                                        } catch(e) {}
+                                    }
+                                }
+                            }
+                            if (!reapplied2) {
+                                reapplied2 = applyNativeSelectionRange(nextStartOffset, targetEndOffset, freshSegments);
+                            }
+                            if (reapplied2) {
+                                focusReaderDocument();
+                                var reappliedNative = serializeSelection();
+                                if (selectionHasText(reappliedNative)) {
+                                    var reapplied = buildEffectiveSelectionPayload(reappliedNative, freshSegments);
+                                    reapplied.pageIndex = nextPage;
+                                    reapplied.canContinueToNextPage = shouldOfferContinueSelectionToNextPage(reapplied);
+                                    lastStableSelectionPayload = cloneSelectionPayload(reapplied);
+                                    updateSelectionVisualOverlay(reapplied);
+                                    try { window.webkit.messageHandlers.textSelection.postMessage(reapplied); } catch (e) {}
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                    setTimeout(function() {
                         isContinuingSelectionToNextPage = false;
-                    }
+                        notifySelectionChange();
+                    }, 50);
                 });
 
                 try { window.webkit.messageHandlers.textSelection.postMessage(updated); } catch (e) {}
                 return { success: true, selection: updated };
             } finally {
-                isContinuingSelectionToNextPage = false;
+                if (!rafScheduled) {
+                    isContinuingSelectionToNextPage = false;
+                }
             }
         }
 
@@ -2413,11 +2541,31 @@ struct ReaderWebView: UIViewRepresentable {
         }
 
         function applyNativeHighlights(items) {
+            var selectionToRestore = null;
+            try {
+                var sel = window.getSelection ? window.getSelection() : null;
+                if (sel && sel.rangeCount > 0) {
+                    var selText = sel.toString ? sel.toString() : '';
+                    if (selText && selText.trim().length > 0) {
+                        var savedPayload = serializeSelection();
+                        if (selectionHasText(savedPayload)) {
+                            selectionToRestore = { start: savedPayload.start, end: savedPayload.end };
+                        }
+                    }
+                }
+            } catch (e) {}
             clearExistingHighlights();
-            if (!items || !Array.isArray(items)) { return; }
-            items.forEach(item => {
-                highlightByOffsets(item.start, item.end, item.colorHex || '#ffe38f', item.id || '');
-            });
+            if (items && Array.isArray(items)) {
+                items.forEach(item => {
+                    highlightByOffsets(item.start, item.end, item.colorHex || '#ffe38f', item.id || '');
+                });
+            }
+            if (selectionToRestore) {
+                try {
+                    var segments = buildTextSegments();
+                    applyNativeSelectionRange(selectionToRestore.start, selectionToRestore.end, segments);
+                } catch (e) {}
+            }
         }
 
         var highlightTapBound = false;
