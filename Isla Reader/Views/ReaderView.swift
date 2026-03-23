@@ -70,6 +70,7 @@ struct ReaderView: View {
     @State private var showingHighlightsList = false
     @State private var showingBookmarksList = false
     @State private var didApplyInitialLocation = false
+    @State private var pendingSelectionClearWorkItem: DispatchWorkItem?
     
     @State private var scrollOffset: CGFloat = 0
     @State private var lastTapTime: Date = Date()
@@ -82,6 +83,7 @@ struct ReaderView: View {
     @State private var pendingTapWorkItem: DispatchWorkItem?
     @State private var lastNavigationTapTime: Date?
     @State private var lastWebContentTapTime: Date?
+    @State private var lastSelectionInteractionTime: Date?
     @FocusState private var isCustomQuestionFieldFocused: Bool
     private let swipePagingEnabled = true
     private let tapNavigationEdgeRatio: CGFloat = 0.24
@@ -183,6 +185,7 @@ struct ReaderView: View {
             saveReadingProgress()
             endReadingSession()
             pendingTapWorkItem?.cancel()
+            pendingSelectionClearWorkItem?.cancel()
         }
         .onChange(of: scenePhase) { newPhase in
             handleScenePhaseChange(newPhase)
@@ -362,17 +365,26 @@ struct ReaderView: View {
                     handleTap()
                 },
                 onTextSelection: { info in
+                    lastSelectionInteractionTime = Date()
                     let trimmed = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
                     if trimmed.isEmpty {
-                        selectedTextInfo = nil
+                        pendingSelectionClearWorkItem?.cancel()
+                        let clearTask = DispatchWorkItem {
+                            self.selectedTextInfo = nil
+                        }
+                        pendingSelectionClearWorkItem = clearTask
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: clearTask)
                     } else {
+                        pendingSelectionClearWorkItem?.cancel()
+                        pendingSelectionClearWorkItem = nil
                         pendingTapWorkItem?.cancel()
                         let updatedInfo = SelectedTextInfo(
                             text: trimmed,
                             startOffset: info.startOffset,
                             endOffset: info.endOffset,
                             rect: info.rect,
-                            pageIndex: info.pageIndex
+                            pageIndex: info.pageIndex,
+                            canContinueToNextPage: info.canContinueToNextPage
                         )
                         selectedTextInfo = updatedInfo
                         let feedback = UISelectionFeedbackGenerator()
@@ -654,7 +666,7 @@ struct ReaderView: View {
 
     // MARK: - Selection & Notes
 
-    private func selectionToolbar(for _: SelectedTextInfo, in geometry: GeometryProxy) -> some View {
+    private func selectionToolbar(for info: SelectedTextInfo, in geometry: GeometryProxy) -> some View {
         let toolbarWidth = min(max(geometry.size.width - 16, 320), 820)
         let panelOnTop = shouldPlaceSelectionPanelAtTop(in: geometry)
         let panelAlignment: Alignment = panelOnTop ? .top : .bottom
@@ -662,8 +674,32 @@ struct ReaderView: View {
         let toolbarBottomPadding = geometry.safeAreaInsets.bottom + (showingToolbar ? 124 : 12)
         let trimmedQuestion = customAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         let canSubmitQuestion = !trimmedQuestion.isEmpty && !isLoadingAIResponse
+        let canContinueSelection = shouldShowContinueSelectionButton(for: info)
 
         return VStack(spacing: 12) {
+            if canContinueSelection {
+                Button(action: continueSelectionToNextPage) {
+                    Label(NSLocalizedString("reader.selection.continue_next_page", comment: ""), systemImage: "arrow.right.circle.fill")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.blue.opacity(0.88), Color.cyan.opacity(0.82)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 10)
+                .padding(.top, 6)
+            }
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     selectionActionButton(
@@ -766,6 +802,24 @@ struct ReaderView: View {
         .transition(.move(edge: panelOnTop ? .top : .bottom).combined(with: .opacity))
         .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.84, blendDuration: 0.08), value: selectedTextInfo)
         .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.84, blendDuration: 0.08), value: panelOnTop)
+    }
+
+    private func shouldShowContinueSelectionButton(for info: SelectedTextInfo) -> Bool {
+        guard info.canContinueToNextPage else { return false }
+        guard chapters.indices.contains(currentChapterIndex) else { return false }
+        return info.pageIndex == safeChapterPageIndex(currentChapterIndex)
+    }
+
+    private func continueSelectionToNextPage() {
+        guard let info = selectedTextInfo, shouldShowContinueSelectionButton(for: info) else { return }
+        suppressNavigationForWebContentTap()
+        let action = ReaderSelectionAction(type: .continueToNextPage)
+        selectionAction = action
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            if self.selectionAction?.id == action.id {
+                self.selectionAction = nil
+            }
+        }
     }
 
     private func selectionActionButton(title: String, systemImage: String, tint: Color, action: @escaping () -> Void) -> some View {
@@ -1810,7 +1864,15 @@ struct ReaderView: View {
     }
     
     @discardableResult
-    private func turnPage(_ direction: PageTurnDirection, source: PageTurnSource) -> Bool {
+    private func turnPage(
+        _ direction: PageTurnDirection,
+        source: PageTurnSource,
+        clearSelection: Bool = true,
+        allowWhenSelectionActive: Bool = false
+    ) -> Bool {
+        if selectedTextInfo != nil, !allowWhenSelectionActive {
+            return false
+        }
         ensurePageArrays()
         var didMove = false
         
@@ -1854,7 +1916,9 @@ struct ReaderView: View {
         }
         
         saveReadingProgress()
-        selectedTextInfo = nil
+        if clearSelection {
+            selectedTextInfo = nil
+        }
         provideTurnHaptic(for: source)
         return true
     }
@@ -2103,6 +2167,10 @@ struct ReaderView: View {
         if showingHighlightActions {
             return true
         }
+        if let lastSelectionInteractionTime,
+           Date().timeIntervalSince(lastSelectionInteractionTime) < 0.45 {
+            return true
+        }
         if let lastWebTap = lastWebContentTapTime, Date().timeIntervalSince(lastWebTap) < 0.5 {
             return true
         }
@@ -2112,6 +2180,10 @@ struct ReaderView: View {
     private func handleDragChanged(_ value: DragGesture.Value, geometry: GeometryProxy) {
         guard swipePagingEnabled else { return }
         guard !isInteractingWithWebContent else { return }
+        if let lastSelectionInteractionTime,
+           Date().timeIntervalSince(lastSelectionInteractionTime) < 0.18 {
+            return
+        }
         // 防止在动画过程中处理新的拖拽
         guard !isAnimatingPageTurn else { return }
         pendingTapWorkItem?.cancel()
@@ -2180,6 +2252,12 @@ struct ReaderView: View {
         }
         guard isDragging else {
             dragOffset = 0
+            return
+        }
+
+        guard selectedTextInfo == nil else {
+            animateBackToOriginalPosition()
+            isDragging = false
             return
         }
 

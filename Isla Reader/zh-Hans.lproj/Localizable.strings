@@ -143,6 +143,7 @@
 "reader.selection.title" = "选中文本";
 "reader.highlight.action" = "高亮标记";
 "reader.note.add" = "添加笔记";
+"reader.selection.continue_next_page" = "下一页继续选择";
 "reader.ai.translate" = "翻译";
 "reader.ai.explain" = "AI 解释";
 "reader.ai.ask" = "问问 AI";

@@ -143,6 +143,7 @@
 "reader.selection.title" = "선택한 텍스트";
 "reader.highlight.action" = "하이라이트";
 "reader.note.add" = "메모 추가";
+"reader.selection.continue_next_page" = "다음 페이지에서 선택 계속";
 "reader.ai.translate" = "번역";
 "reader.ai.explain" = "AI 설명";
 "reader.ai.ask" = "AI에게 질문";

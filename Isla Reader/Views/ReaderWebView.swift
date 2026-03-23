@@ -14,6 +14,7 @@ struct SelectedTextInfo: Equatable {
     let endOffset: Int
     let rect: CGRect
     let pageIndex: Int
+    let canContinueToNextPage: Bool
 }
 
 struct HighlightTapInfo: Equatable {
@@ -31,6 +32,7 @@ struct ReaderHighlight: Identifiable, Equatable {
 struct ReaderSelectionAction: Identifiable, Equatable {
     enum ActionType: Equatable {
         case highlight(colorHex: String)
+        case continueToNextPage
     }
 
     let id = UUID()
@@ -88,29 +90,8 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             }
         } else if message.name == "textSelection" {
             if let dict = message.body as? [String: Any],
-               let text = dict["text"] as? String {
-                let start = dict["start"] as? Int ?? 0
-                let end = dict["end"] as? Int ?? start
-                let pageIndex = dict["pageIndex"] as? Int ?? 0
-                let rect: CGRect
-                if let rectDict = dict["rect"] as? [String: Double] {
-                    let x = rectDict["x"] ?? 0
-                    let y = rectDict["y"] ?? 0
-                    let width = rectDict["width"] ?? 0
-                    let height = rectDict["height"] ?? 0
-                    rect = CGRect(x: x, y: y, width: width, height: height)
-                } else {
-                    rect = .zero
-                }
-                parent.onTextSelection?(
-                    SelectedTextInfo(
-                        text: text,
-                        startOffset: start,
-                        endOffset: end,
-                        rect: rect,
-                        pageIndex: pageIndex
-                    )
-                )
+               let parsed = Self.parseSelectedTextInfo(from: dict) {
+                parent.onTextSelection?(parsed)
             } else if let text = message.body as? String {
                 parent.onTextSelection?(
                     SelectedTextInfo(
@@ -118,7 +99,8 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                         startOffset: 0,
                         endOffset: 0,
                         rect: .zero,
-                        pageIndex: 0
+                        pageIndex: 0,
+                        canContinueToNextPage: false
                     )
                 )
             }
@@ -140,6 +122,91 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                 updateTotalPages(pages)
             }
         }
+    }
+
+    private static func doubleValue(from value: Any?) -> Double? {
+        if let value = value as? Double { return value }
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? String, let parsed = Double(value) { return parsed }
+        return nil
+    }
+
+    private static func boolValue(from value: Any?, default defaultValue: Bool = false) -> Bool {
+        if let value = value as? Bool { return value }
+        if let value = value as? NSNumber { return value.boolValue }
+        if let value = value as? String {
+            switch value.lowercased() {
+            case "true", "1", "yes":
+                return true
+            case "false", "0", "no":
+                return false
+            default:
+                break
+            }
+        }
+        return defaultValue
+    }
+
+    private static func parseSelectedTextInfo(from dict: [String: Any]) -> SelectedTextInfo? {
+        guard let text = dict["text"] as? String else { return nil }
+
+        let start: Int
+        if let value = dict["start"] as? Int {
+            start = value
+        } else if let value = dict["start"] as? NSNumber {
+            start = value.intValue
+        } else if let value = dict["start"] as? String, let parsed = Int(value) {
+            start = parsed
+        } else {
+            start = 0
+        }
+
+        let end: Int
+        if let value = dict["end"] as? Int {
+            end = value
+        } else if let value = dict["end"] as? NSNumber {
+            end = value.intValue
+        } else if let value = dict["end"] as? String, let parsed = Int(value) {
+            end = parsed
+        } else {
+            end = start
+        }
+
+        let pageIndex: Int
+        if let value = dict["pageIndex"] as? Int {
+            pageIndex = value
+        } else if let value = dict["pageIndex"] as? NSNumber {
+            pageIndex = value.intValue
+        } else if let value = dict["pageIndex"] as? String, let parsed = Int(value) {
+            pageIndex = parsed
+        } else {
+            pageIndex = 0
+        }
+
+        let canContinueToNextPage = boolValue(from: dict["canContinueToNextPage"], default: false)
+        var rect = CGRect.zero
+        if let rectDict = dict["rect"] as? [String: Any] {
+            let x = doubleValue(from: rectDict["x"]) ?? 0
+            let y = doubleValue(from: rectDict["y"]) ?? 0
+            let width = doubleValue(from: rectDict["width"]) ?? 0
+            let height = doubleValue(from: rectDict["height"]) ?? 0
+            rect = CGRect(x: x, y: y, width: width, height: height)
+        } else if let rectDict = dict["rect"] as? [String: Double] {
+            let x = rectDict["x"] ?? 0
+            let y = rectDict["y"] ?? 0
+            let width = rectDict["width"] ?? 0
+            let height = rectDict["height"] ?? 0
+            rect = CGRect(x: x, y: y, width: width, height: height)
+        }
+
+        return SelectedTextInfo(
+            text: text,
+            startOffset: start,
+            endOffset: end,
+            rect: rect,
+            pageIndex: pageIndex,
+            canContinueToNextPage: canContinueToNextPage
+        )
     }
 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
@@ -172,8 +239,9 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                     selectedText = selection.toString ? selection.toString() : '';
                 }
                 var hasSelection = !!selectedText && selectedText.trim().length > 0;
+                var lockedPageIndex = (typeof selectionLockedPageIndex === 'number') ? selectionLockedPageIndex : null;
                 return {
-                    pageIndex: Math.max(0, Math.round(scrollLeft / perPage)),
+                    pageIndex: lockedPageIndex !== null ? lockedPageIndex : Math.max(0, Math.round(scrollLeft / perPage)),
                     hasSelection: hasSelection
                 };
             } catch (e) {
@@ -625,6 +693,53 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                     DebugLogger.error("ReaderWebView: 高亮失败 - \(error.localizedDescription)")
                 }
             }
+        case .continueToNextPage:
+            _ = webView.becomeFirstResponder()
+            let js = """
+            (function() {
+                try {
+                    return continueSelectionToNextPage();
+                } catch (e) {
+                    return { success: false, error: String(e) };
+                }
+            })();
+            """
+            webView.evaluateJavaScript(js) { [weak self] value, error in
+                guard let self else { return }
+                if let error {
+                    DebugLogger.error("ReaderWebView: 继续跨页选择失败 - \(error.localizedDescription)")
+                    return
+                }
+                guard let response = value as? [String: Any] else {
+                    DebugLogger.warning("ReaderWebView: 继续跨页选择返回值无效")
+                    return
+                }
+                let success = Self.boolValue(from: response["success"], default: false)
+                guard success else {
+                    if let reason = response["reason"] as? String, !reason.isEmpty {
+                        DebugLogger.warning("ReaderWebView: 继续跨页选择未执行，reason=\(reason)")
+                    }
+                    return
+                }
+                guard let selectionDict = response["selection"] as? [String: Any],
+                      let parsedSelection = Self.parseSelectedTextInfo(from: selectionDict) else {
+                    DebugLogger.warning("ReaderWebView: 继续跨页选择成功但未返回有效选区")
+                    return
+                }
+
+                DispatchQueue.main.async {
+                    let clamped: Int
+                    if self.parent.totalPages > 0 {
+                        let maxPage = max(self.parent.totalPages - 1, 0)
+                        clamped = max(0, min(parsedSelection.pageIndex, maxPage))
+                    } else {
+                        clamped = max(0, parsedSelection.pageIndex)
+                    }
+                    self.lastDisplayedPageIndex = clamped
+                    self.updateCurrentPageIndex(clamped)
+                    self.parent.onTextSelection?(parsedSelection)
+                }
+            }
         }
     }
 
@@ -785,6 +900,7 @@ struct ReaderWebView: UIViewRepresentable {
     
     func makeUIView(context: Context) -> UIView {
         let configuration = WKWebViewConfiguration()
+        configuration.selectionGranularity = .character
         
         // 配置用户脚本
         let userContentController = WKUserContentController()
@@ -880,11 +996,8 @@ struct ReaderWebView: UIViewRepresentable {
             }
         } else {
             DebugLogger.info("[HighlightNav] updateUIView: 签名未变，走 else 分支, highlightToken=\(highlightNavigationToken), highlightOffset=\(highlightTextOffset.map(String.init) ?? "nil")")
-            // 内容未重载：若页码变化则执行滑动动画；若未变化则确保位置同步
-            let animated = context.coordinator.animateToCurrentPageIfChanged(on: webView)
-            if !animated {
-                context.coordinator.scrollToCurrentPage(on: webView, animated: false)
-            }
+            // 内容未重载：仅在页码真正变化时同步，避免文本选择过程中被旧页码强制拉回。
+            _ = context.coordinator.animateToCurrentPageIfChanged(on: webView)
             context.coordinator.applyTOCNavigationIfNeeded(on: webView)
             context.coordinator.applyHighlightNavigationIfNeeded(on: webView)
         }
@@ -1226,6 +1339,143 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         var lastInteractionState = false;
+        var selectionLockedPageIndex = null;
+        var isRestoringSelectionPage = false;
+        var selectionScrollLockEnabled = false;
+        var selectionScrollUnlockDepth = 0;
+        var isContinuingSelectionToNextPage = false;
+        var lastStableSelectionPayload = null;
+        var continuedSelectionAnchorOffset = null;
+        var selectionVisualOverlay = null;
+        var selectionVisualHighlight = null;
+        var selectionVisualStartHandle = null;
+        var selectionVisualEndHandle = null;
+
+        function setHorizontalOverflowMode(mode) {
+            const resolvedMode = mode === 'hidden' ? 'hidden' : 'auto';
+            document.documentElement.style.overflowX = resolvedMode;
+            document.body.style.overflowX = resolvedMode;
+            document.documentElement.style.overflowY = 'hidden';
+            document.body.style.overflowY = 'hidden';
+        }
+
+        function ensureSelectionVisualOverlay() {
+            if (selectionVisualOverlay) { return selectionVisualOverlay; }
+
+            const overlay = document.createElement('div');
+            overlay.setAttribute('aria-hidden', 'true');
+            overlay.style.position = 'fixed';
+            overlay.style.left = '0';
+            overlay.style.top = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.pointerEvents = 'none';
+            overlay.style.zIndex = '2147483646';
+            overlay.style.display = 'none';
+
+            const highlight = document.createElement('div');
+            highlight.style.position = 'fixed';
+            highlight.style.borderRadius = '8px';
+            highlight.style.background = 'rgba(64, 156, 255, 0.24)';
+            highlight.style.boxShadow = '0 0 0 1px rgba(64, 156, 255, 0.28) inset';
+
+            const startHandle = document.createElement('div');
+            startHandle.style.position = 'fixed';
+            startHandle.style.width = '14px';
+            startHandle.style.height = '14px';
+            startHandle.style.borderRadius = '999px';
+            startHandle.style.background = '#ffffff';
+            startHandle.style.border = '2px solid rgba(64, 156, 255, 0.96)';
+            startHandle.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.18)';
+
+            const endHandle = startHandle.cloneNode(false);
+
+            overlay.appendChild(highlight);
+            overlay.appendChild(startHandle);
+            overlay.appendChild(endHandle);
+
+            if (document.body) {
+                document.body.appendChild(overlay);
+            } else {
+                document.documentElement.appendChild(overlay);
+            }
+
+            selectionVisualOverlay = overlay;
+            selectionVisualHighlight = highlight;
+            selectionVisualStartHandle = startHandle;
+            selectionVisualEndHandle = endHandle;
+            return overlay;
+        }
+
+        function hideSelectionVisualOverlay() {
+            if (!selectionVisualOverlay) { return; }
+            selectionVisualOverlay.style.display = 'none';
+        }
+
+        function updateSelectionVisualOverlay(payload) {
+            if (continuedSelectionAnchorOffset === null || !selectionHasText(payload)) {
+                hideSelectionVisualOverlay();
+                return;
+            }
+
+            const rect = payload && payload.rect ? payload.rect : null;
+            if (!rect) {
+                hideSelectionVisualOverlay();
+                return;
+            }
+
+            const viewportWidth = Math.max(1, window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 1);
+            const viewportHeight = Math.max(1, window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 1);
+            const rawLeft = safeNumber(rect.x, 0);
+            const rawTop = safeNumber(rect.y, 0);
+            const rawWidth = safeNumber(rect.width, 0);
+            const rawHeight = safeNumber(rect.height, 0);
+            const clampedLeft = Math.max(0, Math.min(rawLeft, viewportWidth - 1));
+            const clampedTop = Math.max(0, Math.min(rawTop, viewportHeight - 1));
+            const visibleWidth = Math.max(0, Math.min(rawLeft + rawWidth, viewportWidth) - clampedLeft);
+            const visibleHeight = Math.max(0, Math.min(rawTop + rawHeight, viewportHeight) - clampedTop);
+            if (visibleWidth <= 1 || visibleHeight <= 1) {
+                hideSelectionVisualOverlay();
+                return;
+            }
+
+            ensureSelectionVisualOverlay();
+
+            const handleSize = 14;
+            const handleRadius = handleSize / 2;
+            const handleY = Math.max(0, Math.min(viewportHeight - handleSize, clampedTop + visibleHeight - handleRadius));
+            const startHandleX = Math.max(0, Math.min(viewportWidth - handleSize, clampedLeft - handleRadius));
+            const endHandleX = Math.max(0, Math.min(viewportWidth - handleSize, clampedLeft + visibleWidth - handleRadius));
+
+            selectionVisualHighlight.style.left = clampedLeft + 'px';
+            selectionVisualHighlight.style.top = clampedTop + 'px';
+            selectionVisualHighlight.style.width = visibleWidth + 'px';
+            selectionVisualHighlight.style.height = visibleHeight + 'px';
+
+            selectionVisualStartHandle.style.left = startHandleX + 'px';
+            selectionVisualStartHandle.style.top = handleY + 'px';
+
+            selectionVisualEndHandle.style.left = endHandleX + 'px';
+            selectionVisualEndHandle.style.top = handleY + 'px';
+
+            selectionVisualOverlay.style.display = 'block';
+        }
+
+        function withSelectionScrollUnlocked(work) {
+            selectionScrollUnlockDepth += 1;
+            if (selectionScrollLockEnabled) {
+                setHorizontalOverflowMode('auto');
+            }
+            try {
+                return work();
+            } finally {
+                selectionScrollUnlockDepth = Math.max(0, selectionScrollUnlockDepth - 1);
+                if (selectionScrollUnlockDepth === 0) {
+                    setHorizontalOverflowMode(selectionScrollLockEnabled ? 'hidden' : 'auto');
+                }
+            }
+        }
+
         function notifyInteraction(active) {
             if (lastInteractionState === active) { return; }
             lastInteractionState = active;
@@ -1322,9 +1572,263 @@ struct ReaderWebView: UIViewRepresentable {
             };
         }
 
+        function selectionHasText(payload) {
+            if (!payload || typeof payload.text !== 'string') { return false; }
+            return payload.text.trim().length > 0;
+        }
+
+        function cloneSelectionPayload(payload) {
+            if (!payload) { return null; }
+            return {
+                text: payload.text || '',
+                start: typeof payload.start === 'number' ? payload.start : 0,
+                end: typeof payload.end === 'number' ? payload.end : 0,
+                pageIndex: typeof payload.pageIndex === 'number' ? payload.pageIndex : 0,
+                rect: {
+                    x: payload.rect && typeof payload.rect.x === 'number' ? payload.rect.x : 0,
+                    y: payload.rect && typeof payload.rect.y === 'number' ? payload.rect.y : 0,
+                    width: payload.rect && typeof payload.rect.width === 'number' ? payload.rect.width : 0,
+                    height: payload.rect && typeof payload.rect.height === 'number' ? payload.rect.height : 0
+                },
+                canContinueToNextPage: !!payload.canContinueToNextPage
+            };
+        }
+
+        function extractTextFromOffsets(startOffset, endOffset, segments) {
+            const range = buildRangeFromOffsets(startOffset, endOffset, segments);
+            if (!range) { return ''; }
+            const text = range.toString ? range.toString() : '';
+            range.detach();
+            return text || '';
+        }
+
+        function focusReaderDocument() {
+            try { window.focus(); } catch (e) {}
+            try {
+                if (document.body && document.body.setAttribute) {
+                    document.body.setAttribute('tabindex', '-1');
+                }
+                if (document.body && document.body.focus) {
+                    document.body.focus({ preventScroll: true });
+                }
+            } catch (e) {
+                try {
+                    if (document.body && document.body.focus) {
+                        document.body.focus();
+                    }
+                } catch (ignore) {}
+            }
+        }
+
+        function applyNativeSelectionRange(startOffset, endOffset, segments) {
+            const resolvedSegments = segments || buildTextSegments();
+            const startBoundary = locateOffsetBoundary(startOffset, resolvedSegments, true);
+            const endBoundary = locateOffsetBoundary(endOffset, resolvedSegments, false);
+            if (!startBoundary || !endBoundary) { return false; }
+            if (startBoundary.node === endBoundary.node && startBoundary.offset >= endBoundary.offset) {
+                return false;
+            }
+
+            const selection = window.getSelection();
+            if (!selection) { return false; }
+
+            focusReaderDocument();
+            selection.removeAllRanges();
+
+            let applied = false;
+            if (typeof selection.setBaseAndExtent === 'function') {
+                try {
+                    selection.setBaseAndExtent(
+                        startBoundary.node,
+                        startBoundary.offset,
+                        endBoundary.node,
+                        endBoundary.offset
+                    );
+                    applied = selection.rangeCount > 0 && !!selection.toString();
+                } catch (e) {}
+            }
+
+            if (!applied && typeof selection.collapse === 'function' && typeof selection.extend === 'function') {
+                try {
+                    selection.collapse(startBoundary.node, startBoundary.offset);
+                    selection.extend(endBoundary.node, endBoundary.offset);
+                    applied = selection.rangeCount > 0 && !!selection.toString();
+                } catch (e) {}
+            }
+
+            if (!applied) {
+                const range = document.createRange();
+                range.setStart(startBoundary.node, startBoundary.offset);
+                range.setEnd(endBoundary.node, endBoundary.offset);
+                try {
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    applied = selection.rangeCount > 0 && !!selection.toString();
+                } catch (e) {
+                    applied = false;
+                }
+                range.detach();
+            }
+
+            return applied;
+        }
+
+        function buildEffectiveSelectionPayload(nativePayload, segments) {
+            if (!nativePayload) { return null; }
+            const payload = cloneSelectionPayload(nativePayload);
+            if (continuedSelectionAnchorOffset === null) { return payload; }
+
+            const resolvedSegments = segments || buildTextSegments();
+            if (!resolvedSegments || resolvedSegments.length === 0) { return payload; }
+
+            const combinedStart = Math.min(continuedSelectionAnchorOffset, nativePayload.start);
+            const combinedEnd = Math.max(continuedSelectionAnchorOffset, nativePayload.end);
+            if (combinedStart >= combinedEnd) { return payload; }
+
+            const combinedText = extractTextFromOffsets(combinedStart, combinedEnd, resolvedSegments);
+            payload.text = combinedText || payload.text;
+            payload.start = combinedStart;
+            payload.end = combinedEnd;
+            return payload;
+        }
+
+        function getTotalPageCount() {
+            const totalWidth = getTotalWidth();
+            const perPage = getPerPage();
+            return Math.max(1, Math.ceil(totalWidth / perPage));
+        }
+
+        function setSelectionScrollLock(enabled) {
+            selectionScrollLockEnabled = !!enabled;
+            if (selectionScrollUnlockDepth === 0) {
+                setHorizontalOverflowMode(selectionScrollLockEnabled ? 'hidden' : 'auto');
+            }
+        }
+
+        function enforceSelectionLockedPageIfNeeded() {
+            if (selectionLockedPageIndex === null || isRestoringSelectionPage || isContinuingSelectionToNextPage) { return; }
+            const currentPage = Math.max(0, Math.round(getScrollLeft() / getPerPage()));
+            if (currentPage === selectionLockedPageIndex) { return; }
+            isRestoringSelectionPage = true;
+            scrollToPage(selectionLockedPageIndex, false);
+            isRestoringSelectionPage = false;
+        }
+
+        function findNextNonWhitespaceOffset(fromOffset, segments) {
+            if (!segments || segments.length === 0) { return null; }
+            const target = Math.max(0, fromOffset);
+            const whitespacePattern = /\\s/;
+            for (let i = 0; i < segments.length; i += 1) {
+                const segment = segments[i];
+                if (segment.end <= target) { continue; }
+                const text = segment.node && segment.node.textContent ? segment.node.textContent : '';
+                const localStart = Math.max(0, target - segment.start);
+                for (let j = localStart; j < text.length; j += 1) {
+                    const char = text.charAt(j);
+                    if (!whitespacePattern.test(char)) {
+                        return segment.start + j;
+                    }
+                }
+            }
+            return null;
+        }
+
+        function estimatePageIndexForOffset(offset, segments) {
+            const boundary = locateOffsetBoundary(offset, segments, true);
+            if (!boundary || !boundary.node) { return null; }
+
+            const nodeText = boundary.node.textContent || '';
+            const safeOffset = Math.max(0, Math.min(boundary.offset, nodeText.length));
+            const probeRange = document.createRange();
+            probeRange.setStart(boundary.node, safeOffset);
+            probeRange.setEnd(boundary.node, safeOffset);
+
+            let rect = null;
+            const rects = probeRange.getClientRects ? probeRange.getClientRects() : null;
+            if (rects && rects.length > 0) {
+                rect = rects[0];
+            } else if (probeRange.getBoundingClientRect) {
+                rect = probeRange.getBoundingClientRect();
+            }
+            probeRange.detach();
+
+            if (!rect) { return null; }
+            const perPage = getPerPage();
+            const absoluteX = safeNumber(rect.left, 0) + getScrollLeft();
+            return Math.max(0, Math.floor(Math.max(0, absoluteX) / perPage));
+        }
+
+        function shouldOfferContinueSelectionToNextPage(payload) {
+            if (!payload) { return false; }
+            const totalPages = getTotalPageCount();
+            if (payload.pageIndex >= totalPages - 1) { return false; }
+
+            const segments = buildTextSegments();
+            if (!segments || segments.length === 0) { return false; }
+
+            const nextOffset = findNextNonWhitespaceOffset(payload.end, segments);
+            if (nextOffset === null) { return false; }
+
+            const nextOffsetPage = estimatePageIndexForOffset(nextOffset, segments);
+            if (nextOffsetPage === null) { return false; }
+            return nextOffsetPage > payload.pageIndex;
+        }
+
         function notifySelectionChange() {
-            const payload = serializeSelection();
+            if (isContinuingSelectionToNextPage) { return; }
             const pageIndex = Math.max(0, Math.round(getScrollLeft() / getPerPage()));
+            const segments = buildTextSegments();
+            let nativePayload = serializeSelection();
+            let payload = null;
+            if (selectionHasText(nativePayload)) {
+                setSelectionScrollLock(true);
+                if (selectionLockedPageIndex === null) {
+                    selectionLockedPageIndex = nativePayload.pageIndex;
+                }
+
+                if (nativePayload.pageIndex !== selectionLockedPageIndex &&
+                    !isRestoringSelectionPage) {
+                    isRestoringSelectionPage = true;
+                    scrollToPage(selectionLockedPageIndex, false);
+                    isRestoringSelectionPage = false;
+                    const restoredPayload = serializeSelection();
+                    if (selectionHasText(restoredPayload)) {
+                        nativePayload = restoredPayload;
+                    }
+                    nativePayload.pageIndex = selectionLockedPageIndex;
+                } else {
+                    selectionLockedPageIndex = nativePayload.pageIndex;
+                }
+
+                payload = buildEffectiveSelectionPayload(nativePayload, segments);
+                payload.canContinueToNextPage = shouldOfferContinueSelectionToNextPage(payload);
+                lastStableSelectionPayload = cloneSelectionPayload(payload);
+                updateSelectionVisualOverlay(payload);
+            } else {
+                const currentPage = Math.max(0, Math.round(getScrollLeft() / getPerPage()));
+                const shouldKeepStableSelection =
+                    selectionLockedPageIndex !== null &&
+                    lastStableSelectionPayload &&
+                    (
+                        lastInteractionState ||
+                        currentPage !== selectionLockedPageIndex ||
+                        isRestoringSelectionPage
+                    );
+
+                if (shouldKeepStableSelection) {
+                    payload = cloneSelectionPayload(lastStableSelectionPayload);
+                    payload.pageIndex = selectionLockedPageIndex;
+                    payload.canContinueToNextPage = shouldOfferContinueSelectionToNextPage(payload);
+                    updateSelectionVisualOverlay(payload);
+                } else {
+                    selectionLockedPageIndex = null;
+                    lastStableSelectionPayload = null;
+                    continuedSelectionAnchorOffset = null;
+                    setSelectionScrollLock(false);
+                    hideSelectionVisualOverlay();
+                    payload = null;
+                }
+            }
             try {
                 if (payload) {
                     window.webkit.messageHandlers.textSelection.postMessage(payload);
@@ -1334,7 +1838,8 @@ struct ReaderWebView: UIViewRepresentable {
                         start: 0,
                         end: 0,
                         pageIndex: pageIndex,
-                        rect: { x: 0, y: 0, width: 0, height: 0 }
+                        rect: { x: 0, y: 0, width: 0, height: 0 },
+                        canContinueToNextPage: false
                     });
                 }
             } catch (e) {}
@@ -1345,6 +1850,10 @@ struct ReaderWebView: UIViewRepresentable {
         document.addEventListener('touchstart', function(){ notifyInteraction(true); }, { passive: true });
         document.addEventListener('touchend', function(){ notifyInteraction(false); }, { passive: true });
         document.addEventListener('touchcancel', function(){ notifyInteraction(false); }, { passive: true });
+        document.addEventListener('touchmove', function() {
+            if (selectionLockedPageIndex === null || isContinuingSelectionToNextPage) { return; }
+            enforceSelectionLockedPageIfNeeded();
+        }, { passive: true });
         
         // 防止双击缩放
         var lastTouchEnd = 0;
@@ -1392,28 +1901,27 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         function applyPagination() {
-            // 启用横向滚动，禁用纵向滚动
-            document.documentElement.style.overflowX = 'auto';
-            document.documentElement.style.overflowY = 'hidden';
-            document.body.style.overflowX = 'auto';
-            document.body.style.overflowY = 'hidden';
+            // 默认允许程序化横向滚动，但在文本选择锁页时收紧到当前页。
+            setHorizontalOverflowMode(selectionScrollLockEnabled && selectionScrollUnlockDepth === 0 ? 'hidden' : 'auto');
             // 重新计算页数
             setTimeout(function(){ computePageCount(); updateEdgeOverlay(); }, 0);
         }
         
         function setScrollLeft(x, animated) {
-            // 直接针对窗口滚动（与CSS overflow: auto 设置一致）
-            try {
-                if (animated) {
-                    window.scrollTo({ left: x, top: 0, behavior: 'smooth' });
-                } else {
-                    window.scrollTo(x, 0);
-                }
-            } catch (e) {}
-            // 兜底设置常见滚动宿主
-            try { if (!animated && document.scrollingElement) { document.scrollingElement.scrollLeft = x; document.scrollingElement.scrollTop = 0; } } catch (e) {}
-            try { if (!animated && document.documentElement) { document.documentElement.scrollLeft = x; document.documentElement.scrollTop = 0; } } catch (e) {}
-            try { if (!animated && document.body) { document.body.scrollLeft = x; document.body.scrollTop = 0; } } catch (e) {}
+            withSelectionScrollUnlocked(function() {
+                // 直接针对窗口滚动（与CSS overflow: auto 设置一致）
+                try {
+                    if (animated) {
+                        window.scrollTo({ left: x, top: 0, behavior: 'smooth' });
+                    } else {
+                        window.scrollTo(x, 0);
+                    }
+                } catch (e) {}
+                // 兜底设置常见滚动宿主
+                try { if (!animated && document.scrollingElement) { document.scrollingElement.scrollLeft = x; document.scrollingElement.scrollTop = 0; } } catch (e) {}
+                try { if (!animated && document.documentElement) { document.documentElement.scrollLeft = x; document.documentElement.scrollTop = 0; } } catch (e) {}
+                try { if (!animated && document.body) { document.body.scrollLeft = x; document.body.scrollTop = 0; } } catch (e) {}
+            });
             // 更新右缘覆盖层显示状态
             if (animated) {
                 setTimeout(updateEdgeOverlay, 360);
@@ -1437,16 +1945,20 @@ struct ReaderWebView: UIViewRepresentable {
         
         var selectionRectSyncScheduled = false;
         function syncSelectionRectAfterScrollIfNeeded() {
+            enforceSelectionLockedPageIfNeeded();
             if (selectionRectSyncScheduled) { return; }
             selectionRectSyncScheduled = true;
             requestAnimationFrame(function() {
                 selectionRectSyncScheduled = false;
+                enforceSelectionLockedPageIfNeeded();
                 updateEdgeOverlay();
                 try {
                     const selection = window.getSelection ? window.getSelection() : null;
                     if (!selection || selection.rangeCount === 0) { return; }
                     const text = selection.toString ? selection.toString().trim() : '';
                     if (!text) { return; }
+                    const payload = buildEffectiveSelectionPayload(serializeSelection(), buildTextSegments());
+                    updateSelectionVisualOverlay(payload);
                     notifySelectionChange();
                 } catch (e) {}
             });
@@ -1600,11 +2112,17 @@ struct ReaderWebView: UIViewRepresentable {
                 return false;
             }
             try {
-                const payload = serializeSelection();
+                const segments = buildTextSegments();
+                const payload = buildEffectiveSelectionPayload(serializeSelection(), segments);
                 if (!payload) { return false; }
                 const applied = highlightByOffsets(payload.start, payload.end, colorHex, '');
                 if (!applied) { return false; }
                 selection.removeAllRanges();
+                selectionLockedPageIndex = null;
+                lastStableSelectionPayload = null;
+                continuedSelectionAnchorOffset = null;
+                setSelectionScrollLock(false);
+                hideSelectionVisualOverlay();
             } catch (e) {
                 console.error('applyHighlightForSelection error', e);
                 return false;
@@ -1663,6 +2181,167 @@ struct ReaderWebView: UIViewRepresentable {
 
             const last = segments[segments.length - 1];
             return { node: last.node, offset: last.length };
+        }
+
+        function findWordEndOffset(startOffset, segments) {
+            if (!segments || segments.length === 0) { return null; }
+            const target = Math.max(0, startOffset);
+            const whitespacePattern = /\\s/;
+            let hasConsumedWordChar = false;
+
+            for (let i = 0; i < segments.length; i += 1) {
+                const segment = segments[i];
+                if (segment.end <= target) { continue; }
+                const text = segment.node && segment.node.textContent ? segment.node.textContent : '';
+                let localIndex = Math.max(0, target - segment.start);
+                while (localIndex < text.length) {
+                    const char = text.charAt(localIndex);
+                    const isWhitespace = whitespacePattern.test(char);
+                    if (!hasConsumedWordChar) {
+                        if (!isWhitespace) {
+                            hasConsumedWordChar = true;
+                        }
+                    } else if (isWhitespace) {
+                        return segment.start + localIndex;
+                    }
+                    localIndex += 1;
+                }
+                if (hasConsumedWordChar) {
+                    return segment.end;
+                }
+            }
+
+            return null;
+        }
+
+        function isCJKCharacter(char) {
+            return /[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uac00-\\ud7af]/.test(char);
+        }
+
+        function findSeedSelectionEndOffset(startOffset, segments) {
+            if (!segments || segments.length === 0) { return null; }
+            const boundary = locateOffsetBoundary(startOffset, segments, true);
+            if (!boundary || !boundary.node) { return null; }
+
+            const text = boundary.node.textContent || '';
+            const safeOffset = Math.max(0, Math.min(boundary.offset, Math.max(text.length - 1, 0)));
+            const leadingChar = text.charAt(safeOffset);
+            if (!leadingChar) { return null; }
+            if (isCJKCharacter(leadingChar)) {
+                return startOffset + 1;
+            }
+
+            const wordEnd = findWordEndOffset(startOffset, segments);
+            if (wordEnd !== null && wordEnd > startOffset) {
+                return wordEnd;
+            }
+            return startOffset + 1;
+        }
+
+        function buildRangeFromOffsets(startOffset, endOffset, segments) {
+            if (typeof startOffset !== 'number' || typeof endOffset !== 'number') { return null; }
+            if (startOffset >= endOffset) { return null; }
+            const startBoundary = locateOffsetBoundary(startOffset, segments, true);
+            const endBoundary = locateOffsetBoundary(endOffset, segments, false);
+            if (!startBoundary || !endBoundary) { return null; }
+            if (startBoundary.node === endBoundary.node && startBoundary.offset >= endBoundary.offset) {
+                return null;
+            }
+            const range = document.createRange();
+            range.setStart(startBoundary.node, startBoundary.offset);
+            range.setEnd(endBoundary.node, endBoundary.offset);
+            return range;
+        }
+
+        function continueSelectionToNextPage() {
+            if (isContinuingSelectionToNextPage) {
+                return { success: false, reason: 'busy' };
+            }
+            isContinuingSelectionToNextPage = true;
+            try {
+                const nativePayload = serializeSelection();
+                if (!selectionHasText(nativePayload)) {
+                    return { success: false, reason: 'empty-selection' };
+                }
+
+                const segments = buildTextSegments();
+                if (!segments || segments.length === 0) {
+                    return { success: false, reason: 'no-segments' };
+                }
+
+                const payload = buildEffectiveSelectionPayload(nativePayload, segments);
+                if (!selectionHasText(payload)) {
+                    return { success: false, reason: 'effective-selection-empty' };
+                }
+
+                const currentPage = (selectionLockedPageIndex !== null) ? selectionLockedPageIndex : payload.pageIndex;
+                const totalPages = getTotalPageCount();
+                if (currentPage >= totalPages - 1) {
+                    return { success: false, reason: 'already-last-page' };
+                }
+                if (!shouldOfferContinueSelectionToNextPage(payload)) {
+                    return { success: false, reason: 'no-continue-opportunity' };
+                }
+
+                const nextStartOffset = findNextNonWhitespaceOffset(payload.end, segments);
+                if (nextStartOffset === null) {
+                    return { success: false, reason: 'no-next-text' };
+                }
+                const nextPageOffset = estimatePageIndexForOffset(nextStartOffset, segments);
+                if (nextPageOffset === null || nextPageOffset <= currentPage) {
+                    return { success: false, reason: 'next-page-unresolved' };
+                }
+                const nextPage = Math.min(totalPages - 1, nextPageOffset);
+
+                const seedEndOffset = findSeedSelectionEndOffset(nextStartOffset, segments);
+                const targetEndOffset = (seedEndOffset !== null && seedEndOffset > nextStartOffset)
+                    ? seedEndOffset
+                    : (nextStartOffset + 1);
+
+                continuedSelectionAnchorOffset = payload.start;
+                selectionLockedPageIndex = nextPage;
+                isRestoringSelectionPage = true;
+                scrollToPage(nextPage, false);
+                isRestoringSelectionPage = false;
+
+                if (!applyNativeSelectionRange(nextStartOffset, targetEndOffset, segments)) {
+                    return { success: false, reason: 'seed-selection-apply-failed' };
+                }
+
+                const updatedNative = serializeSelection();
+                if (!selectionHasText(updatedNative)) {
+                    return { success: false, reason: 'updated-selection-empty' };
+                }
+                const updated = buildEffectiveSelectionPayload(updatedNative, segments);
+                updated.pageIndex = nextPage;
+                updated.canContinueToNextPage = shouldOfferContinueSelectionToNextPage(updated);
+                lastStableSelectionPayload = cloneSelectionPayload(updated);
+                updateSelectionVisualOverlay(updated);
+
+                requestAnimationFrame(function() {
+                    isContinuingSelectionToNextPage = true;
+                    try {
+                        const refreshedSegments = buildTextSegments();
+                        if (!applyNativeSelectionRange(nextStartOffset, targetEndOffset, refreshedSegments)) { return; }
+                        const refreshedNative = serializeSelection();
+                        if (!selectionHasText(refreshedNative)) { return; }
+                        const refreshed = buildEffectiveSelectionPayload(refreshedNative, refreshedSegments);
+                        refreshed.pageIndex = nextPage;
+                        refreshed.canContinueToNextPage = shouldOfferContinueSelectionToNextPage(refreshed);
+                        lastStableSelectionPayload = cloneSelectionPayload(refreshed);
+                        updateSelectionVisualOverlay(refreshed);
+                        window.webkit.messageHandlers.textSelection.postMessage(refreshed);
+                    } catch (e) {
+                    } finally {
+                        isContinuingSelectionToNextPage = false;
+                    }
+                });
+
+                try { window.webkit.messageHandlers.textSelection.postMessage(updated); } catch (e) {}
+                return { success: true, selection: updated };
+            } finally {
+                isContinuingSelectionToNextPage = false;
+            }
         }
 
         function getPageForTextOffset(offset) {

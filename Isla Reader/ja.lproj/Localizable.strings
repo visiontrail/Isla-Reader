@@ -143,6 +143,7 @@
 "reader.selection.title" = "選択したテキスト";
 "reader.highlight.action" = "ハイライト";
 "reader.note.add" = "メモを追加";
+"reader.selection.continue_next_page" = "次のページで選択を続ける";
 "reader.ai.translate" = "翻訳";
 "reader.ai.explain" = "AI 解説";
 "reader.ai.ask" = "AI に質問";
