@@ -310,7 +310,7 @@ struct ReaderView: View {
             GeometryReader { geometry in
                 if !chapters.isEmpty && currentChapterIndex >= 0 && currentChapterIndex < chapters.count {
                     chapterView(index: currentChapterIndex, chapter: chapters[currentChapterIndex], geometry: geometry)
-                        .id(currentChapterIndex)
+                        .id("\(book.id.uuidString)-\(currentChapterIndex)")
                 }
             }
             
@@ -342,7 +342,7 @@ struct ReaderView: View {
             let activeHighlightNavigation = pendingHighlightNavigation?.chapterIndex == index ? pendingHighlightNavigation : nil
             
             ReaderWebView(
-                contentID: chapter.order,
+                contentID: readerContentID(for: chapter),
                 htmlContent: chapter.htmlContent,
                 appSettings: appSettings,
                 isDarkMode: effectiveColorScheme == .dark,
@@ -481,7 +481,7 @@ struct ReaderView: View {
         for chapterIndex in candidateIndices {
             let chapter = chapters[chapterIndex]
             ReaderWebView.preloadChapterHTML(
-                contentID: chapter.order,
+                contentID: readerContentID(for: chapter),
                 htmlContent: chapter.htmlContent,
                 fontSize: appSettings.readingFontSize.fontSize,
                 lineSpacing: appSettings.lineSpacing,
@@ -502,6 +502,10 @@ struct ReaderView: View {
             fragment: normalizedFragment,
             token: tocNavigationToken
         )
+    }
+
+    private func readerContentID(for chapter: Chapter) -> String {
+        ReaderWebView.makeContentID(bookID: book.id, chapterOrder: chapter.order)
     }
     
     private var topToolbar: some View {

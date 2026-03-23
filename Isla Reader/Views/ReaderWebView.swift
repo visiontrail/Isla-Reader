@@ -821,7 +821,7 @@ struct ReaderWebView: UIViewRepresentable {
         attributes: .concurrent
     )
 
-    let contentID: Int
+    let contentID: String
     let htmlContent: String
     let appSettings: AppSettings
     let isDarkMode: Bool
@@ -841,8 +841,12 @@ struct ReaderWebView: UIViewRepresentable {
     var onLoadFinished: (() -> Void)?
     var onInteractionChange: ((Bool) -> Void)?
 
+    static func makeContentID(bookID: UUID, chapterOrder: Int) -> String {
+        "\(bookID.uuidString)-\(chapterOrder)"
+    }
+
     static func preloadChapterHTML(
-        contentID: Int,
+        contentID: String,
         htmlContent: String,
         fontSize: CGFloat,
         lineSpacing: Double,
@@ -920,7 +924,7 @@ struct ReaderWebView: UIViewRepresentable {
         return "font:\(roundedFont)|line:\(roundedLineSpacing)|theme:\(isDarkMode ? "dark" : "light")|margin:\(pageMargins)"
     }
 
-    private static func makeCacheKey(contentID: Int, styleSignature: String) -> String {
+    private static func makeCacheKey(contentID: String, styleSignature: String) -> String {
         "chapter:\(contentID)|\(styleSignature)"
     }
     
@@ -1011,11 +1015,16 @@ struct ReaderWebView: UIViewRepresentable {
         let cacheKey = Self.makeCacheKey(contentID: contentID, styleSignature: styleSignature)
         let signature = "sig::\(cacheKey)"
         if container.accessibilityHint != signature {
-            DebugLogger.info("[HighlightNav] updateUIView: 签名变化，重新加载 HTML, highlightToken=\(highlightNavigationToken), highlightOffset=\(highlightTextOffset.map(String.init) ?? "nil")")
+            let cachedHTML = Self.renderedHTMLCache.object(forKey: cacheKey as NSString)
+            DebugLogger.info(
+                "[HighlightNav] updateUIView: 签名变化，重新加载 HTML, " +
+                "contentID=\(contentID), cacheHit=\(cachedHTML != nil), " +
+                "highlightToken=\(highlightNavigationToken), highlightOffset=\(highlightTextOffset.map(String.init) ?? "nil")"
+            )
             container.accessibilityHint = signature
             context.coordinator.prepareForNewLoad()
             let css = getMobileOptimizedCSS()
-            if let cachedHTML = Self.renderedHTMLCache.object(forKey: cacheKey as NSString) {
+            if let cachedHTML {
                 webView.loadHTMLString(cachedHTML as String, baseURL: nil)
             } else {
                 context.coordinator.loadHTMLAsync(
