@@ -123,8 +123,20 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             }
         } else if message.name == "pageMetrics" {
             if let dict = message.body as? [String: Any] {
-                if let type = dict["type"] as? String, type == "pageCount", let value = dict["value"] as? Int {
-                    updateTotalPages(value)
+                if let type = dict["type"] as? String, let value = dict["value"] as? Int {
+                    if type == "pageCount" {
+                        updateTotalPages(value)
+                    } else if type == "currentPage" {
+                        let clamped: Int
+                        if parent.totalPages > 0 {
+                            let maxPage = max(parent.totalPages - 1, 0)
+                            clamped = max(0, min(value, maxPage))
+                        } else {
+                            clamped = max(0, value)
+                        }
+                        lastDisplayedPageIndex = clamped
+                        updateCurrentPageIndex(clamped)
+                    }
                 }
             } else if let pages = message.body as? Int {
                 updateTotalPages(pages)
@@ -381,9 +393,13 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             return true
         }
         
-        // If an animation is in-flight, queue the latest target and exit
+        // If an animation is in-flight:
+        // - tap/fade: keep latest queued target for rapid taps
+        // - swipe/slide: never queue extra targets, enforce one page per swipe
         if isAnimatingSlide {
-            pendingPageIndex = newIndex
+            if parent.pageTurnStyle == .fade {
+                pendingPageIndex = newIndex
+            }
             return true
         }
         
@@ -397,7 +413,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         return true
     }
     
-    // MARK: - Tap page-turn: snapshot crossfade (120-150ms)
+    // MARK: - Tap page-turn: near-instant crossfade (Apple Books style)
     private func performFadeTransition(to newIndex: Int, on webView: WKWebView) {
         let pageWidth = webView.scrollView.bounds.width
         guard pageWidth > 0 else {
@@ -408,12 +424,10 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
 
         isAnimatingSlide = true
 
-        // 1. 截取当前页面快照（不等待屏幕更新，保证速度）
         let snapshot = webView.snapshotView(afterScreenUpdates: false)
 
         if let snapshot = snapshot {
-            snapshot.frame = webView.frame
-            // 插入到 webView 上方，盖住旧内容
+            snapshot.frame = webView.bounds
             if let container = containerView {
                 container.addSubview(snapshot)
             } else {
@@ -421,17 +435,14 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             }
         }
 
-        // 2. 通过 JS 告知 Web 进程渲染目标页，同时设置原生 offset
-        //    快照覆盖在上层，所以 JS 异步延迟不会被用户看到
         jsScrollToPage(newIndex, on: webView)
         let targetX = CGFloat(newIndex) * pageWidth
         webView.scrollView.setContentOffset(CGPoint(x: targetX, y: 0), animated: false)
 
-        // 3. 淡出快照，露出新页面内容（150ms，克制、不喧宾夺主）
         UIView.animate(
-            withDuration: 0.15,
+            withDuration: 0.12,
             delay: 0,
-            options: [.curveEaseOut, .beginFromCurrentState, .allowUserInteraction]
+            options: [.curveEaseIn, .beginFromCurrentState, .allowUserInteraction]
         ) {
             snapshot?.alpha = 0
         } completion: { [weak self] _ in
@@ -440,7 +451,6 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             self.lastDisplayedPageIndex = newIndex
             self.isAnimatingSlide = false
 
-            // 处理快速连点积压的翻页请求
             if let pending = self.pendingPageIndex, pending != newIndex {
                 self.pendingPageIndex = nil
                 self.performFadeTransition(to: pending, on: webView)
@@ -449,8 +459,8 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             }
         }
     }
-    
-    // MARK: - Swipe page-turn: horizontal slide animation
+
+    // MARK: - Swipe page-turn: Apple Books-style slide with shadow
     private func performSlideTransition(to newIndex: Int, on webView: WKWebView) {
         let pageWidth = webView.scrollView.bounds.width
         guard pageWidth > 0 else {
@@ -460,27 +470,64 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         }
 
         isAnimatingSlide = true
+        let isForward = newIndex > lastDisplayedPageIndex
 
-        let targetOffset = CGFloat(newIndex) * pageWidth
+        let snapshot = webView.snapshotView(afterScreenUpdates: false)
+        let shadowView = UIView()
 
-        // JS 通知 Web 进程渲染目标页区域
+        if let snapshot = snapshot {
+            snapshot.frame = webView.bounds
+            if let container = containerView {
+                container.addSubview(snapshot)
+            } else {
+                webView.superview?.insertSubview(snapshot, aboveSubview: webView)
+            }
+
+            shadowView.frame = CGRect(
+                x: isForward ? -20 : snapshot.bounds.width,
+                y: 0,
+                width: 20,
+                height: snapshot.bounds.height
+            )
+            shadowView.backgroundColor = .clear
+            let gradient = CAGradientLayer()
+            gradient.frame = shadowView.bounds
+            gradient.startPoint = CGPoint(x: isForward ? 0 : 1, y: 0.5)
+            gradient.endPoint = CGPoint(x: isForward ? 1 : 0, y: 0.5)
+            gradient.colors = [
+                UIColor.black.withAlphaComponent(0).cgColor,
+                UIColor.black.withAlphaComponent(0.08).cgColor
+            ]
+            shadowView.layer.addSublayer(gradient)
+            snapshot.addSubview(shadowView)
+            snapshot.clipsToBounds = false
+        }
+
         jsScrollToPage(newIndex, on: webView)
-        // 原生动画滑动（setContentOffset(animated:true) 会持续通知 WKWebView 渲染中间帧）
-        webView.scrollView.setContentOffset(CGPoint(x: targetOffset, y: 0), animated: true)
+        let targetX = CGFloat(newIndex) * pageWidth
+        webView.scrollView.setContentOffset(CGPoint(x: targetX, y: 0), animated: false)
 
-        // 通过短延时检测动画完成（UIScrollView animated scroll 通常 ~0.25s）
-        // 使用 DispatchQueue 而非 CATransaction 确保可靠回调
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) { [weak self] in
+        let slideDistance = pageWidth * 0.35
+        let finalX = isForward ? -slideDistance : slideDistance
+
+        UIView.animate(
+            withDuration: 0.3,
+            delay: 0,
+            usingSpringWithDamping: 1.0,
+            initialSpringVelocity: 0.5,
+            options: [.curveEaseOut, .beginFromCurrentState, .allowUserInteraction]
+        ) {
+            snapshot?.transform = CGAffineTransform(translationX: finalX, y: 0)
+            snapshot?.alpha = 0.3
+            shadowView.alpha = 0
+        } completion: { [weak self] _ in
+            snapshot?.removeFromSuperview()
             guard let self = self else { return }
             self.lastDisplayedPageIndex = newIndex
             self.isAnimatingSlide = false
 
-            if let pending = self.pendingPageIndex, pending != newIndex {
-                self.pendingPageIndex = nil
-                self.performSlideTransition(to: pending, on: webView)
-            } else {
-                self.pendingPageIndex = nil
-            }
+            // Slide mode strictly handles one page per swipe.
+            self.pendingPageIndex = nil
         }
     }
 
@@ -1067,14 +1114,14 @@ struct ReaderWebView: UIViewRepresentable {
             lineHeight = 1.45 + ((lineSpacing - 1.0) * 0.34)
         }
         let backgroundColor = isDarkMode ? "#0d0d12" : "#fafafa"
-        let textColor = isDarkMode ? "rgba(255, 255, 255, 0.87)" : "rgba(0, 0, 0, 0.87)"
-        let linkColor = isDarkMode ? "#64b5f6" : "#1976d2"
+        let textColor = isDarkMode ? "rgba(255, 255, 255, 0.85)" : "rgba(0, 0, 0, 0.86)"
+        let linkColor = isDarkMode ? "#5aadff" : "#0066cc"
         let pageMargin = Int(pageMargins)
 
         return """
-        /* 基础样式 - 移动端优化 */
         :root {
             --reader-page-margin: \(pageMargin)px;
+            --reader-vertical-padding: 20px;
         }
 
         * {
@@ -1083,42 +1130,45 @@ struct ReaderWebView: UIViewRepresentable {
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
-        
+
         html, body {
             width: 100%;
             height: 100%;
-            overflow-x: auto; /* 允许横向滚动 */
-            overflow-y: hidden; /* 禁用纵向滚动 */
+            overflow-x: auto;
+            overflow-y: hidden;
             background-color: \(backgroundColor);
             color: \(textColor);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            font-family: 'SFUI', -apple-system, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            -webkit-font-feature-settings: 'kern' 1, 'liga' 1;
+            font-feature-settings: 'kern' 1, 'liga' 1;
+            text-rendering: optimizeLegibility;
             text-size-adjust: 100%;
             -webkit-text-size-adjust: 100%;
-            -webkit-overflow-scrolling: touch;
+            -webkit-overflow-scrolling: auto;
+            overscroll-behavior-x: none;
         }
-        
+
         body {
             font-size: \(Int(fontSize))px;
             line-height: \(lineHeight);
             margin: 0;
             width: 100vw;
-            height: 100vh; /* 每列高度 = 视口高度，WebView已经为页码预留了空间 */
-            /* 将外侧留白移动到内容容器，避免根元素特殊滚动行为导致末页无右侧留白 */
-            padding: 0; 
+            height: 100vh;
+            padding: 0;
+            -webkit-hyphenate-character: auto;
+            -webkit-hyphens: auto;
+            hyphens: auto;
         }
 
-        /* 主内容容器启用分栏以实现横向分页 */
         .reader-content {
             max-width: 100%;
             height: 100%;
             margin: 0;
-            padding: 0;
+            padding: var(--reader-vertical-padding) 0;
             word-wrap: break-word;
             overflow-wrap: break-word;
             word-break: break-word;
-            /* 分栏实现横向分页：每页宽度 = 100vw */
             -webkit-column-width: 100vw;
             column-width: 100vw;
             -webkit-column-gap: 0;
@@ -1127,7 +1177,6 @@ struct ReaderWebView: UIViewRepresentable {
             column-fill: auto;
         }
 
-        /* 单一版心容器：仅在这里应用用户页边距，避免嵌套元素叠加造成正文过窄 */
         .reader-book-root {
             width: 100%;
             max-width: 100%;
@@ -1136,8 +1185,7 @@ struct ReaderWebView: UIViewRepresentable {
             padding-left: var(--reader-page-margin);
             padding-right: var(--reader-page-margin);
         }
-        
-        /* 清理由EPUB内容带入的横向布局限制，统一由用户页边距控制 */
+
         .reader-book-root div,
         .reader-book-root article,
         .reader-book-root section,
@@ -1156,214 +1204,204 @@ struct ReaderWebView: UIViewRepresentable {
             padding-right: 0;
             box-sizing: border-box;
         }
-        
-        
-        /* 段落样式 */
+
         p {
-            margin: 0 0 1em 0;
+            margin: 0 0 0.85em 0;
             text-align: justify;
             text-indent: 2em;
+            letter-spacing: 0.01em;
+            orphans: 2;
+            widows: 2;
         }
-        
-        /* 标题样式 */
+
         h1, h2, h3, h4, h5, h6 {
-            font-weight: 600;
-            margin: 1.5em 0 0.8em 0;
-            line-height: 1.3;
+            font-weight: 700;
+            margin: 1.4em 0 0.6em 0;
+            line-height: 1.25;
             text-indent: 0;
+            letter-spacing: -0.01em;
+            -webkit-column-break-after: avoid;
+            break-after: avoid;
         }
-        
+
         h1 {
-            font-size: 1.8em;
-            border-bottom: 2px solid \(isDarkMode ? "#333" : "#e0e0e0");
-            padding-bottom: 0.3em;
+            font-size: 1.65em;
+            padding-bottom: 0.25em;
         }
-        
+
         h2 {
-            font-size: 1.5em;
+            font-size: 1.4em;
         }
-        
+
         h3 {
-            font-size: 1.3em;
+            font-size: 1.2em;
         }
-        
+
         h4 {
-            font-size: 1.1em;
+            font-size: 1.08em;
         }
-        
+
         h5, h6 {
             font-size: 1em;
         }
-        
-        /* 链接样式 */
+
         a {
             color: \(linkColor);
             text-decoration: none;
             word-break: break-all;
         }
-        
+
         a:active {
             opacity: 0.7;
         }
-        
-        /* 图片样式 - 移动端优化 */
+
         img {
             max-width: 100% !important;
             height: auto !important;
             display: block;
-            margin: 1em auto;
+            margin: 0.8em auto;
             border-radius: 4px;
+            -webkit-column-break-inside: avoid;
+            break-inside: avoid;
         }
-        
-        /* 列表样式 */
+
         ul, ol {
             margin: 0.5em 0 0.5em 1.5em;
             padding-left: 1em !important;
         }
-        
+
         li {
-            margin: 0.3em 0;
+            margin: 0.25em 0;
         }
-        
-        /* 引用样式 */
+
         blockquote {
-            margin: 1em 0;
-            padding: 0.5em 1em;
-            border-left: 4px solid \(isDarkMode ? "#555" : "#ddd");
-            background-color: \(isDarkMode ? "#1a1a1a" : "#f5f5f5");
+            margin: 0.8em 0;
+            padding: 0.6em 1em;
+            border-left: 3px solid \(isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)");
+            background-color: \(isDarkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)");
             font-style: italic;
+            -webkit-column-break-inside: avoid;
+            break-inside: avoid;
         }
-        
-        /* 代码样式 */
+
         code {
-            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-            font-size: 0.9em;
-            padding: 0.2em 0.4em;
-            background-color: \(isDarkMode ? "#1a1a1a" : "#f5f5f5");
-            border-radius: 3px;
-        }
-        
-        pre {
-            margin: 1em 0;
-            padding: 1em;
-            background-color: \(isDarkMode ? "#1a1a1a" : "#f5f5f5");
+            font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+            font-size: 0.88em;
+            padding: 0.15em 0.35em;
+            background-color: \(isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)");
             border-radius: 4px;
+        }
+
+        pre {
+            margin: 0.8em 0;
+            padding: 0.8em 1em;
+            background-color: \(isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)");
+            border-radius: 6px;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            -webkit-column-break-inside: avoid;
+            break-inside: avoid;
         }
-        
+
         pre code {
             padding: 0;
             background-color: transparent;
         }
-        
-        /* 表格样式 - 移动端优化 */
+
         table {
             width: 100%;
             max-width: 100%;
             border-collapse: collapse;
-            margin: 1em 0;
+            margin: 0.8em 0;
             display: block;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            -webkit-column-break-inside: avoid;
+            break-inside: avoid;
         }
-        
+
         th, td {
-            padding: 0.5em;
-            border: 1px solid \(isDarkMode ? "#333" : "#ddd");
+            padding: 0.45em 0.6em;
+            border: 1px solid \(isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)");
             text-align: left;
         }
-        
+
         th {
-            background-color: \(isDarkMode ? "#1a1a1a" : "#f5f5f5");
+            background-color: \(isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)");
             font-weight: 600;
         }
-        
-        /* 水平线 */
+
         hr {
             border: none;
-            border-top: 1px solid \(isDarkMode ? "#333" : "#ddd");
-            margin: 2em 0;
+            border-top: 1px solid \(isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)");
+            margin: 1.8em 0;
         }
-        
-        /* 强调样式 */
+
         strong, b {
             font-weight: 600;
         }
-        
+
         em, i {
             font-style: italic;
         }
-        
-        /* 删除线 */
+
         del, s {
             text-decoration: line-through;
         }
-        
-        /* 下划线 */
+
         u {
             text-decoration: underline;
+            text-underline-offset: 0.15em;
         }
-        
-        /* 小号文字 */
+
         small {
             font-size: 0.85em;
         }
-        
-        /* 确保所有块级元素不超出屏幕 */
+
         div, article, section, aside, nav, header, footer, main {
             max-width: 100%;
             word-wrap: break-word;
         }
-        
-        /* 防止预格式化文本超出屏幕 */
+
         pre, code, kbd, samp {
             white-space: pre-wrap;
             word-wrap: break-word;
         }
-        
-        /* SVG 图片优化 */
+
         svg {
             max-width: 100%;
             height: auto;
         }
-        
-        /* 选中文本的样式 */
+
         ::selection {
-            background-color: \(isDarkMode ? "#4a6fa5" : "#b3d4fc");
-            color: \(isDarkMode ? "#fff" : "#000");
+            background-color: \(isDarkMode ? "rgba(50, 130, 246, 0.35)" : "rgba(0, 122, 255, 0.2)");
+            color: inherit;
         }
 
         mark.reader-highlight {
-            background-color: \(isDarkMode ? "#3d2e12" : "#fff4b3");
-            border-radius: 3px;
-            padding: 0 2px !important;
-            padding-left: 2px !important;
-            padding-right: 2px !important;
+            background-color: \(isDarkMode ? "rgba(255, 214, 10, 0.25)" : "rgba(255, 230, 80, 0.45)");
+            border-radius: 2px;
+            padding: 0 1px !important;
+            -webkit-box-decoration-break: clone;
+            box-decoration-break: clone;
         }
-        
-        /* iframe 优化 */
+
         iframe {
             max-width: 100%;
         }
-        
-        /* 针对某些epub特定的类 */
+
         .pagebreak {
             page-break-after: always;
             margin: 2em 0;
         }
-        
-        /* 脚注样式 */
+
         .footnote {
             font-size: 0.85em;
             vertical-align: super;
         }
-        
-        /* 禁用用户选择某些元素（如果需要） */
+
         .no-select {
             -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
             user-select: none;
         }
         """
@@ -1378,6 +1416,8 @@ struct ReaderWebView: UIViewRepresentable {
         }
         
         var lastInteractionState = false;
+        var touchPanStartX = 0;
+        var touchPanStartY = 0;
         var selectionLockedPageIndex = null;
         var isRestoringSelectionPage = false;
         var selectionScrollLockEnabled = false;
@@ -1906,11 +1946,12 @@ struct ReaderWebView: UIViewRepresentable {
                         isRestoringSelectionPage
                     );
 
-                // 场景2（段落跨页）在某些 WebKit 时序下会短暂丢失原生选区，先尝试按最近一次
-                // native offsets 恢复，避免退化成仅 overlay（无系统拖拽手柄）。
+                // 在某些 WebKit 时序下（包括初始选区和段落跨页两种场景），
+                // overflow-x 在 auto↔hidden 切换时触发的布局重算会短暂清除原生选区，
+                // 先尝试按最近一次 native offsets 恢复，避免退化成无系统拖拽手柄的状态。
+                // iPhone 对跨列段落（首段接续上页）尤为敏感，此修复同时覆盖该场景。
                 if (
                     shouldKeepStableSelection &&
-                    continuedSelectionAnchorOffset !== null &&
                     !isRepairingContinuedNativeSelection &&
                     typeof continuedSelectionNativeStartOffset === 'number' &&
                     typeof continuedSelectionNativeEndOffset === 'number' &&
@@ -1993,13 +2034,31 @@ struct ReaderWebView: UIViewRepresentable {
 
         // 文本选择处理
         document.addEventListener('selectionchange', notifySelectionChange);
-        document.addEventListener('touchstart', function(){ notifyInteraction(true); }, { passive: true });
+        document.addEventListener('touchstart', function(event){
+            notifyInteraction(true);
+            if (event.touches && event.touches.length > 0) {
+                touchPanStartX = event.touches[0].clientX;
+                touchPanStartY = event.touches[0].clientY;
+            }
+        }, { passive: true });
         document.addEventListener('touchend', function(){ notifyInteraction(false); }, { passive: true });
         document.addEventListener('touchcancel', function(){ notifyInteraction(false); }, { passive: true });
         document.addEventListener('touchmove', function() {
             if (selectionLockedPageIndex === null || isContinuingSelectionToNextPage) { return; }
             enforceSelectionLockedPageIfNeeded();
         }, { passive: true });
+        // Block native horizontal inertial scrolling in WebView.
+        // Page turns are driven by Swift gesture + programmatic scrollToPage only.
+        document.addEventListener('touchmove', function(event) {
+            if (selectionLockedPageIndex !== null || isContinuingSelectionToNextPage) { return; }
+            if (!event.touches || event.touches.length === 0) { return; }
+            var touch = event.touches[0];
+            var dx = touch.clientX - touchPanStartX;
+            var dy = touch.clientY - touchPanStartY;
+            if (Math.abs(dx) > Math.abs(dy) + 4) {
+                event.preventDefault();
+            }
+        }, { passive: false });
         
         // 防止双击缩放
         var lastTouchEnd = 0;
@@ -2098,6 +2157,10 @@ struct ReaderWebView: UIViewRepresentable {
                 selectionRectSyncScheduled = false;
                 enforceSelectionLockedPageIfNeeded();
                 updateEdgeOverlay();
+                try {
+                    var current = Math.max(0, Math.round(getScrollLeft() / getPerPage()));
+                    window.webkit.messageHandlers.pageMetrics.postMessage({ type: 'currentPage', value: current });
+                } catch (e) {}
                 try {
                     const selection = window.getSelection ? window.getSelection() : null;
                     if (!selection || selection.rangeCount === 0) { return; }

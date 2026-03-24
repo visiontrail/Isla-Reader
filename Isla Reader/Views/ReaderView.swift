@@ -84,6 +84,7 @@ struct ReaderView: View {
     @State private var lastNavigationTapTime: Date?
     @State private var lastWebContentTapTime: Date?
     @State private var lastSelectionInteractionTime: Date?
+    @State private var lastSwipeTurnTime: Date?
     @FocusState private var isCustomQuestionFieldFocused: Bool
     private let swipePagingEnabled = true
     private let tapNavigationEdgeRatio: CGFloat = 0.24
@@ -240,25 +241,9 @@ struct ReaderView: View {
     private var backgroundView: some View {
         Group {
             if effectiveColorScheme == .dark {
-                // Deep, rich dark theme with subtle gradient
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.05, green: 0.05, blue: 0.08),
-                        Color(red: 0.02, green: 0.02, blue: 0.05)
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                Color(red: 0.05, green: 0.05, blue: 0.07)
             } else {
-                // Clean, paper-like light theme with warmth
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.98, green: 0.98, blue: 0.99),
-                        Color(red: 0.96, green: 0.96, blue: 0.97)
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                Color(red: 0.98, green: 0.98, blue: 0.98)
             }
         }
     }
@@ -336,7 +321,7 @@ struct ReaderView: View {
         ZStack {
             // Content WebView with horizontal pagination
             // 为页码显示预留空间：页码高度约50px（包括padding和背景）
-            let pageIndicatorHeight: CGFloat = 50
+            let pageIndicatorHeight: CGFloat = 36
             let webViewHeight = geometry.size.height - pageIndicatorHeight
             let activeTOCNavigation = pendingTOCNavigation?.chapterIndex == index ? pendingTOCNavigation : nil
             let activeHighlightNavigation = pendingHighlightNavigation?.chapterIndex == index ? pendingHighlightNavigation : nil
@@ -433,25 +418,21 @@ struct ReaderView: View {
                 slideVisualFeedback(geometry: geometry)
             }
             
-            // Page indicator (在预留的空间中显示)
             if safeChapterTotalPages(index) > 1 {
                 VStack {
                     Spacer()
-                        .frame(height: webViewHeight) // 占据WebView的高度
-                    
-                    // 页码显示在预留的空间中
+                        .frame(height: webViewHeight)
+
                     HStack {
                         Spacer()
                         Text("\(safeChapterPageIndex(index) + 1) / \(safeChapterTotalPages(index))")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(12)
+                            .font(.system(size: 11, weight: .regular, design: .default))
+                            .foregroundColor(.secondary.opacity(0.7))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
                         Spacer()
                     }
-                    .frame(height: pageIndicatorHeight) // 使用预留的高度
+                    .frame(height: pageIndicatorHeight)
                 }
                 .transition(.opacity)
             }
@@ -1928,9 +1909,14 @@ struct ReaderView: View {
     }
 
     private func provideTurnHaptic(for source: PageTurnSource) {
-        // 只在翻页时提供轻微的触觉反馈，保持简洁
-        let feedback = UIImpactFeedbackGenerator(style: .light)
-        feedback.impactOccurred(intensity: 0.5)
+        switch source {
+        case .tap:
+            let feedback = UIImpactFeedbackGenerator(style: .soft)
+            feedback.impactOccurred(intensity: 0.35)
+        case .swipe:
+            let feedback = UIImpactFeedbackGenerator(style: .light)
+            feedback.impactOccurred(intensity: 0.4)
+        }
     }
 
     private func provideBoundaryFeedback(for direction: PageTurnDirection) {
@@ -2188,20 +2174,17 @@ struct ReaderView: View {
            Date().timeIntervalSince(lastSelectionInteractionTime) < 0.18 {
             return
         }
-        // 防止在动画过程中处理新的拖拽
         guard !isAnimatingPageTurn else { return }
         pendingTapWorkItem?.cancel()
 
         let translation = value.translation
         let startLocation = value.startLocation
 
-        // 检查是否是水平滑动（水平移动距离大于垂直移动距离）
-        if abs(translation.width) > abs(translation.height) && abs(translation.width) > 10 {
+        if abs(translation.width) > abs(translation.height) && abs(translation.width) > 8 {
             if !isDragging {
                 isDragging = true
                 dragStartLocation = startLocation
 
-                // 隐藏工具栏以获得更好的滑动体验
                 if showingToolbar {
                     withAnimation(.easeOut(duration: 0.15)) {
                         showingToolbar = false
@@ -2209,26 +2192,29 @@ struct ReaderView: View {
                 }
             }
 
-            // 计算拖拽偏移，添加阻尼效果 - 简化计算以提升性能
-            let maxOffset = geometry.size.width * 0.2
-            let dampingFactor: CGFloat = 0.5
-            let rawOffset = translation.width * dampingFactor
+            let maxOffset = geometry.size.width * 0.4
+            let rawOffset = translation.width * 0.65
 
-            // 检查是否可以翻页
             let canGoNext = canNavigateToNextPage()
             let canGoPrevious = canNavigateToPreviousPage()
 
             if rawOffset > 0 && !canGoPrevious {
-                // 向右滑动但无法向前翻页，增加阻力
-                dragOffset = min(rawOffset * 0.25, maxOffset * 0.25)
+                let rubberBand = rubberBandClamp(rawOffset, limit: 60)
+                dragOffset = rubberBand
             } else if rawOffset < 0 && !canGoNext {
-                // 向左滑动但无法向后翻页，增加阻力
-                dragOffset = max(rawOffset * 0.25, -maxOffset * 0.25)
+                let rubberBand = rubberBandClamp(rawOffset, limit: 60)
+                dragOffset = rubberBand
             } else {
-                // 正常滑动
                 dragOffset = max(-maxOffset, min(maxOffset, rawOffset))
             }
         }
+    }
+
+    private func rubberBandClamp(_ offset: CGFloat, limit: CGFloat) -> CGFloat {
+        let absOffset = abs(offset)
+        let sign: CGFloat = offset >= 0 ? 1.0 : -1.0
+        let damped = limit * (1 - exp(-absOffset / limit))
+        return sign * damped
     }
     
     private func handleDragEnded(_ value: DragGesture.Value, geometry: GeometryProxy) {
@@ -2271,25 +2257,20 @@ struct ReaderView: View {
             y: value.predictedEndTranslation.height - value.translation.height
         )
 
-        // 判断翻页阈值 - 降低阈值以获得更灵敏的响应
-        let threshold = geometry.size.width * 0.15
-        let velocityThreshold: CGFloat = 200
+        let threshold = geometry.size.width * 0.12
+        let velocityThreshold: CGFloat = 150
 
         let shouldTurnPage = abs(translation.width) > threshold || abs(velocity.x) > velocityThreshold
 
         if shouldTurnPage && abs(translation.width) > abs(translation.height) {
             if translation.width > 0 && canNavigateToPreviousPage() {
-                // 向右滑动，翻到上一页
                 performPageTurn(direction: .previous)
             } else if translation.width < 0 && canNavigateToNextPage() {
-                // 向左滑动，翻到下一页
                 performPageTurn(direction: .next)
             } else {
-                // 无法翻页，回弹
                 animateBackToOriginalPosition()
             }
         } else {
-            // 滑动距离不够，回弹
             animateBackToOriginalPosition()
         }
 
@@ -2298,6 +2279,11 @@ struct ReaderView: View {
     
     private func performPageTurn(direction: PageTurnDirection) {
         guard !isAnimatingPageTurn else { return }
+        if let lastSwipeTurnTime,
+           Date().timeIntervalSince(lastSwipeTurnTime) < 0.36 {
+            animateBackToOriginalPosition()
+            return
+        }
 
         let didTurn: Bool
         switch direction {
@@ -2312,21 +2298,20 @@ struct ReaderView: View {
             return
         }
 
+        lastSwipeTurnTime = Date()
         isAnimatingPageTurn = true
 
-        // 使用更快速的弹簧动画归位
-        withAnimation(.spring(response: 0.2, dampingFraction: 0.85, blendDuration: 0)) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.92, blendDuration: 0)) {
             dragOffset = 0
         }
 
-        // 缩短动画锁定时间
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
             self.isAnimatingPageTurn = false
         }
     }
-    
+
     private func animateBackToOriginalPosition() {
-        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) {
             dragOffset = 0
         }
     }
@@ -2354,44 +2339,44 @@ struct ReaderView: View {
         case previous
     }
     
-    // MARK: - 滑动视觉反馈
+    // MARK: - Swipe visual feedback (Apple Books-style page edge shadow)
 
     private func slideVisualFeedback(geometry: GeometryProxy) -> some View {
-        // 简化的视觉反馈：只保留边缘发光效果，提升性能
-        edgeGlowEffect(geometry: geometry)
+        pageEdgeShadow(geometry: geometry)
             .allowsHitTesting(false)
     }
 
-    private func edgeGlowEffect(geometry: GeometryProxy) -> some View {
-        HStack(spacing: 0) {
+    private func pageEdgeShadow(geometry: GeometryProxy) -> some View {
+        let progress = min(abs(dragOffset) / 100.0, 1.0)
+        return ZStack {
             if dragOffset > 0 {
-                // 左边缘发光
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        canNavigateToPreviousPage() ? Color.blue.opacity(0.2) : Color.gray.opacity(0.15),
-                        Color.clear
-                    ]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: 6)
-                .opacity(min(abs(dragOffset) / 80.0, 1.0))
-
-                Spacer()
+                HStack(spacing: 0) {
+                    LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: Color.black.opacity(0.06 * progress), location: 0),
+                            .init(color: Color.black.opacity(0.02 * progress), location: 0.4),
+                            .init(color: .clear, location: 1)
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: 16)
+                    Spacer()
+                }
             } else {
-                Spacer()
-
-                // 右边缘发光
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color.clear,
-                        canNavigateToNextPage() ? Color.blue.opacity(0.2) : Color.gray.opacity(0.15)
-                    ]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: 6)
-                .opacity(min(abs(dragOffset) / 80.0, 1.0))
+                HStack(spacing: 0) {
+                    Spacer()
+                    LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: Color.black.opacity(0.02 * progress), location: 0.6),
+                            .init(color: Color.black.opacity(0.06 * progress), location: 1)
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: 16)
+                }
             }
         }
     }
