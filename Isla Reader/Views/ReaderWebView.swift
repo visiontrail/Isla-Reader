@@ -934,7 +934,6 @@ struct ReaderWebView: UIViewRepresentable {
     
     func makeUIView(context: Context) -> UIView {
         let configuration = WKWebViewConfiguration()
-        configuration.selectionGranularity = .character
         
         // 配置用户脚本
         let userContentController = WKUserContentController()
