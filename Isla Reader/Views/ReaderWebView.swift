@@ -2539,6 +2539,11 @@ struct ReaderWebView: UIViewRepresentable {
                 }
                 if (selectionLockedPageIndex === null) {
                     selectionLockedPageIndex = nativePayload.pageIndex;
+                    // 锁定页面的同时立即设置 overflow-x: hidden，防止 WebKit 在用户拖动选区
+                    // 手柄至屏幕边缘时自动横向滚动到下一列（翻页）。
+                    // 注意：overflow-x 变化可能触发短暂布局重算导致 WebKit 清除原生选区，
+                    // notifySelectionChange 的 repair 块会负责恢复。
+                    setSelectionHardLock(true, 'selectionLock.initial');
                 }
 
                 const didDetectHorizontalDrift =
@@ -2561,7 +2566,7 @@ struct ReaderWebView: UIViewRepresentable {
                     nativePayload.pageIndex = selectionLockedPageIndex;
                 }
 
-                // 普通初始选区仅做 soft lock；跨页续选稳定阶段保持 hard lock。
+                // 所有选区阶段均保持 hard lock（overflow-x: hidden）。
                 if (continuedSelectionAnchorOffset !== null) {
                     setSelectionHardLock(true, 'notifySelectionChange.native');
                 }
