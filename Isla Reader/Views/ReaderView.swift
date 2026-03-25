@@ -369,7 +369,8 @@ struct ReaderView: View {
                             endOffset: info.endOffset,
                             rect: info.rect,
                             pageIndex: info.pageIndex,
-                            canContinueToNextPage: info.canContinueToNextPage
+                            canContinueToNextPage: info.canContinueToNextPage,
+                            isSplitParagraphTailRegion: info.isSplitParagraphTailRegion
                         )
                         selectedTextInfo = updatedInfo
                         let feedback = UISelectionFeedbackGenerator()
