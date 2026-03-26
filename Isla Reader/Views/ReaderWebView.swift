@@ -1253,6 +1253,7 @@ struct ReaderWebView: UIViewRepresentable {
         :root {
             --reader-page-margin: \(pageMargin)px;
             --reader-vertical-padding: 20px;
+            --reader-page-top-spacer-height: 1.05em;
         }
 
         * {
@@ -1315,6 +1316,31 @@ struct ReaderWebView: UIViewRepresentable {
             margin: 0;
             padding-left: var(--reader-page-margin);
             padding-right: var(--reader-page-margin);
+        }
+
+        .reader-page-top-inline-spacer,
+        .reader-page-top-block-spacer {
+            pointer-events: none !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            speak: none;
+        }
+
+        .reader-page-top-inline-spacer {
+            display: inline-block;
+            width: 100%;
+            height: var(--reader-page-top-spacer-height);
+            line-height: 0;
+            font-size: 0;
+            vertical-align: top;
+        }
+
+        .reader-page-top-block-spacer {
+            display: block;
+            width: 100%;
+            height: var(--reader-page-top-spacer-height);
+            line-height: 0;
+            font-size: 0;
         }
 
         .reader-book-root div,
@@ -1580,6 +1606,7 @@ struct ReaderWebView: UIViewRepresentable {
         var selectionVisualOverlayLastRectSource = '';
         var currentHorizontalOverflowMode = null;
         var lastReaderHorizontalDragLogAt = 0;
+        var isApplyingPaginationLayout = false;
 
         function postSelectionDebugLog(label, details) {
             try {
@@ -2843,23 +2870,535 @@ struct ReaderWebView: UIViewRepresentable {
             } catch (e) {}
         }
 
-        function computePageCount() {
+        function isInjectedPageTopSpacerElement(element) {
+            if (!element || element.nodeType !== Node.ELEMENT_NODE) { return false; }
+            if (element.getAttribute('data-reader-page-top-spacer') === '1') { return true; }
+            if (!element.classList) { return false; }
+            return (
+                element.classList.contains('reader-page-top-inline-spacer') ||
+                element.classList.contains('reader-page-top-block-spacer')
+            );
+        }
+
+        function isNodeInsideInjectedPageTopSpacer(node) {
+            var current = node && node.nodeType === Node.ELEMENT_NODE ? node : (node ? node.parentElement : null);
+            while (current) {
+                if (isInjectedPageTopSpacerElement(current)) { return true; }
+                current = current.parentElement;
+            }
+            return false;
+        }
+
+        function isIgnoredReaderNode(node) {
+            if (!node) { return true; }
+            if (isNodeInsideInjectedPageTopSpacer(node)) { return true; }
+
+            var current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+            while (current) {
+                var tag = current.tagName ? current.tagName.toUpperCase() : '';
+                if (
+                    tag === 'SCRIPT' ||
+                    tag === 'STYLE' ||
+                    tag === 'NOSCRIPT' ||
+                    tag === 'TEMPLATE' ||
+                    tag === 'META' ||
+                    tag === 'LINK' ||
+                    tag === 'TITLE'
+                ) {
+                    return true;
+                }
+                current = current.parentElement;
+            }
+            return false;
+        }
+
+        function isEligibleSpacerTextNode(node) {
+            if (!node || node.nodeType !== Node.TEXT_NODE) { return false; }
+            if (isIgnoredReaderNode(node)) { return false; }
+            var text = node.textContent || '';
+            return text.length > 0;
+        }
+
+        function parseCSSLengthToPx(rawValue, fallbackValue) {
+            var fallback = Number.isFinite(fallbackValue) ? fallbackValue : 0;
+            if (typeof rawValue !== 'string') { return fallback; }
+            var trimmed = rawValue.trim().toLowerCase();
+            if (!trimmed) { return fallback; }
+            var numeric = parseFloat(trimmed);
+            if (!Number.isFinite(numeric) || numeric < 0) { return fallback; }
+
+            if (trimmed.endsWith('px') || /^[0-9.]+$/.test(trimmed)) {
+                return numeric;
+            }
+
+            var bodyStyle = window.getComputedStyle(document.body);
+            var baseFontSize = parseFloat(bodyStyle && bodyStyle.fontSize ? bodyStyle.fontSize : '') || 16;
+            if (trimmed.endsWith('rem') || trimmed.endsWith('em')) {
+                return numeric * baseFontSize;
+            }
+            return fallback;
+        }
+
+        function getReaderPageMarginPx() {
+            var rootStyle = window.getComputedStyle(document.documentElement || document.body);
+            return parseCSSLengthToPx(
+                rootStyle ? rootStyle.getPropertyValue('--reader-page-margin') : '',
+                0
+            );
+        }
+
+        function getReaderVerticalPaddingPx() {
+            var rootStyle = window.getComputedStyle(document.documentElement || document.body);
+            return parseCSSLengthToPx(
+                rootStyle ? rootStyle.getPropertyValue('--reader-vertical-padding') : '',
+                20
+            );
+        }
+
+        function getReaderPageTopSpacerHeightPx() {
+            var rootStyle = window.getComputedStyle(document.documentElement || document.body);
+            var parsed = parseCSSLengthToPx(
+                rootStyle ? rootStyle.getPropertyValue('--reader-page-top-spacer-height') : '',
+                -1
+            );
+            if (parsed > 0) { return parsed; }
+            var bodyStyle = window.getComputedStyle(document.body);
+            var lineHeight = parseFloat(bodyStyle && bodyStyle.lineHeight ? bodyStyle.lineHeight : '');
+            if (Number.isFinite(lineHeight) && lineHeight > 0) { return lineHeight; }
+            return 18;
+        }
+
+        function getCaretBoundaryFromPoint(x, y) {
+            if (typeof document.caretRangeFromPoint === 'function') {
+                var range = document.caretRangeFromPoint(x, y);
+                if (range) {
+                    return {
+                        node: range.startContainer,
+                        offset: range.startOffset
+                    };
+                }
+            }
+            if (typeof document.caretPositionFromPoint === 'function') {
+                var position = document.caretPositionFromPoint(x, y);
+                if (position) {
+                    return {
+                        node: position.offsetNode,
+                        offset: position.offset
+                    };
+                }
+            }
+            return null;
+        }
+
+        function getNextNodeInDocumentOrder(node, rootNode) {
+            var root = rootNode || document.body;
+            if (!node) { return null; }
+            if (node.firstChild) { return node.firstChild; }
+            var current = node;
+            while (current && current !== root) {
+                if (current.nextSibling) { return current.nextSibling; }
+                current = current.parentNode;
+            }
+            return null;
+        }
+
+        function resolveStartNodeForBoundary(node, offset) {
+            if (!node) { return null; }
+            if (node.nodeType === Node.TEXT_NODE) {
+                var textLength = (node.textContent || '').length;
+                if ((offset || 0) < textLength) { return node; }
+                return getNextNodeInDocumentOrder(node, document.body);
+            }
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                var childNodes = node.childNodes || [];
+                var safeOffset = Math.max(0, Math.min(offset || 0, childNodes.length));
+                if (safeOffset < childNodes.length) {
+                    return childNodes[safeOffset];
+                }
+                return getNextNodeInDocumentOrder(node, document.body);
+            }
+            return getNextNodeInDocumentOrder(node, document.body);
+        }
+
+        function findFirstMeaningfulTextBoundaryFrom(node, offset) {
+            var cursor = resolveStartNodeForBoundary(node, offset);
+            var whitespacePattern = /\\s/;
+            while (cursor) {
+                if (cursor.nodeType === Node.TEXT_NODE && isEligibleSpacerTextNode(cursor)) {
+                    var text = cursor.textContent || '';
+                    var startIndex = 0;
+                    if (cursor === node && node.nodeType === Node.TEXT_NODE) {
+                        startIndex = Math.max(0, Math.min(offset || 0, text.length));
+                    }
+                    for (var i = startIndex; i < text.length; i++) {
+                        var char = text.charAt(i);
+                        if (!whitespacePattern.test(char)) {
+                            return { node: cursor, offset: i };
+                        }
+                    }
+                }
+                cursor = getNextNodeInDocumentOrder(cursor, document.body);
+            }
+            return null;
+        }
+
+        function resolveBoundaryPageIndex(node, offset) {
+            if (!node || node.nodeType !== Node.TEXT_NODE) { return null; }
+            var textLength = (node.textContent || '').length;
+            var safeOffset = Math.max(0, Math.min(offset || 0, textLength));
+            var range = document.createRange();
+            range.setStart(node, safeOffset);
+            range.setEnd(node, safeOffset);
+            var rect = null;
+            var rects = range.getClientRects ? range.getClientRects() : null;
+            if (rects && rects.length > 0) {
+                rect = rects[0];
+            } else if (range.getBoundingClientRect) {
+                rect = range.getBoundingClientRect();
+            }
+            range.detach();
+            if (!rect) { return null; }
+            var absoluteX = safeNumber(rect.left, 0) + getScrollLeft();
+            return Math.max(0, Math.floor(Math.max(0, absoluteX) / getPerPage()));
+        }
+
+        function findPageStartOffsetForCurrentPage(pageIndex) {
+            var perPage = getPerPage();
+            if (perPage <= 1) { return null; }
+
+            var viewportHeight = Math.max(
+                1,
+                window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 1
+            );
+            var pageMargin = getReaderPageMarginPx();
+            var topPadding = getReaderVerticalPaddingPx();
+            var spacerHeight = getReaderPageTopSpacerHeightPx();
+            var maxProbeY = Math.max(
+                2,
+                Math.min(
+                    viewportHeight - 2,
+                    Math.max(topPadding + spacerHeight * 4, spacerHeight * 6, 140)
+                )
+            );
+            var step = Math.max(4, Math.floor(spacerHeight / 3));
+            var xCandidates = [
+                Math.max(2, Math.min(perPage - 2, pageMargin + 2)),
+                Math.max(2, Math.min(perPage - 2, pageMargin + 24)),
+                Math.max(2, Math.min(perPage - 2, perPage * 0.45))
+            ];
+
+            for (var xIndex = 0; xIndex < xCandidates.length; xIndex++) {
+                var probeX = xCandidates[xIndex];
+                for (var probeY = 2; probeY <= maxProbeY; probeY += step) {
+                    var caretBoundary = getCaretBoundaryFromPoint(probeX, probeY);
+                    if (!caretBoundary || !caretBoundary.node) { continue; }
+                    var meaningfulBoundary = findFirstMeaningfulTextBoundaryFrom(
+                        caretBoundary.node,
+                        caretBoundary.offset
+                    );
+                    if (!meaningfulBoundary) { continue; }
+                    var resolvedPage = resolveBoundaryPageIndex(
+                        meaningfulBoundary.node,
+                        meaningfulBoundary.offset
+                    );
+                    if (resolvedPage !== pageIndex) { continue; }
+                    var absoluteOffset = measureOffset(
+                        meaningfulBoundary.node,
+                        meaningfulBoundary.offset
+                    );
+                    if (Number.isFinite(absoluteOffset) && absoluteOffset >= 0) {
+                        return absoluteOffset;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        function collectPageStartOffsets(basePageCount) {
+            var baselinePages = Math.max(1, Math.floor(basePageCount || 0));
+            if (baselinePages <= 1) { return []; }
+            var perPage = getPerPage();
+            if (perPage <= 1) { return []; }
+
+            var originalScrollLeft = getScrollLeft();
+            var captured = [];
+            for (var page = 1; page < baselinePages; page++) {
+                setScrollLeft(page * perPage, false, 'pageTopSpacer.capture');
+                var offset = findPageStartOffsetForCurrentPage(page);
+                if (offset === null) { continue; }
+                captured.push({
+                    pageIndex: page,
+                    offset: Math.max(0, Math.floor(offset))
+                });
+            }
+            setScrollLeft(originalScrollLeft, false, 'pageTopSpacer.capture.restore');
+
+            captured.sort(function(lhs, rhs) {
+                if (lhs.offset === rhs.offset) {
+                    return lhs.pageIndex - rhs.pageIndex;
+                }
+                return lhs.offset - rhs.offset;
+            });
+
+            var deduped = [];
+            var lastOffset = null;
+            for (var i = 0; i < captured.length; i++) {
+                var item = captured[i];
+                if (lastOffset !== null && item.offset === lastOffset) { continue; }
+                deduped.push(item);
+                lastOffset = item.offset;
+            }
+            return deduped;
+        }
+
+        function removeInjectedPageTopSpacers() {
+            var injectedNodes = document.querySelectorAll('[data-reader-page-top-spacer="1"]');
+            if (!injectedNodes || injectedNodes.length === 0) { return 0; }
+            var parents = [];
+            injectedNodes.forEach(function(node) {
+                if (!node || !node.parentNode) { return; }
+                parents.push(node.parentNode);
+                node.parentNode.removeChild(node);
+            });
+            var normalizedParents = new Set();
+            parents.forEach(function(parent) {
+                if (!parent || typeof parent.normalize !== 'function') { return; }
+                if (normalizedParents.has(parent)) { return; }
+                parent.normalize();
+                normalizedParents.add(parent);
+            });
+            return injectedNodes.length;
+        }
+
+        var readerBlockTagNames = {
+            P: true,
+            DIV: true,
+            LI: true,
+            BLOCKQUOTE: true,
+            SECTION: true,
+            ARTICLE: true,
+            DD: true,
+            DT: true,
+            H1: true,
+            H2: true,
+            H3: true,
+            H4: true,
+            H5: true,
+            H6: true,
+            UL: true,
+            OL: true,
+            PRE: true,
+            TABLE: true,
+            FIGURE: true
+        };
+
+        function isBlockLevelReaderElement(element) {
+            if (!element || element.nodeType !== Node.ELEMENT_NODE) { return false; }
+            var tag = element.tagName ? element.tagName.toUpperCase() : '';
+            if (readerBlockTagNames[tag]) { return true; }
+            var display = '';
+            try {
+                display = window.getComputedStyle(element).display || '';
+            } catch (e) {
+                display = '';
+            }
+            return (
+                display === 'block' ||
+                display === 'list-item' ||
+                display === 'table' ||
+                display === 'flex' ||
+                display === 'grid'
+            );
+        }
+
+        function findNearestBlockElement(node) {
+            var current = node && node.nodeType === Node.ELEMENT_NODE ? node : (node ? node.parentElement : null);
+            while (current && current !== document.body && current !== document.documentElement) {
+                if (isBlockLevelReaderElement(current) && !isInjectedPageTopSpacerElement(current)) {
+                    return current;
+                }
+                current = current.parentElement;
+            }
+            return null;
+        }
+
+        function firstMeaningfulTextBoundaryInElement(element) {
+            if (!element) { return null; }
+            var walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
+            var whitespacePattern = /\\s/;
+            var node;
+            while ((node = walker.nextNode())) {
+                if (!isEligibleSpacerTextNode(node)) { continue; }
+                var text = node.textContent || '';
+                for (var index = 0; index < text.length; index++) {
+                    if (!whitespacePattern.test(text.charAt(index))) {
+                        return { node: node, offset: index };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function resolveBlockSpacerTarget(boundaryNode, boundaryOffset) {
+            var blockElement = findNearestBlockElement(boundaryNode);
+            if (!blockElement || !blockElement.parentNode) { return null; }
+            var firstBoundary = firstMeaningfulTextBoundaryInElement(blockElement);
+            if (!firstBoundary) { return null; }
+            if (firstBoundary.node !== boundaryNode) { return null; }
+            if ((boundaryOffset || 0) > firstBoundary.offset) { return null; }
+            return blockElement;
+        }
+
+        function createPageTopInlineSpacer(pageIndex) {
+            var spacer = document.createElement('span');
+            spacer.className = 'reader-page-top-inline-spacer';
+            spacer.setAttribute('aria-hidden', 'true');
+            spacer.setAttribute('data-reader-page-top-spacer', '1');
+            spacer.setAttribute('data-reader-page-top-spacer-type', 'inline');
+            spacer.setAttribute('data-reader-page-top-page-index', String(pageIndex));
+            spacer.setAttribute('contenteditable', 'false');
+            return spacer;
+        }
+
+        function createPageTopBlockSpacer(pageIndex) {
+            var spacer = document.createElement('div');
+            spacer.className = 'reader-page-top-block-spacer';
+            spacer.setAttribute('aria-hidden', 'true');
+            spacer.setAttribute('data-reader-page-top-spacer', '1');
+            spacer.setAttribute('data-reader-page-top-spacer-type', 'block');
+            spacer.setAttribute('data-reader-page-top-page-index', String(pageIndex));
+            return spacer;
+        }
+
+        function insertInlineSpacerAtBoundary(boundaryNode, boundaryOffset, pageIndex) {
+            if (!boundaryNode || boundaryNode.nodeType !== Node.TEXT_NODE) { return false; }
+            if (!isEligibleSpacerTextNode(boundaryNode)) { return false; }
+            var parent = boundaryNode.parentNode;
+            if (!parent) { return false; }
+
+            var textLength = (boundaryNode.textContent || '').length;
+            var safeOffset = Math.max(0, Math.min(boundaryOffset || 0, textLength));
+            var anchorNode = boundaryNode;
+            if (safeOffset > 0 && safeOffset < textLength) {
+                anchorNode = boundaryNode.splitText(safeOffset);
+            } else if (safeOffset >= textLength) {
+                anchorNode = boundaryNode.nextSibling;
+            }
+
+            if (anchorNode && isInjectedPageTopSpacerElement(anchorNode.previousSibling)) {
+                return false;
+            }
+            if (!anchorNode && isInjectedPageTopSpacerElement(parent.lastChild)) {
+                return false;
+            }
+
+            var spacer = createPageTopInlineSpacer(pageIndex);
+            parent.insertBefore(spacer, anchorNode || null);
+            return true;
+        }
+
+        function insertBlockSpacerBeforeElement(blockElement, pageIndex) {
+            if (!blockElement || !blockElement.parentNode) { return false; }
+            if (isInjectedPageTopSpacerElement(blockElement.previousSibling)) {
+                return false;
+            }
+            var spacer = createPageTopBlockSpacer(pageIndex);
+            blockElement.parentNode.insertBefore(spacer, blockElement);
+            return true;
+        }
+
+        function injectPageTopSpacerForOffset(offset, pageIndex) {
+            var segments = buildTextSegments();
+            if (!segments || segments.length === 0) { return false; }
+            var safeOffset = findNextNonWhitespaceOffset(offset, segments);
+            if (safeOffset === null) { return false; }
+
+            var boundary = locateOffsetBoundary(safeOffset, segments, true);
+            if (!boundary || !boundary.node) { return false; }
+
+            var meaningfulBoundary = findFirstMeaningfulTextBoundaryFrom(boundary.node, boundary.offset);
+            if (!meaningfulBoundary || !meaningfulBoundary.node) { return false; }
+            if (!isEligibleSpacerTextNode(meaningfulBoundary.node)) { return false; }
+
+            var blockTarget = resolveBlockSpacerTarget(
+                meaningfulBoundary.node,
+                meaningfulBoundary.offset
+            );
+            if (blockTarget) {
+                return insertBlockSpacerBeforeElement(blockTarget, pageIndex);
+            }
+            return insertInlineSpacerAtBoundary(
+                meaningfulBoundary.node,
+                meaningfulBoundary.offset,
+                pageIndex
+            );
+        }
+
+        function injectPageTopSpacersIfNeeded(basePageCount) {
+            var pageStartOffsets = collectPageStartOffsets(basePageCount);
+            if (!pageStartOffsets || pageStartOffsets.length === 0) { return 0; }
+
+            var insertedCount = 0;
+            for (var i = 0; i < pageStartOffsets.length; i++) {
+                var item = pageStartOffsets[i];
+                if (injectPageTopSpacerForOffset(item.offset, item.pageIndex)) {
+                    insertedCount += 1;
+                }
+            }
+            return insertedCount;
+        }
+
+        function computePageCount(shouldNotify) {
             const totalWidth = getTotalWidth();
             const perPage = getPerPage();
             const pages = Math.max(1, Math.ceil(totalWidth / perPage));
-            try { window.webkit.messageHandlers.pageMetrics.postMessage({ type: 'pageCount', value: pages }); } catch (e) {}
+            if (shouldNotify !== false) {
+                try { window.webkit.messageHandlers.pageMetrics.postMessage({ type: 'pageCount', value: pages }); } catch (e) {}
+            }
             updateEdgeOverlay();
             return pages;
         }
         
         function applyPagination() {
-            // 默认允许程序化横向滚动，但在文本选择锁页时收紧到当前页。
-            setHorizontalOverflowMode(
-                selectionHardLockEnabled && selectionHardLockUnlockDepth === 0 ? 'hidden' : 'auto',
-                'applyPagination'
+            if (isApplyingPaginationLayout) {
+                return computePageCount(true);
+            }
+
+            isApplyingPaginationLayout = true;
+            const originalPerPage = getPerPage();
+            const originalScrollLeft = getScrollLeft();
+            const originalPageIndex = Math.max(
+                0,
+                Math.round(originalScrollLeft / Math.max(1, originalPerPage))
             );
-            // 重新计算页数
-            setTimeout(function(){ computePageCount(); updateEdgeOverlay(); }, 0);
+            var finalPages = 1;
+
+            try {
+                // 默认允许程序化横向滚动，但在文本选择锁页时收紧到当前页。
+                setHorizontalOverflowMode(
+                    selectionHardLockEnabled && selectionHardLockUnlockDepth === 0 ? 'hidden' : 'auto',
+                    'applyPagination'
+                );
+
+                removeInjectedPageTopSpacers();
+                void document.body.offsetWidth;
+
+                var baselinePageCount = computePageCount(false);
+                injectPageTopSpacersIfNeeded(baselinePageCount);
+                void document.body.offsetWidth;
+
+                finalPages = computePageCount(true);
+            } catch (e) {
+                finalPages = computePageCount(true);
+            } finally {
+                isApplyingPaginationLayout = false;
+            }
+
+            const clampedPageIndex = Math.max(0, Math.min(originalPageIndex, Math.max(0, finalPages - 1)));
+            setScrollLeft(clampedPageIndex * getPerPage(), false, 'applyPagination.restorePage');
+            updateEdgeOverlay();
+            return finalPages;
         }
         
         function setScrollLeft(x, animated, sourceTag) {
@@ -2893,13 +3432,12 @@ struct ReaderWebView: UIViewRepresentable {
         
         window.addEventListener('load', function() {
             applyPagination();
-            // 初始跳转到指定页（若宿主设置了）
-            try { window.webkit.messageHandlers.pageMetrics.postMessage({ type: 'pageCount', value: computePageCount() }); } catch (e) {}
             updateEdgeOverlay();
         });
         
         var selectionRectSyncScheduled = false;
         function syncSelectionRectAfterScrollIfNeeded() {
+            if (isApplyingPaginationLayout) { return; }
             enforceSelectionLockedPageIfNeeded();
             if (selectionRectSyncScheduled) { return; }
             selectionRectSyncScheduled = true;
