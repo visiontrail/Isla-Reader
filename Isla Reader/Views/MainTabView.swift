@@ -202,42 +202,43 @@ private struct AIPrivacyLaunchConsentSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Label(localized("ai.consent.launch.title"), systemImage: "shield.lefthalf.filled")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(localized("ai.consent.launch.intro"))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
 
-                Text(localized("ai.consent.launch.intro"))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                        VStack(alignment: .leading, spacing: 10) {
+                            consentLine(icon: "person.text.rectangle", text: localized("ai.consent.launch.usage"))
+                            consentLine(icon: "server.rack", text: localized("ai.consent.launch.location"))
+                            consentLine(icon: "link", text: localized("ai.consent.launch.third_party"))
+                            consentLine(icon: "building.2", text: providerDisclosureText)
+                            consentLine(icon: "checkmark.seal", text: localized("ai.consent.launch.explicit_permission"))
+                        }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    consentLine(icon: "person.text.rectangle", text: localized("ai.consent.launch.usage"))
-                    consentLine(icon: "server.rack", text: localized("ai.consent.launch.location"))
-                    consentLine(icon: "link", text: localized("ai.consent.launch.third_party"))
-                    consentLine(icon: "building.2", text: providerDisclosureText)
-                    consentLine(icon: "checkmark.seal", text: localized("ai.consent.launch.explicit_permission"))
+                        Link(destination: privacyPolicyURL) {
+                            Text(localized("ai.consent.launch.privacy_policy_link"))
+                                .font(.subheadline)
+                        }
+
+                        Text(localized("ai.consent.launch.manage_in_settings"))
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 16)
                 }
-
-                Toggle(isOn: $dontShowAgain) {
-                    Text(localized("ai.consent.launch.dont_show_again"))
-                        .font(.subheadline)
-                }
-                .toggleStyle(.switch)
-                .padding(.top, 4)
-
-                Link(destination: privacyPolicyURL) {
-                    Text(localized("ai.consent.launch.privacy_policy_link"))
-                        .font(.subheadline)
-                }
-
-                Text(localized("ai.consent.launch.manage_in_settings"))
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-
-                Spacer(minLength: 0)
 
                 VStack(spacing: 12) {
+                    Toggle(isOn: $dontShowAgain) {
+                        Text(localized("ai.consent.launch.dont_show_again"))
+                            .font(.subheadline)
+                    }
+                    .toggleStyle(.switch)
+
                     Button(action: { onAllow(dontShowAgain) }) {
                         Text(localized("ai.consent.launch.allow"))
                             .font(.headline)
@@ -254,16 +255,12 @@ private struct AIPrivacyLaunchConsentSheet: View {
                     }
                     .buttonStyle(.bordered)
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 20)
             }
-            .padding(20)
+            .navigationTitle(localized("ai.consent.launch.title"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text(localized("app.name"))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
         }
         .interactiveDismissDisabled(true)
         .task {
@@ -291,8 +288,12 @@ private struct AIPrivacyLaunchConsentSheet: View {
                 .frame(width: 18)
             Text(text)
                 .font(.subheadline)
-                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+                .lineLimit(nil)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func localized(_ key: String) -> String {
