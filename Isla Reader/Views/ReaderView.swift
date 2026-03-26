@@ -1764,10 +1764,40 @@ struct ReaderView: View {
         chapterPageIndices[index] = max(0, value)
     }
     
-    private func safeChapterTotalPages(_ index: Int) -> Int {
+    private func storedChapterTotalPages(_ index: Int) -> Int {
         ensurePageArrays()
         guard index >= 0 && index < chapterTotalPages.count else { return 1 }
         return max(1, chapterTotalPages[index])
+    }
+
+    private func estimatedTotalPagesForUnmeasuredChapter(_ index: Int) -> Int {
+        ensurePageArrays()
+        guard index >= 0 && index < chapters.count else { return 1 }
+
+        let chapterCount = max(chapters.count, 1)
+        let fallbackTotalPages = max(Int(book.totalPages), chapterCount, 1)
+
+        var measuredPages = 0
+        var measuredCount = 0
+        for chapterIndex in 0..<chapterCount where isChapterPageCountMeasured(chapterIndex) {
+            measuredPages += storedChapterTotalPages(chapterIndex)
+            measuredCount += 1
+        }
+
+        let remainingChapters = max(chapterCount - measuredCount, 1)
+        let remainingPages = max(fallbackTotalPages - measuredPages, remainingChapters)
+        let estimatedPerChapter = Int((Double(remainingPages) / Double(remainingChapters)).rounded())
+        return max(1, estimatedPerChapter)
+    }
+
+    private func safeChapterTotalPages(_ index: Int) -> Int {
+        ensurePageArrays()
+        guard index >= 0 && index < chapterTotalPages.count else { return 1 }
+        let storedTotal = storedChapterTotalPages(index)
+        if isChapterPageCountMeasured(index) {
+            return storedTotal
+        }
+        return max(storedTotal, estimatedTotalPagesForUnmeasuredChapter(index))
     }
     
     private func setChapterTotalPages(_ index: Int, _ value: Int) {
