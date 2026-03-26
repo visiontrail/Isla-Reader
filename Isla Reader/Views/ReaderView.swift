@@ -316,7 +316,33 @@ struct ReaderView: View {
             .animation(.spring(response: 0.35, dampingFraction: 0.86), value: showingToolbar)
         }
     }
-    
+
+    private var currentChapterTitle: String {
+        guard chapters.indices.contains(currentChapterIndex) else { return "" }
+        let trimmed = chapters[currentChapterIndex].title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed
+    }
+
+    private var shouldShowInlineChapterTitle: Bool {
+        !showingToolbar && !currentChapterTitle.isEmpty
+    }
+
+    private var inlineChapterTitleView: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(currentChapterTitle)
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .padding(.horizontal, CGFloat(max(20.0, appSettings.pageMargins)))
+
+            // Keep one blank line between chapter title and reading content.
+            Color.clear
+                .frame(height: appSettings.readingFontSize.fontSize)
+        }
+        .padding(.top, 6)
+        .allowsHitTesting(false)
+    }
+
     private func chapterView(index: Int, chapter: Chapter, geometry: GeometryProxy) -> some View {
         ZStack {
             // Content WebView with horizontal pagination
@@ -440,6 +466,14 @@ struct ReaderView: View {
 
             if let info = selectedTextInfo {
                 selectionToolbar(for: info, in: geometry)
+            }
+
+            if shouldShowInlineChapterTitle {
+                VStack(spacing: 0) {
+                    inlineChapterTitleView
+                    Spacer()
+                }
+                .frame(width: geometry.size.width, height: webViewHeight, alignment: .top)
             }
         }
         .ignoresSafeArea(edges: .bottom)
