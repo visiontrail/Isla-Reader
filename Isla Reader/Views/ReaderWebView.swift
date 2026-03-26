@@ -1265,7 +1265,7 @@ struct ReaderWebView: UIViewRepresentable {
         html, body {
             width: 100%;
             height: 100%;
-            overflow-x: auto;
+            overflow-x: hidden;
             overflow-y: hidden;
             background-color: \(backgroundColor);
             color: \(textColor);
@@ -1601,7 +1601,8 @@ struct ReaderWebView: UIViewRepresentable {
         }
 
         function normalizeOverflowMode(mode) {
-            return mode === 'hidden' ? 'hidden' : 'auto';
+            // Keep horizontal scrolling fully locked to eliminate native slider + drift.
+            return 'hidden';
         }
 
         function resolveSelectionLockMode() {
@@ -1647,9 +1648,9 @@ struct ReaderWebView: UIViewRepresentable {
                     ? document.documentElement.style.overflowX
                     : '';
                 const bodyMode = document.body && document.body.style ? document.body.style.overflowX : '';
-                return normalizeOverflowMode(documentMode || bodyMode || 'auto');
+                return normalizeOverflowMode(documentMode || bodyMode || 'hidden');
             } catch (e) {
-                return 'auto';
+                return 'hidden';
             }
         }
 
@@ -1964,19 +1965,10 @@ struct ReaderWebView: UIViewRepresentable {
 
         function withSelectionHardLockTemporarilyDisabled(work, sourceTag) {
             selectionHardLockUnlockDepth += 1;
-            if (selectionHardLockEnabled) {
-                setHorizontalOverflowMode('auto', sourceTag || 'temporaryUnlock');
-            }
             try {
                 return work();
             } finally {
                 selectionHardLockUnlockDepth = Math.max(0, selectionHardLockUnlockDepth - 1);
-                if (selectionHardLockUnlockDepth === 0) {
-                    setHorizontalOverflowMode(
-                        selectionHardLockEnabled ? 'hidden' : 'auto',
-                        sourceTag || 'temporaryUnlock'
-                    );
-                }
             }
         }
 
@@ -2405,9 +2397,6 @@ struct ReaderWebView: UIViewRepresentable {
 
         function setSelectionHardLock(enabled, sourceTag) {
             selectionHardLockEnabled = !!enabled;
-            if (selectionHardLockUnlockDepth === 0) {
-                setHorizontalOverflowMode(selectionHardLockEnabled ? 'hidden' : 'auto', sourceTag || 'unknown');
-            }
         }
 
         function clearSelectionLockState() {
@@ -2549,8 +2538,7 @@ struct ReaderWebView: UIViewRepresentable {
                 }
                 if (selectionLockedPageIndex === null) {
                     selectionLockedPageIndex = nativePayload.pageIndex;
-                    // 初始长按仅软锁页（selectionLockedPageIndex）；overflow-x 保持 auto，
-                    // 直到检测到横向漂移、enforce 锁页回滚、跨页续选或短暂 repair/refresh。
+                    // 初始长按仅软锁页（selectionLockedPageIndex）；横向滚动始终禁用。
                 }
 
                 const didDetectHorizontalDrift =
@@ -2677,8 +2665,8 @@ struct ReaderWebView: UIViewRepresentable {
                     );
 
                 // 在某些 WebKit 时序下（包括初始选区和段落跨页两种场景），
-                // overflow-x 在 auto↔hidden 切换时触发的布局重算会短暂清除原生选区，
-                // 先尝试按最近一次 native offsets 恢复，避免退化成无系统拖拽手柄的状态。
+                // 原生选区可能短暂丢失，先尝试按最近一次 native offsets 恢复，
+                // 避免退化成无系统拖拽手柄的状态。
                 // iPhone 对跨列段落（首段接续上页）尤为敏感，此修复同时覆盖该场景。
                 if (
                     shouldKeepStableSelection &&
@@ -3137,11 +3125,8 @@ struct ReaderWebView: UIViewRepresentable {
             var finalPages = 1;
 
             try {
-                // 默认允许程序化横向滚动，但在文本选择锁页时收紧到当前页。
-                setHorizontalOverflowMode(
-                    selectionHardLockEnabled && selectionHardLockUnlockDepth === 0 ? 'hidden' : 'auto',
-                    'applyPagination'
-                );
+                // 始终禁用原生横向滚动，翻页只通过程序控制 scrollToPage。
+                setHorizontalOverflowMode('hidden', 'applyPagination');
 
                 removeInjectedPageTopSpacers();
                 resetGeneratedContinuations();
