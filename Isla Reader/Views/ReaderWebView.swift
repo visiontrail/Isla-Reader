@@ -1253,7 +1253,6 @@ struct ReaderWebView: UIViewRepresentable {
         :root {
             --reader-page-margin: \(pageMargin)px;
             --reader-vertical-padding: 20px;
-            --reader-page-top-spacer-height: 1.05em;
         }
 
         * {
@@ -1318,29 +1317,11 @@ struct ReaderWebView: UIViewRepresentable {
             padding-right: var(--reader-page-margin);
         }
 
-        .reader-page-top-inline-spacer,
-        .reader-page-top-block-spacer {
-            pointer-events: none !important;
-            user-select: none !important;
-            -webkit-user-select: none !important;
-            speak: none;
-        }
-
-        .reader-page-top-inline-spacer {
-            display: inline-block;
-            width: 100%;
-            height: var(--reader-page-top-spacer-height);
-            line-height: 0;
-            font-size: 0;
-            vertical-align: top;
-        }
-
-        .reader-page-top-block-spacer {
-            display: block;
-            width: 100%;
-            height: var(--reader-page-top-spacer-height);
-            line-height: 0;
-            font-size: 0;
+        .reader-generated-continuation {
+            text-indent: 0 !important;
+            margin-top: 1em;
+            -webkit-column-break-inside: avoid;
+            break-inside: avoid;
         }
 
         .reader-book-root div,
@@ -1827,10 +1808,12 @@ struct ReaderWebView: UIViewRepresentable {
                 return;
             }
 
+            const splitTailForOverlay = !!(payload && payload.isSplitParagraphTailRegion);
             const shouldUseIPhoneFallbackOverlay =
                 isIPhoneSelectionOverlayFallbackEnabled &&
                 (
-                    nativeSelectionVisibilityMissCount >= 2 ||
+                    splitTailForOverlay ||
+                    nativeSelectionVisibilityMissCount >= 1 ||
                     isSelectionRectClearlyInvalid(rect)
                 );
             if (!isContinuationOverlay && !shouldUseIPhoneFallbackOverlay) {
@@ -2566,11 +2549,8 @@ struct ReaderWebView: UIViewRepresentable {
                 }
                 if (selectionLockedPageIndex === null) {
                     selectionLockedPageIndex = nativePayload.pageIndex;
-                    // 锁定页面的同时立即设置 overflow-x: hidden，防止 WebKit 在用户拖动选区
-                    // 手柄至屏幕边缘时自动横向滚动到下一列（翻页）。
-                    // 注意：overflow-x 变化可能触发短暂布局重算导致 WebKit 清除原生选区，
-                    // notifySelectionChange 的 repair 块会负责恢复。
-                    setSelectionHardLock(true, 'selectionLock.initial');
+                    // 初始长按仅软锁页（selectionLockedPageIndex）；overflow-x 保持 auto，
+                    // 直到检测到横向漂移、enforce 锁页回滚、跨页续选或短暂 repair/refresh。
                 }
 
                 const didDetectHorizontalDrift =
@@ -2593,7 +2573,6 @@ struct ReaderWebView: UIViewRepresentable {
                     nativePayload.pageIndex = selectionLockedPageIndex;
                 }
 
-                // 所有选区阶段均保持 hard lock（overflow-x: hidden）。
                 if (continuedSelectionAnchorOffset !== null) {
                     setSelectionHardLock(true, 'notifySelectionChange.native');
                 }
@@ -2912,244 +2891,25 @@ struct ReaderWebView: UIViewRepresentable {
             return false;
         }
 
-        function isEligibleSpacerTextNode(node) {
-            if (!node || node.nodeType !== Node.TEXT_NODE) { return false; }
-            if (isIgnoredReaderNode(node)) { return false; }
-            var text = node.textContent || '';
-            return text.length > 0;
-        }
-
-        function parseCSSLengthToPx(rawValue, fallbackValue) {
-            var fallback = Number.isFinite(fallbackValue) ? fallbackValue : 0;
-            if (typeof rawValue !== 'string') { return fallback; }
-            var trimmed = rawValue.trim().toLowerCase();
-            if (!trimmed) { return fallback; }
-            var numeric = parseFloat(trimmed);
-            if (!Number.isFinite(numeric) || numeric < 0) { return fallback; }
-
-            if (trimmed.endsWith('px') || /^[0-9.]+$/.test(trimmed)) {
-                return numeric;
+        function resetGeneratedContinuations() {
+            var list = document.querySelectorAll('.reader-generated-continuation');
+            var nodes = [];
+            for (var i = 0; i < list.length; i++) {
+                nodes.push(list[i]);
             }
-
-            var bodyStyle = window.getComputedStyle(document.body);
-            var baseFontSize = parseFloat(bodyStyle && bodyStyle.fontSize ? bodyStyle.fontSize : '') || 16;
-            if (trimmed.endsWith('rem') || trimmed.endsWith('em')) {
-                return numeric * baseFontSize;
-            }
-            return fallback;
-        }
-
-        function getReaderPageMarginPx() {
-            var rootStyle = window.getComputedStyle(document.documentElement || document.body);
-            return parseCSSLengthToPx(
-                rootStyle ? rootStyle.getPropertyValue('--reader-page-margin') : '',
-                0
-            );
-        }
-
-        function getReaderVerticalPaddingPx() {
-            var rootStyle = window.getComputedStyle(document.documentElement || document.body);
-            return parseCSSLengthToPx(
-                rootStyle ? rootStyle.getPropertyValue('--reader-vertical-padding') : '',
-                20
-            );
-        }
-
-        function getReaderPageTopSpacerHeightPx() {
-            var rootStyle = window.getComputedStyle(document.documentElement || document.body);
-            var parsed = parseCSSLengthToPx(
-                rootStyle ? rootStyle.getPropertyValue('--reader-page-top-spacer-height') : '',
-                -1
-            );
-            if (parsed > 0) { return parsed; }
-            var bodyStyle = window.getComputedStyle(document.body);
-            var lineHeight = parseFloat(bodyStyle && bodyStyle.lineHeight ? bodyStyle.lineHeight : '');
-            if (Number.isFinite(lineHeight) && lineHeight > 0) { return lineHeight; }
-            return 18;
-        }
-
-        function getCaretBoundaryFromPoint(x, y) {
-            if (typeof document.caretRangeFromPoint === 'function') {
-                var range = document.caretRangeFromPoint(x, y);
-                if (range) {
-                    return {
-                        node: range.startContainer,
-                        offset: range.startOffset
-                    };
+            for (var j = nodes.length - 1; j >= 0; j--) {
+                var el = nodes[j];
+                if (!el.parentNode) { continue; }
+                var prev = el.previousElementSibling;
+                if (!prev) {
+                    el.parentNode.removeChild(el);
+                    continue;
                 }
-            }
-            if (typeof document.caretPositionFromPoint === 'function') {
-                var position = document.caretPositionFromPoint(x, y);
-                if (position) {
-                    return {
-                        node: position.offsetNode,
-                        offset: position.offset
-                    };
+                while (el.firstChild) {
+                    prev.appendChild(el.firstChild);
                 }
+                el.parentNode.removeChild(el);
             }
-            return null;
-        }
-
-        function getNextNodeInDocumentOrder(node, rootNode) {
-            var root = rootNode || document.body;
-            if (!node) { return null; }
-            if (node.firstChild) { return node.firstChild; }
-            var current = node;
-            while (current && current !== root) {
-                if (current.nextSibling) { return current.nextSibling; }
-                current = current.parentNode;
-            }
-            return null;
-        }
-
-        function resolveStartNodeForBoundary(node, offset) {
-            if (!node) { return null; }
-            if (node.nodeType === Node.TEXT_NODE) {
-                var textLength = (node.textContent || '').length;
-                if ((offset || 0) < textLength) { return node; }
-                return getNextNodeInDocumentOrder(node, document.body);
-            }
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                var childNodes = node.childNodes || [];
-                var safeOffset = Math.max(0, Math.min(offset || 0, childNodes.length));
-                if (safeOffset < childNodes.length) {
-                    return childNodes[safeOffset];
-                }
-                return getNextNodeInDocumentOrder(node, document.body);
-            }
-            return getNextNodeInDocumentOrder(node, document.body);
-        }
-
-        function findFirstMeaningfulTextBoundaryFrom(node, offset) {
-            var cursor = resolveStartNodeForBoundary(node, offset);
-            var whitespacePattern = /\\s/;
-            while (cursor) {
-                if (cursor.nodeType === Node.TEXT_NODE && isEligibleSpacerTextNode(cursor)) {
-                    var text = cursor.textContent || '';
-                    var startIndex = 0;
-                    if (cursor === node && node.nodeType === Node.TEXT_NODE) {
-                        startIndex = Math.max(0, Math.min(offset || 0, text.length));
-                    }
-                    for (var i = startIndex; i < text.length; i++) {
-                        var char = text.charAt(i);
-                        if (!whitespacePattern.test(char)) {
-                            return { node: cursor, offset: i };
-                        }
-                    }
-                }
-                cursor = getNextNodeInDocumentOrder(cursor, document.body);
-            }
-            return null;
-        }
-
-        function resolveBoundaryPageIndex(node, offset) {
-            if (!node || node.nodeType !== Node.TEXT_NODE) { return null; }
-            var textLength = (node.textContent || '').length;
-            var safeOffset = Math.max(0, Math.min(offset || 0, textLength));
-            var range = document.createRange();
-            range.setStart(node, safeOffset);
-            range.setEnd(node, safeOffset);
-            var rect = null;
-            var rects = range.getClientRects ? range.getClientRects() : null;
-            if (rects && rects.length > 0) {
-                rect = rects[0];
-            } else if (range.getBoundingClientRect) {
-                rect = range.getBoundingClientRect();
-            }
-            range.detach();
-            if (!rect) { return null; }
-            var absoluteX = safeNumber(rect.left, 0) + getScrollLeft();
-            return Math.max(0, Math.floor(Math.max(0, absoluteX) / getPerPage()));
-        }
-
-        function findPageStartOffsetForCurrentPage(pageIndex) {
-            var perPage = getPerPage();
-            if (perPage <= 1) { return null; }
-
-            var viewportHeight = Math.max(
-                1,
-                window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 1
-            );
-            var pageMargin = getReaderPageMarginPx();
-            var topPadding = getReaderVerticalPaddingPx();
-            var spacerHeight = getReaderPageTopSpacerHeightPx();
-            var maxProbeY = Math.max(
-                2,
-                Math.min(
-                    viewportHeight - 2,
-                    Math.max(topPadding + spacerHeight * 4, spacerHeight * 6, 140)
-                )
-            );
-            var step = Math.max(4, Math.floor(spacerHeight / 3));
-            var xCandidates = [
-                Math.max(2, Math.min(perPage - 2, pageMargin + 2)),
-                Math.max(2, Math.min(perPage - 2, pageMargin + 24)),
-                Math.max(2, Math.min(perPage - 2, perPage * 0.45))
-            ];
-
-            for (var xIndex = 0; xIndex < xCandidates.length; xIndex++) {
-                var probeX = xCandidates[xIndex];
-                for (var probeY = 2; probeY <= maxProbeY; probeY += step) {
-                    var caretBoundary = getCaretBoundaryFromPoint(probeX, probeY);
-                    if (!caretBoundary || !caretBoundary.node) { continue; }
-                    var meaningfulBoundary = findFirstMeaningfulTextBoundaryFrom(
-                        caretBoundary.node,
-                        caretBoundary.offset
-                    );
-                    if (!meaningfulBoundary) { continue; }
-                    var resolvedPage = resolveBoundaryPageIndex(
-                        meaningfulBoundary.node,
-                        meaningfulBoundary.offset
-                    );
-                    if (resolvedPage !== pageIndex) { continue; }
-                    var absoluteOffset = measureOffset(
-                        meaningfulBoundary.node,
-                        meaningfulBoundary.offset
-                    );
-                    if (Number.isFinite(absoluteOffset) && absoluteOffset >= 0) {
-                        return absoluteOffset;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        function collectPageStartOffsets(basePageCount) {
-            var baselinePages = Math.max(1, Math.floor(basePageCount || 0));
-            if (baselinePages <= 1) { return []; }
-            var perPage = getPerPage();
-            if (perPage <= 1) { return []; }
-
-            var originalScrollLeft = getScrollLeft();
-            var captured = [];
-            for (var page = 1; page < baselinePages; page++) {
-                setScrollLeft(page * perPage, false, 'pageTopSpacer.capture');
-                var offset = findPageStartOffsetForCurrentPage(page);
-                if (offset === null) { continue; }
-                captured.push({
-                    pageIndex: page,
-                    offset: Math.max(0, Math.floor(offset))
-                });
-            }
-            setScrollLeft(originalScrollLeft, false, 'pageTopSpacer.capture.restore');
-
-            captured.sort(function(lhs, rhs) {
-                if (lhs.offset === rhs.offset) {
-                    return lhs.pageIndex - rhs.pageIndex;
-                }
-                return lhs.offset - rhs.offset;
-            });
-
-            var deduped = [];
-            var lastOffset = null;
-            for (var i = 0; i < captured.length; i++) {
-                var item = captured[i];
-                if (lastOffset !== null && item.offset === lastOffset) { continue; }
-                deduped.push(item);
-                lastOffset = item.offset;
-            }
-            return deduped;
         }
 
         function removeInjectedPageTopSpacers() {
@@ -3171,182 +2931,184 @@ struct ReaderWebView: UIViewRepresentable {
             return injectedNodes.length;
         }
 
-        var readerBlockTagNames = {
-            P: true,
-            DIV: true,
-            LI: true,
-            BLOCKQUOTE: true,
-            SECTION: true,
-            ARTICLE: true,
-            DD: true,
-            DT: true,
-            H1: true,
-            H2: true,
-            H3: true,
-            H4: true,
-            H5: true,
-            H6: true,
-            UL: true,
-            OL: true,
-            PRE: true,
-            TABLE: true,
-            FIGURE: true
-        };
-
-        function isBlockLevelReaderElement(element) {
-            if (!element || element.nodeType !== Node.ELEMENT_NODE) { return false; }
-            var tag = element.tagName ? element.tagName.toUpperCase() : '';
-            if (readerBlockTagNames[tag]) { return true; }
-            var display = '';
-            try {
-                display = window.getComputedStyle(element).display || '';
-            } catch (e) {
-                display = '';
-            }
-            return (
-                display === 'block' ||
-                display === 'list-item' ||
-                display === 'table' ||
-                display === 'flex' ||
-                display === 'grid'
-            );
+        function getReaderBookRoot() {
+            return document.querySelector('.reader-book-root') || document.body;
         }
 
-        function findNearestBlockElement(node) {
-            var current = node && node.nodeType === Node.ELEMENT_NODE ? node : (node ? node.parentElement : null);
-            while (current && current !== document.body && current !== document.documentElement) {
-                if (isBlockLevelReaderElement(current) && !isInjectedPageTopSpacerElement(current)) {
-                    return current;
-                }
-                current = current.parentElement;
-            }
-            return null;
+        function isSplittableBlockElement(el) {
+            if (!el || el.nodeType !== Node.ELEMENT_NODE) { return false; }
+            if (isIgnoredReaderNode(el)) { return false; }
+            if (isInjectedPageTopSpacerElement(el)) { return false; }
+            return true;
         }
 
-        function firstMeaningfulTextBoundaryInElement(element) {
-            if (!element) { return null; }
-            var walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
-            var whitespacePattern = /\\s/;
-            var node;
-            while ((node = walker.nextNode())) {
-                if (!isEligibleSpacerTextNode(node)) { continue; }
-                var text = node.textContent || '';
-                for (var index = 0; index < text.length; index++) {
-                    if (!whitespacePattern.test(text.charAt(index))) {
-                        return { node: node, offset: index };
+        function collectSplittableBlocks(root) {
+            if (!root) { return []; }
+            var all = Array.prototype.slice.call(root.querySelectorAll('p, li, blockquote, dd, dt'));
+            var blocks = [];
+            for (var i = 0; i < all.length; i++) {
+                var el = all[i];
+                if (!isSplittableBlockElement(el)) { continue; }
+                var nested = false;
+                for (var j = 0; j < all.length; j++) {
+                    if (i === j) { continue; }
+                    if (all[j].contains(el)) {
+                        nested = true;
+                        break;
                     }
                 }
+                if (nested) { continue; }
+                blocks.push(el);
             }
-            return null;
+            return blocks;
         }
 
-        function resolveBlockSpacerTarget(boundaryNode, boundaryOffset) {
-            var blockElement = findNearestBlockElement(boundaryNode);
-            if (!blockElement || !blockElement.parentNode) { return null; }
-            var firstBoundary = firstMeaningfulTextBoundaryInElement(blockElement);
-            if (!firstBoundary) { return null; }
-            if (firstBoundary.node !== boundaryNode) { return null; }
-            if ((boundaryOffset || 0) > firstBoundary.offset) { return null; }
-            return blockElement;
-        }
-
-        function createPageTopInlineSpacer(pageIndex) {
-            var spacer = document.createElement('span');
-            spacer.className = 'reader-page-top-inline-spacer';
-            spacer.setAttribute('aria-hidden', 'true');
-            spacer.setAttribute('data-reader-page-top-spacer', '1');
-            spacer.setAttribute('data-reader-page-top-spacer-type', 'inline');
-            spacer.setAttribute('data-reader-page-top-page-index', String(pageIndex));
-            spacer.setAttribute('contenteditable', 'false');
-            return spacer;
-        }
-
-        function createPageTopBlockSpacer(pageIndex) {
-            var spacer = document.createElement('div');
-            spacer.className = 'reader-page-top-block-spacer';
-            spacer.setAttribute('aria-hidden', 'true');
-            spacer.setAttribute('data-reader-page-top-spacer', '1');
-            spacer.setAttribute('data-reader-page-top-spacer-type', 'block');
-            spacer.setAttribute('data-reader-page-top-page-index', String(pageIndex));
-            return spacer;
-        }
-
-        function insertInlineSpacerAtBoundary(boundaryNode, boundaryOffset, pageIndex) {
-            if (!boundaryNode || boundaryNode.nodeType !== Node.TEXT_NODE) { return false; }
-            if (!isEligibleSpacerTextNode(boundaryNode)) { return false; }
-            var parent = boundaryNode.parentNode;
-            if (!parent) { return false; }
-
-            var textLength = (boundaryNode.textContent || '').length;
-            var safeOffset = Math.max(0, Math.min(boundaryOffset || 0, textLength));
-            var anchorNode = boundaryNode;
-            if (safeOffset > 0 && safeOffset < textLength) {
-                anchorNode = boundaryNode.splitText(safeOffset);
-            } else if (safeOffset >= textLength) {
-                anchorNode = boundaryNode.nextSibling;
+        function getBlockTextRange(block, segments) {
+            if (!block || !segments || segments.length === 0) { return null; }
+            var minStart = null;
+            var maxEnd = null;
+            for (var i = 0; i < segments.length; i++) {
+                var seg = segments[i];
+                if (!seg || !seg.node) { continue; }
+                try {
+                    if (!block.contains(seg.node)) { continue; }
+                } catch (e) {
+                    continue;
+                }
+                if (minStart === null || seg.start < minStart) { minStart = seg.start; }
+                if (maxEnd === null || seg.end > maxEnd) { maxEnd = seg.end; }
             }
-
-            if (anchorNode && isInjectedPageTopSpacerElement(anchorNode.previousSibling)) {
-                return false;
-            }
-            if (!anchorNode && isInjectedPageTopSpacerElement(parent.lastChild)) {
-                return false;
-            }
-
-            var spacer = createPageTopInlineSpacer(pageIndex);
-            parent.insertBefore(spacer, anchorNode || null);
-            return true;
+            if (minStart === null || maxEnd === null) { return null; }
+            return { start: minStart, endExclusive: maxEnd };
         }
 
-        function insertBlockSpacerBeforeElement(blockElement, pageIndex) {
-            if (!blockElement || !blockElement.parentNode) { return false; }
-            if (isInjectedPageTopSpacerElement(blockElement.previousSibling)) {
-                return false;
-            }
-            var spacer = createPageTopBlockSpacer(pageIndex);
-            blockElement.parentNode.insertBefore(spacer, blockElement);
-            return true;
+        function charAtGlobalOffset(offset, segments) {
+            var boundary = locateOffsetBoundary(offset, segments, true);
+            if (!boundary || !boundary.node || boundary.node.nodeType !== Node.TEXT_NODE) { return ''; }
+            var text = boundary.node.textContent || '';
+            var idx = boundary.offset;
+            if (idx < 0 || idx >= text.length) { return ''; }
+            return text.charAt(idx);
         }
 
-        function injectPageTopSpacerForOffset(offset, pageIndex) {
-            var segments = buildTextSegments();
-            if (!segments || segments.length === 0) { return false; }
-            var safeOffset = findNextNonWhitespaceOffset(offset, segments);
-            if (safeOffset === null) { return false; }
-
-            var boundary = locateOffsetBoundary(safeOffset, segments, true);
-            if (!boundary || !boundary.node) { return false; }
-
-            var meaningfulBoundary = findFirstMeaningfulTextBoundaryFrom(boundary.node, boundary.offset);
-            if (!meaningfulBoundary || !meaningfulBoundary.node) { return false; }
-            if (!isEligibleSpacerTextNode(meaningfulBoundary.node)) { return false; }
-
-            var blockTarget = resolveBlockSpacerTarget(
-                meaningfulBoundary.node,
-                meaningfulBoundary.offset
-            );
-            if (blockTarget) {
-                return insertBlockSpacerBeforeElement(blockTarget, pageIndex);
-            }
-            return insertInlineSpacerAtBoundary(
-                meaningfulBoundary.node,
-                meaningfulBoundary.offset,
-                pageIndex
-            );
+        function isLatinWordChar(ch) {
+            return ch && /[A-Za-z0-9]/.test(ch);
         }
 
-        function injectPageTopSpacersIfNeeded(basePageCount) {
-            var pageStartOffsets = collectPageStartOffsets(basePageCount);
-            if (!pageStartOffsets || pageStartOffsets.length === 0) { return 0; }
-
-            var insertedCount = 0;
-            for (var i = 0; i < pageStartOffsets.length; i++) {
-                var item = pageStartOffsets[i];
-                if (injectPageTopSpacerForOffset(item.offset, item.pageIndex)) {
-                    insertedCount += 1;
+        function findFirstOffsetOnOrAfterPage(lo, hi, targetPage, segments) {
+            var pHi = estimatePageIndexForOffset(hi, segments);
+            if (pHi === null || pHi < targetPage) { return null; }
+            var pLo = estimatePageIndexForOffset(lo, segments);
+            if (pLo === null) { return null; }
+            if (pLo >= targetPage) { return lo; }
+            while (lo < hi) {
+                var mid = Math.floor((lo + hi) / 2);
+                var pm = estimatePageIndexForOffset(mid, segments);
+                if (pm === null) { return null; }
+                if (pm >= targetPage) {
+                    hi = mid;
+                } else {
+                    lo = mid + 1;
                 }
             }
-            return insertedCount;
+            return lo;
+        }
+
+        function adjustSplitOffsetForWordBoundary(splitOffset, minOffset, segments) {
+            var s = splitOffset;
+            while (s > minOffset) {
+                var cLeft = charAtGlobalOffset(s - 1, segments);
+                var cHere = charAtGlobalOffset(s, segments);
+                if (isLatinWordChar(cLeft) && isLatinWordChar(cHere)) {
+                    s -= 1;
+                } else {
+                    break;
+                }
+            }
+            return s;
+        }
+
+        function splitBlockAtDomOffset(block, splitOffset, segments) {
+            var tr = getBlockTextRange(block, segments);
+            if (!tr) { return false; }
+            if (splitOffset <= tr.start || splitOffset >= tr.endExclusive) { return false; }
+
+            var headProbe = extractTextFromOffsets(tr.start, splitOffset, segments);
+            var tailProbe = extractTextFromOffsets(splitOffset, tr.endExclusive, segments);
+            var stripWs = /\\s+/g;
+            if (!headProbe || !headProbe.replace(stripWs, '')) { return false; }
+            if (!tailProbe || !tailProbe.replace(stripWs, '')) { return false; }
+
+            var boundary = locateOffsetBoundary(splitOffset, segments, true);
+            if (!boundary || !boundary.node) { return false; }
+            try {
+                if (!block.contains(boundary.node)) { return false; }
+            } catch (e) {
+                return false;
+            }
+
+            var range = document.createRange();
+            range.setStart(boundary.node, boundary.offset);
+            range.setEnd(block, block.childNodes.length);
+            var fragment = range.extractContents();
+            range.detach();
+
+            var tag = (block.tagName || 'p').toLowerCase();
+            var cont = document.createElement(tag);
+            cont.setAttribute('data-reader-generated-continuation', '1');
+            cont.className = 'reader-generated-continuation';
+
+            while (fragment.firstChild) {
+                cont.appendChild(fragment.firstChild);
+            }
+
+            if (!block.parentNode) { return false; }
+            block.parentNode.insertBefore(cont, block.nextSibling);
+            return true;
+        }
+
+        function splitBlockElementIfCrossPage(block, segments) {
+            var tr = getBlockTextRange(block, segments);
+            if (!tr) { return false; }
+
+            var firstNonWs = findNextNonWhitespaceOffset(tr.start, segments);
+            if (firstNonWs === null || firstNonWs >= tr.endExclusive) { return false; }
+
+            var startPage = estimatePageIndexForOffset(firstNonWs, segments);
+            var lastChar = tr.endExclusive - 1;
+            var endPage = estimatePageIndexForOffset(lastChar, segments);
+            if (startPage === null || endPage === null) { return false; }
+            if (startPage >= endPage) { return false; }
+
+            var targetPage = startPage + 1;
+            var splitOffset = findFirstOffsetOnOrAfterPage(firstNonWs, lastChar, targetPage, segments);
+            if (splitOffset === null) { return false; }
+
+            splitOffset = findNextNonWhitespaceOffset(splitOffset, segments);
+            if (splitOffset === null || splitOffset >= tr.endExclusive) { return false; }
+            if (splitOffset <= firstNonWs) { return false; }
+
+            splitOffset = adjustSplitOffsetForWordBoundary(splitOffset, firstNonWs, segments);
+            splitOffset = findNextNonWhitespaceOffset(splitOffset, segments);
+            if (splitOffset === null || splitOffset >= tr.endExclusive) { return false; }
+            if (splitOffset <= firstNonWs) { return false; }
+
+            return splitBlockAtDomOffset(block, splitOffset, segments);
+        }
+
+        function splitCrossPageParagraphsIfNeeded() {
+            var root = getReaderBookRoot();
+            var segments = buildTextSegments();
+            if (!segments || segments.length === 0) { return 0; }
+            var blocks = collectSplittableBlocks(root);
+            var splitCount = 0;
+            for (var i = 0; i < blocks.length; i++) {
+                if (splitBlockElementIfCrossPage(blocks[i], segments)) {
+                    splitCount += 1;
+                }
+                segments = buildTextSegments();
+            }
+            return splitCount;
         }
 
         function computePageCount(shouldNotify) {
@@ -3382,11 +3144,19 @@ struct ReaderWebView: UIViewRepresentable {
                 );
 
                 removeInjectedPageTopSpacers();
+                resetGeneratedContinuations();
                 void document.body.offsetWidth;
 
-                var baselinePageCount = computePageCount(false);
-                injectPageTopSpacersIfNeeded(baselinePageCount);
+                computePageCount(false);
                 void document.body.offsetWidth;
+
+                var maxSplitRounds = 3;
+                for (var splitRound = 0; splitRound < maxSplitRounds; splitRound++) {
+                    var splits = splitCrossPageParagraphsIfNeeded();
+                    void document.body.offsetWidth;
+                    computePageCount(false);
+                    if (splits === 0) { break; }
+                }
 
                 finalPages = computePageCount(true);
             } catch (e) {
