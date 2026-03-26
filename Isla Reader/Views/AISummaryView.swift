@@ -54,6 +54,9 @@ struct AISummaryView: View {
                 DebugLogger.info("AISummaryView: 非首次打开，跳过")
             }
         }
+        .onDisappear {
+            BannerAdPreloadManager.shared.preloadSummaryBannerIfNeeded(trigger: "summary_view_on_disappear")
+        }
     }
     
     private var skimmingModeEntry: some View {
@@ -106,7 +109,7 @@ struct AISummaryView: View {
             summaryHeader
             
             if appSettings.areAdsEnabled, let bannerUnitID = AdMobAdUnitIDs.fixedBanner {
-                BannerAdView(adUnitID: bannerUnitID)
+                BannerAdView(adUnitID: bannerUnitID, placement: .summary)
                     .frame(width: 320, height: 50)
                     .padding(.horizontal)
                     .padding(.top, 8)

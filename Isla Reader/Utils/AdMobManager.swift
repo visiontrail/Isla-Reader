@@ -280,14 +280,171 @@ enum AdMobAdUnitIDs {
     }
 }
 
+enum BannerAdPlacement: String {
+    case summary = "summary"
+}
+
+final class BannerAdPreloadManager {
+    static let shared = BannerAdPreloadManager()
+
+    private struct CacheKey: Hashable {
+        let adUnitID: String
+        let placement: BannerAdPlacement
+    }
+
+    private struct CachedBanner {
+        let bannerView: GADBannerView
+        let cachedAt: Date
+    }
+
+    private let cacheTTL: TimeInterval = 55 * 60
+    private var cachedBanners: [CacheKey: CachedBanner] = [:]
+    private var loadingKeys: Set<CacheKey> = []
+    private var preloadDelegates: [CacheKey: PreloadDelegate] = [:]
+
+    private init() {}
+
+    func preloadSummaryBannerIfNeeded(trigger: String) {
+        guard AppSettings.shared.areAdsEnabled else {
+            resetCache()
+            return
+        }
+        guard let adUnitID = AdMobAdUnitIDs.fixedBanner else { return }
+        preloadBannerIfNeeded(adUnitID: adUnitID, placement: .summary, trigger: trigger)
+    }
+
+    func takePreloadedBanner(adUnitID: String, placement: BannerAdPlacement) -> GADBannerView? {
+        pruneExpiredCache(now: Date())
+        let key = CacheKey(adUnitID: adUnitID, placement: placement)
+        guard let cached = cachedBanners.removeValue(forKey: key) else { return nil }
+        cached.bannerView.delegate = nil
+        cached.bannerView.rootViewController = UIViewController.topMostViewController()
+        DebugLogger.info(
+            "AdMob: Consume preloaded banner placement=\(placement.rawValue) adUnitID=\(AdMobRuntimeConfiguration.redactedAdUnitID(adUnitID))"
+        )
+        return cached.bannerView
+    }
+
+    private func preloadBannerIfNeeded(adUnitID: String, placement: BannerAdPlacement, trigger: String) {
+        pruneExpiredCache(now: Date())
+        let key = CacheKey(adUnitID: adUnitID, placement: placement)
+
+        if cachedBanners[key] != nil || loadingKeys.contains(key) {
+            return
+        }
+
+        let bannerView = GADBannerView(adSize: GADAdSizeBanner)
+        bannerView.adUnitID = adUnitID
+        bannerView.rootViewController = UIViewController.topMostViewController()
+
+        let preloadDelegate = PreloadDelegate(key: key, owner: self)
+        preloadDelegates[key] = preloadDelegate
+        loadingKeys.insert(key)
+        bannerView.delegate = preloadDelegate
+
+        DebugLogger.info(
+            "AdMob: Start preloading banner placement=\(placement.rawValue), trigger=\(trigger), adUnitID=\(AdMobRuntimeConfiguration.redactedAdUnitID(adUnitID))"
+        )
+        bannerView.load(GADRequest())
+    }
+
+    private func handlePreloadSuccess(for key: CacheKey, bannerView: GADBannerView) {
+        loadingKeys.remove(key)
+        preloadDelegates[key] = nil
+        bannerView.delegate = nil
+        cachedBanners[key] = CachedBanner(
+            bannerView: bannerView,
+            cachedAt: Date()
+        )
+
+        DebugLogger.success(
+            "AdMob: Banner preloaded placement=\(key.placement.rawValue), adUnitID=\(AdMobRuntimeConfiguration.redactedAdUnitID(key.adUnitID))"
+        )
+        let responseInfo = bannerView.responseInfo
+        AdMobDiagnostics.log(responseInfo: responseInfo, context: "Banner preload success")
+        AdLoadMetricsRecorder.record(.banner, statusCode: 200, responseId: responseInfo?.responseIdentifier)
+    }
+
+    private func handlePreloadFailure(for key: CacheKey, bannerView: GADBannerView, error: NSError) {
+        loadingKeys.remove(key)
+        preloadDelegates[key] = nil
+        cachedBanners.removeValue(forKey: key)
+        bannerView.delegate = nil
+
+        DebugLogger.error(
+            "AdMob: Banner preload failed placement=\(key.placement.rawValue), adUnitID=\(AdMobRuntimeConfiguration.redactedAdUnitID(key.adUnitID)), message=\(error.localizedDescription)"
+        )
+        AdMobDiagnostics.log(error: error, context: "Banner preload failure")
+        let responseInfo = (error.userInfo[GADErrorUserInfoKeyResponseInfo] as? GADResponseInfo) ?? bannerView.responseInfo
+        AdMobDiagnostics.log(responseInfo: responseInfo, context: "Banner preload failure")
+        AdLoadMetricsRecorder.record(.banner, statusCode: error.code, error: error, responseId: responseInfo?.responseIdentifier)
+    }
+
+    private func pruneExpiredCache(now: Date) {
+        let expiredKeys = cachedBanners.compactMap { key, cached -> CacheKey? in
+            guard now.timeIntervalSince(cached.cachedAt) >= cacheTTL else { return nil }
+            return key
+        }
+
+        for key in expiredKeys {
+            cachedBanners[key]?.bannerView.delegate = nil
+            cachedBanners.removeValue(forKey: key)
+            DebugLogger.info("AdMob: Drop expired preloaded banner placement=\(key.placement.rawValue)")
+        }
+    }
+
+    private func resetCache() {
+        for cached in cachedBanners.values {
+            cached.bannerView.delegate = nil
+        }
+        cachedBanners.removeAll()
+        loadingKeys.removeAll()
+        preloadDelegates.removeAll()
+    }
+
+    private final class PreloadDelegate: NSObject, GADBannerViewDelegate {
+        private let key: CacheKey
+        private weak var owner: BannerAdPreloadManager?
+
+        init(key: CacheKey, owner: BannerAdPreloadManager) {
+            self.key = key
+            self.owner = owner
+        }
+
+        func bannerViewDidReceiveAd(_ bannerView: GADBannerView) {
+            owner?.handlePreloadSuccess(for: key, bannerView: bannerView)
+        }
+
+        func bannerView(_ bannerView: GADBannerView, didFailToReceiveAdWithError error: any Error) {
+            owner?.handlePreloadFailure(for: key, bannerView: bannerView, error: error as NSError)
+        }
+    }
+}
+
 struct BannerAdView: UIViewRepresentable {
     let adUnitID: String
+    let placement: BannerAdPlacement?
+
+    init(adUnitID: String, placement: BannerAdPlacement? = nil) {
+        self.adUnitID = adUnitID
+        self.placement = placement
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
     func makeUIView(context: Context) -> GADBannerView {
+        if let placement,
+           let preloadedBanner = BannerAdPreloadManager.shared.takePreloadedBanner(
+               adUnitID: adUnitID,
+               placement: placement
+           ) {
+            preloadedBanner.delegate = context.coordinator
+            preloadedBanner.rootViewController = UIViewController.topMostViewController()
+            return preloadedBanner
+        }
+
         let bannerView = GADBannerView(adSize: GADAdSizeBanner)
         bannerView.adUnitID = adUnitID
         bannerView.delegate = context.coordinator

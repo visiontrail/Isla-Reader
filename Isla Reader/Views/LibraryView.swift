@@ -131,8 +131,8 @@ struct LibraryView: View {
                                     withResolvedBook(from: item, actionName: "书籍卡片点击") { book in
                                         DebugLogger.info("LibraryView: 书籍卡片点击")
                                         DebugLogger.info("LibraryView: 点击的书籍 = \(book.displayTitle)")
-                                        bookToShowAISummary = book
-                                        DebugLogger.info("LibraryView: 设置 bookToShowAISummary")
+                                        presentAISummary(for: book, source: "library_card_tap")
+                                        DebugLogger.info("LibraryView: 已触发 AI 摘要展示")
                                     }
                                 }, onSkim: {
                                     withResolvedBook(from: item, actionName: "进入略读模式") { book in
@@ -207,7 +207,7 @@ struct LibraryView: View {
                     // 等待ImportSheet完全关闭后再设置book，这会自动触发AI摘要sheet
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         DebugLogger.info("LibraryView: 延迟后打开AI摘要")
-                        bookToShowAISummary = book
+                        presentAISummary(for: book, source: "import_completion")
                         DebugLogger.info("LibraryView: 已设置 bookToShowAISummary = \(book.displayTitle)")
                     }
                 })
@@ -316,6 +316,7 @@ struct LibraryView: View {
             }
             .onAppear {
                 DebugLogger.info("LibraryView: 视图出现，刷新数据")
+                BannerAdPreloadManager.shared.preloadSummaryBannerIfNeeded(trigger: "library_view_on_appear")
                 refreshData()
             }
         }
@@ -350,6 +351,11 @@ struct LibraryView: View {
     private func continueReading(_ book: Book) {
         DebugLogger.info("LibraryView: 继续阅读 - \(book.displayTitle)")
         readerLaunchTarget = ReaderLaunchTarget(book: book)
+    }
+
+    private func presentAISummary(for book: Book, source: String) {
+        BannerAdPreloadManager.shared.preloadSummaryBannerIfNeeded(trigger: source)
+        bookToShowAISummary = book
     }
 
     private func removeFromLibrary(itemID: NSManagedObjectID, title: String) {
@@ -614,10 +620,6 @@ struct BookContextMenu: View {
     var onRemoveFromLibrary: (() -> Void)? = nil
     
     var body: some View {
-        Button(action: { onContinueReading?() }) {
-            Label(NSLocalizedString("library.continue_reading", comment: ""), systemImage: "book")
-        }
-        
         if let onShowBookmarks = onShowBookmarks {
             Button(action: onShowBookmarks) {
                 Label(NSLocalizedString("bookmark.list.title", comment: ""), systemImage: "bookmark")
