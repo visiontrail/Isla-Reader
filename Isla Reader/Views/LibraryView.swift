@@ -1030,7 +1030,7 @@ struct HighlightListSheet: View {
     @State private var activeAlert: HighlightListAlert?
     @State private var sharePreviewPayload: HighlightSharePreviewPayload?
     @State private var shareFileURLToCleanup: URL?
-    @State private var generatingShareHighlightID: UUID?
+    @State private var generatingShareHighlightObjectID: NSManagedObjectID?
 
     private struct HighlightListAlert: Identifiable {
         let id = UUID()
@@ -1059,7 +1059,7 @@ struct HighlightListSheet: View {
                 if highlights.isEmpty {
                     highlightEmptyState
                 } else {
-                    ForEach(displayedHighlights) { highlight in
+                    ForEach(displayedHighlights, id: \.objectID) { highlight in
                         highlightRow(for: highlight)
                             .swipeActions(edge: .leading, allowsFullSwipe: false) {
                                 ForEach(ReaderColorPalette.highlightOptions) { option in
@@ -1325,7 +1325,7 @@ struct HighlightListSheet: View {
         .buttonStyle(.bordered)
         .controlSize(.small)
         .fixedSize(horizontal: true, vertical: false)
-        .disabled(generatingShareHighlightID != nil)
+        .disabled(generatingShareHighlightObjectID != nil)
     }
 
     private func deleteActionButton(for highlight: Highlight, compact: Bool) -> some View {
@@ -1357,8 +1357,8 @@ struct HighlightListSheet: View {
             chapterFallback: NSLocalizedString("highlight.list.unknown_chapter", comment: ""),
             footerText: NSLocalizedString("highlight.share.footer", comment: "")
         )
-        let highlightID = highlight.id
-        generatingShareHighlightID = highlightID
+        let highlightObjectID = highlight.objectID
+        generatingShareHighlightObjectID = highlightObjectID
         DebugLogger.info("HighlightListSheet: 开始生成分享图 - \(book.displayTitle)")
 
         Task {
@@ -1369,7 +1369,7 @@ struct HighlightListSheet: View {
                     throw HighlightShareError.renderFailed
                 }
                 await MainActor.run {
-                    generatingShareHighlightID = nil
+                    generatingShareHighlightObjectID = nil
                     if let staleURL = shareFileURLToCleanup {
                         cleanupShareFile(at: staleURL)
                     }
@@ -1379,7 +1379,7 @@ struct HighlightListSheet: View {
                 }
             } catch {
                 await MainActor.run {
-                    generatingShareHighlightID = nil
+                    generatingShareHighlightObjectID = nil
                     activeAlert = HighlightListAlert(
                         title: NSLocalizedString("highlight.share.generate_failed.title", comment: ""),
                         message: NSLocalizedString("highlight.share.generate_failed.message", comment: "")
@@ -1391,22 +1391,22 @@ struct HighlightListSheet: View {
     }
 
     private func isGeneratingShare(for highlight: Highlight) -> Bool {
-        generatingShareHighlightID == highlight.id
+        generatingShareHighlightObjectID == highlight.objectID
     }
 
     private func deleteHighlight(_ highlight: Highlight) {
-        let highlightID = highlight.id
+        let highlightObjectID = highlight.objectID
         viewContext.delete(highlight)
 
         do {
             try viewContext.save()
-            if generatingShareHighlightID == highlightID {
-                generatingShareHighlightID = nil
+            if generatingShareHighlightObjectID == highlightObjectID {
+                generatingShareHighlightObjectID = nil
             }
-            if editingHighlight?.id == highlightID {
+            if editingHighlight?.objectID == highlightObjectID {
                 editingHighlight = nil
             }
-            DebugLogger.info("HighlightListSheet: 删除高亮成功 - \(highlightID.uuidString)")
+            DebugLogger.info("HighlightListSheet: 删除高亮成功 - \(highlightObjectID.uriRepresentation().absoluteString)")
         } catch {
             DebugLogger.error("HighlightListSheet: 删除高亮失败", error: error)
             activeAlert = HighlightListAlert(
