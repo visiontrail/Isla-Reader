@@ -42,6 +42,7 @@ enum LibraryFilterType: Equatable {
 struct LibraryView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @StateObject private var summaryService = AISummaryService.shared
     
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \LibraryItem.lastAccessedAt, ascending: false)],
@@ -62,11 +63,10 @@ struct LibraryView: View {
     @State private var libraryItemForInfo: LibraryItem? = nil
     @State private var readerLaunchTarget: ReaderLaunchTarget? = nil
     @State private var pendingLibraryRemoval: PendingLibraryRemoval? = nil
-    @State private var showingRemovalErrorAlert = false
-    @State private var removalErrorMessage = ""
+    @State private var activeAlert: LibraryAlert? = nil
     
     private var filteredBooks: [LibraryItem] {
-        var items = Array(libraryItems)
+        var items = Array(libraryItems).filter { !$0.isDeleted }
         
         // Apply search filter
         if !searchText.isEmpty {
@@ -122,11 +122,11 @@ struct LibraryView: View {
                 
                 // Content
                 if filteredBooks.isEmpty {
-                    EmptyLibraryView(showingImportSheet: $showingImportSheet)
+                    EmptyLibraryView(onImportTap: handleAddBookTapped)
                 } else {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(filteredBooks) { item in
+                            ForEach(filteredBooks, id: \.objectID) { item in
                                 BookCardView(libraryItem: item, onTap: {
                                     withResolvedBook(from: item, actionName: "书籍卡片点击") { book in
                                         DebugLogger.info("LibraryView: 书籍卡片点击")
@@ -185,14 +185,14 @@ struct LibraryView: View {
             .toolbar {
                 #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingImportSheet = true }) {
+                    Button(action: handleAddBookTapped) {
                         Image(systemName: "plus")
                             .font(.title2)
                     }
                 }
                 #else
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingImportSheet = true }) {
+                    Button(action: handleAddBookTapped) {
                         Image(systemName: "plus")
                             .font(.title2)
                     }
@@ -300,12 +300,31 @@ struct LibraryView: View {
                     )
                 }
             }
-            .alert(NSLocalizedString("library.remove.failure.title", comment: ""), isPresented: $showingRemovalErrorAlert) {
-                Button(NSLocalizedString("common.confirm", comment: "")) {
-                    removalErrorMessage = ""
+            .alert(item: $activeAlert) { alert in
+                switch alert {
+                case .removalError(let message):
+                    return Alert(
+                        title: Text(NSLocalizedString("library.remove.failure.title", comment: "")),
+                        message: Text(message),
+                        dismissButton: .default(Text(NSLocalizedString("common.confirm", comment: ""))) {
+                            DebugLogger.info("LibraryView: Alert OK tapped - type=removalError, activeAlert(atTap)=\(String(describing: activeAlert)), isGenerating=\(summaryService.isGenerating)")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                DebugLogger.info("LibraryView: Alert post-tap snapshot - type=removalError, activeAlert=\(String(describing: activeAlert)), isGenerating=\(summaryService.isGenerating)")
+                            }
+                        }
+                    )
+                case .summaryGenerationInProgress:
+                    return Alert(
+                        title: Text(NSLocalizedString("library.import.blocked.summary_in_progress.title", comment: "")),
+                        message: Text(NSLocalizedString("library.import.blocked.summary_in_progress.message", comment: "")),
+                        dismissButton: .default(Text(NSLocalizedString("common.confirm", comment: ""))) {
+                            DebugLogger.info("LibraryView: Alert OK tapped - type=summaryGenerationInProgress, activeAlert(atTap)=\(String(describing: activeAlert)), isGenerating=\(summaryService.isGenerating), showingImportSheet=\(showingImportSheet)")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                DebugLogger.info("LibraryView: Alert post-tap snapshot - type=summaryGenerationInProgress, activeAlert=\(String(describing: activeAlert)), isGenerating=\(summaryService.isGenerating), showingImportSheet=\(showingImportSheet)")
+                            }
+                        }
+                    )
                 }
-            } message: {
-                Text(removalErrorMessage)
             }
             .fullScreenCover(item: $readerLaunchTarget) { target in
                 NavigationStack {
@@ -318,6 +337,9 @@ struct LibraryView: View {
                 DebugLogger.info("LibraryView: 视图出现，刷新数据")
                 BannerAdPreloadManager.shared.preloadSummaryBannerIfNeeded(trigger: "library_view_on_appear")
                 refreshData()
+            }
+            .onChange(of: activeAlert) { newValue in
+                DebugLogger.info("LibraryView: activeAlert changed -> \(String(describing: newValue)); isGenerating=\(summaryService.isGenerating), showingImportSheet=\(showingImportSheet)")
             }
         }
     }
@@ -358,6 +380,16 @@ struct LibraryView: View {
         bookToShowAISummary = book
     }
 
+    private func handleAddBookTapped() {
+        if summaryService.isGenerating {
+            DebugLogger.warning("LibraryView: AI 摘要生成中，阻止添加新书")
+            activeAlert = .summaryGenerationInProgress
+            return
+        }
+
+        showingImportSheet = true
+    }
+
     private func removeFromLibrary(itemID: NSManagedObjectID, title: String) {
         do {
             _ = try LibraryRemovalService.shared.remove(libraryItemID: itemID, in: viewContext)
@@ -365,8 +397,7 @@ struct LibraryView: View {
             refreshData()
         } catch {
             DebugLogger.error("LibraryView: 从书架移除失败 - \(title)", error: error)
-            removalErrorMessage = error.localizedDescription
-            showingRemovalErrorAlert = true
+            activeAlert = .removalError(error.localizedDescription)
         }
     }
 
@@ -657,6 +688,20 @@ struct BookContextMenu: View {
 private struct PendingLibraryRemoval: Identifiable {
     let id: NSManagedObjectID
     let title: String
+}
+
+private enum LibraryAlert: Identifiable, Equatable {
+    case removalError(String)
+    case summaryGenerationInProgress
+
+    var id: String {
+        switch self {
+        case .removalError(let message):
+            return "removalError_\(message)"
+        case .summaryGenerationInProgress:
+            return "summaryGenerationInProgress"
+        }
+    }
 }
 
 struct BookInfoSheet: View {
@@ -1542,7 +1587,7 @@ struct HighlightListSheet: View {
 }
 
 struct EmptyLibraryView: View {
-    @Binding var showingImportSheet: Bool
+    var onImportTap: (() -> Void)? = nil
     
     var body: some View {
         VStack(spacing: 24) {
@@ -1563,7 +1608,7 @@ struct EmptyLibraryView: View {
                     .multilineTextAlignment(.center)
             }
             
-            Button(action: { showingImportSheet = true }) {
+            Button(action: { onImportTap?() }) {
                 HStack {
                     Image(systemName: "plus")
                     Text(NSLocalizedString("library.import.title", comment: ""))

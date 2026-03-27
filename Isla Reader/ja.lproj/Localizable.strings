@@ -128,6 +128,8 @@
 "library.import.sheet.title" = "電子書籍をインポート";
 "library.import.sheet.description" = "ePub、TXT などに対応\nファイルAppまたは他のアプリからインポート";
 "library.import.source.files_app" = "ファイルAppから選択";
+"library.import.blocked.summary_in_progress.title" = "要約を生成中";
+"library.import.blocked.summary_in_progress.message" = "現在の本の AI 要約が完了するまで、新しい本は追加できません。";
 "common.cancel" = "キャンセル";
 "common.save" = "保存";
 

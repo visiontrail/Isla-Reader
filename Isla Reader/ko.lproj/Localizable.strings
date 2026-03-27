@@ -128,6 +128,8 @@
 "library.import.sheet.title" = "전자책 가져오기";
 "library.import.sheet.description" = "ePub, TXT 등 지원\n파일 앱 또는 다른 앱에서 가져오기";
 "library.import.source.files_app" = "파일 앱에서 선택";
+"library.import.blocked.summary_in_progress.title" = "요약 생성 중";
+"library.import.blocked.summary_in_progress.message" = "현재 책의 AI 요약이 완료될 때까지 새 책을 추가할 수 없습니다.";
 "common.cancel" = "취소";
 "common.save" = "저장";
 

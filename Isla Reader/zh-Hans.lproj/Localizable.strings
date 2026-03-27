@@ -128,6 +128,8 @@
 "library.import.sheet.title" = "导入电子书";
 "library.import.sheet.description" = "支持 ePub、TXT 等格式\n从文件 App 或其他应用导入";
 "library.import.source.files_app" = "从文件 App 选择";
+"library.import.blocked.summary_in_progress.title" = "摘要生成中";
+"library.import.blocked.summary_in_progress.message" = "当前书籍正在生成 AI 摘要，请等待上一本书摘要完成后再添加新书。";
 "common.cancel" = "取消";
 "common.save" = "保存";
 

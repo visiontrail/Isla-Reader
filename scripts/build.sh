@@ -21,6 +21,7 @@ PROJECT_FILE="Isla Reader.xcodeproj"
 SCHEME="LanRead"
 BUILD_DIR="./build"
 CONFIGURATION="Debug"  # 默认为 Debug
+DEFAULT_SIMULATOR="${DEFAULT_SIMULATOR:-iPhone 15 Pro}"
 
 # 获取脚本所在目录的父目录（项目根目录）
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -164,22 +165,25 @@ fi
 echo -e "${GREEN}⚙️  开始编译项目...${NC}"
 echo -e "${BLUE}配置: ${NC}$CONFIGURATION"
 echo -e "${BLUE}目标: ${NC}iOS Simulator"
+echo -e "${BLUE}模拟器: ${NC}$DEFAULT_SIMULATOR"
 echo ""
 
 # 编译项目
 BUILD_START=$(date +%s)
 
+set +e
 xcodebuild build \
     -project "$PROJECT_FILE" \
     -scheme "$SCHEME" \
     -configuration "$CONFIGURATION" \
-    -destination 'platform=iOS Simulator,name=iPhone 16' \
+    -destination "platform=iOS Simulator,name=$DEFAULT_SIMULATOR" \
     -derivedDataPath "$BUILD_DIR" \
     -quiet \
     | tee build.log \
-    | grep -E "Build (succeeded|failed)|error:|warning:" || true
+    | grep -E "Build (succeeded|failed)|error:|warning:"
 
 BUILD_RESULT=${PIPESTATUS[0]}
+set -e
 BUILD_END=$(date +%s)
 BUILD_TIME=$((BUILD_END - BUILD_START))
 

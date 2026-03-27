@@ -128,6 +128,8 @@
 "library.import.sheet.title" = "Import eBooks";
 "library.import.sheet.description" = "Supports ePub, TXT, etc.\nImport from Files app or other apps";
 "library.import.source.files_app" = "Choose from Files app";
+"library.import.blocked.summary_in_progress.title" = "Summary in Progress";
+"library.import.blocked.summary_in_progress.message" = "Please wait until the current book summary is complete before importing a new book.";
 "common.cancel" = "Cancel";
 "common.save" = "Save";
 
