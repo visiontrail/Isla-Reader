@@ -1475,7 +1475,9 @@ struct HighlightListSheet: View {
             bookTitle: book.displayTitle,
             chapterTitle: highlight.chapter,
             chapterFallback: NSLocalizedString("highlight.list.unknown_chapter", comment: ""),
-            footerText: NSLocalizedString("highlight.share.footer", comment: "")
+            footerText: NSLocalizedString("highlight.share.footer", comment: ""),
+            footerSubtitleText: NSLocalizedString("highlight.share.footer_subtitle", comment: ""),
+            coverImageData: book.coverImageData
         )
         let highlightObjectID = highlight.objectID
         generatingShareHighlightObjectID = highlightObjectID

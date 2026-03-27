@@ -177,6 +177,7 @@
 "highlight.share.generate_failed.title" = "共有に失敗しました";
 "highlight.share.generate_failed.message" = "共有画像を生成できませんでした。しばらくしてから再試行してください。";
 "highlight.share.footer" = "LanRead から共有";
+"highlight.share.footer_subtitle" = "AI for EPUB, synced to Notion";
 "settings.highlight_sort.title" = "ハイライトの並び順";
 "settings.highlight_sort.by_chapter" = "章順";
 "settings.highlight_sort.by_modified_time" = "更新日時順";

@@ -177,6 +177,7 @@
 "highlight.share.generate_failed.title" = "分享失败";
 "highlight.share.generate_failed.message" = "生成分享图片失败，请稍后重试。";
 "highlight.share.footer" = "由 LanRead 分享";
+"highlight.share.footer_subtitle" = "AI for EPUB, synced to Notion";
 "settings.highlight_sort.title" = "高亮排序";
 "settings.highlight_sort.by_chapter" = "按章节";
 "settings.highlight_sort.by_modified_time" = "按修改时间";

@@ -177,6 +177,7 @@
 "highlight.share.generate_failed.title" = "Share Failed";
 "highlight.share.generate_failed.message" = "Failed to generate share image. Please try again.";
 "highlight.share.footer" = "Shared from LanRead";
+"highlight.share.footer_subtitle" = "AI for EPUB, synced to Notion";
 "settings.highlight_sort.title" = "Highlights Sort";
 "settings.highlight_sort.by_chapter" = "By Chapter";
 "settings.highlight_sort.by_modified_time" = "By Modified Time";

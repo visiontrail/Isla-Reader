@@ -177,6 +177,7 @@
 "highlight.share.generate_failed.title" = "공유 실패";
 "highlight.share.generate_failed.message" = "공유 이미지를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 "highlight.share.footer" = "LanRead에서 공유됨";
+"highlight.share.footer_subtitle" = "AI for EPUB, synced to Notion";
 "settings.highlight_sort.title" = "하이라이트 정렬";
 "settings.highlight_sort.by_chapter" = "챕터 순";
 "settings.highlight_sort.by_modified_time" = "수정 시간 순";
