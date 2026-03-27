@@ -30,6 +30,7 @@ struct SkimmingModeView: View {
     @State private var adNoticeMessage: String?
     @State private var adNoticeDismissTask: Task<Void, Never>?
     @State private var pendingInterstitialBeforeNextChapter = false
+    @State private var pendingInterstitialTargetChapterIndex: Int?
     @State private var thirdNoticeShownTriggerCounts: Set<Int> = []
     @State private var lastChapterLoadingNoticeAt: Date?
     @State private var loadingSwipeOffset: CGFloat = 0
@@ -91,6 +92,7 @@ struct SkimmingModeView: View {
                     return
                 }
                 pendingInterstitialBeforeNextChapter = false
+                pendingInterstitialTargetChapterIndex = nil
                 dismissAdvanceNotice()
             }
             .overlay(alignment: .top) {
@@ -231,6 +233,7 @@ struct SkimmingModeView: View {
             service.storeLastVisitedChapterIndex(newValue, for: book)
             preloadSummaries(from: newValue)
             reportSkimmingChapterOpenMetric(for: newValue)
+            attemptPendingInterstitialAfterChapterSettled(reason: "chapter_index_changed")
         }
         .onChange(of: isCurrentChapterLoading) { newValue in
             if !newValue {
@@ -239,6 +242,7 @@ struct SkimmingModeView: View {
                 withAnimation(.easeOut(duration: 0.16)) {
                     loadingSwipeOffset = 0
                 }
+                attemptPendingInterstitialAfterChapterSettled(reason: "chapter_loading_finished")
             }
         }
     }
@@ -296,7 +300,9 @@ struct SkimmingModeView: View {
                         return
                     }
                     incrementForwardChapterSwipeCountAndPrepareAdIfNeeded(for: previousChapterIndex)
-                    handlePendingInterstitialBeforeChapterAdvance()
+                    if pendingInterstitialBeforeNextChapter {
+                        pendingInterstitialTargetChapterIndex = newValue
+                    }
                 }
                 currentChapterIndex = newValue
             }
@@ -508,27 +514,36 @@ struct SkimmingModeView: View {
     }
 
     @MainActor
-    private func handlePendingInterstitialBeforeChapterAdvance() {
+    private func attemptPendingInterstitialAfterChapterSettled(reason: String) {
         guard appSettings.areAdsEnabled else {
             pendingInterstitialBeforeNextChapter = false
+            pendingInterstitialTargetChapterIndex = nil
             return
         }
         guard pendingInterstitialBeforeNextChapter else { return }
+        guard pendingInterstitialTargetChapterIndex == currentChapterIndex else { return }
+        guard !isCurrentChapterLoading else { return }
         Task { @MainActor in
-            await Task.yield()
+            try? await Task.sleep(nanoseconds: 260_000_000)
+            guard pendingInterstitialBeforeNextChapter else { return }
+            guard pendingInterstitialTargetChapterIndex == currentChapterIndex else { return }
+            guard !isCurrentChapterLoading else { return }
 
             let result = RewardedInterstitialAdManager.shared.presentFromTopControllerIfAvailable()
             switch result {
             case .presented:
                 pendingInterstitialBeforeNextChapter = false
+                pendingInterstitialTargetChapterIndex = nil
                 interstitialPresentedCount += 1
                 persistAdProgressState()
-                DebugLogger.info("SkimmingModeView: 已在章节切换前展示奖励插屏广告")
+                DebugLogger.info("SkimmingModeView: 已在章节切换完成后展示奖励插屏广告 (reason=\(reason))")
                 updateInterstitialReadinessIfNeeded(for: currentChapterIndex)
             case .skippedNotReady:
-                DebugLogger.info("SkimmingModeView: 广告未就绪，已跳过提示弹窗")
+                pendingInterstitialTargetChapterIndex = nil
+                DebugLogger.info("SkimmingModeView: 章节切换完成后广告未就绪，已跳过本次展示 (reason=\(reason))")
             case .skippedNoTopViewController:
-                DebugLogger.warning("SkimmingModeView: 章节切换前未找到可展示广告的控制器，已跳过")
+                pendingInterstitialTargetChapterIndex = nil
+                DebugLogger.warning("SkimmingModeView: 章节切换完成后未找到可展示广告的控制器，已跳过 (reason=\(reason))")
             }
         }
     }
