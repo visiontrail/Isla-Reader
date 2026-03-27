@@ -654,7 +654,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div class="glass card">
           <h3>Total Calls</h3>
           <div class="metric-value" id="total-calls">-</div>
-          <div class="metric-sub"><span id="range-label">Past 24h</span></div>
+          <div class="metric-sub">Server API Calls: <span id="server-api-calls">-</span> · AI Model Calls: <span id="ai-model-calls">-</span></div>
         </div>
         <div class="glass card">
           <h3>Success Rate</h3>
@@ -790,7 +790,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     const timelineRange = document.getElementById('timeline-range');
     const timelineAxis = document.getElementById('timeline-axis');
     const timelineCaption = document.getElementById('timeline-caption');
-    const rangeLabel = document.getElementById('range-label');
     const granularityWindow = document.getElementById('granularity-window');
     let currentGranularity = 'day';
 
@@ -1009,9 +1008,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const bucketHint = meta.timelineLabel || (meta.timelineBucket === 'day' ? 'Daily buckets' : 'Hourly buckets');
       const windowStart = formatWindowDateTime(meta.windowStart);
       const windowEnd = formatWindowDateTime(meta.windowEnd);
-      if (rangeLabel) {
-        rangeLabel.textContent = `${windowLabel} · ${windowStart} to ${windowEnd}`;
-      }
       if (timelineRange) {
         timelineRange.textContent = `${windowLabel} · ${bucketHint}`;
       }
@@ -1033,6 +1029,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       applyMeta(meta);
       const totalCount = totals.windowCount ?? totals.count;
       document.getElementById('total-calls').textContent = formatNumber(totalCount);
+      document.getElementById('server-api-calls').textContent = formatNumber(totals.serverApiCallCount || 0);
+      document.getElementById('ai-model-calls').textContent = formatNumber(totals.aiModelCallCount || 0);
       const success = (totals.successRate * 100).toFixed(1) + '%';
       document.getElementById('success-rate').textContent = success;
       const rpsWindowSeconds = Number(meta.rpsWindowSeconds || 300);

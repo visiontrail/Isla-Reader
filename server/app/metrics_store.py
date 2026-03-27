@@ -46,6 +46,8 @@ SUMMARY_PROBE_INTERFACES = {"ai.knowledge_probe", "ai.knowledge_probe.summary"}
 SUMMARY_HIT_INTERFACES = {"ai.knowledge_hit", "ai.knowledge_hit.summary"}
 SKIMMING_PROBE_INTERFACES = {"ai.knowledge_probe.skimming"}
 SKIMMING_HIT_INTERFACES = {"ai.knowledge_hit.skimming"}
+SERVER_API_INTERFACE_PREFIXES = ("/v1/", "/admin/")
+AI_MODEL_INTERFACE_PATH = "/chat/completions"
 
 
 def _isoformat_seconds(ts: datetime) -> str:
@@ -70,6 +72,14 @@ def _bucket_start(ts: datetime, bucket: str) -> datetime:
 
 def _is_counter_interface(interface: str) -> bool:
     return interface in COUNTER_INTERFACES
+
+
+def _is_server_api_interface(interface: str) -> bool:
+    return interface.startswith(SERVER_API_INTERFACE_PREFIXES)
+
+
+def _is_ai_model_interface(interface: str) -> bool:
+    return AI_MODEL_INTERFACE_PATH in interface
 
 
 class MetricEvent(BaseModel):
@@ -189,6 +199,8 @@ class MetricsStore:
         rps_events = [e for e in api_window_events if e.timestamp >= rps_cutoff]
 
         total = len(api_window_events)
+        server_api_call_count = sum(1 for e in api_window_events if _is_server_api_interface(e.interface))
+        ai_model_call_count = sum(1 for e in api_window_events if _is_ai_model_interface(e.interface))
         successes = sum(1 for e in api_window_events if 200 <= e.status_code < 300)
         avg_latency = sum(e.latency_ms for e in api_window_events) / total if total else 0.0
         total_tokens = sum(e.tokens or 0 for e in api_window_events)
@@ -292,6 +304,8 @@ class MetricsStore:
                 "totalBytes": total_bytes,
                 "rps": round(rps, 3),
                 "windowCount": total,
+                "serverApiCallCount": server_api_call_count,
+                "aiModelCallCount": ai_model_call_count,
                 "readerBookOpenCount": reader_book_open_count,
                 "readerChapterOpenCount": reader_chapter_open_count,
                 "readerOpenTotalCount": reader_book_open_count + reader_chapter_open_count,

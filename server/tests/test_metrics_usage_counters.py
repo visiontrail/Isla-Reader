@@ -136,6 +136,8 @@ def test_usage_counters_are_reported_by_mode_without_affecting_api_totals():
 
         assert totals["count"] == 1
         assert totals["windowCount"] == 1
+        assert totals["serverApiCallCount"] == 0
+        assert totals["aiModelCallCount"] == 1
         assert totals["totalTokens"] == 210
         assert totals["readerBookOpenCount"] == 1
         assert totals["readerChapterOpenCount"] == 2
@@ -191,3 +193,39 @@ def test_legacy_knowledge_interfaces_are_still_counted_as_summary():
         assert totals["aiSummaryKnowledgeHitCount"] == 1
         assert totals["aiSkimmingKnowledgeProbeCount"] == 0
         assert totals["aiSkimmingKnowledgeHitCount"] == 0
+        assert totals["serverApiCallCount"] == 0
+        assert totals["aiModelCallCount"] == 0
+
+
+def test_server_api_and_ai_model_calls_are_counted_separately():
+    with TestClient(app) as client:
+        _login(client)
+
+        _ingest(
+            client,
+            {
+                "interface": "/v1/keys/ai",
+                "status_code": 200,
+                "latency_ms": 21.0,
+                "request_bytes": 128,
+                "source": "secure_config",
+            },
+        )
+        _ingest(
+            client,
+            {
+                "interface": "/chat/completions",
+                "status_code": 200,
+                "latency_ms": 112.0,
+                "request_bytes": 256,
+                "source": "start_reading",
+            },
+        )
+
+        response = client.get("/admin/metrics/data", params={"granularity": "day"})
+        assert response.status_code == 200
+        totals = response.json()["totals"]
+
+        assert totals["windowCount"] == 2
+        assert totals["serverApiCallCount"] == 1
+        assert totals["aiModelCallCount"] == 1
