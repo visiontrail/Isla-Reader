@@ -14,7 +14,17 @@ enum UsageMetricsSource: String {
     case skimming = "skimming"
     case secureConfig = "secure_config"
     case ads = "ads"
+    case reader = "reader"
+    case aiKnowledge = "ai_knowledge"
     case other = "other"
+}
+
+enum UsageMetricsInterface {
+    static let chatCompletions = "/chat/completions"
+    static let readerBookOpen = "reader.book_open"
+    static let readerChapterOpen = "reader.chapter_open"
+    static let aiKnowledgeProbe = "ai.knowledge_probe"
+    static let aiKnowledgeHit = "ai.knowledge_hit"
 }
 
 private struct APIMetricPayload: Encodable {

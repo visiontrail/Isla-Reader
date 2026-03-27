@@ -128,7 +128,7 @@ final class ReadingAIService {
         defer {
             let latencyMs = Date().timeIntervalSince(startTime) * 1000
             UsageMetricsReporter.shared.record(
-                interface: "/chat/completions",
+                interface: UsageMetricsInterface.chatCompletions,
                 statusCode: statusCode,
                 latencyMs: latencyMs,
                 requestBytes: requestBytes,

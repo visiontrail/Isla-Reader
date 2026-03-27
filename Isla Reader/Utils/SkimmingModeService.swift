@@ -765,7 +765,7 @@ final class SkimmingModeService {
         defer {
             let latency = Date().timeIntervalSince(startTime) * 1000
             UsageMetricsReporter.shared.record(
-                interface: "/chat/completions",
+                interface: UsageMetricsInterface.chatCompletions,
                 statusCode: statusCode,
                 latencyMs: latency,
                 requestBytes: requestBytes,

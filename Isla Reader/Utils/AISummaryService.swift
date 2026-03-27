@@ -371,8 +371,27 @@ class AISummaryService: ObservableObject {
             .uppercased()
         
         DebugLogger.info("AISummaryService: 书籍知识探测响应 = \(normalized)")
+
+        let probeRequestBytes = prompt.lengthOfBytes(using: .utf8)
+        let isKnowledgeHit = normalized.hasPrefix("YES")
+        UsageMetricsReporter.shared.record(
+            interface: UsageMetricsInterface.aiKnowledgeProbe,
+            statusCode: 200,
+            latencyMs: 0,
+            requestBytes: probeRequestBytes,
+            retryCount: 0,
+            source: .aiKnowledge
+        )
         
-        if normalized.hasPrefix("YES") {
+        if isKnowledgeHit {
+            UsageMetricsReporter.shared.record(
+                interface: UsageMetricsInterface.aiKnowledgeHit,
+                statusCode: 200,
+                latencyMs: 0,
+                requestBytes: 0,
+                retryCount: 0,
+                source: .aiKnowledge
+            )
             return true
         }
         if normalized.hasPrefix("NO") {
@@ -757,7 +776,7 @@ class AISummaryService: ObservableObject {
         defer {
             let latency = Date().timeIntervalSince(startTime) * 1000
             UsageMetricsReporter.shared.record(
-                interface: "/chat/completions",
+                interface: UsageMetricsInterface.chatCompletions,
                 statusCode: statusCode,
                 latencyMs: latency,
                 requestBytes: requestBytes,

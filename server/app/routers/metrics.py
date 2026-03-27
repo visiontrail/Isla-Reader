@@ -676,6 +676,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div class="metric-value" id="tokens">-</div>
           <div class="metric-sub">Total request bytes: <span id="bytes"></span></div>
         </div>
+        <div class="glass card">
+          <h3>Reader Opens</h3>
+          <div class="metric-value" id="reader-opens">-</div>
+          <div class="metric-sub">Books: <span id="reader-book-opens">-</span> · Chapters: <span id="reader-chapter-opens">-</span></div>
+        </div>
+        <div class="glass card">
+          <h3>AI Known Hits</h3>
+          <div class="metric-value" id="knowledge-hit-count">-</div>
+          <div class="metric-sub">Probes: <span id="knowledge-probe-count">-</span> · Hit rate: <span id="knowledge-hit-rate">-</span></div>
+        </div>
       </div>
 
       <div class="section-title">
@@ -1031,6 +1041,18 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       document.getElementById('avg-latency').textContent = (totals.avgLatencyMs || 0).toFixed(1) + ' ms';
       document.getElementById('tokens').textContent = formatNumber(totals.totalTokens || 0) + ' tok';
       document.getElementById('bytes').textContent = formatNumber(totals.totalBytes || 0) + ' bytes';
+      const readerBookOpenCount = Number(totals.readerBookOpenCount || 0);
+      const readerChapterOpenCount = Number(totals.readerChapterOpenCount || 0);
+      const readerOpenTotalCount = Number(totals.readerOpenTotalCount || (readerBookOpenCount + readerChapterOpenCount));
+      document.getElementById('reader-opens').textContent = formatNumber(readerOpenTotalCount);
+      document.getElementById('reader-book-opens').textContent = formatNumber(readerBookOpenCount);
+      document.getElementById('reader-chapter-opens').textContent = formatNumber(readerChapterOpenCount);
+      const knowledgeHitCount = Number(totals.aiKnowledgeHitCount || 0);
+      const knowledgeProbeCount = Number(totals.aiKnowledgeProbeCount || 0);
+      const knowledgeHitRate = Number(totals.aiKnowledgeHitRate || 0);
+      document.getElementById('knowledge-hit-count').textContent = formatNumber(knowledgeHitCount);
+      document.getElementById('knowledge-probe-count').textContent = formatNumber(knowledgeProbeCount);
+      document.getElementById('knowledge-hit-rate').textContent = `${(knowledgeHitRate * 100).toFixed(1)}%`;
     }
 
     function renderInterfaces(interfaces) {

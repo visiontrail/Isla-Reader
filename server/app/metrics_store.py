@@ -31,6 +31,13 @@ GRANULARITY_CONFIG: Dict[str, Dict[str, object]] = {
     },
 }
 
+COUNTER_INTERFACES = {
+    "reader.book_open",
+    "reader.chapter_open",
+    "ai.knowledge_probe",
+    "ai.knowledge_hit",
+}
+
 
 def _isoformat_seconds(ts: datetime) -> str:
     normalized = ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
@@ -50,6 +57,10 @@ def _bucket_start(ts: datetime, bucket: str) -> datetime:
     if bucket == "hour":
         return ts_utc.replace(minute=0, second=0, microsecond=0)
     return ts_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _is_counter_interface(interface: str) -> bool:
+    return interface in COUNTER_INTERFACES
 
 
 class MetricEvent(BaseModel):
@@ -165,17 +176,18 @@ class MetricsStore:
 
         window_events = [e for e in events if e.timestamp >= window_start]
         recent_events = [e for e in events if e.timestamp >= recent_cutoff]
-        rps_events = [e for e in window_events if e.timestamp >= rps_cutoff]
+        api_window_events = [e for e in window_events if not _is_counter_interface(e.interface)]
+        rps_events = [e for e in api_window_events if e.timestamp >= rps_cutoff]
 
-        total = len(window_events)
-        successes = sum(1 for e in window_events if 200 <= e.status_code < 300)
-        avg_latency = sum(e.latency_ms for e in window_events) / total if total else 0.0
-        total_tokens = sum(e.tokens or 0 for e in window_events)
-        total_bytes = sum(e.request_bytes for e in window_events)
+        total = len(api_window_events)
+        successes = sum(1 for e in api_window_events if 200 <= e.status_code < 300)
+        avg_latency = sum(e.latency_ms for e in api_window_events) / total if total else 0.0
+        total_tokens = sum(e.tokens or 0 for e in api_window_events)
+        total_bytes = sum(e.request_bytes for e in api_window_events)
         rps = len(rps_events) / rps_window.total_seconds() if rps_events else 0.0
 
         interface_stats: Dict[str, Dict[str, object]] = {}
-        for e in window_events:
+        for e in api_window_events:
             stats = interface_stats.setdefault(
                 e.interface,
                 {
@@ -211,7 +223,7 @@ class MetricsStore:
             )
 
         source_stats: Dict[str, Dict[str, object]] = {}
-        for e in window_events:
+        for e in api_window_events:
             stats = source_stats.setdefault(
                 e.source,
                 {
@@ -238,13 +250,18 @@ class MetricsStore:
             )
 
         timeline_buckets: Dict[str, Dict[str, int]] = {}
-        for e in window_events:
+        for e in api_window_events:
             bucket_start = _bucket_start(e.timestamp, bucket)
             key = bucket_start.isoformat()
             entry = timeline_buckets.setdefault(key, {"count": 0, "failures": 0})
             entry["count"] += 1
             if not (200 <= e.status_code < 300):
                 entry["failures"] += 1
+
+        reader_book_open_count = sum(1 for e in window_events if e.interface == "reader.book_open")
+        reader_chapter_open_count = sum(1 for e in window_events if e.interface == "reader.chapter_open")
+        ai_knowledge_probe_count = sum(1 for e in window_events if e.interface == "ai.knowledge_probe")
+        ai_knowledge_hit_count = sum(1 for e in window_events if e.interface == "ai.knowledge_hit")
 
         timeline = [
             {"bucket": key, "count": value["count"], "failures": value["failures"]}
@@ -262,6 +279,14 @@ class MetricsStore:
                 "totalBytes": total_bytes,
                 "rps": round(rps, 3),
                 "windowCount": total,
+                "readerBookOpenCount": reader_book_open_count,
+                "readerChapterOpenCount": reader_chapter_open_count,
+                "readerOpenTotalCount": reader_book_open_count + reader_chapter_open_count,
+                "aiKnowledgeProbeCount": ai_knowledge_probe_count,
+                "aiKnowledgeHitCount": ai_knowledge_hit_count,
+                "aiKnowledgeHitRate": (
+                    ai_knowledge_hit_count / ai_knowledge_probe_count if ai_knowledge_probe_count else 0.0
+                ),
             },
             interfaces=interfaces,
             sources=sources,

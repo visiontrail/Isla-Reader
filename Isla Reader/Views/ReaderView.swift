@@ -70,6 +70,7 @@ struct ReaderView: View {
     @State private var showingHighlightsList = false
     @State private var showingBookmarksList = false
     @State private var didApplyInitialLocation = false
+    @State private var hasReportedInitialChapterOpenMetric = false
     @State private var pendingSelectionClearWorkItem: DispatchWorkItem?
     
     @State private var scrollOffset: CGFloat = 0
@@ -175,6 +176,7 @@ struct ReaderView: View {
             }
         }
         .onAppear {
+            reportBookOpenMetric()
             loadBookContent()
             startReadingSession()
             startReadingHeartbeat()
@@ -194,6 +196,7 @@ struct ReaderView: View {
         .onChange(of: currentChapterIndex) { _ in
             // Save progress when chapter changes
             saveReadingProgress()
+            reportChapterOpenMetric()
             selectedTextInfo = nil
             if pendingTOCNavigation?.chapterIndex != currentChapterIndex {
                 currentTOCFragment = nil
@@ -1590,6 +1593,10 @@ struct ReaderView: View {
                     if !applyInitialLocationIfAvailable() {
                         restoreReadingProgress()
                     }
+
+                    if !self.hasReportedInitialChapterOpenMetric {
+                        self.reportChapterOpenMetric()
+                    }
                     
                     self.isLoading = false
                     self.preloadNearbyChapterHTML(around: self.currentChapterIndex)
@@ -1639,6 +1646,30 @@ struct ReaderView: View {
         }
 
         return true
+    }
+
+    private func reportBookOpenMetric() {
+        UsageMetricsReporter.shared.record(
+            interface: UsageMetricsInterface.readerBookOpen,
+            statusCode: 200,
+            latencyMs: 0,
+            requestBytes: 0,
+            retryCount: 0,
+            source: .reader
+        )
+    }
+
+    private func reportChapterOpenMetric() {
+        guard chapters.indices.contains(currentChapterIndex) else { return }
+        UsageMetricsReporter.shared.record(
+            interface: UsageMetricsInterface.readerChapterOpen,
+            statusCode: 200,
+            latencyMs: 0,
+            requestBytes: 0,
+            retryCount: 0,
+            source: .reader
+        )
+        hasReportedInitialChapterOpenMetric = true
     }
     
     private func restoreReadingProgress() {
