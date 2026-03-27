@@ -654,15 +654,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div class="glass card">
           <h3>Total Calls</h3>
           <div class="metric-value" id="total-calls">-</div>
-          <div class="metric-sub">Server API Calls (excl. Ads): <span id="server-api-calls">-</span> · AI Model Calls: <span id="ai-model-calls">-</span></div>
-        </div>
-        <div class="glass card">
-          <h3>Ads Calls</h3>
-          <div class="metric-value" id="ads-calls">-</div>
-          <div class="metric-sub">Success: <span id="ads-success-calls">-</span> · Failure: <span id="ads-failure-calls">-</span></div>
-          <div class="metric-sub">Banner S/F: <span id="ads-banner-success">-</span>/<span id="ads-banner-failure">-</span></div>
-          <div class="metric-sub">Interstitial S/F: <span id="ads-interstitial-success">-</span>/<span id="ads-interstitial-failure">-</span></div>
-          <div class="metric-sub">Rewarded Interstitial S/F: <span id="ads-rewarded-interstitial-success">-</span>/<span id="ads-rewarded-interstitial-failure">-</span></div>
+          <div class="metric-sub">Server API Calls: <span id="server-api-calls">-</span> · AI Model Calls: <span id="ai-model-calls">-</span></div>
         </div>
         <div class="glass card">
           <h3>Success Rate</h3>
@@ -696,6 +688,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div class="metric-sub">Total probes: <span id="knowledge-probe-count">-</span> · Total hit rate: <span id="knowledge-hit-rate">-</span></div>
           <div class="metric-sub">Summary: <span id="knowledge-summary-hit-count">-</span>/<span id="knowledge-summary-probe-count">-</span> (<span id="knowledge-summary-hit-rate">-</span>)</div>
           <div class="metric-sub">Skimming: <span id="knowledge-skimming-hit-count">-</span>/<span id="knowledge-skimming-probe-count">-</span> (<span id="knowledge-skimming-hit-rate">-</span>)</div>
+        </div>
+        <div class="glass card">
+          <h3>Ads Calls</h3>
+          <div class="metric-value" id="ads-calls">-</div>
+          <div class="metric-sub">Success: <span id="ads-success-calls">-</span> · Failure: <span id="ads-failure-calls">-</span></div>
+          <div class="metric-sub">Banner S/F: <span id="ads-banner-success">-</span>/<span id="ads-banner-failure">-</span></div>
+          <div class="metric-sub">Interstitial S/F: <span id="ads-interstitial-success">-</span>/<span id="ads-interstitial-failure">-</span></div>
+          <div class="metric-sub">Rewarded Interstitial S/F: <span id="ads-rewarded-interstitial-success">-</span>/<span id="ads-rewarded-interstitial-failure">-</span></div>
         </div>
       </div>
 
