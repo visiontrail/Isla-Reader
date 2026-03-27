@@ -86,10 +86,19 @@ struct MainTabView: View {
             updatePromptCoordinator.checkForUpdateIfNeeded(trigger: .launch)
         }
         .onOpenURL { url in
-            guard ReadingReminderService.shared.isContinueReadingURL(url) else {
+            if ReadingReminderService.shared.isContinueReadingURL(url) {
+                reminderCoordinator.requestContinueReading(triggeredByReminder: false)
                 return
             }
-            reminderCoordinator.requestContinueReading(triggeredByReminder: false)
+
+            guard ExternalBookImportDispatcher.isSupportedBookURL(url) else {
+                DebugLogger.info("MainTabView: 忽略不支持的 URL: \(url.absoluteString)")
+                return
+            }
+
+            DebugLogger.info("MainTabView: 收到外部书籍导入请求: \(url.absoluteString)")
+            selectedPhoneTab = .library
+            ExternalBookImportDispatcher.post(url: url)
         }
         .sheet(isPresented: $aiConsentManager.isLaunchConsentPresented) {
             AIPrivacyLaunchConsentSheet(

@@ -22,9 +22,17 @@
 			<key>CFBundleTypeName</key>
 			<string>EPUB Document</string>
 			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
+			<string>Editor</string>
 			<key>LSHandlerRank</key>
-			<string>Owner</string>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>epub</string>
+			</array>
+			<key>CFBundleTypeMIMETypes</key>
+			<array>
+				<string>application/epub+zip</string>
+			</array>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>org.idpf.epub-container</string>
@@ -259,6 +267,8 @@
 		<dict>
 			<key>UTTypeConformsTo</key>
 			<array>
+				<string>public.content</string>
+				<string>public.item</string>
 				<string>public.data</string>
 				<string>public.composite-content</string>
 			</array>

@@ -123,7 +123,7 @@ struct SkimmingModeView: View {
     
     private var contentView: some View {
         VStack(spacing: 0) {
-            topBar
+            topControlsBar
             
             if chapters.isEmpty {
                 emptyChaptersView
@@ -133,7 +133,7 @@ struct SkimmingModeView: View {
             
             bottomProgress
         }
-        .padding(.top, 12)
+        .padding(.top, 8)
         .padding(.horizontal)
     }
     
@@ -148,49 +148,24 @@ struct SkimmingModeView: View {
         )
     }
     
-    private var topBar: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.white.opacity(0.9))
-                }
-                
-                Spacer()
-                
-                Button(action: { showingTOC = true }) {
-                    Label(NSLocalizedString("reader.toc.title", comment: ""), systemImage: "list.bullet")
-                        .labelStyle(.iconOnly)
-                        .font(.title3)
-                        .foregroundColor(.white.opacity(0.9))
-                }
+    private var topControlsBar: some View {
+        HStack {
+            Button(action: { dismiss() }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.white.opacity(0.9))
             }
             
-            VStack(alignment: .leading, spacing: 6) {
-                Text(book.displayTitle)
-                    .font(.title2.bold())
-                    .foregroundColor(.white)
-                    .lineLimit(2)
-                
-                HStack(spacing: 8) {
-                    modeBadge
-                    Text(NSLocalizedString("skimming.subtitle", comment: ""))
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
-                }
+            Spacer()
+            
+            Button(action: { showingTOC = true }) {
+                Label(NSLocalizedString("reader.toc.title", comment: ""), systemImage: "list.bullet")
+                    .labelStyle(.iconOnly)
+                    .font(.title3)
+                    .foregroundColor(.white.opacity(0.9))
             }
         }
-    }
-    
-    private var modeBadge: some View {
-        Text(NSLocalizedString("skimming.mode_badge", comment: ""))
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color.white.opacity(0.15))
-            .foregroundColor(.white)
-            .cornerRadius(8)
+        .padding(.bottom, 6)
     }
     
     private var chapterPager: some View {
@@ -204,7 +179,8 @@ struct SkimmingModeView: View {
                     onRequestSummary: { requestSummary(for: index) },
                     onStartFullReading: { openReader(at: index) }
                 )
-                .padding(.vertical, 20)
+                .padding(.top, 6)
+                .padding(.bottom, 20)
                 .tag(index)
             }
         }

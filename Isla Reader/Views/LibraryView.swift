@@ -43,6 +43,7 @@ struct LibraryView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var summaryService = AISummaryService.shared
+    @StateObject private var importService = BookImportService.shared
     
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \LibraryItem.lastAccessedAt, ascending: false)],
@@ -324,6 +325,12 @@ struct LibraryView: View {
                             }
                         }
                     )
+                case .importError(let message):
+                    return Alert(
+                        title: Text(NSLocalizedString("library.import.result.title", comment: "")),
+                        message: Text(message),
+                        dismissButton: .default(Text(NSLocalizedString("common.confirm", comment: "")))
+                    )
                 }
             }
             .fullScreenCover(item: $readerLaunchTarget) { target in
@@ -337,6 +344,9 @@ struct LibraryView: View {
                 DebugLogger.info("LibraryView: 视图出现，刷新数据")
                 BannerAdPreloadManager.shared.preloadSummaryBannerIfNeeded(trigger: "library_view_on_appear")
                 refreshData()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: ExternalBookImportDispatcher.didReceiveBookURL)) { notification in
+                handleExternalImport(notification: notification)
             }
             .onChange(of: activeAlert) { newValue in
                 DebugLogger.info("LibraryView: activeAlert changed -> \(String(describing: newValue)); isGenerating=\(summaryService.isGenerating), showingImportSheet=\(showingImportSheet)")
@@ -388,6 +398,66 @@ struct LibraryView: View {
         }
 
         showingImportSheet = true
+    }
+
+    private func handleExternalImport(notification: Notification) {
+        guard let url = ExternalBookImportDispatcher.extractURL(from: notification) else {
+            DebugLogger.warning("LibraryView: 收到外部导入通知，但无法解析文件 URL")
+            return
+        }
+
+        guard ExternalBookImportDispatcher.isSupportedBookURL(url) else {
+            DebugLogger.warning("LibraryView: 收到不支持的外部文件类型: \(url.absoluteString)")
+            activeAlert = .importError(BookImportError.unsupportedFormat.localizedDescription)
+            return
+        }
+
+        guard !importService.isImporting else {
+            DebugLogger.warning("LibraryView: 当前已有导入任务，忽略新的外部导入请求")
+            activeAlert = .importError(NSLocalizedString("library.import.in_progress", comment: ""))
+            return
+        }
+
+        if summaryService.isGenerating {
+            DebugLogger.warning("LibraryView: AI 摘要生成中，阻止外部导入")
+            activeAlert = .summaryGenerationInProgress
+            return
+        }
+
+        DebugLogger.info("LibraryView: 处理外部导入请求: \(url.absoluteString)")
+        importBookFromExternalURL(url)
+    }
+
+    private func importBookFromExternalURL(_ url: URL) {
+        let securityScopedAccessStarted = url.startAccessingSecurityScopedResource()
+        if securityScopedAccessStarted {
+            DebugLogger.info("LibraryView: 外部导入已开启安全作用域访问")
+        } else {
+            DebugLogger.info("LibraryView: 外部导入未开启安全作用域访问，继续尝试读取")
+        }
+
+        Task {
+            defer {
+                if securityScopedAccessStarted {
+                    url.stopAccessingSecurityScopedResource()
+                    DebugLogger.info("LibraryView: 外部导入已关闭安全作用域访问")
+                }
+            }
+
+            do {
+                let book = try await importService.importBook(from: url, context: viewContext)
+                await MainActor.run {
+                    DebugLogger.success("LibraryView: 外部导入成功 - \(book.displayTitle)")
+                    refreshData()
+                    presentAISummary(for: book, source: "external_book_import")
+                }
+            } catch {
+                await MainActor.run {
+                    DebugLogger.error("LibraryView: 外部导入失败", error: error)
+                    activeAlert = .importError(error.localizedDescription)
+                }
+            }
+        }
     }
 
     private func removeFromLibrary(itemID: NSManagedObjectID, title: String) {
@@ -693,6 +763,7 @@ private struct PendingLibraryRemoval: Identifiable {
 private enum LibraryAlert: Identifiable, Equatable {
     case removalError(String)
     case summaryGenerationInProgress
+    case importError(String)
 
     var id: String {
         switch self {
@@ -700,6 +771,8 @@ private enum LibraryAlert: Identifiable, Equatable {
             return "removalError_\(message)"
         case .summaryGenerationInProgress:
             return "summaryGenerationInProgress"
+        case .importError(let message):
+            return "importError_\(message)"
         }
     }
 }
