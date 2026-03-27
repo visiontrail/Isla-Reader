@@ -680,7 +680,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <h3>Reader Opens</h3>
           <div class="metric-value" id="reader-opens">-</div>
           <div class="metric-sub">Books: <span id="reader-book-opens">-</span> · Chapters: <span id="reader-chapter-opens">-</span></div>
-          <div class="metric-sub">Summary Opens: <span id="reader-summary-opens">-</span> · Skimming Chapters: <span id="reader-skimming-chapter-opens">-</span></div>
+          <div class="metric-sub">Summary Opens: <span id="reader-summary-opens">-</span></div>
+          <div class="metric-sub">Skimming Chapters: <span id="reader-skimming-chapter-opens">-</span></div>
         </div>
         <div class="glass card">
           <h3>AI Known Hits</h3>
