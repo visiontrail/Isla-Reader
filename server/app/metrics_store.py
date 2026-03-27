@@ -36,7 +36,16 @@ COUNTER_INTERFACES = {
     "reader.chapter_open",
     "ai.knowledge_probe",
     "ai.knowledge_hit",
+    "ai.knowledge_probe.summary",
+    "ai.knowledge_hit.summary",
+    "ai.knowledge_probe.skimming",
+    "ai.knowledge_hit.skimming",
 }
+
+SUMMARY_PROBE_INTERFACES = {"ai.knowledge_probe", "ai.knowledge_probe.summary"}
+SUMMARY_HIT_INTERFACES = {"ai.knowledge_hit", "ai.knowledge_hit.summary"}
+SKIMMING_PROBE_INTERFACES = {"ai.knowledge_probe.skimming"}
+SKIMMING_HIT_INTERFACES = {"ai.knowledge_hit.skimming"}
 
 
 def _isoformat_seconds(ts: datetime) -> str:
@@ -260,8 +269,12 @@ class MetricsStore:
 
         reader_book_open_count = sum(1 for e in window_events if e.interface == "reader.book_open")
         reader_chapter_open_count = sum(1 for e in window_events if e.interface == "reader.chapter_open")
-        ai_knowledge_probe_count = sum(1 for e in window_events if e.interface == "ai.knowledge_probe")
-        ai_knowledge_hit_count = sum(1 for e in window_events if e.interface == "ai.knowledge_hit")
+        ai_summary_probe_count = sum(1 for e in window_events if e.interface in SUMMARY_PROBE_INTERFACES)
+        ai_summary_hit_count = sum(1 for e in window_events if e.interface in SUMMARY_HIT_INTERFACES)
+        ai_skimming_probe_count = sum(1 for e in window_events if e.interface in SKIMMING_PROBE_INTERFACES)
+        ai_skimming_hit_count = sum(1 for e in window_events if e.interface in SKIMMING_HIT_INTERFACES)
+        ai_knowledge_probe_count = ai_summary_probe_count + ai_skimming_probe_count
+        ai_knowledge_hit_count = ai_summary_hit_count + ai_skimming_hit_count
 
         timeline = [
             {"bucket": key, "count": value["count"], "failures": value["failures"]}
@@ -286,6 +299,16 @@ class MetricsStore:
                 "aiKnowledgeHitCount": ai_knowledge_hit_count,
                 "aiKnowledgeHitRate": (
                     ai_knowledge_hit_count / ai_knowledge_probe_count if ai_knowledge_probe_count else 0.0
+                ),
+                "aiSummaryKnowledgeProbeCount": ai_summary_probe_count,
+                "aiSummaryKnowledgeHitCount": ai_summary_hit_count,
+                "aiSummaryKnowledgeHitRate": (
+                    ai_summary_hit_count / ai_summary_probe_count if ai_summary_probe_count else 0.0
+                ),
+                "aiSkimmingKnowledgeProbeCount": ai_skimming_probe_count,
+                "aiSkimmingKnowledgeHitCount": ai_skimming_hit_count,
+                "aiSkimmingKnowledgeHitRate": (
+                    ai_skimming_hit_count / ai_skimming_probe_count if ai_skimming_probe_count else 0.0
                 ),
             },
             interfaces=interfaces,

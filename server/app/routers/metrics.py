@@ -684,7 +684,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div class="glass card">
           <h3>AI Known Hits</h3>
           <div class="metric-value" id="knowledge-hit-count">-</div>
-          <div class="metric-sub">Probes: <span id="knowledge-probe-count">-</span> · Hit rate: <span id="knowledge-hit-rate">-</span></div>
+          <div class="metric-sub">Total probes: <span id="knowledge-probe-count">-</span> · Total hit rate: <span id="knowledge-hit-rate">-</span></div>
+          <div class="metric-sub">Summary: <span id="knowledge-summary-hit-count">-</span>/<span id="knowledge-summary-probe-count">-</span> (<span id="knowledge-summary-hit-rate">-</span>)</div>
+          <div class="metric-sub">Skimming: <span id="knowledge-skimming-hit-count">-</span>/<span id="knowledge-skimming-probe-count">-</span> (<span id="knowledge-skimming-hit-rate">-</span>)</div>
         </div>
       </div>
 
@@ -1050,9 +1052,21 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const knowledgeHitCount = Number(totals.aiKnowledgeHitCount || 0);
       const knowledgeProbeCount = Number(totals.aiKnowledgeProbeCount || 0);
       const knowledgeHitRate = Number(totals.aiKnowledgeHitRate || 0);
+      const knowledgeSummaryHitCount = Number(totals.aiSummaryKnowledgeHitCount || 0);
+      const knowledgeSummaryProbeCount = Number(totals.aiSummaryKnowledgeProbeCount || 0);
+      const knowledgeSummaryHitRate = Number(totals.aiSummaryKnowledgeHitRate || 0);
+      const knowledgeSkimmingHitCount = Number(totals.aiSkimmingKnowledgeHitCount || 0);
+      const knowledgeSkimmingProbeCount = Number(totals.aiSkimmingKnowledgeProbeCount || 0);
+      const knowledgeSkimmingHitRate = Number(totals.aiSkimmingKnowledgeHitRate || 0);
       document.getElementById('knowledge-hit-count').textContent = formatNumber(knowledgeHitCount);
       document.getElementById('knowledge-probe-count').textContent = formatNumber(knowledgeProbeCount);
       document.getElementById('knowledge-hit-rate').textContent = `${(knowledgeHitRate * 100).toFixed(1)}%`;
+      document.getElementById('knowledge-summary-hit-count').textContent = formatNumber(knowledgeSummaryHitCount);
+      document.getElementById('knowledge-summary-probe-count').textContent = formatNumber(knowledgeSummaryProbeCount);
+      document.getElementById('knowledge-summary-hit-rate').textContent = `${(knowledgeSummaryHitRate * 100).toFixed(1)}%`;
+      document.getElementById('knowledge-skimming-hit-count').textContent = formatNumber(knowledgeSkimmingHitCount);
+      document.getElementById('knowledge-skimming-probe-count').textContent = formatNumber(knowledgeSkimmingProbeCount);
+      document.getElementById('knowledge-skimming-hit-rate').textContent = `${(knowledgeSkimmingHitRate * 100).toFixed(1)}%`;
     }
 
     function renderInterfaces(interfaces) {

@@ -43,7 +43,7 @@ def _ingest(client: TestClient, payload: dict) -> None:
     assert response.status_code == 202
 
 
-def test_usage_counters_are_reported_without_affecting_api_totals():
+def test_usage_counters_are_reported_by_mode_without_affecting_api_totals():
     with TestClient(app) as client:
         _login(client)
 
@@ -91,7 +91,7 @@ def test_usage_counters_are_reported_without_affecting_api_totals():
         _ingest(
             client,
             {
-                "interface": "ai.knowledge_probe",
+                "interface": "ai.knowledge_probe.summary",
                 "status_code": 200,
                 "latency_ms": 0,
                 "request_bytes": 88,
@@ -101,7 +101,7 @@ def test_usage_counters_are_reported_without_affecting_api_totals():
         _ingest(
             client,
             {
-                "interface": "ai.knowledge_probe",
+                "interface": "ai.knowledge_probe.skimming",
                 "status_code": 200,
                 "latency_ms": 0,
                 "request_bytes": 90,
@@ -111,7 +111,17 @@ def test_usage_counters_are_reported_without_affecting_api_totals():
         _ingest(
             client,
             {
-                "interface": "ai.knowledge_hit",
+                "interface": "ai.knowledge_hit.summary",
+                "status_code": 200,
+                "latency_ms": 0,
+                "request_bytes": 0,
+                "source": "ai_knowledge",
+            },
+        )
+        _ingest(
+            client,
+            {
+                "interface": "ai.knowledge_hit.skimming",
                 "status_code": 200,
                 "latency_ms": 0,
                 "request_bytes": 0,
@@ -131,10 +141,53 @@ def test_usage_counters_are_reported_without_affecting_api_totals():
         assert totals["readerChapterOpenCount"] == 2
         assert totals["readerOpenTotalCount"] == 3
         assert totals["aiKnowledgeProbeCount"] == 2
-        assert totals["aiKnowledgeHitCount"] == 1
-        assert totals["aiKnowledgeHitRate"] == 0.5
+        assert totals["aiKnowledgeHitCount"] == 2
+        assert totals["aiKnowledgeHitRate"] == 1.0
+        assert totals["aiSummaryKnowledgeProbeCount"] == 1
+        assert totals["aiSummaryKnowledgeHitCount"] == 1
+        assert totals["aiSummaryKnowledgeHitRate"] == 1.0
+        assert totals["aiSkimmingKnowledgeProbeCount"] == 1
+        assert totals["aiSkimmingKnowledgeHitCount"] == 1
+        assert totals["aiSkimmingKnowledgeHitRate"] == 1.0
 
         assert len(payload["interfaces"]) == 1
         assert payload["interfaces"][0]["name"] == "/chat/completions"
         assert len(payload["sources"]) == 1
         assert payload["sources"][0]["name"] == "start_reading"
+
+
+def test_legacy_knowledge_interfaces_are_still_counted_as_summary():
+    with TestClient(app) as client:
+        _login(client)
+
+        _ingest(
+            client,
+            {
+                "interface": "ai.knowledge_probe",
+                "status_code": 200,
+                "latency_ms": 0,
+                "request_bytes": 42,
+                "source": "ai_knowledge",
+            },
+        )
+        _ingest(
+            client,
+            {
+                "interface": "ai.knowledge_hit",
+                "status_code": 200,
+                "latency_ms": 0,
+                "request_bytes": 0,
+                "source": "ai_knowledge",
+            },
+        )
+
+        response = client.get("/admin/metrics/data", params={"granularity": "day"})
+        assert response.status_code == 200
+        totals = response.json()["totals"]
+
+        assert totals["aiKnowledgeProbeCount"] == 1
+        assert totals["aiKnowledgeHitCount"] == 1
+        assert totals["aiSummaryKnowledgeProbeCount"] == 1
+        assert totals["aiSummaryKnowledgeHitCount"] == 1
+        assert totals["aiSkimmingKnowledgeProbeCount"] == 0
+        assert totals["aiSkimmingKnowledgeHitCount"] == 0

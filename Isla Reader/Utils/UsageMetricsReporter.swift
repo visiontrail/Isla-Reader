@@ -25,6 +25,10 @@ enum UsageMetricsInterface {
     static let readerChapterOpen = "reader.chapter_open"
     static let aiKnowledgeProbe = "ai.knowledge_probe"
     static let aiKnowledgeHit = "ai.knowledge_hit"
+    static let aiKnowledgeProbeSummary = "ai.knowledge_probe.summary"
+    static let aiKnowledgeHitSummary = "ai.knowledge_hit.summary"
+    static let aiKnowledgeProbeSkimming = "ai.knowledge_probe.skimming"
+    static let aiKnowledgeHitSkimming = "ai.knowledge_hit.skimming"
 }
 
 private struct APIMetricPayload: Encodable {

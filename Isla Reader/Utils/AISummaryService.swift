@@ -375,7 +375,7 @@ class AISummaryService: ObservableObject {
         let probeRequestBytes = prompt.lengthOfBytes(using: .utf8)
         let isKnowledgeHit = normalized.hasPrefix("YES")
         UsageMetricsReporter.shared.record(
-            interface: UsageMetricsInterface.aiKnowledgeProbe,
+            interface: UsageMetricsInterface.aiKnowledgeProbeSummary,
             statusCode: 200,
             latencyMs: 0,
             requestBytes: probeRequestBytes,
@@ -385,7 +385,7 @@ class AISummaryService: ObservableObject {
         
         if isKnowledgeHit {
             UsageMetricsReporter.shared.record(
-                interface: UsageMetricsInterface.aiKnowledgeHit,
+                interface: UsageMetricsInterface.aiKnowledgeHitSummary,
                 statusCode: 200,
                 latencyMs: 0,
                 requestBytes: 0,

@@ -501,8 +501,27 @@ final class SkimmingModeService {
         DebugLogger.info(
             "SkimmingModeService: 章节知识探测响应 raw=\(response.trimmingCharacters(in: .whitespacesAndNewlines)), normalized=\(normalized)"
         )
+
+        let probeRequestBytes = prompt.lengthOfBytes(using: .utf8)
+        let isKnowledgeHit = normalized.hasPrefix("YES")
+        UsageMetricsReporter.shared.record(
+            interface: UsageMetricsInterface.aiKnowledgeProbeSkimming,
+            statusCode: 200,
+            latencyMs: 0,
+            requestBytes: probeRequestBytes,
+            retryCount: 0,
+            source: .aiKnowledge
+        )
         
-        if normalized.hasPrefix("YES") {
+        if isKnowledgeHit {
+            UsageMetricsReporter.shared.record(
+                interface: UsageMetricsInterface.aiKnowledgeHitSkimming,
+                statusCode: 200,
+                latencyMs: 0,
+                requestBytes: 0,
+                retryCount: 0,
+                source: .aiKnowledge
+            )
             return true
         }
         
