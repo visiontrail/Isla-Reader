@@ -654,7 +654,15 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div class="glass card">
           <h3>Total Calls</h3>
           <div class="metric-value" id="total-calls">-</div>
-          <div class="metric-sub">Server API Calls: <span id="server-api-calls">-</span> · AI Model Calls: <span id="ai-model-calls">-</span></div>
+          <div class="metric-sub">Server API Calls (excl. Ads): <span id="server-api-calls">-</span> · AI Model Calls: <span id="ai-model-calls">-</span></div>
+        </div>
+        <div class="glass card">
+          <h3>Ads Calls</h3>
+          <div class="metric-value" id="ads-calls">-</div>
+          <div class="metric-sub">Success: <span id="ads-success-calls">-</span> · Failure: <span id="ads-failure-calls">-</span></div>
+          <div class="metric-sub">Banner S/F: <span id="ads-banner-success">-</span>/<span id="ads-banner-failure">-</span></div>
+          <div class="metric-sub">Interstitial S/F: <span id="ads-interstitial-success">-</span>/<span id="ads-interstitial-failure">-</span></div>
+          <div class="metric-sub">Rewarded Interstitial S/F: <span id="ads-rewarded-interstitial-success">-</span>/<span id="ads-rewarded-interstitial-failure">-</span></div>
         </div>
         <div class="glass card">
           <h3>Success Rate</h3>
@@ -680,6 +688,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <h3>Reader Opens</h3>
           <div class="metric-value" id="reader-opens">-</div>
           <div class="metric-sub">Books: <span id="reader-book-opens">-</span> · Chapters: <span id="reader-chapter-opens">-</span></div>
+          <div class="metric-sub">Summary Opens: <span id="reader-summary-opens">-</span> · Skimming Chapters: <span id="reader-skimming-chapter-opens">-</span></div>
         </div>
         <div class="glass card">
           <h3>AI Known Hits</h3>
@@ -1031,6 +1040,24 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       document.getElementById('total-calls').textContent = formatNumber(totalCount);
       document.getElementById('server-api-calls').textContent = formatNumber(totals.serverApiCallCount || 0);
       document.getElementById('ai-model-calls').textContent = formatNumber(totals.aiModelCallCount || 0);
+      document.getElementById('ads-calls').textContent = formatNumber(totals.adsCallCount || 0);
+      document.getElementById('ads-success-calls').textContent = formatNumber(totals.adsSuccessCount || 0);
+      document.getElementById('ads-failure-calls').textContent = formatNumber(totals.adsFailureCount || 0);
+      const adsPlacementMap = {};
+      (totals.adsByPlacement || []).forEach((row) => {
+        if (row && row.name) {
+          adsPlacementMap[row.name] = row;
+        }
+      });
+      const bannerAds = adsPlacementMap.admob_banner_load || {};
+      const interstitialAds = adsPlacementMap.admob_interstitial_load || {};
+      const rewardedInterstitialAds = adsPlacementMap.admob_rewarded_interstitial_load || {};
+      document.getElementById('ads-banner-success').textContent = formatNumber(bannerAds.success || 0);
+      document.getElementById('ads-banner-failure').textContent = formatNumber(bannerAds.failure || 0);
+      document.getElementById('ads-interstitial-success').textContent = formatNumber(interstitialAds.success || 0);
+      document.getElementById('ads-interstitial-failure').textContent = formatNumber(interstitialAds.failure || 0);
+      document.getElementById('ads-rewarded-interstitial-success').textContent = formatNumber(rewardedInterstitialAds.success || 0);
+      document.getElementById('ads-rewarded-interstitial-failure').textContent = formatNumber(rewardedInterstitialAds.failure || 0);
       const success = (totals.successRate * 100).toFixed(1) + '%';
       document.getElementById('success-rate').textContent = success;
       const rpsWindowSeconds = Number(meta.rpsWindowSeconds || 300);
@@ -1043,10 +1070,17 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       document.getElementById('bytes').textContent = formatNumber(totals.totalBytes || 0) + ' bytes';
       const readerBookOpenCount = Number(totals.readerBookOpenCount || 0);
       const readerChapterOpenCount = Number(totals.readerChapterOpenCount || 0);
-      const readerOpenTotalCount = Number(totals.readerOpenTotalCount || (readerBookOpenCount + readerChapterOpenCount));
+      const readerSummaryOpenCount = Number(totals.readerSummaryOpenCount || 0);
+      const readerSkimmingChapterOpenCount = Number(totals.readerSkimmingChapterOpenCount || 0);
+      const readerOpenTotalCount = Number(
+        totals.readerOpenTotalCount ||
+        (readerBookOpenCount + readerChapterOpenCount + readerSummaryOpenCount + readerSkimmingChapterOpenCount)
+      );
       document.getElementById('reader-opens').textContent = formatNumber(readerOpenTotalCount);
       document.getElementById('reader-book-opens').textContent = formatNumber(readerBookOpenCount);
       document.getElementById('reader-chapter-opens').textContent = formatNumber(readerChapterOpenCount);
+      document.getElementById('reader-summary-opens').textContent = formatNumber(readerSummaryOpenCount);
+      document.getElementById('reader-skimming-chapter-opens').textContent = formatNumber(readerSkimmingChapterOpenCount);
       const knowledgeHitCount = Number(totals.aiKnowledgeHitCount || 0);
       const knowledgeProbeCount = Number(totals.aiKnowledgeProbeCount || 0);
       const knowledgeHitRate = Number(totals.aiKnowledgeHitRate || 0);

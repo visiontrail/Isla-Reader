@@ -91,6 +91,26 @@ def test_usage_counters_are_reported_by_mode_without_affecting_api_totals():
         _ingest(
             client,
             {
+                "interface": "reader.summary_open",
+                "status_code": 200,
+                "latency_ms": 0,
+                "request_bytes": 0,
+                "source": "reader",
+            },
+        )
+        _ingest(
+            client,
+            {
+                "interface": "reader.skimming_chapter_open",
+                "status_code": 200,
+                "latency_ms": 0,
+                "request_bytes": 0,
+                "source": "reader",
+            },
+        )
+        _ingest(
+            client,
+            {
                 "interface": "ai.knowledge_probe.summary",
                 "status_code": 200,
                 "latency_ms": 0,
@@ -141,7 +161,9 @@ def test_usage_counters_are_reported_by_mode_without_affecting_api_totals():
         assert totals["totalTokens"] == 210
         assert totals["readerBookOpenCount"] == 1
         assert totals["readerChapterOpenCount"] == 2
-        assert totals["readerOpenTotalCount"] == 3
+        assert totals["readerSummaryOpenCount"] == 1
+        assert totals["readerSkimmingChapterOpenCount"] == 1
+        assert totals["readerOpenTotalCount"] == 5
         assert totals["aiKnowledgeProbeCount"] == 2
         assert totals["aiKnowledgeHitCount"] == 2
         assert totals["aiKnowledgeHitRate"] == 1.0
@@ -229,3 +251,69 @@ def test_server_api_and_ai_model_calls_are_counted_separately():
         assert totals["windowCount"] == 2
         assert totals["serverApiCallCount"] == 1
         assert totals["aiModelCallCount"] == 1
+
+
+def test_ads_calls_are_excluded_from_total_calls_and_reported_separately():
+    with TestClient(app) as client:
+        _login(client)
+
+        _ingest(
+            client,
+            {
+                "interface": "/v1/keys/ai",
+                "status_code": 200,
+                "latency_ms": 25.0,
+                "request_bytes": 128,
+                "source": "secure_config",
+            },
+        )
+        _ingest(
+            client,
+            {
+                "interface": "admob_banner_load",
+                "status_code": 200,
+                "latency_ms": 0,
+                "request_bytes": 0,
+                "source": "ads",
+            },
+        )
+        _ingest(
+            client,
+            {
+                "interface": "admob_interstitial_load",
+                "status_code": 500,
+                "latency_ms": 0,
+                "request_bytes": 0,
+                "source": "ads",
+            },
+        )
+        _ingest(
+            client,
+            {
+                "interface": "admob_rewarded_interstitial_load",
+                "status_code": 200,
+                "latency_ms": 0,
+                "request_bytes": 0,
+                "source": "ads",
+            },
+        )
+
+        response = client.get("/admin/metrics/data", params={"granularity": "day"})
+        assert response.status_code == 200
+        payload = response.json()
+        totals = payload["totals"]
+
+        assert totals["windowCount"] == 1
+        assert totals["serverApiCallCount"] == 1
+        assert totals["aiModelCallCount"] == 0
+        assert totals["adsCallCount"] == 3
+        assert totals["adsSuccessCount"] == 2
+        assert totals["adsFailureCount"] == 1
+
+        ads_by_placement = {row["name"]: row for row in totals["adsByPlacement"]}
+        assert ads_by_placement["admob_banner_load"]["success"] == 1
+        assert ads_by_placement["admob_banner_load"]["failure"] == 0
+        assert ads_by_placement["admob_interstitial_load"]["success"] == 0
+        assert ads_by_placement["admob_interstitial_load"]["failure"] == 1
+        assert ads_by_placement["admob_rewarded_interstitial_load"]["success"] == 1
+        assert ads_by_placement["admob_rewarded_interstitial_load"]["failure"] == 0

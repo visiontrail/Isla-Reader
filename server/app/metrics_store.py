@@ -34,6 +34,8 @@ GRANULARITY_CONFIG: Dict[str, Dict[str, object]] = {
 COUNTER_INTERFACES = {
     "reader.book_open",
     "reader.chapter_open",
+    "reader.summary_open",
+    "reader.skimming_chapter_open",
     "ai.knowledge_probe",
     "ai.knowledge_hit",
     "ai.knowledge_probe.summary",
@@ -48,6 +50,11 @@ SKIMMING_PROBE_INTERFACES = {"ai.knowledge_probe.skimming"}
 SKIMMING_HIT_INTERFACES = {"ai.knowledge_hit.skimming"}
 SERVER_API_INTERFACE_PREFIXES = ("/v1/", "/admin/")
 AI_MODEL_INTERFACE_PATH = "/chat/completions"
+AD_LOAD_INTERFACES = (
+    "admob_banner_load",
+    "admob_interstitial_load",
+    "admob_rewarded_interstitial_load",
+)
 
 
 def _isoformat_seconds(ts: datetime) -> str:
@@ -196,19 +203,21 @@ class MetricsStore:
         window_events = [e for e in events if e.timestamp >= window_start]
         recent_events = [e for e in events if e.timestamp >= recent_cutoff]
         api_window_events = [e for e in window_events if not _is_counter_interface(e.interface)]
-        rps_events = [e for e in api_window_events if e.timestamp >= rps_cutoff]
+        ads_window_events = [e for e in api_window_events if e.source == "ads"]
+        non_ads_api_window_events = [e for e in api_window_events if e.source != "ads"]
+        rps_events = [e for e in non_ads_api_window_events if e.timestamp >= rps_cutoff]
 
-        total = len(api_window_events)
-        server_api_call_count = sum(1 for e in api_window_events if _is_server_api_interface(e.interface))
-        ai_model_call_count = sum(1 for e in api_window_events if _is_ai_model_interface(e.interface))
-        successes = sum(1 for e in api_window_events if 200 <= e.status_code < 300)
-        avg_latency = sum(e.latency_ms for e in api_window_events) / total if total else 0.0
-        total_tokens = sum(e.tokens or 0 for e in api_window_events)
-        total_bytes = sum(e.request_bytes for e in api_window_events)
+        total = len(non_ads_api_window_events)
+        server_api_call_count = sum(1 for e in non_ads_api_window_events if _is_server_api_interface(e.interface))
+        ai_model_call_count = sum(1 for e in non_ads_api_window_events if _is_ai_model_interface(e.interface))
+        successes = sum(1 for e in non_ads_api_window_events if 200 <= e.status_code < 300)
+        avg_latency = sum(e.latency_ms for e in non_ads_api_window_events) / total if total else 0.0
+        total_tokens = sum(e.tokens or 0 for e in non_ads_api_window_events)
+        total_bytes = sum(e.request_bytes for e in non_ads_api_window_events)
         rps = len(rps_events) / rps_window.total_seconds() if rps_events else 0.0
 
         interface_stats: Dict[str, Dict[str, object]] = {}
-        for e in api_window_events:
+        for e in non_ads_api_window_events:
             stats = interface_stats.setdefault(
                 e.interface,
                 {
@@ -244,7 +253,7 @@ class MetricsStore:
             )
 
         source_stats: Dict[str, Dict[str, object]] = {}
-        for e in api_window_events:
+        for e in non_ads_api_window_events:
             stats = source_stats.setdefault(
                 e.source,
                 {
@@ -271,7 +280,7 @@ class MetricsStore:
             )
 
         timeline_buckets: Dict[str, Dict[str, int]] = {}
-        for e in api_window_events:
+        for e in non_ads_api_window_events:
             bucket_start = _bucket_start(e.timestamp, bucket)
             key = bucket_start.isoformat()
             entry = timeline_buckets.setdefault(key, {"count": 0, "failures": 0})
@@ -279,8 +288,39 @@ class MetricsStore:
             if not (200 <= e.status_code < 300):
                 entry["failures"] += 1
 
+        ad_type_stats: Dict[str, Dict[str, int]] = {
+            name: {"success": 0, "failure": 0} for name in AD_LOAD_INTERFACES
+        }
+        for event in ads_window_events:
+            placement_name = event.interface or "unknown"
+            stats = ad_type_stats.setdefault(placement_name, {"success": 0, "failure": 0})
+            if 200 <= event.status_code < 300:
+                stats["success"] += 1
+            else:
+                stats["failure"] += 1
+
+        ad_placement_priority = {name: index for index, name in enumerate(AD_LOAD_INTERFACES)}
+        ad_placement_stats = [
+            {
+                "name": name,
+                "success": stats["success"],
+                "failure": stats["failure"],
+                "count": stats["success"] + stats["failure"],
+            }
+            for name, stats in sorted(
+                ad_type_stats.items(),
+                key=lambda item: (ad_placement_priority.get(item[0], len(AD_LOAD_INTERFACES)), item[0]),
+            )
+        ]
+        ad_success_count = sum(stats["success"] for stats in ad_type_stats.values())
+        ad_failure_count = sum(stats["failure"] for stats in ad_type_stats.values())
+
         reader_book_open_count = sum(1 for e in window_events if e.interface == "reader.book_open")
         reader_chapter_open_count = sum(1 for e in window_events if e.interface == "reader.chapter_open")
+        reader_summary_open_count = sum(1 for e in window_events if e.interface == "reader.summary_open")
+        reader_skimming_chapter_open_count = sum(
+            1 for e in window_events if e.interface == "reader.skimming_chapter_open"
+        )
         ai_summary_probe_count = sum(1 for e in window_events if e.interface in SUMMARY_PROBE_INTERFACES)
         ai_summary_hit_count = sum(1 for e in window_events if e.interface in SUMMARY_HIT_INTERFACES)
         ai_skimming_probe_count = sum(1 for e in window_events if e.interface in SKIMMING_PROBE_INTERFACES)
@@ -306,9 +346,20 @@ class MetricsStore:
                 "windowCount": total,
                 "serverApiCallCount": server_api_call_count,
                 "aiModelCallCount": ai_model_call_count,
+                "adsCallCount": len(ads_window_events),
+                "adsSuccessCount": ad_success_count,
+                "adsFailureCount": ad_failure_count,
+                "adsByPlacement": ad_placement_stats,
                 "readerBookOpenCount": reader_book_open_count,
                 "readerChapterOpenCount": reader_chapter_open_count,
-                "readerOpenTotalCount": reader_book_open_count + reader_chapter_open_count,
+                "readerSummaryOpenCount": reader_summary_open_count,
+                "readerSkimmingChapterOpenCount": reader_skimming_chapter_open_count,
+                "readerOpenTotalCount": (
+                    reader_book_open_count
+                    + reader_chapter_open_count
+                    + reader_summary_open_count
+                    + reader_skimming_chapter_open_count
+                ),
                 "aiKnowledgeProbeCount": ai_knowledge_probe_count,
                 "aiKnowledgeHitCount": ai_knowledge_hit_count,
                 "aiKnowledgeHitRate": (

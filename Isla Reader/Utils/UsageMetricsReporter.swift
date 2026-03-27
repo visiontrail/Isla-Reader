@@ -23,6 +23,8 @@ enum UsageMetricsInterface {
     static let chatCompletions = "/chat/completions"
     static let readerBookOpen = "reader.book_open"
     static let readerChapterOpen = "reader.chapter_open"
+    static let readerSummaryOpen = "reader.summary_open"
+    static let readerSkimmingChapterOpen = "reader.skimming_chapter_open"
     static let aiKnowledgeProbe = "ai.knowledge_probe"
     static let aiKnowledgeHit = "ai.knowledge_hit"
     static let aiKnowledgeProbeSummary = "ai.knowledge_probe.summary"

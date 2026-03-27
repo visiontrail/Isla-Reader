@@ -39,6 +39,7 @@ struct SkimmingModeView: View {
     @State private var isActivelyReading = false
     @State private var readingHeartbeatTask: Task<Void, Never>?
     @State private var lastPublishedLiveActivityMinute: Int = -1
+    @State private var lastReportedSkimmingChapterIndex: Int?
     
     private let service = SkimmingModeService.shared
     private let preloadAheadChapterCount = 3
@@ -253,6 +254,7 @@ struct SkimmingModeView: View {
             guard chapters.indices.contains(newValue) else { return }
             service.storeLastVisitedChapterIndex(newValue, for: book)
             preloadSummaries(from: newValue)
+            reportSkimmingChapterOpenMetric(for: newValue)
         }
         .onChange(of: isCurrentChapterLoading) { newValue in
             if !newValue {
@@ -375,6 +377,7 @@ struct SkimmingModeView: View {
                     // 从缓存中恢复已生成的摘要
                     self.restoreCachedSummaries()
                     self.preloadSummaries(from: restoredIndex)
+                    self.reportSkimmingChapterOpenMetric(for: restoredIndex)
                 }
             } catch {
                 await MainActor.run {
@@ -383,6 +386,20 @@ struct SkimmingModeView: View {
                 }
             }
         }
+    }
+
+    private func reportSkimmingChapterOpenMetric(for index: Int) {
+        guard chapters.indices.contains(index) else { return }
+        guard lastReportedSkimmingChapterIndex != index else { return }
+        UsageMetricsReporter.shared.record(
+            interface: UsageMetricsInterface.readerSkimmingChapterOpen,
+            statusCode: 200,
+            latencyMs: 0,
+            requestBytes: 0,
+            retryCount: 0,
+            source: .reader
+        )
+        lastReportedSkimmingChapterIndex = index
     }
     
     private func restoreCachedSummaries() {

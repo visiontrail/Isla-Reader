@@ -48,6 +48,7 @@ struct AISummaryView: View {
             
             if isFirstOpen {
                 DebugLogger.info("AISummaryView: 首次打开，调用checkAndGenerateSummary")
+                reportSummaryOpenMetric()
                 checkAndGenerateSummary()
                 isFirstOpen = false
             } else {
@@ -57,6 +58,17 @@ struct AISummaryView: View {
         .onDisappear {
             BannerAdPreloadManager.shared.preloadSummaryBannerIfNeeded(trigger: "summary_view_on_disappear")
         }
+    }
+
+    private func reportSummaryOpenMetric() {
+        UsageMetricsReporter.shared.record(
+            interface: UsageMetricsInterface.readerSummaryOpen,
+            statusCode: 200,
+            latencyMs: 0,
+            requestBytes: 0,
+            retryCount: 0,
+            source: .reader
+        )
     }
     
     private var skimmingModeEntry: some View {
