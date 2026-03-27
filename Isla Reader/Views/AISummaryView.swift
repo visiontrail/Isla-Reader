@@ -176,39 +176,27 @@ struct AISummaryView: View {
             
             Spacer()
             
-            HStack(spacing: 12) {
-                // 刷新按钮
-                Button(action: refreshSummary) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.title2)
-                        .foregroundColor(.blue)
+            NavigationLink(destination: ReaderView(book: book)) {
+                HStack(spacing: 6) {
+                    Image(systemName: "book.fill")
+                        .font(.subheadline)
+                    Text(NSLocalizedString("ai.summary.start_reading", comment: "Start Reading"))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
                 }
-                .disabled(summaryService.isGenerating)
-                
-                // 开始阅读按钮
-                NavigationLink(destination: ReaderView(book: book)) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "book.fill")
-                            .font(.callout)
-                        Text(NSLocalizedString("ai.summary.start_reading", comment: "Start Reading"))
-                            .font(.callout)
-                            .fontWeight(.semibold)
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.8)]),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 11)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.8)]),
+                        startPoint: .leading,
+                        endPoint: .trailing
                     )
-                    .cornerRadius(8)
-                }
-                .buttonStyle(PlainButtonStyle())
-                
+                )
+                .cornerRadius(10)
             }
+            .buttonStyle(PlainButtonStyle())
         }
         .padding()
         .background(Color(.systemGray5))
