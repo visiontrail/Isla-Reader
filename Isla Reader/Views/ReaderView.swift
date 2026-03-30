@@ -950,6 +950,7 @@ struct ReaderView: View {
         text: String,
         maxHeight: CGFloat,
         lineLimit: Int,
+        minHeight: CGFloat = 0,
         title: String = NSLocalizedString("reader.selection.title", comment: "")
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -968,7 +969,7 @@ struct ReaderView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(maxHeight: maxHeight, alignment: .topLeading)
+        .frame(minHeight: minHeight, maxHeight: maxHeight, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.white.opacity(0.7))
@@ -1477,6 +1478,11 @@ struct ReaderView: View {
             saveHighlightNoteDraftIfNeeded()
             noteDraftHighlightObjectID = nil
         }
+        .onChange(of: showingHighlightAskComposer) { isShowing in
+            if isShowing {
+                scheduleHighlightQuestionFieldFocus()
+            }
+        }
     }
 
     private var highlightActionSheetContent: some View {
@@ -1634,19 +1640,29 @@ struct ReaderView: View {
         let composerWidth = min(max(geometry.size.width - 16, 320), 820)
         let trimmedQuestion = highlightAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         let canSubmitQuestion = !trimmedQuestion.isEmpty && !isLoadingAIResponse
+        let screenHeight = UIScreen.main.bounds.height
+        let containerConsumedHeight = max(0, screenHeight - geometry.size.height)
+        let keyboardAdditionalInset = max(0, keyboardHeight - containerConsumedHeight)
         let defaultBottomPadding = geometry.safeAreaInsets.bottom + 12
-        let keyboardPinnedBottomPadding = keyboardHeight > 0 ? keyboardHeight : defaultBottomPadding
+        let keyboardPinnedBottomPadding = max(defaultBottomPadding, keyboardAdditionalInset + 6)
         let resolvedText = activeHighlightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? highlight.selectedText.trimmingCharacters(in: .whitespacesAndNewlines)
             : activeHighlightText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let previewMaxHeight = min(220, max(78, geometry.size.height * 0.34))
-        let previewLineLimit = max(2, Int((previewMaxHeight / 22).rounded(.down)))
+        let panelChromeHeight: CGFloat = 124
+        let availablePreviewSpace = max(
+            96,
+            geometry.size.height - geometry.safeAreaInsets.top - keyboardPinnedBottomPadding - panelChromeHeight
+        )
+        let previewMaxHeight = min(320, availablePreviewSpace)
+        let previewMinHeight = min(140, previewMaxHeight)
+        let previewLineLimit = max(4, Int((previewMaxHeight / 22).rounded(.down)))
 
         return VStack(spacing: 10) {
             selectionPreviewCard(
                 text: resolvedText.isEmpty ? NSLocalizedString("common.no_content", comment: "") : resolvedText,
                 maxHeight: previewMaxHeight,
                 lineLimit: previewLineLimit,
+                minHeight: previewMinHeight,
                 title: NSLocalizedString("highlight.action.content", comment: "")
             )
 
@@ -1705,14 +1721,17 @@ struct ReaderView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .padding(.horizontal, 8)
         .padding(.bottom, keyboardPinnedBottomPadding)
+        .onAppear {
+            scheduleHighlightQuestionFieldFocus()
+        }
     }
 
     private func openHighlightAskComposer() {
         highlightAIQuestionDraft = ""
+        isHighlightNoteEditorFocused = false
+        isCustomQuestionFieldFocused = false
         showingHighlightAskComposer = true
-        DispatchQueue.main.async {
-            isHighlightQuestionFieldFocused = true
-        }
+        scheduleHighlightQuestionFieldFocus()
     }
 
     private func dismissHighlightAskComposer(clearDraft: Bool = false) {
@@ -1720,6 +1739,18 @@ struct ReaderView: View {
         showingHighlightAskComposer = false
         if clearDraft {
             highlightAIQuestionDraft = ""
+        }
+    }
+
+    private func scheduleHighlightQuestionFieldFocus() {
+        guard showingHighlightAskComposer else { return }
+        DispatchQueue.main.async {
+            guard showingHighlightAskComposer else { return }
+            isHighlightQuestionFieldFocused = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            guard showingHighlightAskComposer else { return }
+            isHighlightQuestionFieldFocused = true
         }
     }
 
