@@ -895,7 +895,7 @@ struct ReaderView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                HStack(spacing: 10) {
+                HStack(alignment: .bottom, spacing: 10) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(Color.blue.opacity(0.9))
@@ -903,9 +903,12 @@ struct ReaderView: View {
 
                     TextField(
                         NSLocalizedString("reader.ai.question.placeholder", comment: ""),
-                        text: $customAIQuestionDraft
+                        text: $customAIQuestionDraft,
+                        axis: .vertical
                     )
                     .textInputAutocapitalization(.sentences)
+                    .lineLimit(1...4)
+                    .fixedSize(horizontal: false, vertical: true)
                     .submitLabel(.send)
                     .focused($isCustomQuestionFieldFocused)
                     .onSubmit {
@@ -1788,7 +1791,7 @@ struct ReaderView: View {
                 title: NSLocalizedString("highlight.action.content", comment: "")
             )
 
-            HStack(spacing: 10) {
+            HStack(alignment: .bottom, spacing: 10) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(Color.blue.opacity(0.9))
@@ -1796,9 +1799,12 @@ struct ReaderView: View {
 
                 TextField(
                     NSLocalizedString("reader.ai.question.placeholder", comment: ""),
-                    text: $highlightAIQuestionDraft
+                    text: $highlightAIQuestionDraft,
+                    axis: .vertical
                 )
                 .textInputAutocapitalization(.sentences)
+                .lineLimit(1...4)
+                .fixedSize(horizontal: false, vertical: true)
                 .submitLabel(.send)
                 .focused($isHighlightQuestionFieldFocused)
                 .onSubmit {
