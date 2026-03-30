@@ -1151,6 +1151,8 @@ struct HighlightListSheet: View {
     @State private var sharePreviewPayload: HighlightSharePreviewPayload?
     @State private var shareFileURLToCleanup: URL?
     @State private var generatingShareHighlightObjectID: NSManagedObjectID?
+    @State private var isSelecting = false
+    @State private var selectedHighlightObjectIDs: Set<NSManagedObjectID> = []
 
     private struct HighlightListAlert: Identifiable {
         let id = UUID()
@@ -1182,17 +1184,21 @@ struct HighlightListSheet: View {
                     ForEach(displayedHighlights, id: \.objectID) { highlight in
                         highlightRow(for: highlight)
                             .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                ForEach(ReaderColorPalette.highlightOptions) { option in
-                                    highlightColorSwipeButton(option, for: highlight)
+                                if !isSelecting {
+                                    ForEach(ReaderColorPalette.highlightOptions) { option in
+                                        highlightColorSwipeButton(option, for: highlight)
+                                    }
                                 }
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    deleteHighlight(highlight)
-                                } label: {
-                                    Label(NSLocalizedString("highlight.list.delete", comment: ""), systemImage: "trash")
+                                if !isSelecting {
+                                    Button(role: .destructive) {
+                                        deleteHighlight(highlight)
+                                    } label: {
+                                        Label(NSLocalizedString("highlight.list.delete", comment: ""), systemImage: "trash")
+                                    }
+                                    .tint(.red)
                                 }
-                                .tint(.red)
                             }
                     }
                 }
@@ -1212,21 +1218,39 @@ struct HighlightListSheet: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Picker(
-                            NSLocalizedString("settings.highlight_sort.title", comment: ""),
-                            selection: $appSettings.highlightSortMode
-                        ) {
-                            ForEach(HighlightSortMode.allCases, id: \.rawValue) { mode in
-                                Text(mode.displayName).tag(mode)
-                            }
+                    if isSelecting {
+                        Button(NSLocalizedString("common.cancel", comment: "")) {
+                            exitSelectionMode()
                         }
-                    } label: {
-                        Label(
-                            NSLocalizedString("settings.highlight_sort.title", comment: ""),
-                            systemImage: "arrow.up.arrow.down"
-                        )
-                        .labelStyle(.titleAndIcon)
+                    } else {
+                        Button(NSLocalizedString("common.select", comment: "")) {
+                            enterSelectionMode()
+                        }
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if isSelecting {
+                        Button(NSLocalizedString("highlight.list.merge", comment: "")) {
+                            mergeSelectedHighlights()
+                        }
+                        .disabled(selectedHighlightObjectIDs.count < 2)
+                    } else {
+                        Menu {
+                            Picker(
+                                NSLocalizedString("settings.highlight_sort.title", comment: ""),
+                                selection: $appSettings.highlightSortMode
+                            ) {
+                                ForEach(HighlightSortMode.allCases, id: \.rawValue) { mode in
+                                    Text(mode.displayName).tag(mode)
+                                }
+                            }
+                        } label: {
+                            Label(
+                                NSLocalizedString("settings.highlight_sort.title", comment: ""),
+                                systemImage: "arrow.up.arrow.down"
+                            )
+                            .labelStyle(.titleAndIcon)
+                        }
                     }
                 }
             }
@@ -1247,6 +1271,9 @@ struct HighlightListSheet: View {
         .onAppear {
             DebugLogger.info("HighlightListSheet: 显示书籍高亮/笔记列表 - \(book.displayTitle)")
             viewContext.refreshAllObjects()
+        }
+        .onDisappear {
+            exitSelectionMode()
         }
     }
 
@@ -1314,23 +1341,42 @@ struct HighlightListSheet: View {
     }
     
     private func highlightRow(for highlight: Highlight) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(highlight.highlightColor)
-                    .frame(width: 10, height: 10)
-                Text(chapterLabel(for: highlight))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                Spacer(minLength: 12)
-                Text(highlight.formattedDate)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+        HStack(alignment: .top, spacing: 12) {
+            if isSelecting {
+                Image(systemName: selectedHighlightObjectIDs.contains(highlight.objectID) ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(selectedHighlightObjectIDs.contains(highlight.objectID) ? .accentColor : .secondary)
+                    .font(.title3)
+                    .padding(.top, 2)
             }
-            
-            if onSelect != nil, highlight.readingLocation != nil {
-                Button(action: { openHighlightLocation(for: highlight) }) {
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(highlight.highlightColor)
+                        .frame(width: 10, height: 10)
+                    Text(chapterLabel(for: highlight))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    Spacer(minLength: 12)
+                    Text(highlight.formattedDate)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+
+                if !isSelecting, onSelect != nil, highlight.readingLocation != nil {
+                    Button(action: { openHighlightLocation(for: highlight) }) {
+                        Text(highlight.displayText)
+                            .font(.body)
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(highlight.highlightColor.opacity(0.48))
+                            .cornerRadius(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                } else {
                     Text(highlight.displayText)
                         .font(.body)
                         .foregroundColor(.primary)
@@ -1338,41 +1384,39 @@ struct HighlightListSheet: View {
                         .padding(.vertical, 8)
                         .background(highlight.highlightColor.opacity(0.48))
                         .cornerRadius(10)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(.plain)
-            } else {
-                Text(highlight.displayText)
-                    .font(.body)
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(highlight.highlightColor.opacity(0.48))
-                    .cornerRadius(10)
-            }
-            
-            if let noteText = noteText(for: highlight) {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "note.text")
+
+                if let noteText = noteText(for: highlight) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "note.text")
+                            .foregroundColor(.secondary)
+                            .padding(.top, 2)
+                        MarkdownText(noteText, lineSpacing: 4)
+                            .foregroundColor(.primary)
+                    }
+                } else {
+                    Label(NSLocalizedString("highlight.action.no_note", comment: ""), systemImage: "note.text")
+                        .font(.footnote)
                         .foregroundColor(.secondary)
-                        .padding(.top, 2)
-                    MarkdownText(noteText, lineSpacing: 4)
-                        .foregroundColor(.primary)
                 }
-            } else {
-                Label(NSLocalizedString("highlight.action.no_note", comment: ""), systemImage: "note.text")
-                    .font(.footnote)
+
+                if !isSelecting {
+                    HStack(spacing: 12) {
+                        Spacer(minLength: 8)
+                        inlineActionButtons(for: highlight)
+                    }
+                    .font(.caption)
                     .foregroundColor(.secondary)
+                }
             }
-            
-            HStack(spacing: 12) {
-                Spacer(minLength: 8)
-                inlineActionButtons(for: highlight)
-            }
-            .font(.caption)
-            .foregroundColor(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard isSelecting else { return }
+            toggleSelection(for: highlight)
+        }
     }
     
     private func chapterLabel(for highlight: Highlight) -> String {
@@ -1514,6 +1558,80 @@ struct HighlightListSheet: View {
 
     private func isGeneratingShare(for highlight: Highlight) -> Bool {
         generatingShareHighlightObjectID == highlight.objectID
+    }
+
+    private func enterSelectionMode() {
+        isSelecting = true
+        selectedHighlightObjectIDs.removeAll()
+    }
+
+    private func exitSelectionMode() {
+        isSelecting = false
+        selectedHighlightObjectIDs.removeAll()
+    }
+
+    private func toggleSelection(for highlight: Highlight) {
+        if selectedHighlightObjectIDs.contains(highlight.objectID) {
+            selectedHighlightObjectIDs.remove(highlight.objectID)
+        } else {
+            selectedHighlightObjectIDs.insert(highlight.objectID)
+        }
+    }
+
+    private func mergeSelectedHighlights() {
+        let selectedItems = displayedHighlights.filter { selectedHighlightObjectIDs.contains($0.objectID) }
+        guard selectedItems.count >= 2,
+              let first = selectedItems.first,
+              let last = selectedItems.last else {
+            return
+        }
+
+        let mergedText = selectedItems
+            .map { $0.selectedText.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
+
+        guard !mergedText.isEmpty else {
+            return
+        }
+
+        let mergedNote = selectedItems
+            .compactMap { noteText(for: $0) }
+            .joined(separator: "\n\n")
+
+        let mergedHighlight = Highlight(context: viewContext)
+        mergedHighlight.id = UUID()
+        mergedHighlight.selectedText = mergedText
+        mergedHighlight.startPosition = first.startPosition
+        mergedHighlight.endPosition = last.endPosition
+        mergedHighlight.chapter = first.chapter
+        mergedHighlight.pageNumber = first.pageNumber
+        // Color strategy: keep the first selected highlight color when inconsistent.
+        mergedHighlight.colorHex = first.colorHex
+        mergedHighlight.note = mergedNote.isEmpty ? nil : mergedNote
+        mergedHighlight.createdAt = first.createdAt
+        mergedHighlight.updatedAt = Date()
+        mergedHighlight.book = book
+
+        selectedItems.forEach { viewContext.delete($0) }
+
+        do {
+            try viewContext.save()
+            if let editingHighlight, selectedHighlightObjectIDs.contains(editingHighlight.objectID) {
+                self.editingHighlight = nil
+            }
+            if let generatingShareHighlightObjectID, selectedHighlightObjectIDs.contains(generatingShareHighlightObjectID) {
+                self.generatingShareHighlightObjectID = nil
+            }
+            DebugLogger.info("HighlightListSheet: 合并高亮成功，数量=\(selectedItems.count)")
+            exitSelectionMode()
+        } catch {
+            DebugLogger.error("HighlightListSheet: 合并高亮失败", error: error)
+            activeAlert = HighlightListAlert(
+                title: NSLocalizedString("reader.highlight.save_failed", comment: ""),
+                message: nil
+            )
+        }
     }
 
     private func deleteHighlight(_ highlight: Highlight) {

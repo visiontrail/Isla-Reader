@@ -32,6 +32,7 @@
 "app.privacy_policy" = "プライバシーポリシー";
 "app.terms_of_service" = "利用規約";
 "common.done" = "完了";
+"common.select" = "選択";
 "common.close" = "閉じる";
 "update.prompt.default_title" = "アップデートがあります";
 "update.prompt.default_message_soft" = "新しいバージョンが利用できます。より良い体験のために更新してください。";
@@ -172,6 +173,7 @@
 "highlight.list.edit_note" = "ノートを編集";
 "highlight.list.share_note" = "ノートを共有";
 "highlight.list.delete" = "削除";
+"highlight.list.merge" = "結合";
 "highlight.list.change_color" = "色を変更";
 "highlight.list.unknown_chapter" = "不明な章";
 "highlight.share.preview_title" = "共有プレビュー";

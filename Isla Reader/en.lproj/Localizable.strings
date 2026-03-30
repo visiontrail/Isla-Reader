@@ -32,6 +32,7 @@
 "app.privacy_policy" = "Privacy Policy";
 "app.terms_of_service" = "Terms of Service";
 "common.done" = "Done";
+"common.select" = "Select";
 "common.close" = "Close";
 "update.prompt.default_title" = "Update Available";
 "update.prompt.default_message_soft" = "A new version is available. Update now for the best experience.";
@@ -172,6 +173,7 @@
 "highlight.list.edit_note" = "Edit Note";
 "highlight.list.share_note" = "Share Note";
 "highlight.list.delete" = "Delete";
+"highlight.list.merge" = "Merge";
 "highlight.list.change_color" = "Change Color";
 "highlight.list.unknown_chapter" = "Unknown chapter";
 "highlight.share.preview_title" = "Share Preview";

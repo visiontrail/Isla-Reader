@@ -32,6 +32,7 @@
 "app.privacy_policy" = "隐私政策";
 "app.terms_of_service" = "服务条款";
 "common.done" = "完成";
+"common.select" = "选择";
 "common.close" = "关闭";
 "update.prompt.default_title" = "发现新版本";
 "update.prompt.default_message_soft" = "检测到新版本，建议立即更新以获得更好的体验。";
@@ -172,6 +173,7 @@
 "highlight.list.edit_note" = "编辑笔记";
 "highlight.list.share_note" = "分享笔记";
 "highlight.list.delete" = "删除";
+"highlight.list.merge" = "合并";
 "highlight.list.change_color" = "更改颜色";
 "highlight.list.unknown_chapter" = "未知章节";
 "highlight.share.preview_title" = "分享预览";
