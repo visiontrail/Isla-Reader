@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -317,3 +318,37 @@ def test_ads_calls_are_excluded_from_total_calls_and_reported_separately():
         assert ads_by_placement["admob_interstitial_load"]["failure"] == 1
         assert ads_by_placement["admob_rewarded_interstitial_load"]["success"] == 1
         assert ads_by_placement["admob_rewarded_interstitial_load"]["failure"] == 0
+
+
+def test_granularity_window_uses_natural_day_week_month_starts():
+    with TestClient(app) as client:
+        _login(client)
+
+        _ingest(
+            client,
+            {
+                "interface": "/v1/keys/ai",
+                "status_code": 200,
+                "latency_ms": 18.0,
+                "request_bytes": 64,
+                "source": "secure_config",
+            },
+        )
+
+        for granularity in ("day", "week", "month"):
+            response = client.get("/admin/metrics/data", params={"granularity": granularity})
+            assert response.status_code == 200
+            meta = response.json()["meta"]
+
+            window_end = datetime.fromisoformat(meta["windowEnd"]).astimezone(timezone.utc)
+            window_start = datetime.fromisoformat(meta["windowStart"]).astimezone(timezone.utc)
+
+            day_start = window_end.replace(hour=0, minute=0, second=0, microsecond=0)
+            if granularity == "day":
+                expected_start = day_start
+            elif granularity == "week":
+                expected_start = day_start - timedelta(days=day_start.weekday())
+            else:
+                expected_start = day_start.replace(day=1)
+
+            assert window_start == expected_start

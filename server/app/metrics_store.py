@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 from .logging_utils import get_logger
@@ -12,22 +12,19 @@ from .logging_utils import get_logger
 DEFAULT_GRANULARITY = "day"
 GRANULARITY_CONFIG: Dict[str, Dict[str, object]] = {
     "day": {
-        "window": timedelta(days=1),
         "bucket": "hour",
-        "label": "Past 24 hours",
-        "timeline_label": "Hourly buckets",
+        "label": "Today",
+        "timeline_label": "Hourly buckets (today)",
     },
     "week": {
-        "window": timedelta(days=7),
         "bucket": "day",
-        "label": "Past 7 days",
-        "timeline_label": "Daily buckets (7d)",
+        "label": "This week",
+        "timeline_label": "Daily buckets (this week)",
     },
     "month": {
-        "window": timedelta(days=30),
         "bucket": "day",
-        "label": "Past 30 days",
-        "timeline_label": "Daily buckets (30d)",
+        "label": "This month",
+        "timeline_label": "Daily buckets (this month)",
     },
 }
 
@@ -75,6 +72,20 @@ def _bucket_start(ts: datetime, bucket: str) -> datetime:
     if bucket == "hour":
         return ts_utc.replace(minute=0, second=0, microsecond=0)
     return ts_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _window_start(now: datetime, granularity: str) -> datetime:
+    now_utc = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    now_utc = now_utc.astimezone(timezone.utc)
+    day_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    if granularity == "day":
+        return day_start
+    if granularity == "week":
+        return day_start - timedelta(days=day_start.weekday())
+    if granularity == "month":
+        return day_start.replace(day=1)
+    return day_start
 
 
 def _is_counter_interface(interface: str) -> bool:
@@ -189,19 +200,19 @@ class MetricsStore:
     def overview(self, granularity: str = DEFAULT_GRANULARITY) -> MetricsOverview:
         events = list(self._events)
         granularity_key, granularity_config = _resolve_granularity(granularity)
-        window = cast(timedelta, granularity_config["window"])
         bucket = str(granularity_config["bucket"])
         window_label = granularity_config.get("label", "")
         timeline_label = granularity_config.get("timeline_label", "")
 
         now = datetime.now(timezone.utc)
-        window_start = now - window
+        window_start = _window_start(now, granularity_key)
+        window_duration = max(now - window_start, timedelta(0))
         recent_cutoff = now - timedelta(days=7)
         rps_window = timedelta(minutes=5)
         rps_cutoff = now - rps_window
 
-        window_events = [e for e in events if e.timestamp >= window_start]
-        recent_events = [e for e in events if e.timestamp >= recent_cutoff]
+        window_events = [e for e in events if window_start <= e.timestamp <= now]
+        recent_events = [e for e in events if recent_cutoff <= e.timestamp <= now]
         api_window_events = [e for e in window_events if not _is_counter_interface(e.interface)]
         ads_window_events = [e for e in api_window_events if e.source == "ads"]
         non_ads_api_window_events = [e for e in api_window_events if e.source != "ads"]
@@ -391,7 +402,7 @@ class MetricsStore:
                 "windowStart": _isoformat_seconds(window_start),
                 "windowEnd": _isoformat_seconds(now),
                 "windowTimezone": "UTC",
-                "windowHours": int(window.total_seconds() // 3600),
+                "windowHours": int(window_duration.total_seconds() // 3600),
                 "timelineBucket": bucket,
                 "timelineLabel": timeline_label,
                 "availableGranularities": list(GRANULARITY_CONFIG.keys()),
