@@ -68,6 +68,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private var needsHighlightSync = true
     private var isApplyingHighlights = false
     private var lastSelectionFocusRepairTimestamp: CFTimeInterval = 0
+    private var lastAppliedSelectionMaintenanceSuspended: Bool?
     private var lastSelectionVisualNudgeKey: String?
     private var lastSelectionVisualNudgeTimestamp: CFTimeInterval = 0
     private var splitTailNudgeDirection: CGFloat = 1
@@ -80,10 +81,12 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         DebugLogger.info("[HighlightNav] didFinish: 页面加载完成，准备 applyPagination, highlightToken=\(parent.highlightNavigationToken), highlightOffset=\(parent.highlightTextOffset.map(String.init) ?? "nil")")
         applyPagination(on: webView)
         isLoaded = true
+        lastAppliedSelectionMaintenanceSuspended = nil
         lastDisplayedPageIndex = parent.currentPageIndex
         scrollToCurrentPage(on: webView, animated: false)
         parent.onLoadFinished?()
         applyHighlightsIfReady(on: webView)
+        applySelectionMaintenanceModeIfNeeded(on: webView)
     }
     
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -159,6 +162,10 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private func ensureWebViewFirstResponderForSelectionIfNeeded(trigger: String, selectedText: String) {
         let trimmedText = selectedText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return }
+        guard !parent.isSelectionInputFocused else {
+            DebugLogger.info("[SelectionDebug] selection.focus.repair.skip trigger=\(trigger),reason=selectionInputFocused")
+            return
+        }
         guard let webView else { return }
         guard !webView.isFirstResponder else { return }
 
@@ -648,6 +655,34 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         self.parent = newParent
     }
 
+    func applySelectionMaintenanceModeIfNeeded(on webView: WKWebView?) {
+        guard let webView else { return }
+        guard isLoaded else { return }
+
+        let shouldSuspend = parent.isSelectionInputFocused
+        guard lastAppliedSelectionMaintenanceSuspended != shouldSuspend else { return }
+
+        let jsFlag = shouldSuspend ? "true" : "false"
+        let js = """
+        (function() {
+            if (typeof setSelectionMaintenanceSuspended !== 'function') {
+                return false;
+            }
+            return setSelectionMaintenanceSuspended(\(jsFlag), 'swift.updateUIView');
+        })();
+        """
+        webView.evaluateJavaScript(js) { [weak self] _, error in
+            guard let self else { return }
+            if let error {
+                self.lastAppliedSelectionMaintenanceSuspended = nil
+                DebugLogger.warning("ReaderWebView: 更新选区维护挂起状态失败 - \(error.localizedDescription)")
+                return
+            }
+            self.lastAppliedSelectionMaintenanceSuspended = shouldSuspend
+            DebugLogger.info("[SelectionDebug] selection.maintenance.swift suspend=\(shouldSuspend)")
+        }
+    }
+
     // Reset flags when reloading HTML content
     func prepareForNewLoad() {
         pendingHTMLLoadToken += 1
@@ -663,6 +698,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         }
         needsHighlightSync = true
         isApplyingHighlights = false
+        lastAppliedSelectionMaintenanceSuspended = nil
     }
 
     func updateHighlights(_ highlights: [ReaderHighlight]) {
@@ -1012,6 +1048,7 @@ struct ReaderWebView: UIViewRepresentable {
     var highlightTextOffset: Int?
     var highlightNavigationToken: Int = 0
     var pageTurnStyle: PageTurnAnimationStyle = .fade
+    var isSelectionInputFocused: Bool = false
     
     var onToolbarToggle: (() -> Void)?
     var onTextSelection: ((SelectedTextInfo) -> Void)?
@@ -1182,6 +1219,7 @@ struct ReaderWebView: UIViewRepresentable {
         guard let webView = context.coordinator.webView else { return }
         // Sync latest SwiftUI state to coordinator
         context.coordinator.updateParent(self)
+        context.coordinator.applySelectionMaintenanceModeIfNeeded(on: webView)
         context.coordinator.updateHighlights(highlights)
         let styleSignature = Self.makeStyleSignature(
             fontSize: appSettings.readingFontSize.fontSize,
@@ -1588,6 +1626,8 @@ struct ReaderWebView: UIViewRepresentable {
         var currentHorizontalOverflowMode = null;
         var lastReaderHorizontalDragLogAt = 0;
         var isApplyingPaginationLayout = false;
+        var isSelectionMaintenanceSuspended = false;
+        var lastSelectionMaintenanceSuspendLogAt = 0;
 
         function postSelectionDebugLog(label, details) {
             try {
@@ -2293,6 +2333,7 @@ struct ReaderWebView: UIViewRepresentable {
         }
 
         function focusReaderDocument() {
+            if (isSelectionMaintenanceSuspended) { return; }
             try { window.focus(); } catch (e) {}
             try {
                 if (document.body && document.body.setAttribute) {
@@ -2417,6 +2458,24 @@ struct ReaderWebView: UIViewRepresentable {
             setSelectionHardLock(false, 'clearSelectionLockState');
         }
 
+        function setSelectionMaintenanceSuspended(suspended, sourceTag) {
+            const next = !!suspended;
+            if (isSelectionMaintenanceSuspended === next) {
+                return false;
+            }
+            isSelectionMaintenanceSuspended = next;
+            postSelectionDebugLog(
+                'selection.maintenance.mode',
+                'suspended=' + next +
+                ',source=' + String(sourceTag || 'unknown') +
+                ',state=' + describeNativeSelectionState()
+            );
+            if (!next) {
+                notifySelectionChange();
+            }
+            return true;
+        }
+
         function enforceSelectionLockedPageIfNeeded() {
             if (selectionLockedPageIndex === null || isRestoringSelectionPage || isContinuingSelectionToNextPage) { return; }
             const currentPage = Math.max(0, Math.round(getScrollLeft() / getPerPage()));
@@ -2518,6 +2577,17 @@ struct ReaderWebView: UIViewRepresentable {
 
         function notifySelectionChange() {
             if (isContinuingSelectionToNextPage) { return; }
+            if (isSelectionMaintenanceSuspended) {
+                const now = Date.now();
+                if (now - lastSelectionMaintenanceSuspendLogAt > 300) {
+                    lastSelectionMaintenanceSuspendLogAt = now;
+                    postSelectionDebugLog(
+                        'notifySelectionChange.suspended',
+                        'state=' + describeNativeSelectionState()
+                    );
+                }
+                return;
+            }
             const pageIndex = Math.max(0, Math.round(getScrollLeft() / getPerPage()));
             const segments = buildTextSegments();
             let nativePayload = serializeSelection();

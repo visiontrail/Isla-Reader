@@ -375,6 +375,7 @@ struct ReaderView: View {
                 highlightTextOffset: activeHighlightNavigation?.textOffset,
                 highlightNavigationToken: activeHighlightNavigation?.token ?? 0,
                 pageTurnStyle: pageTurnAnimationStyle,
+                isSelectionInputFocused: isCustomQuestionFieldFocused,
                 onToolbarToggle: {
                     handleTap()
                 },
