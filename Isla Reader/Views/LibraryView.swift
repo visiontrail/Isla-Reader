@@ -1153,6 +1153,7 @@ struct HighlightListSheet: View {
     @State private var generatingShareHighlightObjectID: NSManagedObjectID?
     @State private var isSelecting = false
     @State private var selectedHighlightObjectIDs: Set<NSManagedObjectID> = []
+    @FocusState private var isNoteEditorFocused: Bool
 
     private struct HighlightListAlert: Identifiable {
         let id = UUID()
@@ -1736,17 +1737,18 @@ struct HighlightListSheet: View {
 
     private func noteEditorSheet(for highlight: Highlight) -> some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(highlight.displayText)
                     .font(.system(size: 15, design: .serif))
-                    .foregroundColor(.secondary)
-                    .padding(12)
+                    .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.primary.opacity(0.05))
-                    .cornerRadius(12)
+                    .cornerRadius(10)
 
                 TextEditor(text: $noteDraft)
-                    .frame(minHeight: 220)
+                    .font(.body)
+                    .focused($isNoteEditorFocused)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(8)
                     .background(Color.primary.opacity(0.05))
                     .cornerRadius(12)
@@ -1754,26 +1756,36 @@ struct HighlightListSheet: View {
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(Color.primary.opacity(0.08))
                     )
-
-                Spacer()
             }
             .padding()
-            .navigationTitle(noteText(for: highlight) == nil ? NSLocalizedString("reader.note.add", comment: "") : NSLocalizedString("highlight.list.edit_note", comment: ""))
+            .navigationTitle(noteText(for: highlight) == nil
+                ? NSLocalizedString("reader.note.add", comment: "")
+                : NSLocalizedString("highlight.list.edit_note", comment: ""))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(NSLocalizedString("common.cancel", comment: "")) {
+                        isNoteEditorFocused = false
                         editingHighlight = nil
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button(NSLocalizedString("common.save", comment: "")) {
+                        isNoteEditorFocused = false
                         saveEditedNote()
                     }
                 }
+            }
+            .onAppear {
+                DispatchQueue.main.async {
+                    isNoteEditorFocused = true
+                }
+            }
+            .onDisappear {
+                isNoteEditorFocused = false
             }
         }
     }
