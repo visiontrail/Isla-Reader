@@ -168,12 +168,18 @@ async def me(user: str = Depends(require_dashboard_user)) -> dict:
 @router.get("/admin/metrics/data")
 async def metrics_data(
     granularity: str = "day",
+    tz_offset_minutes: int | None = None,
     user: str = Depends(require_dashboard_user),
     settings: Settings = Depends(get_settings),
 ) -> JSONResponse:
     store = _store(settings)
-    overview = store.overview(granularity=granularity)
-    logger.debug("Dashboard metrics data requested by %s (granularity=%s)", user, granularity)
+    overview = store.overview(granularity=granularity, tz_offset_minutes=tz_offset_minutes)
+    logger.debug(
+        "Dashboard metrics data requested by %s (granularity=%s, tz_offset_minutes=%s)",
+        user,
+        granularity,
+        tz_offset_minutes,
+    )
     return JSONResponse(overview.model_dump())
 
 
@@ -1206,7 +1212,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     async function loadData() {
-      const res = await fetch(`/admin/metrics/data?granularity=${encodeURIComponent(currentGranularity)}`, { credentials: 'include' });
+      const params = new URLSearchParams({
+        granularity: currentGranularity,
+        tz_offset_minutes: String(new Date().getTimezoneOffset()),
+      });
+      const res = await fetch(`/admin/metrics/data?${params.toString()}`, { credentials: 'include' });
       if (!res.ok) {
         sessionIndicator.textContent = 'Auth required';
         dashboard.classList.add('hidden');

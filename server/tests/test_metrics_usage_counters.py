@@ -352,3 +352,31 @@ def test_granularity_window_uses_natural_day_week_month_starts():
                 expected_start = day_start.replace(day=1)
 
             assert window_start == expected_start
+
+
+def test_granularity_window_respects_client_timezone_offset():
+    with TestClient(app) as client:
+        _login(client)
+
+        _ingest(
+            client,
+            {
+                "interface": "/v1/keys/ai",
+                "status_code": 200,
+                "latency_ms": 15.0,
+                "request_bytes": 64,
+                "source": "secure_config",
+            },
+        )
+
+        response = client.get("/admin/metrics/data", params={"granularity": "day", "tz_offset_minutes": -480})
+        assert response.status_code == 200
+        meta = response.json()["meta"]
+
+        window_end = datetime.fromisoformat(meta["windowEnd"]).astimezone(timezone.utc)
+        window_start = datetime.fromisoformat(meta["windowStart"]).astimezone(timezone.utc)
+        local_tz = timezone(timedelta(hours=8))
+        local_day_start = window_end.astimezone(local_tz).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        assert window_start == local_day_start.astimezone(timezone.utc)
+        assert meta["windowTimezone"] == "UTC+08:00"

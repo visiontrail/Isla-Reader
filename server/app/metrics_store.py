@@ -74,10 +74,28 @@ def _bucket_start(ts: datetime, bucket: str) -> datetime:
     return ts_utc.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def _timezone_from_offset_minutes(offset_minutes: Optional[int]) -> timezone:
+    if offset_minutes is None:
+        return timezone.utc
+    clamped = max(-14 * 60, min(14 * 60, offset_minutes))
+    return timezone(timedelta(minutes=-clamped))
+
+
+def _timezone_label(tzinfo: timezone) -> str:
+    offset = tzinfo.utcoffset(None) or timedelta(0)
+    total_minutes = int(offset.total_seconds() // 60)
+    if total_minutes == 0:
+        return "UTC"
+    sign = "+" if total_minutes > 0 else "-"
+    abs_minutes = abs(total_minutes)
+    hours = abs_minutes // 60
+    minutes = abs_minutes % 60
+    return f"UTC{sign}{hours:02d}:{minutes:02d}"
+
+
 def _window_start(now: datetime, granularity: str) -> datetime:
-    now_utc = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
-    now_utc = now_utc.astimezone(timezone.utc)
-    day_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    now_with_tz = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    day_start = now_with_tz.replace(hour=0, minute=0, second=0, microsecond=0)
 
     if granularity == "day":
         return day_start
@@ -197,15 +215,17 @@ class MetricsStore:
     def list_since(self, since: datetime) -> List[MetricEvent]:
         return [event for event in self._events if event.timestamp >= since]
 
-    def overview(self, granularity: str = DEFAULT_GRANULARITY) -> MetricsOverview:
+    def overview(self, granularity: str = DEFAULT_GRANULARITY, tz_offset_minutes: Optional[int] = None) -> MetricsOverview:
         events = list(self._events)
         granularity_key, granularity_config = _resolve_granularity(granularity)
         bucket = str(granularity_config["bucket"])
         window_label = granularity_config.get("label", "")
         timeline_label = granularity_config.get("timeline_label", "")
 
-        now = datetime.now(timezone.utc)
-        window_start = _window_start(now, granularity_key)
+        window_tz = _timezone_from_offset_minutes(tz_offset_minutes)
+        local_now = datetime.now(window_tz)
+        now = local_now.astimezone(timezone.utc)
+        window_start = _window_start(local_now, granularity_key).astimezone(timezone.utc)
         window_duration = max(now - window_start, timedelta(0))
         recent_cutoff = now - timedelta(days=7)
         rps_window = timedelta(minutes=5)
@@ -401,7 +421,7 @@ class MetricsStore:
                 "windowLabel": window_label,
                 "windowStart": _isoformat_seconds(window_start),
                 "windowEnd": _isoformat_seconds(now),
-                "windowTimezone": "UTC",
+                "windowTimezone": _timezone_label(window_tz),
                 "windowHours": int(window_duration.total_seconds() // 3600),
                 "timelineBucket": bucket,
                 "timelineLabel": timeline_label,
