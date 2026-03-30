@@ -86,6 +86,7 @@ struct ReaderView: View {
     @State private var lastWebContentTapTime: Date?
     @State private var lastSelectionInteractionTime: Date?
     @State private var lastSwipeTurnTime: Date?
+    @State private var keyboardHeight: CGFloat = 0
     @FocusState private var isCustomQuestionFieldFocused: Bool
     private let swipePagingEnabled = true
     private let tapNavigationEdgeRatio: CGFloat = 0.24
@@ -94,6 +95,10 @@ struct ReaderView: View {
     
     private var effectiveColorScheme: ColorScheme {
         appSettings.theme.colorScheme ?? systemColorScheme
+    }
+
+    private var isSelectionQuestionKeyboardModeActive: Bool {
+        selectedTextInfo != nil && isCustomQuestionFieldFocused
     }
 
     private enum AIAction {
@@ -221,6 +226,12 @@ struct ReaderView: View {
         .onChange(of: effectiveColorScheme) { _ in
             preloadNearbyChapterHTML(around: currentChapterIndex)
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+            handleKeyboardFrameChange(notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+            handleKeyboardFrameChange(notification)
+        }
         .confirmationDialog(
             deletingNoteOnly ? NSLocalizedString("highlight.action.delete_note_confirm", comment: "") : NSLocalizedString("highlight.action.delete_highlight_confirm", comment: ""),
             isPresented: $showingDeleteConfirmation,
@@ -318,6 +329,7 @@ struct ReaderView: View {
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.86), value: showingToolbar)
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 
     private var currentChapterTitle: String {
@@ -354,130 +366,145 @@ struct ReaderView: View {
             let webViewHeight = geometry.size.height - pageIndicatorHeight
             let activeTOCNavigation = pendingTOCNavigation?.chapterIndex == index ? pendingTOCNavigation : nil
             let activeHighlightNavigation = pendingHighlightNavigation?.chapterIndex == index ? pendingHighlightNavigation : nil
-            
-            ReaderWebView(
-                contentID: readerContentID(for: chapter),
-                htmlContent: chapter.htmlContent,
-                appSettings: appSettings,
-                isDarkMode: effectiveColorScheme == .dark,
-                currentPageIndex: Binding(
-                    get: { safeChapterPageIndex(index) },
-                    set: { newValue in setChapterPageIndex(index, newValue) }
-                ),
-                totalPages: Binding(
-                    get: { safeChapterTotalPages(index) },
-                    set: { newValue in setChapterTotalPages(index, newValue) }
-                ),
-                selectionAction: $selectionAction,
-                highlights: highlightsForChapter(index),
-                tocNavigationFragment: activeTOCNavigation?.fragment,
-                tocNavigationToken: activeTOCNavigation?.token ?? 0,
-                highlightTextOffset: activeHighlightNavigation?.textOffset,
-                highlightNavigationToken: activeHighlightNavigation?.token ?? 0,
-                pageTurnStyle: pageTurnAnimationStyle,
-                isSelectionInputFocused: isCustomQuestionFieldFocused,
-                onToolbarToggle: {
-                    handleTap()
-                },
-                onTextSelection: { info in
-                    lastSelectionInteractionTime = Date()
-                    let trimmed = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if trimmed.isEmpty {
-                        pendingSelectionClearWorkItem?.cancel()
-                        let clearTask = DispatchWorkItem {
-                            self.selectedTextInfo = nil
-                        }
-                        pendingSelectionClearWorkItem = clearTask
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: clearTask)
-                    } else {
-                        pendingSelectionClearWorkItem?.cancel()
-                        pendingSelectionClearWorkItem = nil
-                        pendingTapWorkItem?.cancel()
-                        let updatedInfo = SelectedTextInfo(
-                            text: trimmed,
-                            startOffset: info.startOffset,
-                            endOffset: info.endOffset,
-                            rect: info.rect,
-                            pageIndex: info.pageIndex,
-                            canContinueToNextPage: info.canContinueToNextPage,
-                            isSplitParagraphTailRegion: info.isSplitParagraphTailRegion
-                        )
-                        selectedTextInfo = updatedInfo
-                        let feedback = UISelectionFeedbackGenerator()
-                        feedback.selectionChanged()
-                    }
-                },
-                onHighlightTap: { info in
-                    handleHighlightTap(info)
-                },
-                onLoadFinished: nil,
-                onInteractionChange: { isActive in
-                    isInteractingWithWebContent = isActive
-                }
-            )
-            .frame(width: geometry.size.width, height: webViewHeight)
-            .offset(x: dragOffset)
-            .contentShape(Rectangle())
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .local)
-                    .onChanged { value in
-                        guard selectedTextInfo == nil else { return }
-                        handleDragChanged(value, geometry: geometry)
-                    }
-                    .onEnded { value in
-                        if isDragging {
-                            handleDragEnded(value, geometry: geometry)
-                        } else if selectedTextInfo == nil {
-                            handleNavigationTap(at: value.startLocation, geometry: geometry)
-                        }
-                        isDragging = false
-                    }
-            )
-            .onChange(of: appSettings.pageMargins) { _ in
-                // 版心变化后，保持页码在合法范围
-                clampCurrentPage(index)
-            }
-            .onChange(of: appSettings.readingFontSize) { _ in
-                clampCurrentPage(index)
-            }
-            .onChange(of: appSettings.lineSpacing) { _ in
-                clampCurrentPage(index)
-            }
-            
-            // 滑动视觉反馈
-            if isDragging {
-                slideVisualFeedback(geometry: geometry)
-            }
-            
-            if safeChapterTotalPages(index) > 1 {
-                VStack {
-                    Spacer()
-                        .frame(height: webViewHeight)
+            let shouldBlurReadingSurface = isSelectionQuestionKeyboardModeActive
 
-                    HStack {
+            ZStack {
+                ReaderWebView(
+                    contentID: readerContentID(for: chapter),
+                    htmlContent: chapter.htmlContent,
+                    appSettings: appSettings,
+                    isDarkMode: effectiveColorScheme == .dark,
+                    currentPageIndex: Binding(
+                        get: { safeChapterPageIndex(index) },
+                        set: { newValue in setChapterPageIndex(index, newValue) }
+                    ),
+                    totalPages: Binding(
+                        get: { safeChapterTotalPages(index) },
+                        set: { newValue in setChapterTotalPages(index, newValue) }
+                    ),
+                    selectionAction: $selectionAction,
+                    highlights: highlightsForChapter(index),
+                    tocNavigationFragment: activeTOCNavigation?.fragment,
+                    tocNavigationToken: activeTOCNavigation?.token ?? 0,
+                    highlightTextOffset: activeHighlightNavigation?.textOffset,
+                    highlightNavigationToken: activeHighlightNavigation?.token ?? 0,
+                    pageTurnStyle: pageTurnAnimationStyle,
+                    isSelectionInputFocused: isCustomQuestionFieldFocused,
+                    onToolbarToggle: {
+                        handleTap()
+                    },
+                    onTextSelection: { info in
+                        lastSelectionInteractionTime = Date()
+                        let trimmed = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if trimmed.isEmpty {
+                            pendingSelectionClearWorkItem?.cancel()
+                            let clearTask = DispatchWorkItem {
+                                self.selectedTextInfo = nil
+                            }
+                            pendingSelectionClearWorkItem = clearTask
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: clearTask)
+                        } else {
+                            pendingSelectionClearWorkItem?.cancel()
+                            pendingSelectionClearWorkItem = nil
+                            pendingTapWorkItem?.cancel()
+                            let updatedInfo = SelectedTextInfo(
+                                text: trimmed,
+                                startOffset: info.startOffset,
+                                endOffset: info.endOffset,
+                                rect: info.rect,
+                                pageIndex: info.pageIndex,
+                                canContinueToNextPage: info.canContinueToNextPage,
+                                isSplitParagraphTailRegion: info.isSplitParagraphTailRegion
+                            )
+                            selectedTextInfo = updatedInfo
+                            let feedback = UISelectionFeedbackGenerator()
+                            feedback.selectionChanged()
+                        }
+                    },
+                    onHighlightTap: { info in
+                        handleHighlightTap(info)
+                    },
+                    onLoadFinished: nil,
+                    onInteractionChange: { isActive in
+                        isInteractingWithWebContent = isActive
+                    }
+                )
+                .frame(width: geometry.size.width, height: webViewHeight)
+                .offset(x: dragOffset)
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                        .onChanged { value in
+                            guard selectedTextInfo == nil else { return }
+                            handleDragChanged(value, geometry: geometry)
+                        }
+                        .onEnded { value in
+                            if isDragging {
+                                handleDragEnded(value, geometry: geometry)
+                            } else if selectedTextInfo == nil {
+                                handleNavigationTap(at: value.startLocation, geometry: geometry)
+                            }
+                            isDragging = false
+                        }
+                )
+                .onChange(of: appSettings.pageMargins) { _ in
+                    // 版心变化后，保持页码在合法范围
+                    clampCurrentPage(index)
+                }
+                .onChange(of: appSettings.readingFontSize) { _ in
+                    clampCurrentPage(index)
+                }
+                .onChange(of: appSettings.lineSpacing) { _ in
+                    clampCurrentPage(index)
+                }
+
+                // 滑动视觉反馈
+                if isDragging {
+                    slideVisualFeedback(geometry: geometry)
+                }
+
+                if safeChapterTotalPages(index) > 1 {
+                    VStack {
                         Spacer()
-                        Text("\(safeChapterPageIndex(index) + 1) / \(safeChapterTotalPages(index))")
-                            .font(.system(size: 11, weight: .regular, design: .default))
-                            .foregroundColor(.secondary.opacity(0.7))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                            .frame(height: webViewHeight)
+
+                        HStack {
+                            Spacer()
+                            Text("\(safeChapterPageIndex(index) + 1) / \(safeChapterTotalPages(index))")
+                                .font(.system(size: 11, weight: .regular, design: .default))
+                                .foregroundColor(.secondary.opacity(0.7))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                            Spacer()
+                        }
+                        .frame(height: pageIndicatorHeight)
+                    }
+                    .transition(.opacity)
+                }
+
+                if shouldShowInlineChapterTitle {
+                    VStack(spacing: 0) {
+                        inlineChapterTitleView
                         Spacer()
                     }
-                    .frame(height: pageIndicatorHeight)
+                    .frame(width: geometry.size.width, height: webViewHeight, alignment: .top)
                 }
-                .transition(.opacity)
+            }
+            .blur(radius: shouldBlurReadingSurface ? 10 : 0)
+            .allowsHitTesting(!shouldBlurReadingSurface)
+            .animation(.easeInOut(duration: 0.2), value: shouldBlurReadingSurface)
+
+            if isSelectionQuestionKeyboardModeActive {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        cancelSelectionQuestioning()
+                    }
             }
 
             if let info = selectedTextInfo {
                 selectionToolbar(for: info, in: geometry)
-            }
-
-            if shouldShowInlineChapterTitle {
-                VStack(spacing: 0) {
-                    inlineChapterTitleView
-                    Spacer()
-                }
-                .frame(width: geometry.size.width, height: webViewHeight, alignment: .top)
             }
         }
         .ignoresSafeArea(edges: .bottom)
@@ -692,140 +719,163 @@ struct ReaderView: View {
 
     private func selectionToolbar(for info: SelectedTextInfo, in geometry: GeometryProxy) -> some View {
         let toolbarWidth = min(max(geometry.size.width - 16, 320), 820)
-        let panelOnTop = shouldPlaceSelectionPanelAtTop(in: geometry)
+        let pinnedToKeyboard = isSelectionQuestionKeyboardModeActive
+        let panelOnTop = pinnedToKeyboard ? false : shouldPlaceSelectionPanelAtTop(in: geometry)
         let panelAlignment: Alignment = panelOnTop ? .top : .bottom
         let toolbarTopPadding = geometry.safeAreaInsets.top + (showingToolbar ? 88 : 12)
-        let toolbarBottomPadding = geometry.safeAreaInsets.bottom + (showingToolbar ? 124 : 12)
+        let defaultBottomPadding = geometry.safeAreaInsets.bottom + (showingToolbar ? 124 : 12)
+        let keyboardPinnedBottomPadding = keyboardHeight > 0 ? keyboardHeight : defaultBottomPadding
+        let toolbarBottomPadding = pinnedToKeyboard ? keyboardPinnedBottomPadding : defaultBottomPadding
         let trimmedQuestion = customAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         let canSubmitQuestion = !trimmedQuestion.isEmpty && !isLoadingAIResponse
         let canContinueSelection = shouldShowContinueSelectionButton(for: info)
+        let selectionPreviewText = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let shouldShowSelectionPreview = pinnedToKeyboard && !selectionPreviewText.isEmpty
+        let minimumPanelHeight: CGFloat = canContinueSelection ? 206 : 152
+        let availableVerticalSpace = max(72, geometry.size.height - toolbarTopPadding - toolbarBottomPadding - 16)
+        let previewMaxHeight = shouldShowSelectionPreview ? max(72, availableVerticalSpace - minimumPanelHeight) : 0
+        let previewLineLimit = shouldShowSelectionPreview
+            ? max(1, Int((previewMaxHeight / 22).rounded(.down)))
+            : 0
 
-        return VStack(spacing: 12) {
-            if canContinueSelection {
-                Button(action: continueSelectionToNextPage) {
-                    Label(NSLocalizedString("reader.selection.continue_next_page", comment: ""), systemImage: "arrow.right.circle.fill")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.blue.opacity(0.88), Color.cyan.opacity(0.82)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                        )
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 10)
-                .padding(.top, 6)
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    selectionActionButton(
-                        title: NSLocalizedString("reader.highlight.action", comment: ""),
-                        systemImage: "highlighter",
-                        tint: .yellow.opacity(0.9),
-                        action: { commitHighlight(note: nil) }
-                    )
-
-                    selectionActionButton(
-                        title: NSLocalizedString("reader.note.add", comment: ""),
-                        systemImage: "note.text",
-                        tint: .blue.opacity(0.9),
-                        action: { prepareNoteEditor() }
-                    )
-
-                    selectionActionButton(
-                        title: NSLocalizedString("common.copy", comment: ""),
-                        systemImage: "doc.on.doc",
-                        tint: .secondary,
-                        action: { handleCopySelectedText() }
-                    )
-
-                    selectionActionButton(
-                        title: NSLocalizedString("reader.ai.translate", comment: ""),
-                        systemImage: "globe",
-                        tint: .green,
-                        action: { startAIRequest(.translate) }
-                    )
-
-                    selectionActionButton(
-                        title: NSLocalizedString("reader.ai.explain", comment: ""),
-                        systemImage: "brain.head.profile",
-                        tint: .purple,
-                        action: { startAIRequest(.explain) }
-                    )
-                }
-                .padding(.horizontal, 10)
-                .padding(.top, 6)
-                .padding(.bottom, 4)
-            }
-
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(Color.blue.opacity(0.9))
-                    .frame(width: 24, height: 24)
-
-                TextField(
-                    NSLocalizedString("reader.ai.question.placeholder", comment: ""),
-                    text: $customAIQuestionDraft
+        return VStack(spacing: 10) {
+            if shouldShowSelectionPreview {
+                selectionPreviewCard(
+                    text: selectionPreviewText,
+                    maxHeight: previewMaxHeight,
+                    lineLimit: previewLineLimit
                 )
-                .textInputAutocapitalization(.sentences)
-                .submitLabel(.send)
-                .focused($isCustomQuestionFieldFocused)
-                .onSubmit {
-                    submitCustomAIQuestion()
+            }
+
+            VStack(spacing: 12) {
+                if canContinueSelection {
+                    Button(action: continueSelectionToNextPage) {
+                        Label(NSLocalizedString("reader.selection.continue_next_page", comment: ""), systemImage: "arrow.right.circle.fill")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color.blue.opacity(0.88), Color.cyan.opacity(0.82)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 10)
+                    .padding(.top, 6)
                 }
 
-                Button {
-                    submitCustomAIQuestion()
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(canSubmitQuestion ? Color.blue : Color.secondary.opacity(0.22))
-                            .frame(width: 30, height: 30)
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.white)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        selectionActionButton(
+                            title: NSLocalizedString("reader.highlight.action", comment: ""),
+                            systemImage: "highlighter",
+                            tint: .yellow.opacity(0.9),
+                            action: { commitHighlight(note: nil) }
+                        )
+
+                        selectionActionButton(
+                            title: NSLocalizedString("reader.note.add", comment: ""),
+                            systemImage: "note.text",
+                            tint: .blue.opacity(0.9),
+                            action: { prepareNoteEditor() }
+                        )
+
+                        selectionActionButton(
+                            title: NSLocalizedString("common.copy", comment: ""),
+                            systemImage: "doc.on.doc",
+                            tint: .secondary,
+                            action: { handleCopySelectedText() }
+                        )
+
+                        selectionActionButton(
+                            title: NSLocalizedString("reader.ai.translate", comment: ""),
+                            systemImage: "globe",
+                            tint: .green,
+                            action: { startAIRequest(.translate) }
+                        )
+
+                        selectionActionButton(
+                            title: NSLocalizedString("reader.ai.explain", comment: ""),
+                            systemImage: "brain.head.profile",
+                            tint: .purple,
+                            action: { startAIRequest(.explain) }
+                        )
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.top, 6)
+                    .padding(.bottom, 4)
                 }
-                .disabled(!canSubmitQuestion)
-                .accessibilityLabel(NSLocalizedString("reader.ai.question.send", comment: ""))
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 11)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.68))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color.blue.opacity(0.9))
+                        .frame(width: 24, height: 24)
+
+                    TextField(
+                        NSLocalizedString("reader.ai.question.placeholder", comment: ""),
+                        text: $customAIQuestionDraft
                     )
+                    .textInputAutocapitalization(.sentences)
+                    .submitLabel(.send)
+                    .focused($isCustomQuestionFieldFocused)
+                    .onSubmit {
+                        submitCustomAIQuestion()
+                    }
+
+                    Button {
+                        submitCustomAIQuestion()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(canSubmitQuestion ? Color.blue : Color.secondary.opacity(0.22))
+                                .frame(width: 30, height: 30)
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .disabled(!canSubmitQuestion)
+                    .accessibilityLabel(NSLocalizedString("reader.ai.question.send", comment: ""))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 11)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.68))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                        )
+                )
+                .padding(.horizontal, 10)
+                .padding(.bottom, 8)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(Color.primary.opacity(0.09))
             )
-            .padding(.horizontal, 10)
-            .padding(.bottom, 8)
+            .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 8)
         }
         .frame(width: toolbarWidth)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(Color.primary.opacity(0.09))
-        )
-        .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: panelAlignment)
         .padding(.top, panelOnTop ? toolbarTopPadding : 0)
         .padding(.bottom, panelOnTop ? 0 : toolbarBottomPadding)
         .transition(.move(edge: panelOnTop ? .top : .bottom).combined(with: .opacity))
         .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.84, blendDuration: 0.08), value: selectedTextInfo)
         .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.84, blendDuration: 0.08), value: panelOnTop)
+        .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.84, blendDuration: 0.08), value: isSelectionQuestionKeyboardModeActive)
+        .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.84, blendDuration: 0.08), value: keyboardHeight)
     }
 
     private func shouldShowContinueSelectionButton(for info: SelectedTextInfo) -> Bool {
@@ -838,6 +888,25 @@ struct ReaderView: View {
         guard let info = selectedTextInfo, shouldShowContinueSelectionButton(for: info) else { return }
         suppressNavigationForWebContentTap()
         let action = ReaderSelectionAction(type: .continueToNextPage)
+        selectionAction = action
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            if self.selectionAction?.id == action.id {
+                self.selectionAction = nil
+            }
+        }
+    }
+
+    private func cancelSelectionQuestioning() {
+        guard selectedTextInfo != nil else { return }
+        suppressNavigationForWebContentTap()
+        isCustomQuestionFieldFocused = false
+        customAIQuestionDraft = ""
+        selectedTextInfo = nil
+        clearCurrentSelectionInWebView()
+    }
+
+    private func clearCurrentSelectionInWebView() {
+        let action = ReaderSelectionAction(type: .clearSelection)
         selectionAction = action
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             if self.selectionAction?.id == action.id {
@@ -868,6 +937,34 @@ struct ReaderView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    private func selectionPreviewCard(text: String, maxHeight: CGFloat, lineLimit: Int) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(NSLocalizedString("reader.selection.title", comment: ""))
+                .font(.footnote)
+                .foregroundColor(.secondary)
+
+            Text(text)
+                .font(.system(size: 16, design: .serif))
+                .foregroundColor(.primary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(lineLimit)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxHeight: maxHeight, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.7))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                )
+        )
     }
 
     private func shouldPlaceSelectionPanelAtTop(in geometry: GeometryProxy) -> Bool {
@@ -1486,6 +1583,44 @@ struct ReaderView: View {
             .cornerRadius(16)
             .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 6)
             .padding(.horizontal, 20)
+    }
+
+    private func handleKeyboardFrameChange(_ notification: Notification) {
+        let userInfo = notification.userInfo ?? [:]
+        let duration = (userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? NSNumber)?.doubleValue ?? 0.25
+        let curveValue = (userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? NSNumber)?.intValue ?? UIView.AnimationCurve.easeInOut.rawValue
+        let keyboardFrame = (userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue ?? CGRect(
+            x: 0,
+            y: UIScreen.main.bounds.maxY,
+            width: 0,
+            height: 0
+        )
+
+        let screenBounds = UIScreen.main.bounds
+        let overlap = max(0, screenBounds.maxY - keyboardFrame.minY)
+        let animation = keyboardAnimation(duration: duration, curveValue: curveValue)
+
+        withAnimation(animation) {
+            keyboardHeight = overlap
+        }
+    }
+
+    private func keyboardAnimation(duration: Double, curveValue: Int) -> Animation {
+        let clampedDuration = max(0.12, duration)
+        let curve = UIView.AnimationCurve(rawValue: curveValue) ?? .easeInOut
+
+        switch curve {
+        case .easeIn:
+            return .easeIn(duration: clampedDuration)
+        case .easeOut:
+            return .easeOut(duration: clampedDuration)
+        case .linear:
+            return .linear(duration: clampedDuration)
+        case .easeInOut:
+            return .easeInOut(duration: clampedDuration)
+        @unknown default:
+            return .easeInOut(duration: clampedDuration)
+        }
     }
     
     // MARK: - Helper Methods

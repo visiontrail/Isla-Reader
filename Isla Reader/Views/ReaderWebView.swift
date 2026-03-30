@@ -35,6 +35,7 @@ struct ReaderSelectionAction: Identifiable, Equatable {
     enum ActionType: Equatable {
         case highlight(colorHex: String)
         case continueToNextPage
+        case clearSelection
     }
 
     let id = UUID()
@@ -968,6 +969,32 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                             _ = webView.becomeFirstResponder()
                         }
                     }
+                }
+            }
+        case .clearSelection:
+            let js = """
+            (function() {
+                try {
+                    if (typeof clearNativeSelectionOnly === 'function') {
+                        clearNativeSelectionOnly();
+                    } else if (window.getSelection) {
+                        const selection = window.getSelection();
+                        if (selection && selection.removeAllRanges) {
+                            selection.removeAllRanges();
+                        }
+                    }
+                    if (typeof clearSelectionLockState === 'function') {
+                        clearSelectionLockState();
+                    }
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            })();
+            """
+            webView.evaluateJavaScript(js) { _, error in
+                if let error {
+                    DebugLogger.error("ReaderWebView: 清除选择失败 - \(error.localizedDescription)")
                 }
             }
         }
