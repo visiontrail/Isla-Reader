@@ -54,6 +54,8 @@ struct ReaderView: View {
     @State private var noteDraft = ""
     @State private var showingAIResponse = false
     @State private var customAIQuestionDraft = ""
+    @State private var showingSelectionAskComposer = false
+    @State private var selectionAskSourceText = ""
     @State private var aiResponseTitle = ""
     @State private var aiResponseContent = ""
     @State private var aiActionInFlight: AIAction?
@@ -91,6 +93,7 @@ struct ReaderView: View {
     @State private var lastWebContentTapTime: Date?
     @State private var lastSelectionInteractionTime: Date?
     @State private var lastSwipeTurnTime: Date?
+    @State private var keyboardHeight: CGFloat = 0
     @FocusState private var isCustomQuestionFieldFocused: Bool
     @FocusState private var isHighlightNoteEditorFocused: Bool
     @FocusState private var isHighlightQuestionFieldFocused: Bool
@@ -162,6 +165,9 @@ struct ReaderView: View {
         .sheet(isPresented: $showingAIResponse) {
             aiResponseSheet
         }
+        .sheet(isPresented: $showingSelectionAskComposer) {
+            selectionAskComposerSheet
+        }
         .sheet(isPresented: $showingHighlightActions) {
             highlightActionSheet
         }
@@ -220,13 +226,19 @@ struct ReaderView: View {
             preloadNearbyChapterHTML(around: currentChapterIndex)
         }
         .onChange(of: selectedTextInfo) { info in
-            if info == nil {
+            if info == nil, !showingSelectionAskComposer {
                 customAIQuestionDraft = ""
                 isCustomQuestionFieldFocused = false
             }
         }
         .onChange(of: effectiveColorScheme) { _ in
             preloadNearbyChapterHTML(around: currentChapterIndex)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+            handleKeyboardFrameChange(notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+            handleKeyboardFrameChange(notification)
         }
         .confirmationDialog(
             deletingNoteOnly ? NSLocalizedString("highlight.action.delete_note_confirm", comment: "") : NSLocalizedString("highlight.action.delete_highlight_confirm", comment: ""),
@@ -353,6 +365,13 @@ struct ReaderView: View {
         .allowsHitTesting(false)
     }
 
+    private var isSelectionInputSessionActive: Bool {
+        isCustomQuestionFieldFocused ||
+        isHighlightQuestionFieldFocused ||
+        showingSelectionAskComposer ||
+        showingHighlightAskComposer
+    }
+
     private func chapterView(index: Int, chapter: Chapter, geometry: GeometryProxy) -> some View {
         ZStack {
             // Content WebView with horizontal pagination
@@ -382,14 +401,16 @@ struct ReaderView: View {
                 highlightTextOffset: activeHighlightNavigation?.textOffset,
                 highlightNavigationToken: activeHighlightNavigation?.token ?? 0,
                 pageTurnStyle: pageTurnAnimationStyle,
-                isSelectionInputFocused: isCustomQuestionFieldFocused,
+                isSelectionInputFocused: isSelectionInputSessionActive,
                 onToolbarToggle: {
                     handleTap()
                 },
                 onTextSelection: { info in
+                    guard !isSelectionInputSessionActive else { return }
                     lastSelectionInteractionTime = Date()
                     let trimmed = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
                     if trimmed.isEmpty {
+                        guard !showingSelectionAskComposer else { return }
                         pendingSelectionClearWorkItem?.cancel()
                         let clearTask = DispatchWorkItem {
                             self.selectedTextInfo = nil
@@ -488,6 +509,7 @@ struct ReaderView: View {
             }
         }
         .ignoresSafeArea(edges: .bottom)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
     
     private func normalizeTOCFragment(_ fragment: String?) -> String? {
@@ -703,8 +725,6 @@ struct ReaderView: View {
         let panelAlignment: Alignment = panelOnTop ? .top : .bottom
         let toolbarTopPadding = geometry.safeAreaInsets.top + (showingToolbar ? 88 : 12)
         let toolbarBottomPadding = geometry.safeAreaInsets.bottom + (showingToolbar ? 124 : 12)
-        let trimmedQuestion = customAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let canSubmitQuestion = !trimmedQuestion.isEmpty && !isLoadingAIResponse
         let canContinueSelection = shouldShowContinueSelectionButton(for: info)
 
         return VStack(spacing: 12) {
@@ -773,38 +793,24 @@ struct ReaderView: View {
                 .padding(.bottom, 4)
             }
 
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(Color.blue.opacity(0.9))
-                    .frame(width: 24, height: 24)
+            Button(action: openSelectionAskComposer) {
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color.blue.opacity(0.9))
+                        .frame(width: 24, height: 24)
 
-                TextField(
-                    NSLocalizedString("reader.ai.question.placeholder", comment: ""),
-                    text: $customAIQuestionDraft
-                )
-                .textInputAutocapitalization(.sentences)
-                .submitLabel(.send)
-                .focused($isCustomQuestionFieldFocused)
-                .onSubmit {
-                    submitCustomAIQuestion()
-                }
+                    Text(NSLocalizedString("reader.ai.question.placeholder", comment: ""))
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                Button {
-                    submitCustomAIQuestion()
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(canSubmitQuestion ? Color.blue : Color.secondary.opacity(0.22))
-                            .frame(width: 30, height: 30)
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.white)
-                    }
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(Color.blue.opacity(0.9))
                 }
-                .disabled(!canSubmitQuestion)
-                .accessibilityLabel(NSLocalizedString("reader.ai.question.send", comment: ""))
             }
+            .buttonStyle(.plain)
             .padding(.horizontal, 12)
             .padding(.vertical, 11)
             .background(
@@ -833,6 +839,95 @@ struct ReaderView: View {
         .transition(.move(edge: panelOnTop ? .top : .bottom).combined(with: .opacity))
         .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.84, blendDuration: 0.08), value: selectedTextInfo)
         .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.84, blendDuration: 0.08), value: panelOnTop)
+    }
+
+    private var selectionAskComposerSheet: some View {
+        let trimmedQuestion = customAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let canSubmitQuestion = !trimmedQuestion.isEmpty && !isLoadingAIResponse
+        let quoteText = selectionAskSourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedText = quoteText.isEmpty ? NSLocalizedString("common.no_content", comment: "") : quoteText
+
+        return NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(NSLocalizedString("reader.selection.title", comment: ""), systemImage: "quote.opening")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+
+                        Text(resolvedText)
+                            .font(.system(size: 16, design: .serif))
+                            .foregroundColor(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .padding(12)
+                    .background(Color.primary.opacity(0.05))
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 18)
+                .padding(.bottom, 24)
+            }
+            .navigationTitle(NSLocalizedString("reader.ai.ask", comment: ""))
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(NSLocalizedString("common.close", comment: "")) {
+                        dismissSelectionAskComposer(clearDraft: true)
+                    }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color.blue.opacity(0.9))
+                        .frame(width: 24, height: 24)
+
+                    TextField(
+                        NSLocalizedString("reader.ai.question.placeholder", comment: ""),
+                        text: $customAIQuestionDraft
+                    )
+                    .textInputAutocapitalization(.sentences)
+                    .submitLabel(.send)
+                    .focused($isCustomQuestionFieldFocused)
+                    .onSubmit {
+                        submitSelectionCustomAIQuestion()
+                    }
+
+                    Button {
+                        submitSelectionCustomAIQuestion()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(canSubmitQuestion ? Color.blue : Color.secondary.opacity(0.22))
+                                .frame(width: 30, height: 30)
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .disabled(!canSubmitQuestion)
+                    .accessibilityLabel(NSLocalizedString("reader.ai.question.send", comment: ""))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 11)
+                .background(.ultraThinMaterial)
+                .overlay(alignment: .top) {
+                    Divider()
+                        .opacity(0.55)
+                }
+            }
+        }
+        .onAppear {
+            scheduleSelectionQuestionFieldFocus()
+        }
+        .onDisappear {
+            isCustomQuestionFieldFocused = false
+        }
     }
 
     private func shouldShowContinueSelectionButton(for info: SelectedTextInfo) -> Bool {
@@ -1071,6 +1166,59 @@ struct ReaderView: View {
         startAIRequest(.custom(question: question), sourceText: highlight.selectedText, targetHighlight: highlight)
     }
 
+    private func openSelectionAskComposer() {
+        guard let info = selectedTextInfo else {
+            showHint(NSLocalizedString("reader.selection.required", comment: ""))
+            return
+        }
+        let trimmed = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            showHint(NSLocalizedString("reader.selection.required", comment: ""))
+            return
+        }
+        pendingSelectionClearWorkItem?.cancel()
+        selectionAskSourceText = trimmed
+        customAIQuestionDraft = ""
+        showingSelectionAskComposer = true
+        scheduleSelectionQuestionFieldFocus()
+    }
+
+    private func dismissSelectionAskComposer(clearDraft: Bool = false) {
+        isCustomQuestionFieldFocused = false
+        showingSelectionAskComposer = false
+        if clearDraft {
+            customAIQuestionDraft = ""
+        }
+    }
+
+    private func scheduleSelectionQuestionFieldFocus() {
+        guard showingSelectionAskComposer else { return }
+        DispatchQueue.main.async {
+            guard showingSelectionAskComposer else { return }
+            isCustomQuestionFieldFocused = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            guard showingSelectionAskComposer else { return }
+            isCustomQuestionFieldFocused = true
+        }
+    }
+
+    private func submitSelectionCustomAIQuestion() {
+        let question = customAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !question.isEmpty else {
+            showHint(NSLocalizedString("reader.ai.question.empty", comment: ""))
+            return
+        }
+        let sourceText = selectionAskSourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sourceText.isEmpty else {
+            showHint(NSLocalizedString("reader.ai.selection_required", comment: ""))
+            return
+        }
+        customAIQuestionDraft = ""
+        dismissSelectionAskComposer()
+        startAIRequest(.custom(question: question), sourceText: sourceText)
+    }
+
     private func startAIRequest(_ action: AIAction, sourceText: String? = nil, targetHighlight: Highlight? = nil) {
         var resolvedText = sourceText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if resolvedText.isEmpty, let info = selectedTextInfo?.text.trimmingCharacters(in: .whitespacesAndNewlines), !info.isEmpty {
@@ -1146,14 +1294,7 @@ struct ReaderView: View {
     }
 
     private func submitCustomAIQuestion() {
-        let question = customAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty else {
-            showHint(NSLocalizedString("reader.ai.question.empty", comment: ""))
-            return
-        }
-        customAIQuestionDraft = ""
-        isCustomQuestionFieldFocused = false
-        startAIRequest(.custom(question: question))
+        submitSelectionCustomAIQuestion()
     }
 
     private var canInsertAIContent: Bool {
@@ -1872,6 +2013,44 @@ struct ReaderView: View {
             .cornerRadius(16)
             .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 6)
             .padding(.horizontal, 20)
+    }
+
+    private func handleKeyboardFrameChange(_ notification: Notification) {
+        let userInfo = notification.userInfo ?? [:]
+        let duration = (userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? NSNumber)?.doubleValue ?? 0.25
+        let curveValue = (userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? NSNumber)?.intValue ?? UIView.AnimationCurve.easeInOut.rawValue
+        let keyboardFrame = (userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue ?? CGRect(
+            x: 0,
+            y: UIScreen.main.bounds.maxY,
+            width: 0,
+            height: 0
+        )
+
+        let screenBounds = UIScreen.main.bounds
+        let overlap = max(0, screenBounds.maxY - keyboardFrame.minY)
+        let animation = keyboardAnimation(duration: duration, curveValue: curveValue)
+
+        withAnimation(animation) {
+            keyboardHeight = overlap
+        }
+    }
+
+    private func keyboardAnimation(duration: Double, curveValue: Int) -> Animation {
+        let clampedDuration = max(0.12, duration)
+        let curve = UIView.AnimationCurve(rawValue: curveValue) ?? .easeInOut
+
+        switch curve {
+        case .easeIn:
+            return .easeIn(duration: clampedDuration)
+        case .easeOut:
+            return .easeOut(duration: clampedDuration)
+        case .linear:
+            return .linear(duration: clampedDuration)
+        case .easeInOut:
+            return .easeInOut(duration: clampedDuration)
+        @unknown default:
+            return .easeInOut(duration: clampedDuration)
+        }
     }
     
     // MARK: - Helper Methods
