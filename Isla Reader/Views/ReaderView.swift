@@ -76,6 +76,7 @@ struct ReaderView: View {
     @State private var hintMessage: String?
     @State private var showingHighlightsList = false
     @State private var showingBookmarksList = false
+    @State private var selectionToolbarMeasuredHeight: CGFloat = 0
     @State private var didApplyInitialLocation = false
     @State private var hasReportedInitialChapterOpenMetric = false
     @State private var pendingSelectionClearWorkItem: DispatchWorkItem?
@@ -721,11 +722,11 @@ struct ReaderView: View {
 
     private func selectionToolbar(for info: SelectedTextInfo, in geometry: GeometryProxy) -> some View {
         let toolbarWidth = min(max(geometry.size.width - 16, 320), 820)
-        let panelOnTop = shouldPlaceSelectionPanelAtTop(in: geometry)
+        let canContinueSelection = shouldShowContinueSelectionButton(for: info)
+        let panelOnTop = shouldPlaceSelectionPanelAtTop(for: info, in: geometry, canContinueSelection: canContinueSelection)
         let panelAlignment: Alignment = panelOnTop ? .top : .bottom
         let toolbarTopPadding = geometry.safeAreaInsets.top + (showingToolbar ? 88 : 12)
         let toolbarBottomPadding = geometry.safeAreaInsets.bottom + (showingToolbar ? 124 : 12)
-        let canContinueSelection = shouldShowContinueSelectionButton(for: info)
 
         return VStack(spacing: 12) {
             if canContinueSelection {
@@ -832,6 +833,19 @@ struct ReaderView: View {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .stroke(Color.primary.opacity(0.09))
         )
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: SelectionToolbarHeightPreferenceKey.self,
+                    value: proxy.size.height
+                )
+            }
+        )
+        .onPreferenceChange(SelectionToolbarHeightPreferenceKey.self) { measuredHeight in
+            guard measuredHeight.isFinite, measuredHeight > 0 else { return }
+            guard abs(selectionToolbarMeasuredHeight - measuredHeight) > 0.5 else { return }
+            selectionToolbarMeasuredHeight = measuredHeight
+        }
         .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: panelAlignment)
         .padding(.top, panelOnTop ? toolbarTopPadding : 0)
@@ -1005,8 +1019,16 @@ struct ReaderView: View {
                 )
         )
     }
-    private func shouldPlaceSelectionPanelAtTop(in geometry: GeometryProxy) -> Bool {
-        guard let info = selectedTextInfo else { return false }
+    private func selectionToolbarEstimatedHeight(canContinueSelection: Bool) -> CGFloat {
+        let fallbackHeight: CGFloat = canContinueSelection ? 230 : 188
+        return max(selectionToolbarMeasuredHeight, fallbackHeight)
+    }
+
+    private func shouldPlaceSelectionPanelAtTop(
+        for info: SelectedTextInfo,
+        in geometry: GeometryProxy,
+        canContinueSelection: Bool
+    ) -> Bool {
         let hasFiniteRect =
             info.rect.minX.isFinite &&
             info.rect.minY.isFinite &&
@@ -1015,13 +1037,42 @@ struct ReaderView: View {
             info.rect != .zero
         guard hasFiniteRect else { return false }
 
-        let topReserved = geometry.safeAreaInsets.top + (showingToolbar ? 88 : 0)
-        let bottomReserved = geometry.safeAreaInsets.bottom + (showingToolbar ? 124 : 0)
+        let topReserved = geometry.safeAreaInsets.top + (showingToolbar ? 88 : 12)
+        let bottomReserved = geometry.safeAreaInsets.bottom + (showingToolbar ? 124 : 12)
         let safeTop = topReserved
         let safeBottom = max(safeTop + 1, geometry.size.height - bottomReserved)
-        let clampedMaxY = min(max(info.rect.maxY, safeTop), safeBottom)
-        let threshold = safeTop + (safeBottom - safeTop) * 0.62
-        return clampedMaxY >= threshold
+        let panelHeight = selectionToolbarEstimatedHeight(canContinueSelection: canContinueSelection)
+        let panelClearance: CGFloat = 14
+        let topPanelMaxY = min(safeBottom, safeTop + panelHeight + panelClearance)
+        let bottomPanelMinY = max(safeTop, safeBottom - panelHeight - panelClearance)
+
+        let selectionMinY = min(max(info.rect.minY, safeTop), safeBottom)
+        let selectionMaxY = min(max(info.rect.maxY, safeTop), safeBottom)
+        guard selectionMaxY > selectionMinY else { return false }
+
+        let topOverlap = max(0, min(selectionMaxY, topPanelMaxY) - selectionMinY)
+        let bottomOverlap = max(0, selectionMaxY - max(selectionMinY, bottomPanelMinY))
+        let overlapBias: CGFloat = 2
+
+        if bottomOverlap > topOverlap + overlapBias {
+            return true
+        }
+        if topOverlap > bottomOverlap + overlapBias {
+            return false
+        }
+
+        let gapToTopPanel = max(0, selectionMinY - topPanelMaxY)
+        let gapToBottomPanel = max(0, bottomPanelMinY - selectionMaxY)
+        if gapToBottomPanel < gapToTopPanel {
+            return true
+        }
+        if gapToTopPanel < gapToBottomPanel {
+            return false
+        }
+
+        let selectionMidY = (selectionMinY + selectionMaxY) * 0.5
+        let threshold = safeTop + (safeBottom - safeTop) * 0.56
+        return selectionMidY >= threshold
     }
 
     private func handleHighlightTap(_ info: HighlightTapInfo) {
@@ -3054,6 +3105,14 @@ private struct TOCNavigationRequest: Equatable {
     let chapterIndex: Int
     let fragment: String?
     let token: Int
+}
+
+private struct SelectionToolbarHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
 }
 
 private struct HighlightNavigationRequest: Equatable {

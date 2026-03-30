@@ -2034,7 +2034,70 @@ struct ReaderWebView: UIViewRepresentable {
             return Number.isFinite(value) ? value : fallback;
         }
 
-        function resolveSelectionRect(range) {
+        function resolveCollapsedSelectionBoundaryRect(node, offset) {
+            if (!node) { return null; }
+            const probeRange = document.createRange();
+            try {
+                let resolvedNode = node;
+                let resolvedOffset = Number.isFinite(offset) ? Math.floor(offset) : 0;
+                if (resolvedNode.nodeType === Node.TEXT_NODE) {
+                    const textLength = (resolvedNode.textContent || '').length;
+                    resolvedOffset = Math.max(0, Math.min(resolvedOffset, textLength));
+                } else {
+                    const childCount = resolvedNode.childNodes ? resolvedNode.childNodes.length : 0;
+                    resolvedOffset = Math.max(0, Math.min(resolvedOffset, childCount));
+                }
+
+                probeRange.setStart(resolvedNode, resolvedOffset);
+                probeRange.setEnd(resolvedNode, resolvedOffset);
+
+                let resolvedRect = null;
+                const collapsedRects = probeRange.getClientRects ? probeRange.getClientRects() : null;
+                if (collapsedRects && collapsedRects.length > 0) {
+                    resolvedRect = collapsedRects[0];
+                }
+
+                // Collapsed ranges may report zero-size rect on iOS. Probe one adjacent
+                // character to recover a stable line rect near the drag handle.
+                if (
+                    (!resolvedRect || safeNumber(resolvedRect.height, 0) <= 1 || safeNumber(resolvedRect.width, 0) <= 0) &&
+                    resolvedNode.nodeType === Node.TEXT_NODE
+                ) {
+                    const text = resolvedNode.textContent || '';
+                    const textLength = text.length;
+                    if (textLength > 0) {
+                        const charStart = Math.max(0, Math.min(resolvedOffset, textLength - 1));
+                        const charEnd = Math.min(textLength, charStart + 1);
+                        if (charEnd > charStart) {
+                            probeRange.setStart(resolvedNode, charStart);
+                            probeRange.setEnd(resolvedNode, charEnd);
+                            const charRects = probeRange.getClientRects ? probeRange.getClientRects() : null;
+                            if (charRects && charRects.length > 0) {
+                                resolvedRect = charRects[0];
+                            }
+                        }
+                    }
+                }
+
+                if (!resolvedRect && probeRange.getBoundingClientRect) {
+                    resolvedRect = probeRange.getBoundingClientRect();
+                }
+                if (!resolvedRect) { return null; }
+
+                return {
+                    x: safeNumber(resolvedRect.x, 0),
+                    y: safeNumber(resolvedRect.y, 0),
+                    width: safeNumber(resolvedRect.width, 0),
+                    height: safeNumber(resolvedRect.height, 0)
+                };
+            } catch (e) {
+                return null;
+            } finally {
+                try { probeRange.detach(); } catch (ignore) {}
+            }
+        }
+
+        function resolveSelectionRect(range, selection) {
             if (!range) {
                 return { x: 0, y: 0, width: 0, height: 0, source: 'none' };
             }
@@ -2045,6 +2108,27 @@ struct ReaderWebView: UIViewRepresentable {
             const viewportLeft = 0;
             const viewportBottom = viewportHeight;
             const viewportRight = viewportWidth;
+
+            const focusNode = selection && selection.focusNode ? selection.focusNode : null;
+            const focusOffset = selection && Number.isFinite(selection.focusOffset) ? selection.focusOffset : null;
+            const focusRect = resolveCollapsedSelectionBoundaryRect(
+                focusNode || range.endContainer,
+                focusOffset !== null ? focusOffset : range.endOffset
+            );
+            if (focusRect) {
+                const focusVisibleWidth = Math.max(0, Math.min(focusRect.x + focusRect.width, viewportRight) - Math.max(focusRect.x, viewportLeft));
+                const focusVisibleHeight = Math.max(0, Math.min(focusRect.y + focusRect.height, viewportBottom) - Math.max(focusRect.y, viewportTop));
+                const focusVisibleScore = focusVisibleWidth * focusVisibleHeight;
+                if (focusVisibleScore > 4) {
+                    return {
+                        x: focusRect.x,
+                        y: focusRect.y,
+                        width: focusRect.width,
+                        height: focusRect.height,
+                        source: 'focus'
+                    };
+                }
+            }
 
             let bestRect = null;
             let bestScore = -1;
@@ -2088,7 +2172,7 @@ struct ReaderWebView: UIViewRepresentable {
 
             const text = selection.toString();
             const range = selection.getRangeAt(0);
-            const rect = resolveSelectionRect(range);
+            const rect = resolveSelectionRect(range, selection);
             const start = measureOffset(range.startContainer, range.startOffset);
             const end = measureOffset(range.endContainer, range.endOffset);
             const safeStart = Math.min(start, end);
