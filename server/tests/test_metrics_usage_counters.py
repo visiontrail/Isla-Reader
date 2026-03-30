@@ -320,7 +320,7 @@ def test_ads_calls_are_excluded_from_total_calls_and_reported_separately():
         assert ads_by_placement["admob_rewarded_interstitial_load"]["failure"] == 0
 
 
-def test_granularity_window_uses_natural_day_week_month_starts():
+def test_granularity_window_uses_expected_day_week_month_starts():
     with TestClient(app) as client:
         _login(client)
 
@@ -347,7 +347,7 @@ def test_granularity_window_uses_natural_day_week_month_starts():
             if granularity == "day":
                 expected_start = day_start
             elif granularity == "week":
-                expected_start = day_start - timedelta(days=day_start.weekday())
+                expected_start = day_start - timedelta(days=6)
             else:
                 expected_start = day_start.replace(day=1)
 

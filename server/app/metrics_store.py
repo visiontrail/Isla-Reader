@@ -18,8 +18,8 @@ GRANULARITY_CONFIG: Dict[str, Dict[str, object]] = {
     },
     "week": {
         "bucket": "day",
-        "label": "This week",
-        "timeline_label": "Daily buckets (this week)",
+        "label": "Past 7 days",
+        "timeline_label": "Daily buckets (past 7 days)",
     },
     "month": {
         "bucket": "day",
@@ -100,7 +100,7 @@ def _window_start(now: datetime, granularity: str) -> datetime:
     if granularity == "day":
         return day_start
     if granularity == "week":
-        return day_start - timedelta(days=day_start.weekday())
+        return day_start - timedelta(days=6)
     if granularity == "month":
         return day_start.replace(day=1)
     return day_start
