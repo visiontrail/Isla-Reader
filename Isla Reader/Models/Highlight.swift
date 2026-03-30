@@ -18,6 +18,7 @@ private struct HighlightSelectionAnchor: Codable {
     let chapterIndex: Int
     let pageIndex: Int
     let offset: Int?
+    let mergedFromHighlights: Bool?
 }
 
 extension Highlight {
@@ -43,6 +44,7 @@ extension Highlight {
 }
 
 extension Highlight: Identifiable {
+    private static let mergedFromHighlightsKey = "mergedFromHighlights"
     
     var highlightColor: Color {
         return Color(hex: colorHex) ?? .yellow
@@ -54,6 +56,59 @@ extension Highlight: Identifiable {
     
     var displayText: String {
         return selectedText
+    }
+
+    var isMergedFromHighlights: Bool {
+        guard let data = startPosition.data(using: .utf8) else { return false }
+
+        if let anchor = try? JSONDecoder().decode(HighlightSelectionAnchor.self, from: data) {
+            return anchor.mergedFromHighlights == true
+        }
+
+        if let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let merged = payload[Self.mergedFromHighlightsKey] as? Bool {
+                return merged
+            }
+            if let merged = payload[Self.mergedFromHighlightsKey] as? NSNumber {
+                return merged.boolValue
+            }
+        }
+
+        return false
+    }
+
+    static func markStartPositionAsMerged(
+        _ startPosition: String,
+        fallbackChapterIndex: Int? = nil,
+        fallbackPageIndex: Int? = nil,
+        fallbackOffset: Int? = nil
+    ) -> String {
+        if let data = startPosition.data(using: .utf8),
+           var payload = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) {
+            payload[mergedFromHighlightsKey] = true
+            if let encoded = try? JSONSerialization.data(withJSONObject: payload),
+               let encodedString = String(data: encoded, encoding: .utf8) {
+                return encodedString
+            }
+        }
+
+        let chapterIndex = max(fallbackChapterIndex ?? 0, 0)
+        let pageIndex = max(fallbackPageIndex ?? 0, 0)
+        var payload: [String: Any] = [
+            "chapterIndex": chapterIndex,
+            "pageIndex": pageIndex,
+            mergedFromHighlightsKey: true
+        ]
+        if let fallbackOffset {
+            payload["offset"] = fallbackOffset
+        }
+
+        if let encoded = try? JSONSerialization.data(withJSONObject: payload),
+           let encodedString = String(data: encoded, encoding: .utf8) {
+            return encodedString
+        }
+
+        return startPosition
     }
 
     var readingLocation: BookmarkLocation? {

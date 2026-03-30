@@ -1365,7 +1365,7 @@ struct HighlightListSheet: View {
                         .foregroundColor(.secondary)
                 }
 
-                if !isSelecting, onSelect != nil, highlight.readingLocation != nil {
+                if canOpenHighlightLocation(highlight) {
                     Button(action: { openHighlightLocation(for: highlight) }) {
                         Text(highlight.displayText)
                             .font(.body)
@@ -1418,6 +1418,13 @@ struct HighlightListSheet: View {
             guard isSelecting else { return }
             toggleSelection(for: highlight)
         }
+    }
+
+    private func canOpenHighlightLocation(_ highlight: Highlight) -> Bool {
+        guard !isSelecting else { return false }
+        guard onSelect != nil else { return false }
+        guard highlight.readingLocation != nil else { return false }
+        return !highlight.isMergedFromHighlights
     }
     
     private func chapterLabel(for highlight: Highlight) -> String {
@@ -1603,7 +1610,13 @@ struct HighlightListSheet: View {
         let mergedHighlight = Highlight(context: viewContext)
         mergedHighlight.id = UUID()
         mergedHighlight.selectedText = mergedText
-        mergedHighlight.startPosition = first.startPosition
+        let firstLocation = first.readingLocation
+        mergedHighlight.startPosition = Highlight.markStartPositionAsMerged(
+            first.startPosition,
+            fallbackChapterIndex: firstLocation?.chapterIndex ?? 0,
+            fallbackPageIndex: firstLocation?.pageIndex ?? max(Int(first.pageNumber), 0),
+            fallbackOffset: firstLocation?.textOffset
+        )
         mergedHighlight.endPosition = last.endPosition
         mergedHighlight.chapter = first.chapter
         mergedHighlight.pageNumber = first.pageNumber
@@ -1685,6 +1698,10 @@ struct HighlightListSheet: View {
     }
 
     private func openHighlightLocation(for highlight: Highlight) {
+        guard !highlight.isMergedFromHighlights else {
+            DebugLogger.info("[HighlightNav] 跳过合并高亮跳转: highlight=\(highlight.id.uuidString)")
+            return
+        }
         DebugLogger.info("[HighlightNav] openHighlightLocation: startPosition=\(highlight.startPosition), selectedText前20字=\(String(highlight.selectedText.prefix(20)))")
         guard let location = highlight.readingLocation else {
             DebugLogger.info("[HighlightNav] 跳转失败，readingLocation 为 nil")
