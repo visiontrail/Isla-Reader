@@ -66,7 +66,7 @@ struct ReaderView: View {
     @State private var showingHighlightNoteEditor = false
     @State private var highlightNoteDraft = ""
     @State private var noteDraftHighlightObjectID: NSManagedObjectID?
-    @State private var showingHighlightAskAlert = false
+    @State private var showingHighlightAskComposer = false
     @State private var highlightAIQuestionDraft = ""
     @State private var pendingDeleteHighlight: Highlight?
     @State private var deletingNoteOnly = false
@@ -94,6 +94,7 @@ struct ReaderView: View {
     @State private var keyboardHeight: CGFloat = 0
     @FocusState private var isCustomQuestionFieldFocused: Bool
     @FocusState private var isHighlightNoteEditorFocused: Bool
+    @FocusState private var isHighlightQuestionFieldFocused: Bool
     private let swipePagingEnabled = true
     private let tapNavigationEdgeRatio: CGFloat = 0.24
     private let chapterPreloadWindow = 2
@@ -945,9 +946,14 @@ struct ReaderView: View {
         .buttonStyle(.plain)
     }
 
-    private func selectionPreviewCard(text: String, maxHeight: CGFloat, lineLimit: Int) -> some View {
+    private func selectionPreviewCard(
+        text: String,
+        maxHeight: CGFloat,
+        lineLimit: Int,
+        title: String = NSLocalizedString("reader.selection.title", comment: "")
+    ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(NSLocalizedString("reader.selection.title", comment: ""))
+            Text(title)
                 .font(.footnote)
                 .foregroundColor(.secondary)
 
@@ -1126,6 +1132,8 @@ struct ReaderView: View {
             return
         }
         highlightAIQuestionDraft = ""
+        showingHighlightAskComposer = false
+        isHighlightQuestionFieldFocused = false
         isHighlightNoteEditorFocused = false
         saveHighlightNoteDraftIfNeeded()
         showingHighlightActions = false
@@ -1413,153 +1421,24 @@ struct ReaderView: View {
 
     private var highlightActionSheet: some View {
         NavigationStack {
-            Group {
-                if let highlight = activeHighlight {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(NSLocalizedString("highlight.action.content", comment: ""))
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                                Text(activeHighlightText.isEmpty ? highlight.selectedText : activeHighlightText)
-                                    .font(.system(size: 16, design: .serif))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(12)
-                                    .background(Color.primary.opacity(0.05))
-                                    .cornerRadius(12)
-                            }
+            ZStack {
+                highlightActionSheetContent
+                    .blur(radius: showingHighlightAskComposer ? 10 : 0)
+                    .allowsHitTesting(!showingHighlightAskComposer)
+                    .animation(.easeInOut(duration: 0.2), value: showingHighlightAskComposer)
 
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(NSLocalizedString("highlight.action.note", comment: ""))
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                                Button {
-                                    openHighlightNoteEditor()
-                                } label: {
-                                    HStack(alignment: .center, spacing: 10) {
-                                        let note = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                                        Text(note.isEmpty ? NSLocalizedString("highlight.action.note_edit_placeholder", comment: "") : note)
-                                            .font(.body)
-                                            .foregroundColor(note.isEmpty ? .secondary : .primary)
-                                            .multilineTextAlignment(.leading)
-                                            .lineLimit(1)
-                                            .truncationMode(.tail)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                                        Image(systemName: "square.and.pencil")
-                                            .font(.system(size: 15, weight: .semibold))
-                                            .foregroundColor(.secondary)
-                                            .padding(.top, 2)
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 10)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Color.primary.opacity(0.05))
-                                    .cornerRadius(12)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.primary.opacity(0.08))
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
+                if showingHighlightAskComposer, let highlight = activeHighlight {
+                    Color.black.opacity(0.001)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            dismissHighlightAskComposer()
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                        .padding(.bottom, 24)
+
+                    GeometryReader { geometry in
+                        highlightAskComposer(for: highlight, in: geometry)
                     }
-                    .safeAreaInset(edge: .bottom) {
-                        VStack(spacing: 12) {
-                            let columns = [
-                                GridItem(.flexible(minimum: 120), spacing: 10),
-                                GridItem(.flexible(minimum: 120), spacing: 10)
-                            ]
-                            LazyVGrid(columns: columns, spacing: 10) {
-                                Button {
-                                    saveHighlightNoteDraftIfNeeded()
-                                    showingHighlightActions = false
-                                    startAIRequest(.translate, sourceText: highlight.selectedText, targetHighlight: highlight)
-                                } label: {
-                                    Label(NSLocalizedString("reader.ai.translate", comment: ""), systemImage: "globe")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .frame(maxWidth: .infinity, minHeight: 40)
-                                }
-                                .buttonStyle(.bordered)
-
-                                Button {
-                                    saveHighlightNoteDraftIfNeeded()
-                                    showingHighlightActions = false
-                                    startAIRequest(.explain, sourceText: highlight.selectedText, targetHighlight: highlight)
-                                } label: {
-                                    Label(NSLocalizedString("reader.ai.explain", comment: ""), systemImage: "brain.head.profile")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .frame(maxWidth: .infinity, minHeight: 40)
-                                }
-                                .buttonStyle(.bordered)
-
-                                Button {
-                                    highlightAIQuestionDraft = ""
-                                    showingHighlightAskAlert = true
-                                } label: {
-                                    Label(NSLocalizedString("reader.ai.ask", comment: ""), systemImage: "sparkles")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .frame(maxWidth: .infinity, minHeight: 40)
-                                }
-                                .buttonStyle(.bordered)
-
-                                Button {
-                                    handleCopyHighlightText(highlight)
-                                } label: {
-                                    Label(NSLocalizedString("highlight.action.copy_highlight", comment: ""), systemImage: "doc.on.doc")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .frame(maxWidth: .infinity, minHeight: 40)
-                                }
-                                .buttonStyle(.bordered)
-
-                                if let note = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
-                                    Button(role: .destructive) {
-                                        isHighlightNoteEditorFocused = false
-                                        saveHighlightNoteDraftIfNeeded()
-                                        requestHighlightDeletion(highlight, noteOnly: true)
-                                    } label: {
-                                        Label(NSLocalizedString("highlight.action.delete_note", comment: ""), systemImage: "trash")
-                                            .font(.system(size: 15, weight: .semibold))
-                                            .frame(maxWidth: .infinity, minHeight: 40)
-                                    }
-                                    .buttonStyle(.bordered)
-                                }
-
-                                Button(role: .destructive) {
-                                    isHighlightNoteEditorFocused = false
-                                    saveHighlightNoteDraftIfNeeded()
-                                    requestHighlightDeletion(highlight, noteOnly: false)
-                                } label: {
-                                    Label(NSLocalizedString("highlight.action.delete_highlight", comment: ""), systemImage: "trash.slash")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .frame(maxWidth: .infinity, minHeight: 40)
-                                }
-                                .buttonStyle(.bordered)
-                            }
-
-                            if appSettings.areAdsEnabled {
-                                adBannerSection
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                        .padding(.bottom, 8)
-                        .background(.ultraThinMaterial)
-                        .overlay(alignment: .top) {
-                            Divider()
-                                .opacity(0.55)
-                        }
-                    }
-                } else {
-                    Text(NSLocalizedString("common.no_content", comment: ""))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.top, 40)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .navigationTitle(NSLocalizedString("highlight.action.title", comment: ""))
@@ -1570,6 +1449,7 @@ struct ReaderView: View {
                 if !showingHighlightNoteEditor {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(NSLocalizedString("common.close", comment: "")) {
+                            dismissHighlightAskComposer(clearDraft: true)
                             isHighlightNoteEditorFocused = false
                             saveHighlightNoteDraftIfNeeded()
                             showingHighlightActions = false
@@ -1587,26 +1467,259 @@ struct ReaderView: View {
         }
         .onChange(of: activeHighlight?.objectID) { _ in
             syncHighlightNoteDraftIfNeeded()
+            if activeHighlight == nil {
+                dismissHighlightAskComposer(clearDraft: true)
+            }
         }
         .onDisappear {
+            dismissHighlightAskComposer(clearDraft: true)
             isHighlightNoteEditorFocused = false
             saveHighlightNoteDraftIfNeeded()
-            showingHighlightAskAlert = false
-            highlightAIQuestionDraft = ""
             noteDraftHighlightObjectID = nil
         }
-        .alert(NSLocalizedString("reader.ai.ask", comment: ""), isPresented: $showingHighlightAskAlert) {
-            TextField(NSLocalizedString("reader.ai.question.placeholder", comment: ""), text: $highlightAIQuestionDraft)
-                .textInputAutocapitalization(.sentences)
-            Button(NSLocalizedString("common.cancel", comment: ""), role: .cancel) {
-                highlightAIQuestionDraft = ""
+    }
+
+    private var highlightActionSheetContent: some View {
+        Group {
+            if let highlight = activeHighlight {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("highlight.action.content", comment: ""))
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                            Text(activeHighlightText.isEmpty ? highlight.selectedText : activeHighlightText)
+                                .font(.system(size: 16, design: .serif))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                                .background(Color.primary.opacity(0.05))
+                                .cornerRadius(12)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(NSLocalizedString("highlight.action.note", comment: ""))
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                            Button {
+                                openHighlightNoteEditor()
+                            } label: {
+                                HStack(alignment: .center, spacing: 10) {
+                                    let note = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                                    Text(note.isEmpty ? NSLocalizedString("highlight.action.note_edit_placeholder", comment: "") : note)
+                                        .font(.body)
+                                        .foregroundColor(note.isEmpty ? .secondary : .primary)
+                                        .multilineTextAlignment(.leading)
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    Image(systemName: "square.and.pencil")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(.secondary)
+                                        .padding(.top, 2)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.primary.opacity(0.05))
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.primary.opacity(0.08))
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 24)
+                }
+                .safeAreaInset(edge: .bottom) {
+                    VStack(spacing: 12) {
+                        let columns = [
+                            GridItem(.flexible(minimum: 120), spacing: 10),
+                            GridItem(.flexible(minimum: 120), spacing: 10)
+                        ]
+                        LazyVGrid(columns: columns, spacing: 10) {
+                            Button {
+                                saveHighlightNoteDraftIfNeeded()
+                                showingHighlightActions = false
+                                startAIRequest(.translate, sourceText: highlight.selectedText, targetHighlight: highlight)
+                            } label: {
+                                Label(NSLocalizedString("reader.ai.translate", comment: ""), systemImage: "globe")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(maxWidth: .infinity, minHeight: 40)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                saveHighlightNoteDraftIfNeeded()
+                                showingHighlightActions = false
+                                startAIRequest(.explain, sourceText: highlight.selectedText, targetHighlight: highlight)
+                            } label: {
+                                Label(NSLocalizedString("reader.ai.explain", comment: ""), systemImage: "brain.head.profile")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(maxWidth: .infinity, minHeight: 40)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                openHighlightAskComposer()
+                            } label: {
+                                Label(NSLocalizedString("reader.ai.ask", comment: ""), systemImage: "sparkles")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(maxWidth: .infinity, minHeight: 40)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                handleCopyHighlightText(highlight)
+                            } label: {
+                                Label(NSLocalizedString("highlight.action.copy_highlight", comment: ""), systemImage: "doc.on.doc")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(maxWidth: .infinity, minHeight: 40)
+                            }
+                            .buttonStyle(.bordered)
+
+                            if let note = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
+                                Button(role: .destructive) {
+                                    isHighlightNoteEditorFocused = false
+                                    saveHighlightNoteDraftIfNeeded()
+                                    requestHighlightDeletion(highlight, noteOnly: true)
+                                } label: {
+                                    Label(NSLocalizedString("highlight.action.delete_note", comment: ""), systemImage: "trash")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .frame(maxWidth: .infinity, minHeight: 40)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+
+                            Button(role: .destructive) {
+                                isHighlightNoteEditorFocused = false
+                                saveHighlightNoteDraftIfNeeded()
+                                requestHighlightDeletion(highlight, noteOnly: false)
+                            } label: {
+                                Label(NSLocalizedString("highlight.action.delete_highlight", comment: ""), systemImage: "trash.slash")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(maxWidth: .infinity, minHeight: 40)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        if appSettings.areAdsEnabled {
+                            adBannerSection
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+                    .background(.ultraThinMaterial)
+                    .overlay(alignment: .top) {
+                        Divider()
+                            .opacity(0.55)
+                    }
+                }
+            } else {
+                Text(NSLocalizedString("common.no_content", comment: ""))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 40)
             }
-            Button(NSLocalizedString("reader.ai.question.send", comment: "")) {
-                if let highlight = activeHighlight {
+        }
+    }
+
+    private func highlightAskComposer(for highlight: Highlight, in geometry: GeometryProxy) -> some View {
+        let composerWidth = min(max(geometry.size.width - 16, 320), 820)
+        let trimmedQuestion = highlightAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let canSubmitQuestion = !trimmedQuestion.isEmpty && !isLoadingAIResponse
+        let defaultBottomPadding = geometry.safeAreaInsets.bottom + 12
+        let keyboardPinnedBottomPadding = keyboardHeight > 0 ? keyboardHeight : defaultBottomPadding
+        let resolvedText = activeHighlightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? highlight.selectedText.trimmingCharacters(in: .whitespacesAndNewlines)
+            : activeHighlightText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let previewMaxHeight = min(220, max(78, geometry.size.height * 0.34))
+        let previewLineLimit = max(2, Int((previewMaxHeight / 22).rounded(.down)))
+
+        return VStack(spacing: 10) {
+            selectionPreviewCard(
+                text: resolvedText.isEmpty ? NSLocalizedString("common.no_content", comment: "") : resolvedText,
+                maxHeight: previewMaxHeight,
+                lineLimit: previewLineLimit,
+                title: NSLocalizedString("highlight.action.content", comment: "")
+            )
+
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color.blue.opacity(0.9))
+                    .frame(width: 24, height: 24)
+
+                TextField(
+                    NSLocalizedString("reader.ai.question.placeholder", comment: ""),
+                    text: $highlightAIQuestionDraft
+                )
+                .textInputAutocapitalization(.sentences)
+                .submitLabel(.send)
+                .focused($isHighlightQuestionFieldFocused)
+                .onSubmit {
                     submitHighlightCustomAIQuestion(for: highlight)
                 }
+
+                Button {
+                    submitHighlightCustomAIQuestion(for: highlight)
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(canSubmitQuestion ? Color.blue : Color.secondary.opacity(0.22))
+                            .frame(width: 30, height: 30)
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .disabled(!canSubmitQuestion)
+                .accessibilityLabel(NSLocalizedString("reader.ai.question.send", comment: ""))
             }
-            .disabled(highlightAIQuestionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.68))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                    )
+            )
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(Color.primary.opacity(0.09))
+        )
+        .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 8)
+        .frame(width: composerWidth)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .padding(.horizontal, 8)
+        .padding(.bottom, keyboardPinnedBottomPadding)
+    }
+
+    private func openHighlightAskComposer() {
+        highlightAIQuestionDraft = ""
+        showingHighlightAskComposer = true
+        DispatchQueue.main.async {
+            isHighlightQuestionFieldFocused = true
+        }
+    }
+
+    private func dismissHighlightAskComposer(clearDraft: Bool = false) {
+        isHighlightQuestionFieldFocused = false
+        showingHighlightAskComposer = false
+        if clearDraft {
+            highlightAIQuestionDraft = ""
         }
     }
 
