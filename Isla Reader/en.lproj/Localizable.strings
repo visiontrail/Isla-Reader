@@ -146,7 +146,7 @@
 "reader.highlight.action" = "Highlight";
 "reader.note.add" = "Add Note";
 "reader.selection.continue_next_page" = "Continue on Next Page";
-"reader.ai.translate" = "Translate";
+"reader.ai.translate" = "AI Translate";
 "reader.ai.explain" = "AI Explain";
 "reader.ai.ask" = "Ask AI";
 "reader.ai.question.placeholder" = "Ask about this selection...";

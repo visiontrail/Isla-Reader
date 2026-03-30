@@ -769,10 +769,10 @@ struct ReaderView: View {
                     )
 
                     selectionActionButton(
-                        title: NSLocalizedString("common.copy", comment: ""),
-                        systemImage: "doc.on.doc",
-                        tint: .secondary,
-                        action: { handleCopySelectedText() }
+                        title: NSLocalizedString("reader.ai.explain", comment: ""),
+                        systemImage: "brain.head.profile",
+                        tint: .purple,
+                        action: { startAIRequest(.explain) }
                     )
 
                     selectionActionButton(
@@ -783,10 +783,10 @@ struct ReaderView: View {
                     )
 
                     selectionActionButton(
-                        title: NSLocalizedString("reader.ai.explain", comment: ""),
-                        systemImage: "brain.head.profile",
-                        tint: .purple,
-                        action: { startAIRequest(.explain) }
+                        title: NSLocalizedString("common.copy", comment: ""),
+                        systemImage: "doc.on.doc",
+                        tint: .secondary,
+                        action: { handleCopySelectedText() }
                     )
                 }
                 .padding(.horizontal, 10)
@@ -1673,17 +1673,6 @@ struct ReaderView: View {
                             Button {
                                 saveHighlightNoteDraftIfNeeded()
                                 showingHighlightActions = false
-                                startAIRequest(.translate, sourceText: highlight.selectedText, targetHighlight: highlight)
-                            } label: {
-                                Label(NSLocalizedString("reader.ai.translate", comment: ""), systemImage: "globe")
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .frame(maxWidth: .infinity, minHeight: 40)
-                            }
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                saveHighlightNoteDraftIfNeeded()
-                                showingHighlightActions = false
                                 startAIRequest(.explain, sourceText: highlight.selectedText, targetHighlight: highlight)
                             } label: {
                                 Label(NSLocalizedString("reader.ai.explain", comment: ""), systemImage: "brain.head.profile")
@@ -1693,9 +1682,11 @@ struct ReaderView: View {
                             .buttonStyle(.bordered)
 
                             Button {
-                                openHighlightAskComposer()
+                                saveHighlightNoteDraftIfNeeded()
+                                showingHighlightActions = false
+                                startAIRequest(.translate, sourceText: highlight.selectedText, targetHighlight: highlight)
                             } label: {
-                                Label(NSLocalizedString("reader.ai.ask", comment: ""), systemImage: "sparkles")
+                                Label(NSLocalizedString("reader.ai.translate", comment: ""), systemImage: "globe")
                                     .font(.system(size: 15, weight: .semibold))
                                     .frame(maxWidth: .infinity, minHeight: 40)
                             }
@@ -1705,6 +1696,15 @@ struct ReaderView: View {
                                 handleCopyHighlightText(highlight)
                             } label: {
                                 Label(NSLocalizedString("highlight.action.copy_highlight", comment: ""), systemImage: "doc.on.doc")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(maxWidth: .infinity, minHeight: 40)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                openHighlightAskComposer()
+                            } label: {
+                                Label(NSLocalizedString("reader.ai.ask", comment: ""), systemImage: "sparkles")
                                     .font(.system(size: 15, weight: .semibold))
                                     .frame(maxWidth: .infinity, minHeight: 40)
                             }
