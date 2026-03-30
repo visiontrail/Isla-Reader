@@ -157,6 +157,8 @@
 "highlight.action.content" = "ハイライト内容";
 "highlight.action.note" = "ノート";
 "highlight.action.no_note" = "ノートはありません";
+"highlight.action.note_edit_placeholder" = "タップしてノートを編集";
+"highlight.action.copy_highlight" = "ハイライトをコピー";
 "highlight.action.delete_note" = "ノートを削除";
 "highlight.action.delete_highlight" = "ハイライトを削除";
 "highlight.action.delete_note_confirm" = "このノートを削除しますか？";

@@ -157,6 +157,8 @@
 "highlight.action.content" = "하이라이트 내용";
 "highlight.action.note" = "메모";
 "highlight.action.no_note" = "메모가 없습니다";
+"highlight.action.note_edit_placeholder" = "탭하여 메모 편집";
+"highlight.action.copy_highlight" = "하이라이트 복사";
 "highlight.action.delete_note" = "메모 삭제";
 "highlight.action.delete_highlight" = "하이라이트 삭제";
 "highlight.action.delete_note_confirm" = "이 메모를 삭제하시겠습니까?";

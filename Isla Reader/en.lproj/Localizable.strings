@@ -157,6 +157,8 @@
 "highlight.action.content" = "Highlight Text";
 "highlight.action.note" = "Note";
 "highlight.action.no_note" = "No note yet";
+"highlight.action.note_edit_placeholder" = "Tap to edit note";
+"highlight.action.copy_highlight" = "Copy Highlight";
 "highlight.action.delete_note" = "Delete Note";
 "highlight.action.delete_highlight" = "Delete Highlight";
 "highlight.action.delete_note_confirm" = "Delete this note?";

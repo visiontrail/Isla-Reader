@@ -157,6 +157,8 @@
 "highlight.action.content" = "高亮内容";
 "highlight.action.note" = "笔记";
 "highlight.action.no_note" = "暂无笔记";
+"highlight.action.note_edit_placeholder" = "点击输入或编辑笔记";
+"highlight.action.copy_highlight" = "复制高亮";
 "highlight.action.delete_note" = "删除笔记";
 "highlight.action.delete_highlight" = "删除高亮";
 "highlight.action.delete_note_confirm" = "确定删除这条笔记？";
