@@ -492,7 +492,7 @@ private struct HighlightShareCardView: View {
 private enum HighlightShareCardStyle {
     static let cardWidth: CGFloat = 1080
     static let exportScale: CGFloat = 1
-    static let baselineHeight: CGFloat = 1440
+    static let baselineHeight: CGFloat = cardWidth
     static let maxFullLengthPixelHeight: CGFloat = 12_000
     static let maxFullLengthPixelCount: CGFloat = cardWidth * maxFullLengthPixelHeight
     static let inlineCoverWidth: CGFloat = 126
