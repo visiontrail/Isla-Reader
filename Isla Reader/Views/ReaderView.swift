@@ -78,6 +78,9 @@ struct ReaderView: View {
     @State private var showingHighlightsList = false
     @State private var showingBookmarksList = false
     @State private var activeLinkPreview: ReaderLinkPreviewPayload?
+    @State private var sharePreviewPayload: HighlightSharePreviewPayload?
+    @State private var shareFileURLToCleanup: URL?
+    @State private var generatingShareHighlightObjectID: NSManagedObjectID?
     @State private var selectionToolbarMeasuredHeight: CGFloat = 0
     @State private var didApplyInitialLocation = false
     @State private var hasReportedInitialChapterOpenMetric = false
@@ -118,6 +121,12 @@ struct ReaderView: View {
     private enum AIInsertionTarget {
         case selection
         case highlight(Highlight)
+    }
+
+    private struct HighlightSharePreviewPayload: Identifiable {
+        let id = UUID()
+        let image: UIImage
+        let fileURL: URL
     }
     
     // Pagination states per chapter
@@ -1879,6 +1888,9 @@ struct ReaderView: View {
                 highlightNoteEditorSheet
             }
         }
+        .sheet(item: $sharePreviewPayload, onDismiss: handleSharePreviewDismiss) { payload in
+            HighlightSharePreviewSheet(image: payload.image, fileURL: payload.fileURL)
+        }
         .onAppear {
             syncHighlightNoteDraftIfNeeded()
         }
@@ -2004,18 +2016,22 @@ struct ReaderView: View {
                             }
                             .buttonStyle(.bordered)
 
-                            if let note = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
-                                Button(role: .destructive) {
-                                    isHighlightNoteEditorFocused = false
-                                    saveHighlightNoteDraftIfNeeded()
-                                    requestHighlightDeletion(highlight, noteOnly: true)
-                                } label: {
-                                    Label(NSLocalizedString("highlight.action.delete_note", comment: ""), systemImage: "trash")
+                            Button {
+                                isHighlightNoteEditorFocused = false
+                                saveHighlightNoteDraftIfNeeded()
+                                generateSharePreview(for: highlight)
+                            } label: {
+                                if isGeneratingShare(for: highlight) {
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity, minHeight: 40)
+                                } else {
+                                    Label(NSLocalizedString("highlight.list.share_note", comment: ""), systemImage: "square.and.arrow.up")
                                         .font(.system(size: 15, weight: .semibold))
                                         .frame(maxWidth: .infinity, minHeight: 40)
                                 }
-                                .buttonStyle(.bordered)
                             }
+                            .disabled(generatingShareHighlightObjectID != nil)
+                            .buttonStyle(.bordered)
 
                             Button(role: .destructive) {
                                 isHighlightNoteEditorFocused = false
@@ -2027,6 +2043,7 @@ struct ReaderView: View {
                                     .frame(maxWidth: .infinity, minHeight: 40)
                             }
                             .buttonStyle(.bordered)
+                            .tint(.red)
                         }
 
                         if appSettings.areAdsEnabled {
@@ -2293,6 +2310,74 @@ struct ReaderView: View {
         pendingDeleteHighlight = highlight
         deletingNoteOnly = noteOnly
         showingDeleteConfirmation = true
+    }
+
+    private func noteText(for highlight: Highlight) -> String? {
+        guard let note = highlight.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty else {
+            return nil
+        }
+        return note
+    }
+
+    private func generateSharePreview(for highlight: Highlight) {
+        let payload = HighlightShareCardPayload.make(
+            highlightText: highlight.displayText,
+            noteText: noteText(for: highlight),
+            bookTitle: book.displayTitle,
+            chapterTitle: highlight.chapter,
+            chapterFallback: NSLocalizedString("highlight.list.unknown_chapter", comment: ""),
+            footerText: NSLocalizedString("highlight.share.footer", comment: ""),
+            footerSubtitleText: NSLocalizedString("highlight.share.footer_subtitle", comment: ""),
+            coverImageData: book.coverImageData
+        )
+        let highlightObjectID = highlight.objectID
+        generatingShareHighlightObjectID = highlightObjectID
+        DebugLogger.info("ReaderView: 开始生成分享图 - \(book.displayTitle)")
+
+        Task {
+            do {
+                let fileURL = try await HighlightShareCardRenderer.renderPNG(payload: payload)
+                guard let image = UIImage(contentsOfFile: fileURL.path) else {
+                    try? FileManager.default.removeItem(at: fileURL)
+                    throw HighlightShareError.renderFailed
+                }
+                await MainActor.run {
+                    generatingShareHighlightObjectID = nil
+                    if let staleURL = shareFileURLToCleanup {
+                        cleanupShareFile(at: staleURL)
+                    }
+                    shareFileURLToCleanup = fileURL
+                    sharePreviewPayload = HighlightSharePreviewPayload(image: image, fileURL: fileURL)
+                    DebugLogger.info("ReaderView: 分享图生成成功 - \(book.displayTitle)")
+                }
+            } catch {
+                await MainActor.run {
+                    generatingShareHighlightObjectID = nil
+                    showHint(NSLocalizedString("highlight.share.generate_failed.message", comment: ""))
+                }
+                DebugLogger.error("ReaderView: 分享图生成失败", error: error)
+            }
+        }
+    }
+
+    private func isGeneratingShare(for highlight: Highlight) -> Bool {
+        generatingShareHighlightObjectID == highlight.objectID
+    }
+
+    private func handleSharePreviewDismiss() {
+        guard let fileURL = shareFileURLToCleanup else { return }
+        cleanupShareFile(at: fileURL)
+        shareFileURLToCleanup = nil
+    }
+
+    private func cleanupShareFile(at fileURL: URL) {
+        do {
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                try FileManager.default.removeItem(at: fileURL)
+            }
+        } catch {
+            DebugLogger.error("ReaderView: 清理分享临时文件失败", error: error)
+        }
     }
 
     private func handleHighlightDeletion() {

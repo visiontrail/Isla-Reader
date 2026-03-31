@@ -176,6 +176,10 @@
 "highlight.list.merge" = "結合";
 "highlight.list.change_color" = "色を変更";
 "highlight.list.unknown_chapter" = "不明な章";
+"highlight.export.button" = "エクスポート";
+"highlight.export.choose_format.title" = "エクスポート形式を選択";
+"highlight.export.format.markdown" = "Markdown（.md）";
+"highlight.export.failed.message" = "ハイライトとノートのエクスポートに失敗しました。しばらくしてから再試行してください。";
 "highlight.share.preview_title" = "共有プレビュー";
 "highlight.share.image_button" = "画像を共有";
 "highlight.share.generate_failed.title" = "共有に失敗しました";

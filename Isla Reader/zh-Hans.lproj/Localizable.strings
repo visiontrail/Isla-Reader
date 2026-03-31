@@ -176,6 +176,10 @@
 "highlight.list.merge" = "合并";
 "highlight.list.change_color" = "更改颜色";
 "highlight.list.unknown_chapter" = "未知章节";
+"highlight.export.button" = "导出";
+"highlight.export.choose_format.title" = "选择导出格式";
+"highlight.export.format.markdown" = "Markdown（.md）";
+"highlight.export.failed.message" = "导出高亮与笔记失败，请稍后重试。";
 "highlight.share.preview_title" = "分享预览";
 "highlight.share.image_button" = "分享图片";
 "highlight.share.generate_failed.title" = "分享失败";

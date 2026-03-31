@@ -1150,6 +1150,10 @@ struct HighlightListSheet: View {
     @State private var activeAlert: HighlightListAlert?
     @State private var sharePreviewPayload: HighlightSharePreviewPayload?
     @State private var shareFileURLToCleanup: URL?
+    @State private var showingExportFormatPicker = false
+    @State private var exportSharePayload: HighlightExportSharePayload?
+    @State private var exportFileURLToCleanup: URL?
+    @State private var isPreparingMarkdownExport = false
     @State private var generatingShareHighlightObjectID: NSManagedObjectID?
     @State private var isSelecting = false
     @State private var selectedHighlightObjectIDs: Set<NSManagedObjectID> = []
@@ -1165,6 +1169,19 @@ struct HighlightListSheet: View {
         let id = UUID()
         let image: UIImage
         let fileURL: URL
+    }
+
+    private struct HighlightExportSharePayload: Identifiable {
+        let id = UUID()
+        let activityItems: [Any]
+    }
+
+    private struct HighlightMarkdownExportEntry {
+        let chapterTitle: String
+        let highlightText: String
+        let noteText: String?
+        let createdAt: Date
+        let updatedAt: Date
     }
     
     init(book: Book, onSelect: ((BookmarkLocation) -> Void)? = nil) {
@@ -1205,7 +1222,7 @@ struct HighlightListSheet: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle(NSLocalizedString("highlight.list.title", comment: ""))
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -1220,37 +1237,34 @@ struct HighlightListSheet: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if isSelecting {
-                        Button(NSLocalizedString("common.cancel", comment: "")) {
-                            exitSelectionMode()
-                        }
-                    } else {
-                        Button(NSLocalizedString("common.select", comment: "")) {
-                            enterSelectionMode()
-                        }
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if isSelecting {
-                        Button(NSLocalizedString("highlight.list.merge", comment: "")) {
-                            mergeSelectedHighlights()
-                        }
-                        .disabled(selectedHighlightObjectIDs.count < 2)
-                    } else {
-                        Menu {
-                            Picker(
-                                NSLocalizedString("settings.highlight_sort.title", comment: ""),
-                                selection: $appSettings.highlightSortMode
-                            ) {
-                                ForEach(HighlightSortMode.allCases, id: \.rawValue) { mode in
-                                    Text(mode.displayName).tag(mode)
-                                }
+                        HStack(spacing: 8) {
+                            Button(NSLocalizedString("common.cancel", comment: "")) {
+                                exitSelectionMode()
                             }
-                        } label: {
-                            Label(
-                                NSLocalizedString("settings.highlight_sort.title", comment: ""),
-                                systemImage: "arrow.up.arrow.down"
-                            )
-                            .labelStyle(.titleAndIcon)
+                            Button(NSLocalizedString("highlight.list.merge", comment: "")) {
+                                mergeSelectedHighlights()
+                            }
+                            .disabled(selectedHighlightObjectIDs.count < 2)
+                        }
+                    } else {
+                        HStack(spacing: 8) {
+                            exportToolbarButton
+                            Button(NSLocalizedString("common.select", comment: "")) {
+                                enterSelectionMode()
+                            }
+                            Menu {
+                                Picker(
+                                    NSLocalizedString("settings.highlight_sort.title", comment: ""),
+                                    selection: $appSettings.highlightSortMode
+                                ) {
+                                    ForEach(HighlightSortMode.allCases, id: \.rawValue) { mode in
+                                        Text(mode.displayName).tag(mode)
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "arrow.up.arrow.down")
+                                    .accessibilityLabel(Text(NSLocalizedString("settings.highlight_sort.title", comment: "")))
+                            }
                         }
                     }
                 }
@@ -1261,6 +1275,24 @@ struct HighlightListSheet: View {
         }
         .sheet(item: $sharePreviewPayload, onDismiss: handleSharePreviewDismiss) { payload in
             HighlightSharePreviewSheet(image: payload.image, fileURL: payload.fileURL)
+        }
+        .sheet(item: $exportSharePayload, onDismiss: handleExportShareDismiss) { payload in
+            HighlightListActivityShareSheet(activityItems: payload.activityItems) { _, completed, _, error in
+                if let error {
+                    DebugLogger.error("HighlightListSheet: Markdown 导出分享失败", error: error)
+                    return
+                }
+                DebugLogger.info("HighlightListSheet: Markdown 导出分享面板结束，completed=\(completed)")
+            }
+        }
+        .confirmationDialog(
+            NSLocalizedString("highlight.export.choose_format.title", comment: ""),
+            isPresented: $showingExportFormatPicker,
+            titleVisibility: .visible
+        ) {
+            Button(NSLocalizedString("highlight.export.format.markdown", comment: "")) {
+                exportHighlightsAsMarkdown()
+            }
         }
         .alert(item: $activeAlert) { alert in
             Alert(
@@ -1339,6 +1371,17 @@ struct HighlightListSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.vertical, 24)
+    }
+
+    private var exportToolbarButton: some View {
+        Button(action: { showingExportFormatPicker = true }) {
+            if isPreparingMarkdownExport {
+                ProgressView()
+            } else {
+                Text(NSLocalizedString("highlight.export.button", comment: ""))
+            }
+        }
+        .disabled(displayedHighlights.isEmpty || isPreparingMarkdownExport || generatingShareHighlightObjectID != nil)
     }
     
     private func highlightRow(for highlight: Highlight) -> some View {
@@ -1742,6 +1785,161 @@ struct HighlightListSheet: View {
         shareFileURLToCleanup = nil
     }
 
+    private func handleExportShareDismiss() {
+        guard let fileURL = exportFileURLToCleanup else { return }
+        cleanupShareFile(at: fileURL)
+        exportFileURLToCleanup = nil
+    }
+
+    private func exportHighlightsAsMarkdown() {
+        guard !displayedHighlights.isEmpty else { return }
+
+        let snapshot = displayedHighlights.map { highlight in
+            HighlightMarkdownExportEntry(
+                chapterTitle: chapterLabel(for: highlight),
+                highlightText: highlight.displayText,
+                noteText: noteText(for: highlight),
+                createdAt: highlight.createdAt,
+                updatedAt: highlight.updatedAt
+            )
+        }
+        let sortModeDisplayName = appSettings.highlightSortMode.displayName
+        let bookTitle = book.displayTitle
+        let exportedAt = Date()
+        isPreparingMarkdownExport = true
+        DebugLogger.info("HighlightListSheet: 开始导出 Markdown - \(bookTitle), count=\(snapshot.count)")
+
+        do {
+            let markdown = buildMarkdownDocument(
+                entries: snapshot,
+                bookTitle: bookTitle,
+                sortModeDisplayName: sortModeDisplayName,
+                exportedAt: exportedAt
+            )
+            let fileURL = try writeMarkdownExport(markdown, bookTitle: bookTitle, exportedAt: exportedAt)
+            if let staleURL = exportFileURLToCleanup {
+                cleanupShareFile(at: staleURL)
+            }
+            exportFileURLToCleanup = fileURL
+            exportSharePayload = HighlightExportSharePayload(activityItems: [fileURL])
+            isPreparingMarkdownExport = false
+            DebugLogger.info("HighlightListSheet: Markdown 导出成功 - \(fileURL.lastPathComponent)")
+        } catch {
+            isPreparingMarkdownExport = false
+            activeAlert = HighlightListAlert(
+                title: NSLocalizedString("settings.export.failed", comment: ""),
+                message: NSLocalizedString("highlight.export.failed.message", comment: "")
+            )
+            DebugLogger.error("HighlightListSheet: Markdown 导出失败", error: error)
+        }
+    }
+
+    private func buildMarkdownDocument(
+        entries: [HighlightMarkdownExportEntry],
+        bookTitle: String,
+        sortModeDisplayName: String,
+        exportedAt: Date
+    ) -> String {
+        let metadataDateFormatter = ISO8601DateFormatter()
+        metadataDateFormatter.formatOptions = [.withInternetDateTime]
+
+        let displayDateFormatter = DateFormatter()
+        displayDateFormatter.locale = Locale.autoupdatingCurrent
+        displayDateFormatter.dateStyle = .medium
+        displayDateFormatter.timeStyle = .short
+
+        var sections: [String] = []
+        sections.append("---")
+        sections.append("title: \"\(yamlEscaped(bookTitle)) - Highlights Export\"")
+        sections.append("book: \"\(yamlEscaped(bookTitle))\"")
+        sections.append("exported_at: \"\(metadataDateFormatter.string(from: exportedAt))\"")
+        sections.append("sort_order: \"\(yamlEscaped(sortModeDisplayName))\"")
+        sections.append("total_entries: \(entries.count)")
+        sections.append("---")
+        sections.append("")
+        sections.append("# Highlights & Notes")
+        sections.append("")
+        sections.append("- **Book**: \(bookTitle)")
+        sections.append("- **Exported At**: \(displayDateFormatter.string(from: exportedAt))")
+        sections.append("- **Sort Order**: \(sortModeDisplayName)")
+        sections.append("- **Total Entries**: \(entries.count)")
+        sections.append("")
+        sections.append("---")
+
+        for (index, entry) in entries.enumerated() {
+            sections.append("")
+            sections.append("## \(index + 1). \(entry.chapterTitle)")
+            sections.append("")
+            sections.append("- **Created**: \(displayDateFormatter.string(from: entry.createdAt))")
+            if entry.updatedAt != entry.createdAt {
+                sections.append("- **Updated**: \(displayDateFormatter.string(from: entry.updatedAt))")
+            }
+            sections.append("")
+            sections.append("### Highlight")
+            sections.append(markdownBlockquote(from: entry.highlightText))
+            sections.append("")
+            sections.append("### Note")
+            if let noteText = entry.noteText {
+                sections.append(normalizeLineEndings(noteText))
+            } else {
+                sections.append("_No note_")
+            }
+            sections.append("")
+            sections.append("---")
+        }
+
+        return sections.joined(separator: "\n")
+    }
+
+    private func writeMarkdownExport(_ markdown: String, bookTitle: String, exportedAt: Date) throws -> URL {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+
+        let sanitizedTitle = sanitizedFilenameComponent(from: bookTitle)
+        let fileName = "\(sanitizedTitle)-highlights-\(formatter.string(from: exportedAt)).md"
+        let exportURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+
+        try markdown.write(to: exportURL, atomically: true, encoding: .utf8)
+        return exportURL
+    }
+
+    private func markdownBlockquote(from text: String) -> String {
+        let normalized = normalizeLineEndings(text).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return "> " }
+        return normalized
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { line in
+                line.isEmpty ? ">" : "> \(line)"
+            }
+            .joined(separator: "\n")
+    }
+
+    private func normalizeLineEndings(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func yamlEscaped(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+    }
+
+    private func sanitizedFilenameComponent(from rawValue: String) -> String {
+        let forbiddenCharacterSet = CharacterSet(charactersIn: "/\\?%*|\"<>:")
+        let collapsed = rawValue
+            .components(separatedBy: forbiddenCharacterSet)
+            .joined(separator: " ")
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let fallback = collapsed.isEmpty ? "LanRead" : collapsed
+        return String(fallback.prefix(60))
+    }
+
     private func cleanupShareFile(at fileURL: URL) {
         do {
             if FileManager.default.fileExists(atPath: fileURL.path) {
@@ -1806,6 +2004,19 @@ struct HighlightListSheet: View {
             }
         }
     }
+}
+
+private struct HighlightListActivityShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    let completion: UIActivityViewController.CompletionWithItemsHandler?
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        controller.completionWithItemsHandler = completion
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 struct EmptyLibraryView: View {

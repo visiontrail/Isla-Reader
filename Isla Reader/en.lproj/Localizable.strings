@@ -176,6 +176,10 @@
 "highlight.list.merge" = "Merge";
 "highlight.list.change_color" = "Change Color";
 "highlight.list.unknown_chapter" = "Unknown chapter";
+"highlight.export.button" = "Export";
+"highlight.export.choose_format.title" = "Choose Export Format";
+"highlight.export.format.markdown" = "Markdown (.md)";
+"highlight.export.failed.message" = "Failed to export highlights and notes. Please try again.";
 "highlight.share.preview_title" = "Share Preview";
 "highlight.share.image_button" = "Share Image";
 "highlight.share.generate_failed.title" = "Share Failed";
