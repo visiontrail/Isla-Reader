@@ -24,6 +24,14 @@ struct HighlightTapInfo: Equatable {
     let text: String
 }
 
+struct ReaderLinkTapInfo: Equatable {
+    let href: String
+    let text: String
+    let isExternal: Bool
+    let isFootnoteHint: Bool
+    let isTOCHint: Bool
+}
+
 struct ReaderHighlight: Identifiable, Equatable {
     let id: UUID
     let startOffset: Int
@@ -134,6 +142,22 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                 let text = (dict["text"] as? String) ?? ""
                 parent.onHighlightTap?(
                     HighlightTapInfo(id: uuid, text: text.trimmingCharacters(in: .whitespacesAndNewlines))
+                )
+            }
+        } else if message.name == "contentLinkTap" {
+            if let dict = message.body as? [String: Any],
+               let rawHref = dict["href"] as? String {
+                let href = rawHref.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !href.isEmpty else { return }
+                let text = ((dict["text"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                parent.onContentLinkTap?(
+                    ReaderLinkTapInfo(
+                        href: href,
+                        text: text,
+                        isExternal: Self.boolValue(from: dict["isExternal"], default: false),
+                        isFootnoteHint: Self.boolValue(from: dict["isFootnoteHint"], default: false),
+                        isTOCHint: Self.boolValue(from: dict["isTOCHint"], default: false)
+                    )
                 )
             }
         } else if message.name == "pageMetrics" {
@@ -1053,6 +1077,7 @@ struct ReaderWebView: UIViewRepresentable {
     var onToolbarToggle: (() -> Void)?
     var onTextSelection: ((SelectedTextInfo) -> Void)?
     var onHighlightTap: ((HighlightTapInfo) -> Void)?
+    var onContentLinkTap: ((ReaderLinkTapInfo) -> Void)?
     var onLoadFinished: (() -> Void)?
     var onInteractionChange: ((Bool) -> Void)?
 
@@ -1158,6 +1183,7 @@ struct ReaderWebView: UIViewRepresentable {
         userContentController.add(context.coordinator, name: "textSelection")
         userContentController.add(context.coordinator, name: "selectionDebug")
         userContentController.add(context.coordinator, name: "highlightTap")
+        userContentController.add(context.coordinator, name: "contentLinkTap")
         userContentController.add(context.coordinator, name: "pageMetrics")
         userContentController.add(context.coordinator, name: "interaction")
         
@@ -4262,6 +4288,122 @@ struct ReaderWebView: UIViewRepresentable {
             }
         }
 
+        var contentLinkTapBound = false;
+        function bindContentLinkTapHandler() {
+            if (contentLinkTapBound) { return; }
+
+            function hasAncestorWithClass(node, className) {
+                var current = node;
+                while (current) {
+                    if (current.classList && current.classList.contains(className)) {
+                        return true;
+                    }
+                    current = current.parentElement;
+                }
+                return false;
+            }
+
+            function findNearestLink(node) {
+                var current = node;
+                while (current) {
+                    if (current.tagName && String(current.tagName).toLowerCase() === 'a') {
+                        return current;
+                    }
+                    current = current.parentElement;
+                }
+                return null;
+            }
+
+            function hasTOCHint(node) {
+                var current = node;
+                while (current) {
+                    if (current.tagName && String(current.tagName).toLowerCase() === 'nav') {
+                        return true;
+                    }
+                    var roleAttr = '';
+                    var typeAttr = '';
+                    try {
+                        roleAttr = (current.getAttribute && current.getAttribute('role')) || '';
+                        typeAttr = (current.getAttribute && (current.getAttribute('epub:type') || current.getAttribute('type'))) || '';
+                    } catch (e) {}
+                    var normalizedRole = String(roleAttr).toLowerCase();
+                    var normalizedType = String(typeAttr).toLowerCase();
+                    if (normalizedRole.indexOf('doc-toc') >= 0 ||
+                        normalizedRole.indexOf('toc') >= 0 ||
+                        normalizedType.indexOf('toc') >= 0) {
+                        return true;
+                    }
+                    current = current.parentElement;
+                }
+                return false;
+            }
+
+            function hasFootnoteHint(linkNode) {
+                if (!linkNode) { return false; }
+                var attrs = '';
+                try {
+                    attrs = [
+                        linkNode.getAttribute('epub:type') || '',
+                        linkNode.getAttribute('type') || '',
+                        linkNode.getAttribute('role') || '',
+                        linkNode.getAttribute('rel') || '',
+                        linkNode.className || ''
+                    ].join(' ').toLowerCase();
+                } catch (e) {
+                    attrs = '';
+                }
+                if (attrs.indexOf('noteref') >= 0 ||
+                    attrs.indexOf('footnote') >= 0 ||
+                    attrs.indexOf('doc-noteref') >= 0) {
+                    return true;
+                }
+
+                var href = '';
+                try { href = (linkNode.getAttribute('href') || '').toLowerCase(); } catch (e) {}
+                if (href.indexOf('footnote') >= 0 || href.indexOf('fn') >= 0 || href.indexOf('note') >= 0) {
+                    return true;
+                }
+                return false;
+            }
+
+            document.addEventListener('click', function(event) {
+                var target = event ? event.target : null;
+                if (!target) { return; }
+                if (hasAncestorWithClass(target, 'reader-highlight')) { return; }
+
+                var linkNode = findNearestLink(target);
+                if (!linkNode) { return; }
+
+                var rawHref = '';
+                try { rawHref = (linkNode.getAttribute('href') || '').trim(); } catch (e) {}
+                if (!rawHref) { return; }
+
+                var normalizedHref = rawHref.toLowerCase();
+                if (normalizedHref.startsWith('javascript:')) { return; }
+
+                var isExternal = /^(https?:|mailto:|tel:|sms:)/i.test(rawHref);
+                var text = '';
+                try { text = (linkNode.textContent || '').trim(); } catch (e) { text = ''; }
+                var tocHint = hasTOCHint(linkNode);
+                var footnoteHint = hasFootnoteHint(linkNode);
+
+                try {
+                    window.webkit.messageHandlers.contentLinkTap.postMessage({
+                        href: rawHref,
+                        text: text,
+                        isExternal: !!isExternal,
+                        isFootnoteHint: !!footnoteHint,
+                        isTOCHint: !!tocHint
+                    });
+                } catch (e) {}
+
+                if (event && event.preventDefault) { event.preventDefault(); }
+                if (event && event.stopPropagation) { event.stopPropagation(); }
+            }, true);
+
+            contentLinkTapBound = true;
+        }
+
         var highlightTapBound = false;
         function bindHighlightTapHandler() {
             if (highlightTapBound) { return; }
@@ -4298,6 +4440,7 @@ struct ReaderWebView: UIViewRepresentable {
             highlightTapBound = true;
         }
 
+        bindContentLinkTapHandler();
         bindHighlightTapHandler();
         """
     }

@@ -25,6 +25,21 @@ struct Chapter {
     let content: String
     let htmlContent: String // 保留原始HTML内容，已处理图片
     let order: Int
+    let sourceHref: String?
+
+    init(
+        title: String,
+        content: String,
+        htmlContent: String,
+        order: Int,
+        sourceHref: String? = nil
+    ) {
+        self.title = title
+        self.content = content
+        self.htmlContent = htmlContent
+        self.order = order
+        self.sourceHref = sourceHref
+    }
 }
 
 struct TOCItem {
@@ -1722,7 +1737,8 @@ class EPubParser {
                     title: finalTitle,
                     content: chapterContent,
                     htmlContent: cleanedHTML,
-                    order: chapterIndex
+                    order: chapterIndex,
+                    sourceHref: normalizedHref
                 )
                 
                 chapters.append(chapter)

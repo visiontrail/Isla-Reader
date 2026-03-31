@@ -8,6 +8,7 @@
 import SwiftUI
 import CoreData
 import UIKit
+import WebKit
 
 struct ReaderView: View {
     let book: Book
@@ -76,6 +77,7 @@ struct ReaderView: View {
     @State private var hintMessage: String?
     @State private var showingHighlightsList = false
     @State private var showingBookmarksList = false
+    @State private var activeLinkPreview: ReaderLinkPreviewPayload?
     @State private var selectionToolbarMeasuredHeight: CGFloat = 0
     @State private var didApplyInitialLocation = false
     @State private var hasReportedInitialChapterOpenMetric = false
@@ -256,6 +258,15 @@ struct ReaderView: View {
                 pendingDeleteHighlight = nil
                 deletingNoteOnly = false
             }
+        }
+        .sheet(item: $activeLinkPreview) { preview in
+            LinkTargetPreviewSheet(
+                payload: preview,
+                onNavigate: { target in
+                    performLinkNavigation(target)
+                },
+                onStay: {}
+            )
         }
     }
     
@@ -439,6 +450,9 @@ struct ReaderView: View {
                 onHighlightTap: { info in
                     handleHighlightTap(info)
                 },
+                onContentLinkTap: { info in
+                    handleContentLinkTap(info, sourceChapterIndex: index)
+                },
                 onLoadFinished: nil,
                 onInteractionChange: { isActive in
                     isInteractingWithWebContent = isActive
@@ -556,6 +570,273 @@ struct ReaderView: View {
 
     private func readerContentID(for chapter: Chapter) -> String {
         ReaderWebView.makeContentID(bookID: book.id, chapterOrder: chapter.order)
+    }
+
+    private func handleContentLinkTap(_ info: ReaderLinkTapInfo, sourceChapterIndex: Int) {
+        let href = info.href.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !href.isEmpty else { return }
+
+        if let target = resolveLinkNavigationTarget(href: href, sourceChapterIndex: sourceChapterIndex, isExternalHint: info.isExternal) {
+            selectedTextInfo = nil
+            pendingSelectionClearWorkItem?.cancel()
+            pendingSelectionClearWorkItem = nil
+            if let previewPayload = makeLinkPreviewPayload(for: target) {
+                activeLinkPreview = previewPayload
+            } else {
+                showHint(NSLocalizedString("reader.link.unsupported", comment: ""))
+            }
+            return
+        }
+
+        showHint(NSLocalizedString("reader.link.unsupported", comment: ""))
+    }
+
+    private func makeLinkPreviewPayload(for target: ReaderLinkNavigationTarget) -> ReaderLinkPreviewPayload? {
+        if target.externalURL != nil {
+            return ReaderLinkPreviewPayload(
+                target: target,
+                chapterTitle: nil,
+                chapterHTMLContent: nil
+            )
+        }
+
+        guard let chapterIndex = target.destinationChapterIndex,
+              chapters.indices.contains(chapterIndex) else {
+            return nil
+        }
+
+        let chapter = chapters[chapterIndex]
+        return ReaderLinkPreviewPayload(
+            target: target,
+            chapterTitle: chapter.title,
+            chapterHTMLContent: chapter.htmlContent
+        )
+    }
+
+    private func performLinkNavigation(_ target: ReaderLinkNavigationTarget) {
+        if let externalURL = target.externalURL {
+            UIApplication.shared.open(externalURL)
+            return
+        }
+
+        guard let chapterIndex = target.destinationChapterIndex else { return }
+        let normalizedFragment = normalizeTOCFragment(target.fragment)
+        let isSameChapter = chapterIndex == currentChapterIndex
+
+        if isSameChapter && normalizedFragment == nil { return }
+
+        if !isSameChapter {
+            ensurePageArrays()
+            setChapterPageIndex(chapterIndex, 0)
+        }
+
+        currentChapterIndex = chapterIndex
+        currentTOCFragment = normalizedFragment
+
+        if let normalizedFragment {
+            tocNavigationToken += 1
+            pendingTOCNavigation = TOCNavigationRequest(
+                chapterIndex: chapterIndex,
+                fragment: normalizedFragment,
+                token: tocNavigationToken
+            )
+        } else {
+            pendingTOCNavigation = nil
+        }
+    }
+
+    private func resolveLinkNavigationTarget(
+        href: String,
+        sourceChapterIndex: Int,
+        isExternalHint: Bool
+    ) -> ReaderLinkNavigationTarget? {
+        if isExternalHref(href) || isExternalHint {
+            let candidateURL = URL(string: href)
+            guard let candidateURL else { return nil }
+            return ReaderLinkNavigationTarget(
+                href: href,
+                sourceChapterIndex: sourceChapterIndex,
+                destinationChapterIndex: nil,
+                fragment: nil,
+                externalURL: candidateURL
+            )
+        }
+
+        let parts = splitHref(href)
+        if parts.path == nil && parts.fragment == nil {
+            return nil
+        }
+
+        let destinationChapterIndex: Int
+        if let rawPath = parts.path {
+            let resolvedCandidates = candidateResolvedPaths(for: rawPath, sourceChapterIndex: sourceChapterIndex)
+            if let matchedChapter = resolvedCandidates.compactMap({ matchedChapterIndex(forResolvedPath: $0) }).first {
+                destinationChapterIndex = matchedChapter
+            } else if parts.fragment != nil {
+                destinationChapterIndex = sourceChapterIndex
+            } else {
+                return nil
+            }
+        } else {
+            destinationChapterIndex = sourceChapterIndex
+        }
+
+        return ReaderLinkNavigationTarget(
+            href: href,
+            sourceChapterIndex: sourceChapterIndex,
+            destinationChapterIndex: destinationChapterIndex,
+            fragment: parts.fragment,
+            externalURL: nil
+        )
+    }
+
+    private func isExternalHref(_ href: String) -> Bool {
+        guard let scheme = URLComponents(string: href)?.scheme?.lowercased() else {
+            return false
+        }
+        return ["http", "https", "mailto", "tel", "sms"].contains(scheme)
+    }
+
+    private func splitHref(_ href: String) -> (path: String?, fragment: String?) {
+        var pathPart = href
+        var fragmentPart: String?
+
+        if let hashIndex = href.firstIndex(of: "#") {
+            pathPart = String(href[..<hashIndex])
+            let rawFragment = String(href[href.index(after: hashIndex)...])
+            fragmentPart = rawFragment
+        }
+
+        if let queryIndex = pathPart.firstIndex(of: "?") {
+            pathPart = String(pathPart[..<queryIndex])
+        }
+
+        let normalizedPath = pathPart.trimmingCharacters(in: .whitespacesAndNewlines)
+        let path = normalizedPath.isEmpty ? nil : normalizedPath
+        return (path: path, fragment: normalizeTOCFragment(fragmentPart))
+    }
+
+    private func candidateResolvedPaths(for rawPath: String, sourceChapterIndex: Int) -> [String] {
+        var candidates: [String] = []
+        let relativeCandidate = resolveArchivePath(rawPath, sourceChapterIndex: sourceChapterIndex)
+        if !relativeCandidate.isEmpty {
+            candidates.append(relativeCandidate)
+        }
+
+        let absoluteCandidate = normalizeArchivePath(rawPath)
+        if !absoluteCandidate.isEmpty && !candidates.contains(absoluteCandidate) {
+            candidates.append(absoluteCandidate)
+        }
+        return candidates
+    }
+
+    private func normalizedTOCHrefPath(_ href: String) -> String? {
+        let parts = splitHref(href)
+        guard let path = parts.path else { return nil }
+        let normalized = normalizeArchivePath(path)
+        return normalized.isEmpty ? nil : normalized
+    }
+
+    private func resolveArchivePath(_ rawPath: String, sourceChapterIndex: Int) -> String {
+        let trimmed = rawPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+
+        if trimmed.hasPrefix("/") {
+            return normalizeArchivePath(trimmed)
+        }
+
+        guard let sourcePath = sourceChapterPath(for: sourceChapterIndex), !sourcePath.isEmpty else {
+            return normalizeArchivePath(trimmed)
+        }
+
+        let sourceDirectory = (sourcePath as NSString).deletingLastPathComponent
+        if sourceDirectory.isEmpty {
+            return normalizeArchivePath(trimmed)
+        }
+        return normalizeArchivePath(sourceDirectory + "/" + trimmed)
+    }
+
+    private func sourceChapterPath(for chapterIndex: Int) -> String? {
+        if chapters.indices.contains(chapterIndex) {
+            let chapterPath = normalizeArchivePath(chapters[chapterIndex].sourceHref ?? "")
+            if !chapterPath.isEmpty {
+                return chapterPath
+            }
+        }
+
+        for item in tocItems where item.chapterIndex == chapterIndex {
+            if let path = normalizedTOCHrefPath(item.href), !path.isEmpty {
+                return path
+            }
+        }
+        return nil
+    }
+
+    private func matchedChapterIndex(forResolvedPath resolvedPath: String) -> Int? {
+        guard !resolvedPath.isEmpty else { return nil }
+        let normalizedTarget = normalizeArchivePath(resolvedPath).lowercased()
+        let targetFileName = (normalizedTarget as NSString).lastPathComponent
+
+        for (index, chapter) in chapters.enumerated() {
+            let sourcePath = normalizeArchivePath(chapter.sourceHref ?? "").lowercased()
+            guard !sourcePath.isEmpty else { continue }
+            if sourcePath == normalizedTarget {
+                return index
+            }
+        }
+
+        if !targetFileName.isEmpty {
+            for (index, chapter) in chapters.enumerated() {
+                let sourcePath = normalizeArchivePath(chapter.sourceHref ?? "").lowercased()
+                guard !sourcePath.isEmpty else { continue }
+                let fileName = (sourcePath as NSString).lastPathComponent
+                if fileName == targetFileName {
+                    return index
+                }
+            }
+        }
+
+        for item in tocItems {
+            guard let tocPath = normalizedTOCHrefPath(item.href)?.lowercased(), !tocPath.isEmpty else { continue }
+            if tocPath == normalizedTarget {
+                return item.chapterIndex
+            }
+            if !targetFileName.isEmpty {
+                let tocFileName = (tocPath as NSString).lastPathComponent
+                if tocFileName == targetFileName {
+                    return item.chapterIndex
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private func normalizeArchivePath(_ rawPath: String) -> String {
+        var path = (rawPath.removingPercentEncoding ?? rawPath)
+            .replacingOccurrences(of: "\\", with: "/")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        while path.hasPrefix("/") {
+            path.removeFirst()
+        }
+
+        var segments: [String] = []
+        for rawSegment in path.split(separator: "/", omittingEmptySubsequences: true) {
+            let segment = String(rawSegment)
+            if segment == "." {
+                continue
+            }
+            if segment == ".." {
+                if !segments.isEmpty {
+                    segments.removeLast()
+                }
+                continue
+            }
+            segments.append(segment)
+        }
+
+        return segments.joined(separator: "/")
     }
     
     private var topToolbar: some View {
@@ -3113,6 +3394,21 @@ private struct TOCNavigationRequest: Equatable {
     let token: Int
 }
 
+private struct ReaderLinkNavigationTarget: Equatable {
+    let href: String
+    let sourceChapterIndex: Int
+    let destinationChapterIndex: Int?
+    let fragment: String?
+    let externalURL: URL?
+}
+
+private struct ReaderLinkPreviewPayload: Identifiable, Equatable {
+    let id = UUID()
+    let target: ReaderLinkNavigationTarget
+    let chapterTitle: String?
+    let chapterHTMLContent: String?
+}
+
 private struct SelectionToolbarHeightPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 
@@ -3125,6 +3421,220 @@ private struct HighlightNavigationRequest: Equatable {
     let chapterIndex: Int
     let textOffset: Int
     let token: Int
+}
+
+private struct LinkTargetPreviewSheet: View {
+    let payload: ReaderLinkPreviewPayload
+    var onNavigate: (ReaderLinkNavigationTarget) -> Void
+    var onStay: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var isExternal: Bool {
+        payload.target.externalURL != nil
+    }
+
+    private var actionTitle: String {
+        if isExternal {
+            return NSLocalizedString("reader.link.preview.open_external", comment: "")
+        }
+        return NSLocalizedString("reader.link.preview.open_target", comment: "")
+    }
+
+    private var navigationTitleText: String {
+        if isExternal {
+            return NSLocalizedString("reader.link.preview.title.external", comment: "")
+        }
+        return NSLocalizedString("reader.link.preview.title", comment: "")
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if let htmlContent = payload.chapterHTMLContent {
+                    LinkTargetPreviewWebView(
+                        htmlContent: htmlContent,
+                        fragment: payload.target.fragment,
+                        isDarkMode: colorScheme == .dark
+                    )
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: "safari")
+                            .font(.system(size: 34, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        Text(NSLocalizedString("reader.link.preview.external_unavailable", comment: ""))
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemBackground))
+                }
+
+                VStack(spacing: 10) {
+                    Button(actionTitle) {
+                        onNavigate(payload.target)
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+
+                    Button(NSLocalizedString("reader.link.preview.stay", comment: "")) {
+                        onStay()
+                        dismiss()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(.ultraThinMaterial)
+            }
+            .navigationTitle(navigationTitleText)
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(NSLocalizedString("common.done", comment: "")) {
+                        onStay()
+                        dismiss()
+                    }
+                }
+            }
+        }
+        #if os(iOS)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        #endif
+    }
+}
+
+private struct LinkTargetPreviewWebView: UIViewRepresentable {
+    let htmlContent: String
+    let fragment: String?
+    let isDarkMode: Bool
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(fragment: fragment)
+    }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let webView = WKWebView(frame: .zero)
+        webView.navigationDelegate = context.coordinator
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        webView.scrollView.alwaysBounceVertical = true
+        webView.scrollView.alwaysBounceHorizontal = false
+        webView.scrollView.showsHorizontalScrollIndicator = false
+        webView.scrollView.showsVerticalScrollIndicator = true
+        webView.loadHTMLString(wrappedHTML, baseURL: nil)
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        context.coordinator.fragment = fragment
+        context.coordinator.didAttemptInitialScroll = false
+        webView.loadHTMLString(wrappedHTML, baseURL: nil)
+    }
+
+    private var wrappedHTML: String {
+        let backgroundColor = isDarkMode ? "#0d0d12" : "#ffffff"
+        let textColor = isDarkMode ? "rgba(255, 255, 255, 0.88)" : "rgba(0, 0, 0, 0.86)"
+        let linkColor = isDarkMode ? "#5aadff" : "#0066cc"
+        let targetHighlight = isDarkMode ? "rgba(90, 173, 255, 0.22)" : "rgba(0, 102, 204, 0.14)"
+
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    background: \(backgroundColor);
+                    color: \(textColor);
+                    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+                    font-size: 17px;
+                    line-height: 1.65;
+                }
+                body {
+                    padding: 16px 16px 22px;
+                }
+                a {
+                    color: \(linkColor);
+                    text-decoration: none;
+                }
+                .reader-preview-target {
+                    background: \(targetHighlight);
+                    border-radius: 8px;
+                    padding: 2px 4px;
+                    box-decoration-break: clone;
+                    -webkit-box-decoration-break: clone;
+                }
+                img, svg {
+                    max-width: 100%;
+                    height: auto;
+                }
+            </style>
+        </head>
+        <body>
+            \(htmlContent)
+        </body>
+        </html>
+        """
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var fragment: String?
+        var didAttemptInitialScroll = false
+
+        init(fragment: String?) {
+            self.fragment = fragment
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard !didAttemptInitialScroll else { return }
+            didAttemptInitialScroll = true
+
+            guard let fragment,
+                  !fragment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return
+            }
+
+            let escaped = fragment
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+                .replacingOccurrences(of: "\n", with: "\\n")
+                .replacingOccurrences(of: "\r", with: "\\r")
+
+            let js = """
+            (function() {
+                var key = "\(escaped)";
+                function findTarget(input) {
+                    if (!input) { return null; }
+                    return document.getElementById(input) || document.getElementsByName(input)[0] || null;
+                }
+                var target = findTarget(key);
+                if (!target) {
+                    try { target = findTarget(decodeURIComponent(key)); } catch (e) {}
+                }
+                if (!target) { return false; }
+                try { target.classList.add('reader-preview-target'); } catch (e) {}
+                target.scrollIntoView({ behavior: 'auto', block: 'center' });
+                return true;
+            })();
+            """
+            webView.evaluateJavaScript(js, completionHandler: nil)
+        }
+    }
 }
 
 struct TableOfContentsView: View {

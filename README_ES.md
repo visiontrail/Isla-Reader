@@ -19,9 +19,24 @@ LanRead es una app de lectura basada en SwiftUI, centrada en EPUB, comprensión 
 ## Estado actual (según el código)
 
 - Plataforma objetivo: iOS/iPadOS 16.0+
-- Marketing Version en Xcode: `1.0`
+- Marketing Version en Xcode: `1.0.5`
 - Formato de importación principal: `EPUB` desde Files
 - Idiomas UI incluidos en la app: inglés, chino simplificado, japonés, coreano
+- Simulador por defecto en scripts (si no se pasa argumento): `iPhone 15 Pro`
+
+## Progreso reciente (snapshot 2026-03)
+
+- Mejoras de estabilidad en el lector: selección de texto, interacción en bordes de página y prevención de deriva horizontal.
+- Flujo de resaltados ampliado: fusión por multiselección, mejor edición de notas y fallback al exportar tarjetas de imagen muy grandes.
+- Mejoras en interacción IA: entrada Ask AI con autoajuste multilínea y orden unificado para traducir/explicar/preguntar.
+- Refinamiento de métricas: ventanas de 7 días/semana/mes alineadas a la zona horaria local y contadores separados para summary vs skimming.
+- Pulido del flujo skimming: timing de interstitial ajustado a transiciones de capítulo y avisos de disponibilidad más claros.
+
+## Snapshot de validación (2026-03-31)
+
+- `Isla ReaderTests`: 17 archivos de test, 59 casos `@Test`.
+- `Isla ReaderUITests`: 2 archivos de smoke tests UI.
+- `server/tests`: 5 archivos pytest de backend.
 
 ## Funcionalidades implementadas
 
@@ -29,6 +44,7 @@ LanRead es una app de lectura basada en SwiftUI, centrada en EPUB, comprensión 
 - Importación EPUB (detección de duplicados por checksum SHA-256)
 - Búsqueda en biblioteca, favoritos y filtros por estado de lectura
 - Panel de detalles del libro (metadatos, archivo, progreso)
+- Fusión por multiselección de resaltados y exportación de tarjeta de imagen para compartir
 - Lector con:
   - tabla de contenidos
   - paginación por toque/deslizamiento
@@ -44,6 +60,7 @@ LanRead es una app de lectura basada en SwiftUI, centrada en EPUB, comprensión 
 - Acciones IA sobre texto seleccionado/resaltado:
   - traducir
   - explicar
+  - preguntar
 - Inserción de respuesta IA en notas de resaltado
 - Modo skimming:
   - resumen IA por capítulo
@@ -113,7 +130,7 @@ LanRead es una app de lectura basada en SwiftUI, centrada en EPUB, comprensión 
 
 ### Requisitos
 - Xcode 15+
-- Runtime de iOS Simulator (recomendado: `iPhone 16`)
+- Runtime de iOS Simulator (recomendado: `iPhone 16`; si omites el dispositivo, los scripts usan `iPhone 15 Pro`)
 - macOS con herramientas de línea de comandos
 - Opcional para backend: Python 3.11+
 
