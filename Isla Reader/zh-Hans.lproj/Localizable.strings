@@ -182,8 +182,14 @@
 "highlight.export.failed.message" = "导出高亮与笔记失败，请稍后重试。";
 "highlight.share.preview_title" = "分享预览";
 "highlight.share.image_button" = "分享图片";
+"highlight.share.download_button" = "下载";
 "highlight.share.generate_failed.title" = "分享失败";
 "highlight.share.generate_failed.message" = "生成分享图片失败，请稍后重试。";
+"highlight.share.save_success.title" = "已保存";
+"highlight.share.save_success.message" = "图片已保存到相册。";
+"highlight.share.save_failed.title" = "保存失败";
+"highlight.share.save_failed.message" = "保存图片到相册失败，请稍后重试。";
+"highlight.share.photo_permission_denied.message" = "保存图片需要相册权限，请在系统设置中开启照片权限。";
 "highlight.share.footer" = "由 LanRead 分享";
 "highlight.share.footer_subtitle" = "AI for EPUB, synced to Notion";
 "settings.highlight_sort.title" = "高亮排序";

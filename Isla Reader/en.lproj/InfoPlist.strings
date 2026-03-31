@@ -1,1 +1,2 @@
 "CFBundleDisplayName" = "LanRead";
+"NSPhotoLibraryAddUsageDescription" = "Allow LanRead to save shared highlight images to your Photos.";

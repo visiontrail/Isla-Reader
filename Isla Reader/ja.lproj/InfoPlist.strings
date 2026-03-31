@@ -1,1 +1,2 @@
 "CFBundleDisplayName" = "LanRead";
+"NSPhotoLibraryAddUsageDescription" = "LanRead が共有画像を写真に保存するために、写真へのアクセスを許可してください。";

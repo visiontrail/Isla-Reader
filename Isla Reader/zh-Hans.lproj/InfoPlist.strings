@@ -1,1 +1,2 @@
 "CFBundleDisplayName" = "LanRead";
+"NSPhotoLibraryAddUsageDescription" = "允许 LanRead 将分享图片保存到你的相册。";

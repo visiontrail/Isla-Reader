@@ -66,6 +66,8 @@
 	<string>$(NOTION_CLIENT_ID)</string>
 	<key>NOTION_REDIRECT_URI</key>
 	<string>$(NOTION_REDIRECT_URI)</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Allow LanRead to save shared highlight images to your Photos.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

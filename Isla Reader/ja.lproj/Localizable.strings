@@ -182,8 +182,14 @@
 "highlight.export.failed.message" = "ハイライトとノートのエクスポートに失敗しました。しばらくしてから再試行してください。";
 "highlight.share.preview_title" = "共有プレビュー";
 "highlight.share.image_button" = "画像を共有";
+"highlight.share.download_button" = "ダウンロード";
 "highlight.share.generate_failed.title" = "共有に失敗しました";
 "highlight.share.generate_failed.message" = "共有画像を生成できませんでした。しばらくしてから再試行してください。";
+"highlight.share.save_success.title" = "保存しました";
+"highlight.share.save_success.message" = "画像を写真に保存しました。";
+"highlight.share.save_failed.title" = "保存に失敗しました";
+"highlight.share.save_failed.message" = "画像を写真に保存できませんでした。しばらくしてから再試行してください。";
+"highlight.share.photo_permission_denied.message" = "画像を保存するには写真へのアクセスが必要です。設定で写真の権限を有効にしてください。";
 "highlight.share.footer" = "LanRead から共有";
 "highlight.share.footer_subtitle" = "AI for EPUB, synced to Notion";
 "settings.highlight_sort.title" = "ハイライトの並び順";

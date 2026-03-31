@@ -182,8 +182,14 @@
 "highlight.export.failed.message" = "Failed to export highlights and notes. Please try again.";
 "highlight.share.preview_title" = "Share Preview";
 "highlight.share.image_button" = "Share Image";
+"highlight.share.download_button" = "Download";
 "highlight.share.generate_failed.title" = "Share Failed";
 "highlight.share.generate_failed.message" = "Failed to generate share image. Please try again.";
+"highlight.share.save_success.title" = "Saved";
+"highlight.share.save_success.message" = "Image saved to Photos.";
+"highlight.share.save_failed.title" = "Save Failed";
+"highlight.share.save_failed.message" = "Failed to save image to Photos. Please try again.";
+"highlight.share.photo_permission_denied.message" = "Photo access is required to save images. Please enable Photos permission in Settings.";
 "highlight.share.footer" = "Shared from LanRead";
 "highlight.share.footer_subtitle" = "AI for EPUB, synced to Notion";
 "settings.highlight_sort.title" = "Highlights Sort";

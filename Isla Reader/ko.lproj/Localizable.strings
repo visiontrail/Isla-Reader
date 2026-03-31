@@ -182,8 +182,14 @@
 "highlight.export.failed.message" = "하이라이트와 메모를 내보내지 못했습니다. 잠시 후 다시 시도해 주세요.";
 "highlight.share.preview_title" = "공유 미리보기";
 "highlight.share.image_button" = "이미지 공유";
+"highlight.share.download_button" = "다운로드";
 "highlight.share.generate_failed.title" = "공유 실패";
 "highlight.share.generate_failed.message" = "공유 이미지를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+"highlight.share.save_success.title" = "저장됨";
+"highlight.share.save_success.message" = "이미지를 사진에 저장했습니다.";
+"highlight.share.save_failed.title" = "저장 실패";
+"highlight.share.save_failed.message" = "이미지를 사진에 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+"highlight.share.photo_permission_denied.message" = "이미지를 저장하려면 사진 접근 권한이 필요합니다. 설정에서 사진 권한을 허용해 주세요.";
 "highlight.share.footer" = "LanRead에서 공유됨";
 "highlight.share.footer_subtitle" = "AI for EPUB, synced to Notion";
 "settings.highlight_sort.title" = "하이라이트 정렬";
