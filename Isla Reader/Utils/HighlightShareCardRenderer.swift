@@ -69,6 +69,16 @@ struct HighlightShareCardPayload: Sendable {
     }
 }
 
+enum HighlightShareFrameStyle: String, CaseIterable, Identifiable, Sendable {
+    case none = "NONE"
+    case white = "WHITE"
+    case black = "BLACK"
+
+    var id: String { rawValue }
+
+    var displayName: String { rawValue }
+}
+
 enum HighlightShareError: LocalizedError {
     case renderFailed
     case writeFailed
@@ -102,12 +112,15 @@ private struct HighlightShareCardLayoutProfile {
 }
 
 enum HighlightShareCardRenderer {
-    static func renderPNG(payload: HighlightShareCardPayload) async throws -> URL {
+    static func renderPNG(
+        payload: HighlightShareCardPayload,
+        frameStyle: HighlightShareFrameStyle = .none
+    ) async throws -> URL {
         var lastError: Error?
         for mode in HighlightShareCardRenderMode.fallbackOrder {
             do {
                 let image = try await MainActor.run {
-                    try renderImage(payload: payload, mode: mode)
+                    try renderImage(payload: payload, mode: mode, frameStyle: frameStyle)
                 }
                 let data = try encodePNGData(from: image)
                 return try writePNGDataToTemporaryFile(data)
@@ -125,12 +138,15 @@ enum HighlightShareCardRenderer {
         throw lastError ?? HighlightShareError.writeFailed
     }
 
-    static func renderImage(payload: HighlightShareCardPayload) async throws -> UIImage {
+    static func renderImage(
+        payload: HighlightShareCardPayload,
+        frameStyle: HighlightShareFrameStyle = .none
+    ) async throws -> UIImage {
         try await MainActor.run {
             var lastError: Error?
             for mode in HighlightShareCardRenderMode.fallbackOrder {
                 do {
-                    return try renderImage(payload: payload, mode: mode)
+                    return try renderImage(payload: payload, mode: mode, frameStyle: frameStyle)
                 } catch {
                     lastError = error
                     guard mode.shouldAttemptFallback else {
@@ -149,18 +165,23 @@ enum HighlightShareCardRenderer {
     @MainActor
     private static func renderImage(
         payload: HighlightShareCardPayload,
-        mode: HighlightShareCardRenderMode
+        mode: HighlightShareCardRenderMode,
+        frameStyle: HighlightShareFrameStyle
     ) throws -> UIImage {
-        let layoutProfile = resolveLayoutProfile(payload: payload, mode: mode)
+        let layoutProfile = resolveLayoutProfile(payload: payload, mode: mode, frameStyle: frameStyle)
         let renderer = ImageRenderer(
             content: HighlightShareCardView(
                 payload: payload,
                 mode: mode,
-                layoutProfile: layoutProfile
+                layoutProfile: layoutProfile,
+                frameStyle: frameStyle
             )
         )
         renderer.scale = HighlightShareCardStyle.exportScale
-        renderer.proposedSize = ProposedViewSize(width: HighlightShareCardStyle.cardWidth, height: mode.proposedHeight)
+        renderer.proposedSize = ProposedViewSize(
+            width: HighlightShareCardStyle.cardWidth,
+            height: mode.proposedHeight(for: frameStyle)
+        )
 
         guard let image = renderer.uiImage else {
             throw HighlightShareError.renderFailed
@@ -216,13 +237,14 @@ enum HighlightShareCardRenderer {
     @MainActor
     private static func resolveLayoutProfile(
         payload: HighlightShareCardPayload,
-        mode: HighlightShareCardRenderMode
+        mode: HighlightShareCardRenderMode,
+        frameStyle: HighlightShareFrameStyle
     ) -> HighlightShareCardLayoutProfile {
         guard mode == .fullLength else {
             return .inlineDefault
         }
 
-        let fixedContentHeight = estimatedFixedContentHeight(payload: payload, mode: mode)
+        let fixedContentHeight = estimatedFixedContentHeight(payload: payload, mode: mode, frameStyle: frameStyle)
         let remainingWhitespace = HighlightShareCardStyle.baselineHeight - fixedContentHeight
         guard remainingWhitespace > HighlightShareCardStyle.coverBottomFillTriggerWhitespace else {
             return .inlineDefault
@@ -247,7 +269,8 @@ enum HighlightShareCardRenderer {
     @MainActor
     private static func estimatedFixedContentHeight(
         payload: HighlightShareCardPayload,
-        mode: HighlightShareCardRenderMode
+        mode: HighlightShareCardRenderMode,
+        frameStyle: HighlightShareFrameStyle
     ) -> CGFloat {
         let highlightFont = UIFont.systemFont(ofSize: 58, weight: .semibold)
         let attributionFont = UIFont.systemFont(ofSize: 33, weight: .semibold)
@@ -289,11 +312,12 @@ enum HighlightShareCardRenderer {
         }
 
         let stackSpacingCount = payload.noteText == nil ? 2 : 3
+        let effectiveSpacingCount = frameStyle == .none ? stackSpacingCount : max(stackSpacingCount - 1, 0)
         return (HighlightShareCardStyle.verticalPadding * 2)
             + topBlockHeight
             + noteCardHeight
-            + (HighlightShareCardStyle.stackSpacing * CGFloat(stackSpacingCount))
-            + HighlightShareCardStyle.footerHeight
+            + (HighlightShareCardStyle.stackSpacing * CGFloat(effectiveSpacingCount))
+            + (frameStyle == .none ? HighlightShareCardStyle.footerHeight : 0)
     }
 
     @MainActor
@@ -348,6 +372,8 @@ private struct HighlightShareCardView: View {
     let payload: HighlightShareCardPayload
     let mode: HighlightShareCardRenderMode
     let layoutProfile: HighlightShareCardLayoutProfile
+    let frameStyle: HighlightShareFrameStyle
+    let generatedAt: Date = Date()
 
     private var coverUIImage: UIImage? {
         guard let coverImageData = payload.coverImageData else {
@@ -357,21 +383,80 @@ private struct HighlightShareCardView: View {
     }
 
     var body: some View {
+        Group {
+            switch frameStyle {
+            case .none:
+                cardContent(showLegacyFooter: true)
+            case .white, .black:
+                framedCard
+            }
+        }
+        .frame(width: HighlightShareCardStyle.cardWidth, height: mode.fixedHeight(for: frameStyle))
+        .frame(minHeight: mode.minimumHeight(for: frameStyle), alignment: .top)
+    }
+
+    private var framedCard: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.95, green: 0.97, blue: 0.99),
-                    Color(red: 0.98, green: 0.98, blue: 0.96)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            (frameStyle == .white ? Color.white : Color.black)
+
+            VStack(spacing: 0) {
+                cardContent(showLegacyFooter: false)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(frameStyle == .white ? Color.black.opacity(0.08) : Color.white.opacity(0.12), lineWidth: 1)
+                    )
+                    .shadow(
+                        color: frameStyle == .white ? Color.black.opacity(0.14) : Color.black.opacity(0.45),
+                        radius: 16,
+                        x: 0,
+                        y: 8
+                    )
+                    .frame(maxHeight: .infinity)
+
+                HStack(spacing: 16) {
+                    HStack(spacing: 10) {
+                        Image("LanReadIcon")
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                            .frame(width: 36, height: 36)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(frameStyle == .white ? Color.black.opacity(0.16) : Color.white.opacity(0.22), lineWidth: 1)
+                            )
+
+                        Text(payload.footerText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+
+                    Spacer(minLength: 12)
+
+                    Text(Self.frameTimestampFormatter.string(from: generatedAt))
+                        .lineLimit(1)
+                }
+                .font(.system(size: 24, weight: .medium, design: .rounded))
+                .foregroundColor(frameStyle == .white ? Color.black.opacity(0.78) : Color.white.opacity(0.88))
+                .frame(height: HighlightShareCardStyle.frameFooterHeight)
+                .padding(.horizontal, 6)
+            }
+            .padding(.horizontal, HighlightShareCardStyle.frameHorizontalPadding)
+            .padding(.top, HighlightShareCardStyle.frameTopPadding)
+            .padding(.bottom, HighlightShareCardStyle.frameBottomPadding)
+        }
+    }
+
+    private func cardContent(showLegacyFooter: Bool) -> some View {
+        ZStack {
+            backgroundGradient
 
             VStack(spacing: 36) {
                 VStack(alignment: .leading, spacing: 18) {
                     Text("“\(payload.highlightText)”")
                         .font(.system(size: 58, weight: .semibold, design: .serif))
-                        .foregroundColor(Color(red: 0.16, green: 0.21, blue: 0.30))
+                        .foregroundColor(highlightTextColor)
                         .lineSpacing(10)
                         .lineLimit(mode.highlightLineLimit)
                         .multilineTextAlignment(.leading)
@@ -380,7 +465,7 @@ private struct HighlightShareCardView: View {
                     HStack(alignment: .bottom, spacing: 24) {
                         Text(payload.attributionLine)
                             .font(.system(size: 33, weight: .semibold, design: .serif))
-                            .foregroundColor(Color(red: 0.33, green: 0.40, blue: 0.48))
+                            .foregroundColor(attributionTextColor)
                             .lineLimit(mode.attributionLineLimit)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -398,7 +483,7 @@ private struct HighlightShareCardView: View {
                         Text(
                             MarkdownRenderer.render(
                                 noteText,
-                                textColor: Color(red: 0.24, green: 0.29, blue: 0.36),
+                                textColor: noteTextColor,
                                 typography: .shareCard
                             )
                         )
@@ -411,11 +496,11 @@ private struct HighlightShareCardView: View {
                     .padding(.vertical, 26)
                     .background(
                         RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .fill(Color.white.opacity(0.95))
+                            .fill(noteBackgroundColor)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                            .stroke(noteBorderColor, lineWidth: 1)
                     )
                 }
 
@@ -429,36 +514,36 @@ private struct HighlightShareCardView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
 
-                HStack(spacing: 12) {
-                    Text(payload.footerText)
-                        .font(.system(size: 28, weight: .medium, design: .rounded))
-                        .foregroundColor(Color(red: 0.45, green: 0.49, blue: 0.56))
-                        .lineLimit(1)
+                if showLegacyFooter {
+                    HStack(spacing: 12) {
+                        Text(payload.footerText)
+                            .font(.system(size: 28, weight: .medium, design: .rounded))
+                            .foregroundColor(Color(red: 0.45, green: 0.49, blue: 0.56))
+                            .lineLimit(1)
 
-                    Image("LanReadIcon")
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFit()
-                        .frame(width: 44, height: 44)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(Color.black.opacity(0.08), lineWidth: 1)
-                        )
+                        Image("LanReadIcon")
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                            .frame(width: 44, height: 44)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                            )
 
-                    Text(payload.footerSubtitleText)
-                        .font(.system(size: 24, weight: .medium, design: .rounded))
-                        .foregroundColor(Color(red: 0.45, green: 0.49, blue: 0.56))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.9)
+                        Text(payload.footerSubtitleText)
+                            .font(.system(size: 24, weight: .medium, design: .rounded))
+                            .foregroundColor(Color(red: 0.45, green: 0.49, blue: 0.56))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.9)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
             }
             .padding(.horizontal, 72)
             .padding(.vertical, 78)
         }
-        .frame(width: HighlightShareCardStyle.cardWidth, height: mode.fixedHeight)
-        .frame(minHeight: mode.minimumHeight, alignment: .top)
     }
 
     @ViewBuilder
@@ -471,11 +556,11 @@ private struct HighlightShareCardView: View {
                     .scaledToFill()
             } else {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(0.75))
+                    .fill(coverPlaceholderColor)
                     .overlay(
                         Image(systemName: "book.closed")
                             .font(.system(size: 42, weight: .medium))
-                            .foregroundColor(Color(red: 0.47, green: 0.53, blue: 0.60))
+                            .foregroundColor(coverPlaceholderIconColor)
                     )
             }
         }
@@ -483,9 +568,106 @@ private struct HighlightShareCardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                .stroke(coverBorderColor, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.14), radius: 10, x: 0, y: 6)
+        .shadow(color: coverShadowColor, radius: 10, x: 0, y: 6)
+    }
+
+    private var isDarkContent: Bool {
+        frameStyle == .white
+    }
+
+    private var backgroundGradient: LinearGradient {
+        if isDarkContent {
+            return LinearGradient(
+                colors: [
+                    Color(red: 0.13, green: 0.14, blue: 0.17),
+                    Color(red: 0.20, green: 0.21, blue: 0.25)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        return LinearGradient(
+            colors: [
+                Color(red: 0.95, green: 0.97, blue: 0.99),
+                Color(red: 0.98, green: 0.98, blue: 0.96)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var highlightTextColor: Color {
+        isDarkContent ? Color(red: 0.90, green: 0.92, blue: 0.97) : Color(red: 0.16, green: 0.21, blue: 0.30)
+    }
+
+    private var attributionTextColor: Color {
+        isDarkContent ? Color(red: 0.72, green: 0.77, blue: 0.84) : Color(red: 0.33, green: 0.40, blue: 0.48)
+    }
+
+    private var noteTextColor: Color {
+        isDarkContent ? Color(red: 0.89, green: 0.91, blue: 0.95) : Color(red: 0.24, green: 0.29, blue: 0.36)
+    }
+
+    private var noteBackgroundColor: Color {
+        isDarkContent ? Color.black.opacity(0.42) : Color.white.opacity(0.95)
+    }
+
+    private var noteBorderColor: Color {
+        isDarkContent ? Color.white.opacity(0.14) : Color.black.opacity(0.06)
+    }
+
+    private var coverPlaceholderColor: Color {
+        isDarkContent ? Color.white.opacity(0.12) : Color.white.opacity(0.75)
+    }
+
+    private var coverPlaceholderIconColor: Color {
+        isDarkContent ? Color(red: 0.78, green: 0.82, blue: 0.88) : Color(red: 0.47, green: 0.53, blue: 0.60)
+    }
+
+    private var coverBorderColor: Color {
+        isDarkContent ? Color.white.opacity(0.16) : Color.black.opacity(0.08)
+    }
+
+    private var coverShadowColor: Color {
+        isDarkContent ? Color.black.opacity(0.30) : Color.black.opacity(0.14)
+    }
+
+    private static let frameTimestampFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter
+    }()
+}
+
+private extension HighlightShareCardRenderMode {
+    func proposedHeight(for frameStyle: HighlightShareFrameStyle) -> CGFloat? {
+        switch self {
+        case .fullLength:
+            return nil
+        case .truncated:
+            return HighlightShareCardStyle.baselineHeight + frameStyle.additionalHeight
+        }
+    }
+
+    func fixedHeight(for frameStyle: HighlightShareFrameStyle) -> CGFloat? {
+        switch self {
+        case .fullLength:
+            return nil
+        case .truncated:
+            return HighlightShareCardStyle.baselineHeight + frameStyle.additionalHeight
+        }
+    }
+
+    func minimumHeight(for frameStyle: HighlightShareFrameStyle) -> CGFloat? {
+        switch self {
+        case .fullLength:
+            return HighlightShareCardStyle.baselineHeight + frameStyle.additionalHeight
+        case .truncated:
+            return nil
+        }
     }
 }
 
@@ -510,6 +692,10 @@ private enum HighlightShareCardStyle {
     static let coverBottomFillFactor: CGFloat = 0.62
     static let bottomCoverMinHeight: CGFloat = 240
     static let bottomCoverMaxHeight: CGFloat = 360
+    static let frameHorizontalPadding: CGFloat = 42
+    static let frameTopPadding: CGFloat = 42
+    static let frameBottomPadding: CGFloat = 24
+    static let frameFooterHeight: CGFloat = 110
 }
 
 private enum HighlightShareCardRenderMode {
@@ -533,33 +719,6 @@ private enum HighlightShareCardRenderMode {
             return "长图模式"
         case .truncated:
             return "省略模式"
-        }
-    }
-
-    var proposedHeight: CGFloat? {
-        switch self {
-        case .fullLength:
-            return nil
-        case .truncated:
-            return HighlightShareCardStyle.baselineHeight
-        }
-    }
-
-    var fixedHeight: CGFloat? {
-        switch self {
-        case .fullLength:
-            return nil
-        case .truncated:
-            return HighlightShareCardStyle.baselineHeight
-        }
-    }
-
-    var minimumHeight: CGFloat? {
-        switch self {
-        case .fullLength:
-            return HighlightShareCardStyle.baselineHeight
-        case .truncated:
-            return nil
         }
     }
 
@@ -587,6 +746,19 @@ private enum HighlightShareCardRenderMode {
             return nil
         case .truncated:
             return 8
+        }
+    }
+}
+
+private extension HighlightShareFrameStyle {
+    var additionalHeight: CGFloat {
+        switch self {
+        case .none:
+            return 0
+        case .white, .black:
+            return HighlightShareCardStyle.frameTopPadding
+                + HighlightShareCardStyle.frameBottomPadding
+                + HighlightShareCardStyle.frameFooterHeight
         }
     }
 }

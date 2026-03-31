@@ -79,7 +79,6 @@ struct ReaderView: View {
     @State private var showingBookmarksList = false
     @State private var activeLinkPreview: ReaderLinkPreviewPayload?
     @State private var sharePreviewPayload: HighlightSharePreviewPayload?
-    @State private var shareFileURLToCleanup: URL?
     @State private var generatingShareHighlightObjectID: NSManagedObjectID?
     @State private var selectionToolbarMeasuredHeight: CGFloat = 0
     @State private var didApplyInitialLocation = false
@@ -126,7 +125,7 @@ struct ReaderView: View {
     private struct HighlightSharePreviewPayload: Identifiable {
         let id = UUID()
         let image: UIImage
-        let fileURL: URL
+        let cardPayload: HighlightShareCardPayload
     }
     
     // Pagination states per chapter
@@ -1888,8 +1887,8 @@ struct ReaderView: View {
                 highlightNoteEditorSheet
             }
         }
-        .sheet(item: $sharePreviewPayload, onDismiss: handleSharePreviewDismiss) { payload in
-            HighlightSharePreviewSheet(image: payload.image, fileURL: payload.fileURL)
+        .sheet(item: $sharePreviewPayload) { payload in
+            HighlightSharePreviewSheet(initialImage: payload.image, cardPayload: payload.cardPayload)
         }
         .onAppear {
             syncHighlightNoteDraftIfNeeded()
@@ -2336,18 +2335,10 @@ struct ReaderView: View {
 
         Task {
             do {
-                let fileURL = try await HighlightShareCardRenderer.renderPNG(payload: payload)
-                guard let image = UIImage(contentsOfFile: fileURL.path) else {
-                    try? FileManager.default.removeItem(at: fileURL)
-                    throw HighlightShareError.renderFailed
-                }
+                let image = try await HighlightShareCardRenderer.renderImage(payload: payload, frameStyle: .none)
                 await MainActor.run {
                     generatingShareHighlightObjectID = nil
-                    if let staleURL = shareFileURLToCleanup {
-                        cleanupShareFile(at: staleURL)
-                    }
-                    shareFileURLToCleanup = fileURL
-                    sharePreviewPayload = HighlightSharePreviewPayload(image: image, fileURL: fileURL)
+                    sharePreviewPayload = HighlightSharePreviewPayload(image: image, cardPayload: payload)
                     DebugLogger.info("ReaderView: 分享图生成成功 - \(book.displayTitle)")
                 }
             } catch {
@@ -2362,22 +2353,6 @@ struct ReaderView: View {
 
     private func isGeneratingShare(for highlight: Highlight) -> Bool {
         generatingShareHighlightObjectID == highlight.objectID
-    }
-
-    private func handleSharePreviewDismiss() {
-        guard let fileURL = shareFileURLToCleanup else { return }
-        cleanupShareFile(at: fileURL)
-        shareFileURLToCleanup = nil
-    }
-
-    private func cleanupShareFile(at fileURL: URL) {
-        do {
-            if FileManager.default.fileExists(atPath: fileURL.path) {
-                try FileManager.default.removeItem(at: fileURL)
-            }
-        } catch {
-            DebugLogger.error("ReaderView: 清理分享临时文件失败", error: error)
-        }
     }
 
     private func handleHighlightDeletion() {

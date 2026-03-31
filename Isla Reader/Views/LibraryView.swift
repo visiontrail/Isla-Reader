@@ -1149,7 +1149,6 @@ struct HighlightListSheet: View {
     @State private var noteDraft = ""
     @State private var activeAlert: HighlightListAlert?
     @State private var sharePreviewPayload: HighlightSharePreviewPayload?
-    @State private var shareFileURLToCleanup: URL?
     @State private var showingExportFormatPicker = false
     @State private var exportSharePayload: HighlightExportSharePayload?
     @State private var exportFileURLToCleanup: URL?
@@ -1168,7 +1167,7 @@ struct HighlightListSheet: View {
     private struct HighlightSharePreviewPayload: Identifiable {
         let id = UUID()
         let image: UIImage
-        let fileURL: URL
+        let cardPayload: HighlightShareCardPayload
     }
 
     private struct HighlightExportSharePayload: Identifiable {
@@ -1273,8 +1272,8 @@ struct HighlightListSheet: View {
         .sheet(item: $editingHighlight) { highlight in
             noteEditorSheet(for: highlight)
         }
-        .sheet(item: $sharePreviewPayload, onDismiss: handleSharePreviewDismiss) { payload in
-            HighlightSharePreviewSheet(image: payload.image, fileURL: payload.fileURL)
+        .sheet(item: $sharePreviewPayload) { payload in
+            HighlightSharePreviewSheet(initialImage: payload.image, cardPayload: payload.cardPayload)
         }
         .sheet(item: $exportSharePayload, onDismiss: handleExportShareDismiss) { payload in
             HighlightListActivityShareSheet(activityItems: payload.activityItems) { _, completed, _, error in
@@ -1580,18 +1579,10 @@ struct HighlightListSheet: View {
 
         Task {
             do {
-                let fileURL = try await HighlightShareCardRenderer.renderPNG(payload: payload)
-                guard let image = UIImage(contentsOfFile: fileURL.path) else {
-                    try? FileManager.default.removeItem(at: fileURL)
-                    throw HighlightShareError.renderFailed
-                }
+                let image = try await HighlightShareCardRenderer.renderImage(payload: payload, frameStyle: .none)
                 await MainActor.run {
                     generatingShareHighlightObjectID = nil
-                    if let staleURL = shareFileURLToCleanup {
-                        cleanupShareFile(at: staleURL)
-                    }
-                    shareFileURLToCleanup = fileURL
-                    sharePreviewPayload = HighlightSharePreviewPayload(image: image, fileURL: fileURL)
+                    sharePreviewPayload = HighlightSharePreviewPayload(image: image, cardPayload: payload)
                     DebugLogger.info("HighlightListSheet: 分享图生成成功 - \(book.displayTitle)")
                 }
             } catch {
@@ -1777,12 +1768,6 @@ struct HighlightListSheet: View {
                 message: nil
             )
         }
-    }
-
-    private func handleSharePreviewDismiss() {
-        guard let fileURL = shareFileURLToCleanup else { return }
-        cleanupShareFile(at: fileURL)
-        shareFileURLToCleanup = nil
     }
 
     private func handleExportShareDismiss() {

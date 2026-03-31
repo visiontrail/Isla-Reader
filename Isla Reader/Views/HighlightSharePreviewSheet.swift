@@ -10,13 +10,17 @@ import UIKit
 import Photos
 
 struct HighlightSharePreviewSheet: View {
-    let image: UIImage
-    let fileURL: URL
+    let cardPayload: HighlightShareCardPayload
 
     @Environment(\.dismiss) private var dismiss
     @State private var shareSheetPayload: ShareSheetPayload?
     @State private var shareFailedAlert = false
     @State private var downloadAlert: DownloadAlert?
+    @State private var selectedFrameStyle: HighlightShareFrameStyle = .none
+    @State private var renderedImage: UIImage
+    @State private var renderedImageCache: [HighlightShareFrameStyle: UIImage]
+    @State private var renderToken = UUID()
+    @State private var isRenderingStyle = false
 
     private struct ShareSheetPayload: Identifiable {
         let id = UUID()
@@ -29,6 +33,12 @@ struct HighlightSharePreviewSheet: View {
         let message: String
     }
 
+    init(initialImage: UIImage, cardPayload: HighlightShareCardPayload) {
+        self.cardPayload = cardPayload
+        _renderedImage = State(initialValue: initialImage)
+        _renderedImageCache = State(initialValue: [.none: initialImage])
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -36,13 +46,28 @@ struct HighlightSharePreviewSheet: View {
                     .ignoresSafeArea()
 
                 ScrollView {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .shadow(color: .black.opacity(0.15), radius: 18, x: 0, y: 10)
+                    VStack(alignment: .leading, spacing: 16) {
+                        frameStyleSelector
+                            .padding(.horizontal, 20)
+                            .padding(.top, 16)
+
+                        ZStack {
+                            Image(uiImage: renderedImage)
+                                .resizable()
+                                .scaledToFit()
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .shadow(color: .black.opacity(0.15), radius: 18, x: 0, y: 10)
+
+                            if isRenderingStyle {
+                                ProgressView()
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(.ultraThinMaterial, in: Capsule())
+                            }
+                        }
                         .padding(.horizontal, 20)
-                        .padding(.vertical, 24)
+                        .padding(.bottom, 24)
+                    }
                 }
             }
             .navigationTitle(NSLocalizedString("highlight.share.preview_title", comment: ""))
@@ -101,15 +126,114 @@ struct HighlightSharePreviewSheet: View {
         }
     }
 
-    private func startShare() {
-        let fileExists = FileManager.default.fileExists(atPath: fileURL.path)
-        DebugLogger.info("HighlightSharePreviewSheet: 点击分享按钮，fileExists=\(fileExists)")
-        if !fileExists {
-            DebugLogger.warning("HighlightSharePreviewSheet: 分享文件不存在，将继续分享 UIImage")
+    private var frameStyleSelector: some View {
+        HStack(spacing: 10) {
+            ForEach(HighlightShareFrameStyle.allCases) { style in
+                Button(action: { selectFrameStyle(style) }) {
+                    VStack(spacing: 8) {
+                        frameStyleGlyph(for: style)
+                            .frame(width: 42, height: 52)
+
+                        Text(style.displayName)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 92)
+                    .padding(.vertical, 8)
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(selectedFrameStyle == style ? Color.red : Color.clear, lineWidth: 2)
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(isRenderingStyle)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func frameStyleGlyph(for style: HighlightShareFrameStyle) -> some View {
+        switch style {
+        case .none:
+            ZStack {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color(.systemBackground))
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .stroke(Color.secondary.opacity(0.65), lineWidth: 2)
+                Image(systemName: "slash.circle")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+        case .white:
+            ZStack(alignment: .bottom) {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color.white)
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.black.opacity(0.78))
+                    .padding(.horizontal, 5)
+                    .padding(.top, 5)
+                    .padding(.bottom, 14)
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .stroke(Color.black.opacity(0.2), lineWidth: 1)
+            )
+        case .black:
+            ZStack(alignment: .bottom) {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color.black)
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color(red: 0.95, green: 0.97, blue: 0.99))
+                    .padding(.horizontal, 5)
+                    .padding(.top, 5)
+                    .padding(.bottom, 14)
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .stroke(Color.black.opacity(0.2), lineWidth: 1)
+            )
+        }
+    }
+
+    private func selectFrameStyle(_ style: HighlightShareFrameStyle) {
+        guard selectedFrameStyle != style else { return }
+        selectedFrameStyle = style
+
+        if let cached = renderedImageCache[style] {
+            renderedImage = cached
+            return
         }
 
+        isRenderingStyle = true
+        let token = UUID()
+        renderToken = token
+
+        Task {
+            do {
+                let image = try await HighlightShareCardRenderer.renderImage(payload: cardPayload, frameStyle: style)
+                await MainActor.run {
+                    guard renderToken == token else { return }
+                    renderedImageCache[style] = image
+                    renderedImage = image
+                    isRenderingStyle = false
+                }
+            } catch {
+                await MainActor.run {
+                    guard renderToken == token else { return }
+                    DebugLogger.error("HighlightSharePreviewSheet: 样式渲染失败", error: error)
+                    isRenderingStyle = false
+                    shareFailedAlert = true
+                }
+            }
+        }
+    }
+
+    private func startShare() {
         // 始终分享 UIImage，系统分享面板会提供“保存图片”等图片专用操作。
-        let activityItems: [Any] = [image]
+        let activityItems: [Any] = [renderedImage]
 
         guard !activityItems.isEmpty else {
             shareFailedAlert = true
@@ -151,7 +275,7 @@ struct HighlightSharePreviewSheet: View {
 
     private func saveImageToPhotoLibrary() {
         PHPhotoLibrary.shared().performChanges({
-            PHAssetChangeRequest.creationRequestForAsset(from: image)
+            PHAssetChangeRequest.creationRequestForAsset(from: renderedImage)
         }) { success, error in
             DispatchQueue.main.async {
                 if success {
