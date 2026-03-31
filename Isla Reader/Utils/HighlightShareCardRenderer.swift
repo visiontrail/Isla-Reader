@@ -607,18 +607,6 @@ private struct HighlightShareCardView: View {
             RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .stroke(noteBorderColor, lineWidth: 1)
         )
-        .overlay(alignment: .topLeading) {
-            ChatBubbleTail()
-                .fill(noteBackgroundColor)
-                .frame(width: 20, height: 20)
-                .offset(x: -9, y: 28)
-                .overlay(
-                    ChatBubbleTail()
-                        .stroke(noteBorderColor, lineWidth: 1)
-                        .frame(width: 20, height: 20)
-                        .offset(x: -9, y: 28)
-                )
-        }
     }
 
     @ViewBuilder
@@ -743,23 +731,6 @@ private struct HighlightShareCardView: View {
         formatter.dateFormat = "yyyy-MM-dd HH:mm"
         return formatter
     }()
-}
-
-private struct ChatBubbleTail: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.minX, y: rect.midY),
-            control: CGPoint(x: rect.minX, y: rect.minY)
-        )
-        path.addQuadCurve(
-            to: CGPoint(x: rect.maxX, y: rect.maxY),
-            control: CGPoint(x: rect.minX, y: rect.maxY)
-        )
-        path.closeSubpath()
-        return path
-    }
 }
 
 private extension HighlightShareCardRenderMode {
