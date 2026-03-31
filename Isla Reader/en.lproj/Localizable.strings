@@ -1,6 +1,6 @@
 "tab.library" = "Library";
 "tab.progress" = "Progress";
-"tab.settings" = "Settings";
+"tab.settings" = "Setting";
 "reading.settings.title" = "Reading Settings";
 "settings.data_and_sync" = "Data & Sync";
 "settings.ai_privacy.section" = "AI Data & Privacy";
@@ -87,12 +87,12 @@
 "progress.completed_books" = "Completed Books";
 "progress.goal_achievement" = "Goal Achievement";
 "progress.recent_reads" = "Recently Read";
-"progress.title" = "Reading Statistics";
+"progress.title" = "Progress";
 "progress.daily_goal.title" = "Reading Goal";
 "common.minutes" = "minutes";
 "progress.goal_achieved" = "Goal Achieved!";
 "library.search.placeholder" = "Search books or authors";
-"library.title" = "My Library";
+"library.title" = "Library";
 "library.continue_reading" = "Continue Reading";
 "library.book_info.title" = "Book Info";
 "book.info.details" = "Book Details";
@@ -197,6 +197,19 @@
 "settings.highlight_sort.by_modified_time" = "By Modified Time";
 "settings.highlight_sort.subtitle_format" = "Current: %@";
 "settings.highlight_sort.sync_note" = "This order is also used when syncing Highlights & Notes to Notion.";
+"settings.profile.section" = "Profile";
+"settings.profile.title" = "Profile";
+"settings.profile.display_name" = "Display Name";
+"settings.profile.display_name.placeholder" = "Enter your display name";
+"settings.profile.default_display_name" = "Reader";
+"settings.profile.default_name_hint" = "If empty, default name will be used in shared cards.";
+"settings.profile.avatar" = "Avatar";
+"settings.profile.avatar.choose" = "Choose Photo";
+"settings.profile.avatar.edit" = "Edit";
+"settings.profile.avatar.remove" = "Remove Current Avatar";
+"settings.profile.avatar.load_failed.title" = "Avatar Update Failed";
+"settings.profile.avatar.load_failed.message" = "Could not load this photo. Please try another image.";
+"settings.profile.preview_hint" = "This identity will appear in shared note comments.";
 "reader.page_turn.reached_start" = "You're at the beginning of this chapter";
 "reader.page_turn.reached_end" = "You've reached the end of this chapter";
 

@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import UIKit
 
 enum AdDisplayPolicy {
     #if LANREAD_ADS_DISABLED
@@ -238,6 +239,8 @@ class AppSettings: ObservableObject {
     private static let adRemovalUnlockedKey = "adRemovalUnlocked"
     private static let aiAdvanceAdNoticeEnabledKey = "aiAdvanceAdNoticeEnabled"
     private static let highlightSortModeKey = "highlightSortMode"
+    private static let profileDisplayNameKey = "profileDisplayName"
+    private static let profileAvatarDataKey = "profileAvatarData"
     private static let legacyReadingReminderEnabledKey = "reading_reminder_enabled"
     private static let legacyReadingGoalMinutesKey = "daily_reading_goal"
     private static let minutesPerDay = 24 * 60
@@ -260,6 +263,8 @@ class AppSettings: ObservableObject {
         "page_margins",
         adRemovalUnlockedKey,
         highlightSortModeKey,
+        profileDisplayNameKey,
+        profileAvatarDataKey,
         aiAdvanceAdNoticeEnabledKey,
         readingReminderEnabledKey,
         readingGoalMinutesKey,
@@ -337,6 +342,23 @@ class AppSettings: ObservableObject {
             UserDefaults.standard.set(highlightSortMode.rawValue, forKey: AppSettings.highlightSortModeKey)
         }
     }
+
+    @Published var profileDisplayName: String {
+        didSet {
+            UserDefaults.standard.set(profileDisplayName, forKey: AppSettings.profileDisplayNameKey)
+        }
+    }
+
+    @Published var profileAvatarData: Data? {
+        didSet {
+            let defaults = UserDefaults.standard
+            if let profileAvatarData {
+                defaults.set(profileAvatarData, forKey: AppSettings.profileAvatarDataKey)
+            } else {
+                defaults.removeObject(forKey: AppSettings.profileAvatarDataKey)
+            }
+        }
+    }
     
     @Published var isReadingReminderEnabled: Bool {
         didSet {
@@ -401,6 +423,45 @@ class AppSettings: ObservableObject {
         guard isAdRemovalUnlocked != unlocked else { return }
         isAdRemovalUnlocked = unlocked
     }
+
+    func resolvedProfileDisplayName(fallback: String) -> String {
+        let trimmed = profileDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? fallback : trimmed
+    }
+
+    func profileAvatarImage() -> UIImage? {
+        guard let profileAvatarData, !profileAvatarData.isEmpty else {
+            return nil
+        }
+        return UIImage(data: profileAvatarData)
+    }
+
+    @MainActor
+    func updateProfileAvatar(withRawData rawData: Data?) {
+        guard let rawData, !rawData.isEmpty else {
+            DebugLogger.warning("AppSettings: 头像选择返回空数据，保持原头像")
+            return
+        }
+        guard let image = UIImage(data: rawData) else {
+            DebugLogger.warning("AppSettings: 无法解析头像图片数据，已忽略更新")
+            return
+        }
+        setProfileAvatar(from: image)
+    }
+
+    @MainActor
+    func setProfileAvatar(from image: UIImage?) {
+        guard let image else {
+            profileAvatarData = nil
+            return
+        }
+        let resized = image.resizedForProfileAvatar(maxPixel: 512)
+        if let jpegData = resized.jpegData(compressionQuality: 0.85) {
+            profileAvatarData = jpegData
+        } else {
+            profileAvatarData = resized.pngData()
+        }
+    }
     
     private init() {
         let storedLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language") ?? "") ?? .system
@@ -419,6 +480,8 @@ class AppSettings: ObservableObject {
         let defaults = UserDefaults.standard
         self.isAdRemovalUnlocked = defaults.object(forKey: AppSettings.adRemovalUnlockedKey) as? Bool ?? false
         self.highlightSortMode = AppSettings.currentHighlightSortMode(defaults: defaults)
+        self.profileDisplayName = defaults.string(forKey: AppSettings.profileDisplayNameKey) ?? ""
+        self.profileAvatarData = defaults.data(forKey: AppSettings.profileAvatarDataKey)
         self.isAIAdvanceAdNoticeEnabled = defaults.object(forKey: AppSettings.aiAdvanceAdNoticeEnabledKey) as? Bool ?? true
         self.isReadingReminderEnabled = defaults.object(forKey: AppSettings.readingReminderEnabledKey) as? Bool
             ?? defaults.object(forKey: AppSettings.legacyReadingReminderEnabledKey) as? Bool
@@ -448,6 +511,8 @@ class AppSettings: ObservableObject {
         pageMargins = AppSettings.defaultPageMargins
         isAdRemovalUnlocked = false
         highlightSortMode = .modifiedTime
+        profileDisplayName = ""
+        profileAvatarData = nil
         isAIAdvanceAdNoticeEnabled = true
         isReadingReminderEnabled = false
         dailyReadingGoal = 20
@@ -457,5 +522,26 @@ class AppSettings: ObservableObject {
     private static func normalizedReminderMinutes(_ minutes: Int) -> Int {
         let normalized = minutes % minutesPerDay
         return normalized >= 0 ? normalized : normalized + minutesPerDay
+    }
+}
+
+private extension UIImage {
+    func resizedForProfileAvatar(maxPixel: CGFloat) -> UIImage {
+        let maxDimension = max(size.width, size.height)
+        guard maxDimension > maxPixel, maxPixel > 0 else {
+            return self
+        }
+
+        let scale = maxPixel / maxDimension
+        let targetSize = CGSize(
+            width: floor(size.width * scale),
+            height: floor(size.height * scale)
+        )
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+        return renderer.image { _ in
+            draw(in: CGRect(origin: .zero, size: targetSize))
+        }
     }
 }

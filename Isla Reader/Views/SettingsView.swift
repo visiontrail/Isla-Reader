@@ -23,6 +23,27 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section(NSLocalizedString("settings.profile.section", comment: "")) {
+                    NavigationLink(destination: ProfileSettingsView()) {
+                        HStack(spacing: settingsRowIconSpacing) {
+                            SettingsProfileAvatarView(
+                                avatarData: appSettings.profileAvatarData,
+                                displayName: resolvedProfileDisplayName,
+                                size: 30
+                            )
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(NSLocalizedString("settings.profile.title", comment: ""))
+                                    .foregroundColor(.primary)
+                                Text(resolvedProfileDisplayName)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+
                 // Language
                 Section(NSLocalizedString("settings.language", comment: "")) {
                     HStack {
@@ -366,6 +387,12 @@ struct SettingsView: View {
         return String(format: format, appSettings.highlightSortMode.displayName)
     }
 
+    private var resolvedProfileDisplayName: String {
+        appSettings.resolvedProfileDisplayName(
+            fallback: NSLocalizedString("settings.profile.default_display_name", comment: "")
+        )
+    }
+
     @ViewBuilder
     private var notionConnectionSubtitle: some View {
         switch notionSessionManager.connectionState {
@@ -435,6 +462,51 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+private struct SettingsProfileAvatarView: View {
+    let avatarData: Data?
+    let displayName: String
+    let size: CGFloat
+
+    var body: some View {
+        Group {
+            if let avatarData, let image = UIImage(data: avatarData) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.41, green: 0.57, blue: 0.94),
+                                    Color(red: 0.29, green: 0.44, blue: 0.84)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    Text(initialLetter)
+                        .font(.system(size: size * 0.42, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .overlay(
+            Circle()
+                .stroke(Color.white.opacity(0.65), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.14), radius: 3, x: 0, y: 1)
+    }
+
+    private var initialLetter: String {
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(trimmed.prefix(1)).uppercased().isEmpty ? "U" : String(trimmed.prefix(1)).uppercased()
     }
 }
 

@@ -483,3 +483,16 @@
 "notion.page.error.invalid_page_id" = "Notion 页面 ID 无效";
 "notion.page.error.missing_page_id" = "Notion 创建页面失败：响应中缺少页面 ID";
 "notion.sync.error.database_not_initialized" = "Notion 数据库未初始化，请先在设置中完成初始化";
+"settings.profile.section" = "个人资料";
+"settings.profile.title" = "个人资料";
+"settings.profile.display_name" = "显示名称";
+"settings.profile.display_name.placeholder" = "输入你的显示名称";
+"settings.profile.default_display_name" = "读者";
+"settings.profile.default_name_hint" = "留空时，分享卡片会使用默认名称。";
+"settings.profile.avatar" = "头像";
+"settings.profile.avatar.choose" = "选择照片";
+"settings.profile.avatar.edit" = "编辑";
+"settings.profile.avatar.remove" = "移除当前头像";
+"settings.profile.avatar.load_failed.title" = "头像更新失败";
+"settings.profile.avatar.load_failed.message" = "无法加载这张照片，请更换后重试。";
+"settings.profile.preview_hint" = "该身份将用于分享图片中的笔记评论。";

@@ -11,6 +11,8 @@ import UIKit
 struct HighlightShareCardPayload: Sendable {
     let highlightText: String
     let noteText: String?
+    let profileDisplayName: String
+    let profileAvatarData: Data?
     let bookTitle: String
     let chapterTitle: String
     let footerText: String
@@ -29,11 +31,15 @@ struct HighlightShareCardPayload: Sendable {
         chapterFallback: String,
         footerText: String,
         footerSubtitleText: String,
-        coverImageData: Data?
+        coverImageData: Data?,
+        profileDisplayName: String = "Reader",
+        profileAvatarData: Data? = nil
     ) -> HighlightShareCardPayload {
         HighlightShareCardPayload(
             highlightText: normalizedHighlightText(highlightText),
             noteText: normalizedNoteText(noteText),
+            profileDisplayName: normalizedProfileDisplayName(profileDisplayName),
+            profileAvatarData: profileAvatarData,
             bookTitle: normalizedBookTitle(bookTitle),
             chapterTitle: normalizedChapterTitle(from: chapterTitle, fallback: chapterFallback),
             footerText: footerText.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -56,6 +62,11 @@ struct HighlightShareCardPayload: Sendable {
             return nil
         }
         return noteText
+    }
+
+    static func normalizedProfileDisplayName(_ displayName: String) -> String {
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Reader" : trimmed
     }
 
     private static func normalizedHighlightText(_ text: String) -> String {
@@ -275,6 +286,7 @@ enum HighlightShareCardRenderer {
         let highlightFont = UIFont.systemFont(ofSize: 58, weight: .semibold)
         let attributionFont = UIFont.systemFont(ofSize: 33, weight: .semibold)
         let noteFont = UIFont.systemFont(ofSize: 36, weight: .regular)
+        let noteNameFont = UIFont.systemFont(ofSize: 24, weight: .semibold)
 
         let highlightHeight = estimatedTextHeight(
             "“\(payload.highlightText)”",
@@ -299,14 +311,25 @@ enum HighlightShareCardRenderer {
 
         let noteCardHeight: CGFloat
         if let noteText = payload.noteText {
+            let noteNameHeight = estimatedTextHeight(
+                payload.profileDisplayName,
+                width: HighlightShareCardStyle.noteBubbleContentWidth,
+                font: noteNameFont,
+                lineSpacing: 0,
+                lineLimit: 1
+            )
             let noteHeight = estimatedTextHeight(
                 sanitizedForMeasurement(noteText),
-                width: HighlightShareCardStyle.noteTextWidth,
+                width: HighlightShareCardStyle.noteBubbleContentWidth,
                 font: noteFont,
                 lineSpacing: 8,
                 lineLimit: mode.noteLineLimit
             )
-            noteCardHeight = noteHeight + (HighlightShareCardStyle.noteVerticalPadding * 2)
+            let bubbleHeight = noteNameHeight
+                + HighlightShareCardStyle.noteNameBubbleSpacing
+                + noteHeight
+                + (HighlightShareCardStyle.noteBubbleVerticalPadding * 2)
+            noteCardHeight = max(HighlightShareCardStyle.noteAvatarSize, bubbleHeight)
         } else {
             noteCardHeight = 0
         }
@@ -479,29 +502,12 @@ private struct HighlightShareCardView: View {
                 }
 
                 if let noteText = payload.noteText {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(
-                            MarkdownRenderer.render(
-                                noteText,
-                                textColor: noteTextColor,
-                                typography: .shareCard
-                            )
-                        )
-                            .lineSpacing(8)
-                            .lineLimit(mode.noteLineLimit)
-                            .multilineTextAlignment(.leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    HStack(alignment: .top, spacing: HighlightShareCardStyle.noteRowSpacing) {
+                        profileAvatarView(size: HighlightShareCardStyle.noteAvatarSize)
+
+                        noteBubbleView(noteText: noteText)
                     }
-                    .padding(.horizontal, 36)
-                    .padding(.vertical, 26)
-                    .background(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .fill(noteBackgroundColor)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(noteBorderColor, lineWidth: 1)
-                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 Spacer(minLength: 0)
@@ -543,6 +549,75 @@ private struct HighlightShareCardView: View {
             }
             .padding(.horizontal, 72)
             .padding(.vertical, 78)
+        }
+    }
+
+    @ViewBuilder
+    private func profileAvatarView(size: CGFloat) -> some View {
+        Group {
+            if let avatarData = payload.profileAvatarData, let avatarImage = UIImage(data: avatarData) {
+                Image(uiImage: avatarImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(defaultAvatarBackgroundGradient)
+                    Text(avatarInitial)
+                        .font(.system(size: size * 0.42, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .overlay(
+            Circle()
+                .stroke(noteAvatarBorderColor, lineWidth: 1.2)
+        )
+        .shadow(color: noteAvatarShadowColor, radius: 6, x: 0, y: 3)
+    }
+
+    private func noteBubbleView(noteText: String) -> some View {
+        VStack(alignment: .leading, spacing: HighlightShareCardStyle.noteNameBubbleSpacing) {
+            Text(payload.profileDisplayName)
+                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                .foregroundColor(noteDisplayNameColor)
+                .lineLimit(1)
+
+            Text(
+                MarkdownRenderer.render(
+                    noteText,
+                    textColor: noteTextColor,
+                    typography: .shareCard
+                )
+            )
+                .lineSpacing(8)
+                .lineLimit(mode.noteLineLimit)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, HighlightShareCardStyle.noteBubbleHorizontalPadding)
+        .padding(.vertical, HighlightShareCardStyle.noteBubbleVerticalPadding)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(noteBackgroundColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .stroke(noteBorderColor, lineWidth: 1)
+        )
+        .overlay(alignment: .topLeading) {
+            ChatBubbleTail()
+                .fill(noteBackgroundColor)
+                .frame(width: 20, height: 20)
+                .offset(x: -9, y: 28)
+                .overlay(
+                    ChatBubbleTail()
+                        .stroke(noteBorderColor, lineWidth: 1)
+                        .frame(width: 20, height: 20)
+                        .offset(x: -9, y: 28)
+                )
         }
     }
 
@@ -610,6 +685,10 @@ private struct HighlightShareCardView: View {
         isDarkContent ? Color(red: 0.89, green: 0.91, blue: 0.95) : Color(red: 0.24, green: 0.29, blue: 0.36)
     }
 
+    private var noteDisplayNameColor: Color {
+        isDarkContent ? Color(red: 0.75, green: 0.81, blue: 0.92) : Color(red: 0.28, green: 0.37, blue: 0.49)
+    }
+
     private var noteBackgroundColor: Color {
         isDarkContent ? Color.black.opacity(0.42) : Color.white.opacity(0.95)
     }
@@ -634,12 +713,53 @@ private struct HighlightShareCardView: View {
         isDarkContent ? Color.black.opacity(0.30) : Color.black.opacity(0.14)
     }
 
+    private var noteAvatarBorderColor: Color {
+        isDarkContent ? Color.white.opacity(0.20) : Color.white.opacity(0.86)
+    }
+
+    private var noteAvatarShadowColor: Color {
+        isDarkContent ? Color.black.opacity(0.32) : Color.black.opacity(0.12)
+    }
+
+    private var defaultAvatarBackgroundGradient: LinearGradient {
+        LinearGradient(
+            colors: isDarkContent
+            ? [Color(red: 0.31, green: 0.44, blue: 0.77), Color(red: 0.24, green: 0.34, blue: 0.62)]
+            : [Color(red: 0.40, green: 0.57, blue: 0.93), Color(red: 0.30, green: 0.46, blue: 0.84)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var avatarInitial: String {
+        let trimmed = payload.profileDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let letter = String(trimmed.prefix(1)).uppercased()
+        return letter.isEmpty ? "U" : letter
+    }
+
     private static let frameTimestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd HH:mm"
         return formatter
     }()
+}
+
+private struct ChatBubbleTail: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX, y: rect.midY),
+            control: CGPoint(x: rect.minX, y: rect.minY)
+        )
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX, y: rect.maxY),
+            control: CGPoint(x: rect.minX, y: rect.maxY)
+        )
+        path.closeSubpath()
+        return path
+    }
 }
 
 private extension HighlightShareCardRenderMode {
@@ -681,11 +801,18 @@ private enum HighlightShareCardStyle {
     static let inlineCoverHeight: CGFloat = 186
     static let coverAspectRatio: CGFloat = inlineCoverWidth / inlineCoverHeight
     static let contentWidth: CGFloat = cardWidth - (72 * 2)
-    static let noteTextWidth: CGFloat = contentWidth - (36 * 2)
+    static let noteAvatarSize: CGFloat = 86
+    static let noteRowSpacing: CGFloat = 20
+    static let noteBubbleHorizontalPadding: CGFloat = 30
+    static let noteBubbleVerticalPadding: CGFloat = 22
+    static let noteBubbleContentWidth: CGFloat = contentWidth
+        - noteAvatarSize
+        - noteRowSpacing
+        - (noteBubbleHorizontalPadding * 2)
+    static let noteNameBubbleSpacing: CGFloat = 10
     static let topBlockSpacing: CGFloat = 18
     static let stackSpacing: CGFloat = 36
     static let verticalPadding: CGFloat = 78
-    static let noteVerticalPadding: CGFloat = 26
     static let footerHeight: CGFloat = 44
     static let coverInlineSpacing: CGFloat = 24
     static let coverBottomFillTriggerWhitespace: CGFloat = 340

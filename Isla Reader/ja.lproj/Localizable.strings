@@ -483,3 +483,16 @@
 "notion.page.error.invalid_page_id" = "Notion ページ ID が無効です。";
 "notion.page.error.missing_page_id" = "Notion ページの作成に失敗しました：応答にページ ID がありません。";
 "notion.sync.error.database_not_initialized" = "Notion データベースが未初期化です。先に設定で初期化してください。";
+"settings.profile.section" = "プロフィール";
+"settings.profile.title" = "プロフィール";
+"settings.profile.display_name" = "表示名";
+"settings.profile.display_name.placeholder" = "表示名を入力";
+"settings.profile.default_display_name" = "読者";
+"settings.profile.default_name_hint" = "空欄の場合、共有カードでは既定の名前を使用します。";
+"settings.profile.avatar" = "アバター";
+"settings.profile.avatar.choose" = "写真を選択";
+"settings.profile.avatar.edit" = "編集";
+"settings.profile.avatar.remove" = "現在のアバターを削除";
+"settings.profile.avatar.load_failed.title" = "アバターの更新に失敗しました";
+"settings.profile.avatar.load_failed.message" = "この写真を読み込めませんでした。別の画像でお試しください。";
+"settings.profile.preview_hint" = "このプロフィールは共有画像内のノートコメントに表示されます。";
