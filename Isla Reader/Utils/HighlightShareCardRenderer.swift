@@ -72,6 +72,7 @@ struct HighlightShareCardPayload: Sendable {
 enum HighlightShareError: LocalizedError {
     case renderFailed
     case writeFailed
+    case imageTooLarge
 
     var errorDescription: String? {
         switch self {
@@ -79,6 +80,8 @@ enum HighlightShareError: LocalizedError {
             return "Failed to render share image."
         case .writeFailed:
             return "Failed to write share image."
+        case .imageTooLarge:
+            return "Share image is too large to export."
         }
     }
 }
@@ -100,30 +103,46 @@ private struct HighlightShareCardLayoutProfile {
 
 enum HighlightShareCardRenderer {
     static func renderPNG(payload: HighlightShareCardPayload) async throws -> URL {
-        let image = try await renderImage(payload: payload)
-        guard let data = image.pngData() else {
-            throw HighlightShareError.writeFailed
+        var lastError: Error?
+        for mode in HighlightShareCardRenderMode.fallbackOrder {
+            do {
+                let image = try await MainActor.run {
+                    try renderImage(payload: payload, mode: mode)
+                }
+                let data = try encodePNGData(from: image)
+                return try writePNGDataToTemporaryFile(data)
+            } catch {
+                lastError = error
+                guard mode.shouldAttemptFallback else {
+                    throw error
+                }
+                DebugLogger.warning(
+                    "HighlightShareCardRenderer: \(mode.displayName) 导出失败，回退为 \(HighlightShareCardRenderMode.truncated.displayName)。原因: \(error.localizedDescription)"
+                )
+            }
         }
 
-        let fileURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("highlight-share-\(UUID().uuidString)")
-            .appendingPathExtension("png")
-        do {
-            try data.write(to: fileURL, options: [.atomic])
-            return fileURL
-        } catch {
-            throw HighlightShareError.writeFailed
-        }
+        throw lastError ?? HighlightShareError.writeFailed
     }
 
     static func renderImage(payload: HighlightShareCardPayload) async throws -> UIImage {
         try await MainActor.run {
-            do {
-                return try renderImage(payload: payload, mode: .fullLength)
-            } catch {
-                DebugLogger.warning("HighlightShareCardRenderer: 长图渲染失败，回退为省略模式。原因: \(error.localizedDescription)")
-                return try renderImage(payload: payload, mode: .truncated)
+            var lastError: Error?
+            for mode in HighlightShareCardRenderMode.fallbackOrder {
+                do {
+                    return try renderImage(payload: payload, mode: mode)
+                } catch {
+                    lastError = error
+                    guard mode.shouldAttemptFallback else {
+                        throw error
+                    }
+                    DebugLogger.warning(
+                        "HighlightShareCardRenderer: \(mode.displayName) 渲染失败，回退为 \(HighlightShareCardRenderMode.truncated.displayName)。原因: \(error.localizedDescription)"
+                    )
+                }
             }
+
+            throw lastError ?? HighlightShareError.renderFailed
         }
     }
 
@@ -140,13 +159,58 @@ enum HighlightShareCardRenderer {
                 layoutProfile: layoutProfile
             )
         )
-        renderer.scale = UIScreen.main.scale
+        renderer.scale = HighlightShareCardStyle.exportScale
         renderer.proposedSize = ProposedViewSize(width: HighlightShareCardStyle.cardWidth, height: mode.proposedHeight)
 
         guard let image = renderer.uiImage else {
             throw HighlightShareError.renderFailed
         }
+        try validateRenderedImage(image, mode: mode)
         return image
+    }
+
+    private static func encodePNGData(from image: UIImage) throws -> Data {
+        guard let data = image.pngData() else {
+            throw HighlightShareError.writeFailed
+        }
+        return data
+    }
+
+    private static func writePNGDataToTemporaryFile(_ data: Data) throws -> URL {
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("highlight-share-\(UUID().uuidString)")
+            .appendingPathExtension("png")
+        do {
+            try data.write(to: fileURL, options: [.atomic])
+            return fileURL
+        } catch {
+            throw HighlightShareError.writeFailed
+        }
+    }
+
+    @MainActor
+    private static func validateRenderedImage(
+        _ image: UIImage,
+        mode: HighlightShareCardRenderMode
+    ) throws {
+        let pixelWidth = image.size.width * image.scale
+        let pixelHeight = image.size.height * image.scale
+        guard pixelWidth > 0, pixelHeight > 0 else {
+            throw HighlightShareError.renderFailed
+        }
+
+        switch mode {
+        case .truncated:
+            return
+        case .fullLength:
+            break
+        }
+
+        let pixelCount = pixelWidth * pixelHeight
+        guard pixelHeight <= HighlightShareCardStyle.maxFullLengthPixelHeight,
+              pixelCount <= HighlightShareCardStyle.maxFullLengthPixelCount else {
+            throw HighlightShareError.imageTooLarge
+        }
     }
 
     @MainActor
@@ -427,7 +491,10 @@ private struct HighlightShareCardView: View {
 
 private enum HighlightShareCardStyle {
     static let cardWidth: CGFloat = 1080
+    static let exportScale: CGFloat = 1
     static let baselineHeight: CGFloat = 1440
+    static let maxFullLengthPixelHeight: CGFloat = 12_000
+    static let maxFullLengthPixelCount: CGFloat = cardWidth * maxFullLengthPixelHeight
     static let inlineCoverWidth: CGFloat = 126
     static let inlineCoverHeight: CGFloat = 186
     static let coverAspectRatio: CGFloat = inlineCoverWidth / inlineCoverHeight
@@ -448,6 +515,26 @@ private enum HighlightShareCardStyle {
 private enum HighlightShareCardRenderMode {
     case fullLength
     case truncated
+
+    static let fallbackOrder: [HighlightShareCardRenderMode] = [.fullLength, .truncated]
+
+    var shouldAttemptFallback: Bool {
+        switch self {
+        case .fullLength:
+            return true
+        case .truncated:
+            return false
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .fullLength:
+            return "长图模式"
+        case .truncated:
+            return "省略模式"
+        }
+    }
 
     var proposedHeight: CGFloat? {
         switch self {

@@ -120,6 +120,29 @@ struct HighlightShareCardRendererTests {
         #expect(normalizedBounds.midY < 0.45)
     }
 
+    @Test
+    func extremelyLongContentFallsBackToTruncatedImageHeight() async throws {
+        let veryLongHighlight = Array(
+            repeating: "Clarity compounds when ideas are written, reviewed, and refined with intent.",
+            count: 1400
+        ).joined(separator: " ")
+
+        let payload = HighlightShareCardPayload.make(
+            highlightText: veryLongHighlight,
+            noteText: nil,
+            bookTitle: "Long-form Notes",
+            chapterTitle: "Chapter 9",
+            chapterFallback: "Unknown chapter",
+            footerText: "Shared from LanRead",
+            footerSubtitleText: "AI for EPUB, synced to Notion",
+            coverImageData: nil
+        )
+
+        let image = try await HighlightShareCardRenderer.renderImage(payload: payload)
+        #expect(image.size.width == 1080)
+        #expect(image.size.height == 1440)
+    }
+
     private static func solidCoverImageData() -> Data? {
         let size = CGSize(width: 180, height: 266)
         let renderer = UIGraphicsImageRenderer(size: size)
