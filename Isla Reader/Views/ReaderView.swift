@@ -420,8 +420,8 @@ struct ReaderView: View {
                 onTextSelection: { info in
                     guard !isSelectionInputSessionActive else { return }
                     lastSelectionInteractionTime = Date()
-                    let trimmed = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if trimmed.isEmpty {
+                    let cleaned = sanitizedSelectionText(info.text)
+                    if cleaned.isEmpty {
                         guard !showingSelectionAskComposer else { return }
                         pendingSelectionClearWorkItem?.cancel()
                         let clearTask = DispatchWorkItem {
@@ -434,7 +434,7 @@ struct ReaderView: View {
                         pendingSelectionClearWorkItem = nil
                         pendingTapWorkItem?.cancel()
                         let updatedInfo = SelectedTextInfo(
-                            text: trimmed,
+                            text: cleaned,
                             startOffset: info.startOffset,
                             endOffset: info.endOffset,
                             rect: info.rect,
@@ -525,6 +525,10 @@ struct ReaderView: View {
         }
         .ignoresSafeArea(edges: .bottom)
         .ignoresSafeArea(.keyboard, edges: .bottom)
+    }
+
+    private func sanitizedSelectionText(_ rawText: String) -> String {
+        SelectionTextSanitizer.sanitizedForHighlightAndAI(rawText)
     }
     
     private func normalizeTOCFragment(_ fragment: String?) -> String? {
@@ -1506,7 +1510,7 @@ struct ReaderView: View {
             showHint(NSLocalizedString("reader.selection.required", comment: ""))
             return
         }
-        let trimmed = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = sanitizedSelectionText(info.text)
         guard !trimmed.isEmpty else {
             showHint(NSLocalizedString("reader.selection.required", comment: ""))
             return
@@ -1544,7 +1548,7 @@ struct ReaderView: View {
             showHint(NSLocalizedString("reader.ai.question.empty", comment: ""))
             return
         }
-        let sourceText = selectionAskSourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sourceText = sanitizedSelectionText(selectionAskSourceText)
         guard !sourceText.isEmpty else {
             showHint(NSLocalizedString("reader.ai.selection_required", comment: ""))
             return
@@ -1555,12 +1559,18 @@ struct ReaderView: View {
     }
 
     private func startAIRequest(_ action: AIAction, sourceText: String? = nil, targetHighlight: Highlight? = nil) {
-        var resolvedText = sourceText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if resolvedText.isEmpty, let info = selectedTextInfo?.text.trimmingCharacters(in: .whitespacesAndNewlines), !info.isEmpty {
-            resolvedText = info
+        var resolvedText = sanitizedSelectionText(sourceText ?? "")
+        if resolvedText.isEmpty, let info = selectedTextInfo?.text {
+            let sanitizedInfo = sanitizedSelectionText(info)
+            if !sanitizedInfo.isEmpty {
+                resolvedText = sanitizedInfo
+            }
         }
-        if resolvedText.isEmpty, let highlight = targetHighlight?.selectedText.trimmingCharacters(in: .whitespacesAndNewlines), !highlight.isEmpty {
-            resolvedText = highlight
+        if resolvedText.isEmpty, let highlight = targetHighlight?.selectedText {
+            let sanitizedHighlight = sanitizedSelectionText(highlight)
+            if !sanitizedHighlight.isEmpty {
+                resolvedText = sanitizedHighlight
+            }
         }
 
         guard !resolvedText.isEmpty else {
@@ -1686,7 +1696,7 @@ struct ReaderView: View {
             return
         }
 
-        let trimmed = info.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = sanitizedSelectionText(info.text)
         guard !trimmed.isEmpty else { return }
 
         let start = min(info.startOffset, info.endOffset)

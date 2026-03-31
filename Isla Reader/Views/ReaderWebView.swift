@@ -309,7 +309,9 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     }
 
     private static func parseSelectedTextInfo(from dict: [String: Any]) -> SelectedTextInfo? {
-        guard let text = dict["text"] as? String else { return nil }
+        let rawText = (dict["text"] as? String) ?? ""
+        let cleanedText = (dict["cleanedText"] as? String) ?? rawText
+        let text = SelectionTextSanitizer.sanitizedForHighlightAndAI(cleanedText)
 
         let start: Int
         if let value = dict["start"] as? Int {
@@ -2190,14 +2192,69 @@ struct ReaderWebView: UIViewRepresentable {
             return bestRect;
         }
 
+        function sanitizeSelectionTextForFootnotes(rawText) {
+            var text = typeof rawText === 'string' ? rawText : '';
+            if (!text) { return ''; }
+
+            // Remove superscript citation digits (e.g. ¹²³) attached to selected text.
+            text = text.replace(/(\\S)[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, '$1');
+            // Remove bracket citation markers attached to text (e.g. word[12], word(12)).
+            text = text.replace(/(\\S)(?:\\[\\s*\\d{1,3}\\s*\\]|\\(\\s*\\d{1,3}\\s*\\))/g, '$1');
+            // Remove attached citation lists (e.g. path.3,4,5,6).
+            text = text.replace(/(\\S)(?:\\d{1,3}\\s*[,，]\\s*)+\\d{1,3}(?=\\s|$|[)\\]}"'”’.,;:!?。！？；：])/g, '$1');
+            // Remove a single trailing citation marker when it follows sentence punctuation.
+            text = text.replace(/([^\\d][.!?。！？:;；])\\s*\\d{1,3}(?=\\s|$|[)\\]}"'”’.,;:!?。！？；：])/g, '$1');
+            // Clean separators left behind after stripping link markers.
+            text = text.replace(/(?:\\s*[,，]\\s*){2,}/g, ', ');
+            text = text.replace(/(^|[\\s(\\[{])[,，\\s]+(?=\\s|$|[)\\]}.,;:!?。！？；：])/g, '$1');
+            text = text.replace(/[ \\t]{2,}/g, ' ');
+            return text.trim();
+        }
+
+        function extractSelectionTextWithoutFootnoteLinks(range, fallbackText) {
+            var fallback = typeof fallbackText === 'string' ? fallbackText : '';
+            if (!range || typeof range.cloneContents !== 'function') {
+                return sanitizeSelectionTextForFootnotes(fallback);
+            }
+
+            var resolvedText = fallback;
+            try {
+                var fragment = range.cloneContents();
+                if (fragment && fragment.querySelectorAll) {
+                    var links = Array.from(fragment.querySelectorAll('a'));
+                    links.forEach(function(link) {
+                        if (!link || !hasFootnoteHint(link)) { return; }
+                        var parent = link.parentNode;
+                        if (parent && parent.nodeType === Node.ELEMENT_NODE) {
+                            var tagName = String(parent.tagName || '').toLowerCase();
+                            if ((tagName === 'sup' || tagName === 'sub') && parent.parentNode) {
+                                parent.parentNode.removeChild(parent);
+                                return;
+                            }
+                        }
+                        if (parent) {
+                            parent.removeChild(link);
+                        }
+                    });
+                }
+                resolvedText = fragment && typeof fragment.textContent === 'string'
+                    ? fragment.textContent
+                    : fallback;
+            } catch (e) {
+                resolvedText = fallback;
+            }
+            return sanitizeSelectionTextForFootnotes(resolvedText);
+        }
+
         function serializeSelection() {
             const selection = window.getSelection();
             if (!selection || selection.rangeCount === 0) {
                 return null;
             }
 
-            const text = selection.toString();
             const range = selection.getRangeAt(0);
+            const text = selection.toString ? selection.toString() : '';
+            const cleanedText = extractSelectionTextWithoutFootnoteLinks(range, text);
             const rect = resolveSelectionRect(range, selection);
             const start = measureOffset(range.startContainer, range.startOffset);
             const end = measureOffset(range.endContainer, range.endOffset);
@@ -2207,6 +2264,7 @@ struct ReaderWebView: UIViewRepresentable {
 
             return {
                 text: text,
+                cleanedText: cleanedText,
                 start: safeStart,
                 end: safeEnd,
                 pageIndex: pageIndex,
@@ -2230,6 +2288,7 @@ struct ReaderWebView: UIViewRepresentable {
             if (!payload) { return null; }
             return {
                 text: payload.text || '',
+                cleanedText: payload.cleanedText || '',
                 start: typeof payload.start === 'number' ? payload.start : 0,
                 end: typeof payload.end === 'number' ? payload.end : 0,
                 pageIndex: typeof payload.pageIndex === 'number' ? payload.pageIndex : 0,
@@ -2442,6 +2501,15 @@ struct ReaderWebView: UIViewRepresentable {
             return text || '';
         }
 
+        function extractCleanedTextFromOffsets(startOffset, endOffset, segments) {
+            const range = buildRangeFromOffsets(startOffset, endOffset, segments);
+            if (!range) { return ''; }
+            const fallbackText = range.toString ? range.toString() : '';
+            const cleaned = extractSelectionTextWithoutFootnoteLinks(range, fallbackText);
+            range.detach();
+            return cleaned || '';
+        }
+
         function focusReaderDocument() {
             if (isSelectionMaintenanceSuspended) { return; }
             try { window.focus(); } catch (e) {}
@@ -2534,7 +2602,9 @@ struct ReaderWebView: UIViewRepresentable {
             if (combinedStart >= combinedEnd) { return payload; }
 
             const combinedText = extractTextFromOffsets(combinedStart, combinedEnd, resolvedSegments);
+            const combinedCleanedText = extractCleanedTextFromOffsets(combinedStart, combinedEnd, resolvedSegments);
             payload.text = combinedText || payload.text;
+            payload.cleanedText = combinedCleanedText || payload.cleanedText;
             payload.start = combinedStart;
             payload.end = combinedEnd;
             return payload;
@@ -2935,6 +3005,7 @@ struct ReaderWebView: UIViewRepresentable {
                 } else {
                     window.webkit.messageHandlers.textSelection.postMessage({
                         text: "",
+                        cleanedText: "",
                         start: 0,
                         end: 0,
                         pageIndex: pageIndex,
