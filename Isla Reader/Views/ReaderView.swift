@@ -84,6 +84,8 @@ struct ReaderView: View {
     @State private var didApplyInitialLocation = false
     @State private var hasReportedInitialChapterOpenMetric = false
     @State private var pendingSelectionClearWorkItem: DispatchWorkItem?
+    @State private var readerReloadToken: Int = 0
+    @State private var didEnterBackgroundWhileVisible = false
     
     @State private var scrollOffset: CGFloat = 0
     @State private var lastTapTime: Date = Date()
@@ -406,6 +408,7 @@ struct ReaderView: View {
                 htmlContent: chapter.htmlContent,
                 appSettings: appSettings,
                 isDarkMode: effectiveColorScheme == .dark,
+                reloadToken: readerReloadToken,
                 currentPageIndex: Binding(
                     get: { safeChapterPageIndex(index) },
                     set: { newValue in setChapterPageIndex(index, newValue) }
@@ -3095,6 +3098,10 @@ struct ReaderView: View {
     private func handleScenePhaseChange(_ phase: ScenePhase) {
         switch phase {
         case .active:
+            if didEnterBackgroundWhileVisible {
+                didEnterBackgroundWhileVisible = false
+                reloadCurrentChapterIfNeeded(reason: "scenePhase.active")
+            }
             // Resume tracking when app becomes active
             if !isActivelyReading {
                 resumeReadingSession()
@@ -3106,6 +3113,7 @@ struct ReaderView: View {
                 pauseReadingSession()
             }
         case .background:
+            didEnterBackgroundWhileVisible = true
             // Save reading progress and reading time when app goes to background
             saveReadingProgress()
             if isActivelyReading {
@@ -3114,6 +3122,17 @@ struct ReaderView: View {
         @unknown default:
             break
         }
+    }
+
+    private func reloadCurrentChapterIfNeeded(reason: String) {
+        guard !isLoading else { return }
+        guard chapters.indices.contains(currentChapterIndex) else { return }
+        readerReloadToken += 1
+        DebugLogger.info(
+            "ReaderView: 强制刷新当前章节 WebView，reason=\(reason), " +
+            "chapter=\(currentChapterIndex + 1), page=\(safeChapterPageIndex(currentChapterIndex) + 1), " +
+            "reloadToken=\(readerReloadToken)"
+        )
     }
 
     private func startReadingHeartbeat() {

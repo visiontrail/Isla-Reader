@@ -28,40 +28,8 @@ struct MainTabView: View {
     @State private var hasTriggeredLaunchUpdateCheck = false
     
     var body: some View {
-        Group {
-            if horizontalSizeClass == .regular {
-                // iPad layout with sidebar
-                NavigationSplitView {
-                    SidebarView()
-                } detail: {
-                    LibraryView()
-                }
-            } else {
-                // iPhone layout with tab bar
-                TabView(selection: $selectedPhoneTab) {
-                    LibraryView()
-                        .tag(PhoneTab.library)
-                        .tabItem {
-                            Image(systemName: "books.vertical")
-                            Text(NSLocalizedString("tab.library", comment: ""))
-                        }
-                    
-                    ReadingProgressView()
-                        .tag(PhoneTab.progress)
-                        .tabItem {
-                            Image(systemName: "chart.line.uptrend.xyaxis")
-                            Text(NSLocalizedString("tab.progress", comment: ""))
-                        }
-                    
-                    SettingsView()
-                        .tag(PhoneTab.settings)
-                        .tabItem {
-                            Image(systemName: "gearshape")
-                            Text(NSLocalizedString("tab.settings", comment: ""))
-                        }
-                }
-            }
-        }
+        appShell
+        .lanReadGlassGroup(spacing: 26)
         .tint(.blue)
         .preferredColorScheme(appSettings.theme.colorScheme)
         .onChange(of: reminderCoordinator.continueReadingRequestID) { _ in
@@ -133,6 +101,42 @@ struct MainTabView: View {
                     updatePromptCoordinator.consumePrompt()
                 }
             )
+        }
+    }
+
+    @ViewBuilder
+    private var appShell: some View {
+        if horizontalSizeClass == .regular {
+            // iPad layout with sidebar
+            NavigationSplitView {
+                SidebarView()
+            } detail: {
+                LibraryView()
+            }
+        } else {
+            // iPhone layout with tab bar
+            TabView(selection: $selectedPhoneTab) {
+                LibraryView()
+                    .tag(PhoneTab.library)
+                    .tabItem {
+                        Image(systemName: "books.vertical")
+                        Text(NSLocalizedString("tab.library", comment: ""))
+                    }
+
+                ReadingProgressView()
+                    .tag(PhoneTab.progress)
+                    .tabItem {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                        Text(NSLocalizedString("tab.progress", comment: ""))
+                    }
+
+                SettingsView()
+                    .tag(PhoneTab.settings)
+                    .tabItem {
+                        Image(systemName: "gearshape")
+                        Text(NSLocalizedString("tab.settings", comment: ""))
+                    }
+            }
         }
     }
 
@@ -254,7 +258,7 @@ private struct AIPrivacyLaunchConsentSheet: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .lanReadGlassButtonStyle(prominent: true)
 
                     Button(action: { onDecline(dontShowAgain) }) {
                         Text(localized("ai.consent.launch.decline"))
@@ -262,7 +266,7 @@ private struct AIPrivacyLaunchConsentSheet: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                     }
-                    .buttonStyle(.bordered)
+                    .lanReadGlassButtonStyle()
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)

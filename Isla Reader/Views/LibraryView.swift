@@ -109,14 +109,15 @@ struct LibraryView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
+                    .lanReadGlassSurface(cornerRadius: 10)
                     
                     Button(action: { showingFilterSheet = true }) {
                         Image(systemName: selectedFilter != .all ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                            .font(.title2)
+                            .font(.title3)
                             .foregroundColor(.primary)
+                            .frame(width: 38, height: 38)
                     }
+                    .lanReadGlassSurface(cornerRadius: 12, interactive: true)
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -190,6 +191,7 @@ struct LibraryView: View {
                         Image(systemName: "plus")
                             .font(.title2)
                     }
+                    .lanReadGlassButtonStyle()
                 }
                 #else
                 ToolbarItem(placement: .primaryAction) {
@@ -197,6 +199,7 @@ struct LibraryView: View {
                         Image(systemName: "plus")
                             .font(.title2)
                     }
+                    .lanReadGlassButtonStyle()
                 }
                 #endif
             }

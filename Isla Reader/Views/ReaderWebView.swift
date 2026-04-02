@@ -80,6 +80,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     private var lastSelectionVisualNudgeKey: String?
     private var lastSelectionVisualNudgeTimestamp: CFTimeInterval = 0
     private var splitTailNudgeDirection: CGFloat = 1
+    private var lastObservedReloadToken: Int?
     
     init(_ parent: ReaderWebView) {
         self.parent = parent
@@ -95,6 +96,11 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         parent.onLoadFinished?()
         applyHighlightsIfReady(on: webView)
         applySelectionMaintenanceModeIfNeeded(on: webView)
+    }
+
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        DebugLogger.warning("ReaderWebView: Web content process terminated，准备恢复当前章节内容")
+        reloadHTML(on: webView, reason: "content_process_terminated")
     }
     
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -681,6 +687,12 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         self.parent = newParent
     }
 
+    func consumeReloadTokenChange(_ token: Int) -> Bool {
+        defer { lastObservedReloadToken = token }
+        guard let lastObservedReloadToken else { return false }
+        return token != lastObservedReloadToken
+    }
+
     func applySelectionMaintenanceModeIfNeeded(on webView: WKWebView?) {
         guard let webView else { return }
         guard isLoaded else { return }
@@ -746,6 +758,28 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                 webView.loadHTMLString(html, baseURL: nil)
             }
         }
+    }
+
+    func reloadHTML(on webView: WKWebView, reason: String) {
+        let styleSignature = ReaderWebView.makeStyleSignature(
+            fontSize: parent.appSettings.readingFontSize.fontSize,
+            lineSpacing: parent.appSettings.lineSpacing,
+            isDarkMode: parent.isDarkMode,
+            pageMargins: Int(parent.appSettings.pageMargins)
+        )
+        let cacheKey = ReaderWebView.makeCacheKey(contentID: parent.contentID, styleSignature: styleSignature)
+        let css = ReaderWebView.getMobileOptimizedCSS(
+            fontSize: parent.appSettings.readingFontSize.fontSize,
+            lineSpacing: parent.appSettings.lineSpacing,
+            isDarkMode: parent.isDarkMode,
+            pageMargins: Int(parent.appSettings.pageMargins)
+        )
+        DebugLogger.info(
+            "ReaderWebView: 重新加载 HTML，reason=\(reason), " +
+            "contentID=\(parent.contentID), page=\(parent.currentPageIndex + 1)"
+        )
+        prepareForNewLoad()
+        loadHTMLAsync(cacheKey: cacheKey, htmlContent: parent.htmlContent, css: css, on: webView)
     }
 
     func applyTOCNavigationIfNeeded(on webView: WKWebView?) {
@@ -1065,6 +1099,7 @@ struct ReaderWebView: UIViewRepresentable {
     let htmlContent: String
     let appSettings: AppSettings
     let isDarkMode: Bool
+    var reloadToken: Int = 0
     @Binding var currentPageIndex: Int
     @Binding var totalPages: Int
     @Binding var selectionAction: ReaderSelectionAction?
@@ -1155,7 +1190,7 @@ struct ReaderWebView: UIViewRepresentable {
         """
     }
 
-    private static func makeStyleSignature(
+    fileprivate static func makeStyleSignature(
         fontSize: CGFloat,
         lineSpacing: Double,
         isDarkMode: Bool,
@@ -1166,7 +1201,7 @@ struct ReaderWebView: UIViewRepresentable {
         return "font:\(roundedFont)|line:\(roundedLineSpacing)|theme:\(isDarkMode ? "dark" : "light")|margin:\(pageMargins)"
     }
 
-    private static func makeCacheKey(contentID: String, styleSignature: String) -> String {
+    fileprivate static func makeCacheKey(contentID: String, styleSignature: String) -> String {
         "chapter:\(contentID)|\(styleSignature)"
     }
     
@@ -1257,11 +1292,12 @@ struct ReaderWebView: UIViewRepresentable {
         )
         let cacheKey = Self.makeCacheKey(contentID: contentID, styleSignature: styleSignature)
         let signature = "sig::\(cacheKey)"
-        if container.accessibilityHint != signature {
+        let shouldForceReload = context.coordinator.consumeReloadTokenChange(reloadToken)
+        if container.accessibilityHint != signature || shouldForceReload {
             let cachedHTML = Self.renderedHTMLCache.object(forKey: cacheKey as NSString)
             DebugLogger.info(
-                "[HighlightNav] updateUIView: 签名变化，重新加载 HTML, " +
-                "contentID=\(contentID), cacheHit=\(cachedHTML != nil), " +
+                "[HighlightNav] updateUIView: 重新加载 HTML, " +
+                "contentID=\(contentID), cacheHit=\(cachedHTML != nil), forceReload=\(shouldForceReload), " +
                 "highlightToken=\(highlightNavigationToken), highlightOffset=\(highlightTextOffset.map(String.init) ?? "nil")"
             )
             container.accessibilityHint = signature
@@ -1297,7 +1333,7 @@ struct ReaderWebView: UIViewRepresentable {
         )
     }
 
-    private static func getMobileOptimizedCSS(
+    fileprivate static func getMobileOptimizedCSS(
         fontSize: CGFloat,
         lineSpacing: Double,
         isDarkMode: Bool,
