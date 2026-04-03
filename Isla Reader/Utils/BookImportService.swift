@@ -205,33 +205,36 @@ enum BookImportError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupportedFormat:
-            return "不支持的文件格式，请选择ePub文件"
+            return NSLocalizedString("library.import.error.unsupported_format", comment: "")
         case .bookAlreadyExists(let title):
-            return "书籍《\(title)》已存在于书架中"
+            let format = NSLocalizedString("library.import.error.book_exists_format", comment: "")
+            return String(format: format, title)
         case .fileNotAccessible:
-            return "无法访问选择的文件"
+            return NSLocalizedString("library.import.error.file_not_accessible", comment: "")
         case .parseError(let message):
-            return "解析文件时出错：\(message)"
+            let format = NSLocalizedString("library.import.error.parse_failed_format", comment: "")
+            return String(format: format, message)
         case .saveError(let message):
-            return "保存书籍时出错：\(message)"
+            let format = NSLocalizedString("library.import.error.save_failed_format", comment: "")
+            return String(format: format, message)
         }
     }
 
     static func message(for error: Error) -> String {
         if let importError = error as? BookImportError {
-            return importError.errorDescription ?? "导入失败，请重试"
+            return importError.errorDescription ?? NSLocalizedString("library.import.error.generic", comment: "")
         }
 
         if let parseError = error as? EPubParseError {
-            return parseError.errorDescription ?? "ePub文件解析失败，请检查文件是否完整"
+            return parseError.errorDescription ?? NSLocalizedString("library.import.error.epub_parse_failed", comment: "")
         }
 
         if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotConnectToHost, .cannotFindHost:
-                return "无法访问文件来源，请检查网络后重试"
+                return NSLocalizedString("library.import.error.network_unavailable", comment: "")
             case .cancelled:
-                return "已取消导入"
+                return NSLocalizedString("library.import.error.cancelled", comment: "")
             default:
                 break
             }
@@ -241,20 +244,20 @@ enum BookImportError: Error, LocalizedError {
         if nsError.domain == NSCocoaErrorDomain {
             switch nsError.code {
             case NSUserCancelledError:
-                return "已取消导入"
+                return NSLocalizedString("library.import.error.cancelled", comment: "")
             case NSFileReadNoSuchFileError:
-                return "未找到所选文件，请确认文件仍存在后重试"
+                return NSLocalizedString("library.import.error.file_not_found", comment: "")
             case NSFileReadNoPermissionError, NSFileWriteNoPermissionError:
-                return "没有权限访问该文件，请重新选择并授权访问"
+                return NSLocalizedString("library.import.error.no_permission", comment: "")
             case NSFileReadCorruptFileError:
-                return "文件已损坏，无法导入，请更换文件"
+                return NSLocalizedString("library.import.error.file_corrupted", comment: "")
             case NSFileWriteOutOfSpaceError:
-                return "设备存储空间不足，无法完成导入"
+                return NSLocalizedString("library.import.error.no_space", comment: "")
             default:
                 break
             }
         }
 
-        return "导入失败，请重试"
+        return NSLocalizedString("library.import.error.generic", comment: "")
     }
 }

@@ -338,6 +338,23 @@
 // Additional UI strings
 "library.import.in_progress" = "正在导入书籍...";
 "library.import.result.title" = "导入结果";
+"library.import.error.unsupported_format" = "不支持的文件格式，请选择 ePub 文件。";
+"library.import.error.book_exists_format" = "书籍《%@》已存在于书架中。";
+"library.import.error.file_not_accessible" = "无法访问所选文件。";
+"library.import.error.parse_failed_format" = "解析文件失败：%@";
+"library.import.error.save_failed_format" = "保存书籍失败：%@";
+"library.import.error.generic" = "导入失败，请重试。";
+"library.import.error.epub_parse_failed" = "ePub 文件解析失败，请检查文件是否有效。";
+"library.import.error.network_unavailable" = "无法访问文件来源，请检查网络后重试。";
+"library.import.error.cancelled" = "已取消导入。";
+"library.import.error.file_not_found" = "未找到所选文件，请确认文件仍存在后重试。";
+"library.import.error.no_permission" = "没有权限访问该文件，请重新选择并授权访问。";
+"library.import.error.file_corrupted" = "文件已损坏，无法导入，请更换文件。";
+"library.import.error.no_space" = "设备存储空间不足，无法完成导入。";
+"library.import.error.epub.invalid_container" = "无效的 ePub 容器文件。";
+"library.import.error.epub.invalid_opf" = "无效的 OPF 文件。";
+"library.import.error.epub.file_not_found" = "文件未找到。";
+"library.import.error.epub.unsupported_format" = "不支持的文件格式。";
 "common.confirm" = "确定";
 "settings.theme.title" = "主题";
 "settings.theme.mode.follow_system" = "根据系统设置自动切换";

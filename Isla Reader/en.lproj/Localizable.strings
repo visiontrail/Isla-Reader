@@ -351,6 +351,23 @@
 // Additional UI strings
 "library.import.in_progress" = "Importing book...";
 "library.import.result.title" = "Import Result";
+"library.import.error.unsupported_format" = "Unsupported file format. Please select an ePub file.";
+"library.import.error.book_exists_format" = "The book \"%@\" is already in your library.";
+"library.import.error.file_not_accessible" = "Unable to access the selected file.";
+"library.import.error.parse_failed_format" = "Failed to parse file: %@";
+"library.import.error.save_failed_format" = "Failed to save book: %@";
+"library.import.error.generic" = "Import failed. Please try again.";
+"library.import.error.epub_parse_failed" = "Failed to parse the ePub file. Please check whether the file is valid.";
+"library.import.error.network_unavailable" = "Unable to access the file source. Please check your network and try again.";
+"library.import.error.cancelled" = "Import cancelled.";
+"library.import.error.file_not_found" = "The selected file was not found. Please confirm it still exists and try again.";
+"library.import.error.no_permission" = "No permission to access this file. Please reselect it and grant access.";
+"library.import.error.file_corrupted" = "The file appears to be corrupted and cannot be imported.";
+"library.import.error.no_space" = "Not enough storage space to complete import.";
+"library.import.error.epub.invalid_container" = "Invalid ePub container file.";
+"library.import.error.epub.invalid_opf" = "Invalid OPF file.";
+"library.import.error.epub.file_not_found" = "File not found.";
+"library.import.error.epub.unsupported_format" = "Unsupported file format.";
 "common.confirm" = "OK";
 "settings.theme.title" = "Theme";
 "settings.theme.mode.follow_system" = "Follow system settings";

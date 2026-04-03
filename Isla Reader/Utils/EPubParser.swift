@@ -2117,13 +2117,13 @@ enum EPubParseError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidContainer:
-            return "无效的ePub容器文件"
+            return NSLocalizedString("library.import.error.epub.invalid_container", comment: "")
         case .invalidOPF:
-            return "无效的OPF文件"
+            return NSLocalizedString("library.import.error.epub.invalid_opf", comment: "")
         case .fileNotFound:
-            return "文件未找到"
+            return NSLocalizedString("library.import.error.epub.file_not_found", comment: "")
         case .unsupportedFormat:
-            return "不支持的文件格式"
+            return NSLocalizedString("library.import.error.epub.unsupported_format", comment: "")
         }
     }
 }

@@ -2254,7 +2254,8 @@ struct ImportBookView: View {
             securityScopedAccessStarted = url.startAccessingSecurityScopedResource()
             guard securityScopedAccessStarted else {
                 DebugLogger.error("无法开始安全访问文件")
-                alertMessage = BookImportError.fileNotAccessible.errorDescription ?? "无法访问选择的文件，请重试"
+                alertMessage = BookImportError.fileNotAccessible.errorDescription
+                    ?? NSLocalizedString("library.import.error.file_not_accessible", comment: "")
                 showingAlert = true
                 return
             }
