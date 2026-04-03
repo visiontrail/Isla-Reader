@@ -170,10 +170,11 @@ class BookImportService: ObservableObject {
             return book
             
         } catch {
-            DebugLogger.error("BookImportService: 导入失败: \(error.localizedDescription)")
+            let userMessage = BookImportError.message(for: error)
+            DebugLogger.error("BookImportService: 导入失败: \(userMessage)")
             DebugLogger.error("BookImportService: 错误详情: \(error)")
             await MainActor.run {
-                importError = error.localizedDescription
+                importError = userMessage
             }
             throw error
         }
@@ -194,14 +195,14 @@ class BookImportService: ObservableObject {
     }
 }
 
-enum BookImportError: Error {
+enum BookImportError: Error, LocalizedError {
     case unsupportedFormat
     case bookAlreadyExists(String)
     case fileNotAccessible
     case parseError(String)
     case saveError(String)
     
-    var localizedDescription: String {
+    var errorDescription: String? {
         switch self {
         case .unsupportedFormat:
             return "不支持的文件格式，请选择ePub文件"
@@ -214,5 +215,46 @@ enum BookImportError: Error {
         case .saveError(let message):
             return "保存书籍时出错：\(message)"
         }
+    }
+
+    static func message(for error: Error) -> String {
+        if let importError = error as? BookImportError {
+            return importError.errorDescription ?? "导入失败，请重试"
+        }
+
+        if let parseError = error as? EPubParseError {
+            return parseError.errorDescription ?? "ePub文件解析失败，请检查文件是否完整"
+        }
+
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotConnectToHost, .cannotFindHost:
+                return "无法访问文件来源，请检查网络后重试"
+            case .cancelled:
+                return "已取消导入"
+            default:
+                break
+            }
+        }
+
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain {
+            switch nsError.code {
+            case NSUserCancelledError:
+                return "已取消导入"
+            case NSFileReadNoSuchFileError:
+                return "未找到所选文件，请确认文件仍存在后重试"
+            case NSFileReadNoPermissionError, NSFileWriteNoPermissionError:
+                return "没有权限访问该文件，请重新选择并授权访问"
+            case NSFileReadCorruptFileError:
+                return "文件已损坏，无法导入，请更换文件"
+            case NSFileWriteOutOfSpaceError:
+                return "设备存储空间不足，无法完成导入"
+            default:
+                break
+            }
+        }
+
+        return "导入失败，请重试"
     }
 }

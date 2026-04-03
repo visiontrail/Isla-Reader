@@ -457,7 +457,7 @@ struct LibraryView: View {
             } catch {
                 await MainActor.run {
                     DebugLogger.error("LibraryView: 外部导入失败", error: error)
-                    activeAlert = .importError(error.localizedDescription)
+                    activeAlert = .importError(BookImportError.message(for: error))
                 }
             }
         }
@@ -2233,7 +2233,12 @@ struct ImportBookView: View {
         case .failure(let error):
             DebugLogger.error("文件选择失败: \(error.localizedDescription)")
             DebugLogger.error("错误详情: \(error)")
-            alertMessage = "选择文件时出错：\(error.localizedDescription)"
+            let nsError = error as NSError
+            if nsError.domain == NSCocoaErrorDomain, nsError.code == NSUserCancelledError {
+                DebugLogger.info("用户取消了文件选择")
+                return
+            }
+            alertMessage = BookImportError.message(for: error)
             showingAlert = true
         }
     }
@@ -2249,7 +2254,7 @@ struct ImportBookView: View {
             securityScopedAccessStarted = url.startAccessingSecurityScopedResource()
             guard securityScopedAccessStarted else {
                 DebugLogger.error("无法开始安全访问文件")
-                alertMessage = "无法访问选择的文件，请重试"
+                alertMessage = BookImportError.fileNotAccessible.errorDescription ?? "无法访问选择的文件，请重试"
                 showingAlert = true
                 return
             }
@@ -2295,7 +2300,7 @@ struct ImportBookView: View {
                 DebugLogger.error("错误详情: \(error)")
 
                 await MainActor.run {
-                    alertMessage = error.localizedDescription
+                    alertMessage = BookImportError.message(for: error)
                     showingAlert = true
                 }
             }

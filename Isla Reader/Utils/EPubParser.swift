@@ -2108,13 +2108,13 @@ class EPubParser {
 
 
 
-enum EPubParseError: Error {
+enum EPubParseError: Error, LocalizedError {
     case invalidContainer
     case invalidOPF
     case fileNotFound
     case unsupportedFormat
     
-    var localizedDescription: String {
+    var errorDescription: String? {
         switch self {
         case .invalidContainer:
             return "无效的ePub容器文件"
