@@ -110,6 +110,29 @@ xcrun simctl list devices available | grep iPhone
 
 ---
 
+### 5. `batch-generate.sh` - 批量 EPUB 自动化脚本
+封装 `lanread-batch generate --input-dir`，用于离线批量生成高亮图片产物。
+
+**使用方法：**
+```bash
+# 最小用法
+./scripts/batch-generate.sh --input-dir "/path/to/epubs"
+
+# 指定输出目录和模型配置
+./scripts/batch-generate.sh \
+  --input-dir "/path/to/epubs" \
+  --output "./build/batch-output" \
+  --provider-config "/path/to/ai.json"
+```
+
+**功能特性：**
+- ✅ 递归扫描目录内的 `.epub` 文件
+- ✅ 单本失败不终止整个批次
+- ✅ 每本书独立输出目录
+- ✅ 在输出根目录写入 `batch.summary.json`
+
+---
+
 ## 🚀 快速开始
 
 ### 第一次使用

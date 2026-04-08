@@ -460,14 +460,14 @@ MVP 先不记录精确 offset，使用以下三元组追溯来源：
 
 | 阶段 | 名称 | 状态 | 负责人 | 开始日期 | 完成日期 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- |
-| P0 | Package 骨架与 CLI 命令入口 | TODO |  |  |  |  |
-| P1 | EPUB 接入与文本切块 | TODO |  |  |  |  |
-| P2 | Stage 1 AI 抽取 | TODO |  |  |  |  |
-| P3 | 候选聚合与 Stage 2 筛选 | TODO |  |  |  |  |
-| P4 | macOS 分享图渲染 | TODO |  |  |  |  |
-| P5 | manifest / 日志 / 重跑能力 | TODO |  |  |  |  |
-| P6 | 目录批处理与脚本封装 | TODO |  |  |  |  |
-| P7 | captions / publish 预留接口 | TODO |  |  |  |  |
+| P0 | Package 骨架与 CLI 命令入口 | DONE | Codex | 2026-04-07 | 2026-04-07 | 已完成 package/targets、generate 空实现、统一错误与日志目录规则 |
+| P1 | EPUB 接入与文本切块 | DONE | Codex | 2026-04-07 | 2026-04-07 | 已完成独立 EPUB 解析、文本切块与 `excerpts.jsonl` 写盘，新增 P1 集成测试 |
+| P2 | Stage 1 AI 抽取 | DONE | Codex | 2026-04-07 | 2026-04-07 | 已完成 provider 配置加载、Stage 1 prompt + 请求重试、候选校验与 `candidates.stage1.jsonl` 写盘，补单窗口失败不中断测试 |
+| P3 | 候选聚合与 Stage 2 筛选 | DONE | Codex | 2026-04-07 | 2026-04-07 | 已完成去重/初筛、Stage 2 请求与失败回退、`selected.stage2.json` 写盘，补 P3 集成测试 |
+| P4 | macOS 分享图渲染 | DONE | Codex | 2026-04-07 | 2026-04-07 | 已完成 `ShareCardRenderer`（SwiftUI + ImageRenderer）、`images/*.png` 输出、渲染成功/失败统计与 P4 集成测试 |
+| P5 | manifest / 日志 / 重跑能力 | DONE | Codex | 2026-04-07 | 2026-04-07 | 已完成 `manifest.json`、`--overwrite-policy`（`resume`/`replace`）与缓存复用重跑，补 P5 集成测试 |
+| P6 | 目录批处理与脚本封装 | DONE | Codex | 2026-04-07 | 2026-04-07 | 已完成 `--input-dir` 递归扫描、批量摘要 `batch.summary.json`、单本失败不中断与 `scripts/batch-generate.sh` |
+| P7 | captions / publish 预留接口 | DONE | Codex | 2026-04-07 | 2026-04-07 | 已完成 `captions/publish` 命令桩（`--manifest`/`--channel` 参数）、manifest `extensions` 预留字段与 P7 CLI 测试 |
 
 状态建议值：
 - `TODO`
@@ -476,21 +476,25 @@ MVP 先不记录精确 offset，使用以下三元组追溯来源：
 - `DONE`
 
 ### 2. 实现清单
-- [ ] 新增 `Package.swift`
-- [ ] 建立 `Batch/` 目录和 targets
-- [ ] 跑通 `swift run lanread-batch --help`
-- [ ] 接入单本 EPUB 解析
-- [ ] 输出稳定窗口 `excerpts.jsonl`
-- [ ] 跑通 Stage 1 AI 抽取
-- [ ] 输出 `candidates.stage1.jsonl`
-- [ ] 完成候选去重与初筛
-- [ ] 跑通 Stage 2 AI 筛选
-- [ ] 输出 `selected.stage2.json`
-- [ ] 完成 macOS PNG 渲染
-- [ ] 输出 `manifest.json`
-- [ ] 增加失败重跑能力
-- [ ] 增加 `scripts/batch-generate.sh`
-- [ ] README 补充内部批处理说明
+- [x] 新增 `Package.swift`
+- [x] 建立 `Batch/` 目录和 targets
+- [x] 跑通 `swift run lanread-batch --help`
+- [x] 跑通 `swift run lanread-batch generate --help`
+- [x] 接入单本 EPUB 解析
+- [x] 输出稳定窗口 `excerpts.jsonl`
+- [x] 跑通 Stage 1 AI 抽取
+- [x] 输出 `candidates.stage1.jsonl`
+- [x] 完成候选去重与初筛
+- [x] 跑通 Stage 2 AI 筛选
+- [x] 输出 `selected.stage2.json`
+- [x] 完成 macOS PNG 渲染
+- [x] 输出 `manifest.json`
+- [x] 增加失败重跑能力
+- [x] 增加 `scripts/batch-generate.sh`
+- [x] README 补充内部批处理说明
+- [x] 增加 `captions` 命令桩（参数解析 + manifest 校验）
+- [x] 增加 `publish` 命令桩（参数解析 + channel 接口占位）
+- [x] manifest 增加 `extensions.captions/publish` 预留字段
 
 ### 3. 决策日志
 重大实现取舍记录在这里，避免后面反复讨论同一个问题。
@@ -498,20 +502,56 @@ MVP 先不记录精确 offset，使用以下三元组追溯来源：
 | 日期 | 主题 | 决策 | 原因 | 影响 |
 | --- | --- | --- | --- | --- |
 | 2026-04-07 | 功能形态 | 采用独立 Swift CLI + Swift Package | 避免污染 iOS App 主路径，更适合自动化与脚本调用 | 后续可直接接 Skill、cron、发布流水线 |
+| 2026-04-07 | Stage 1 质量守门 | pipeline 侧强制校验 `highlight_text` 必须可在 excerpt 命中，不命中则丢弃 | 降低模型幻觉和改写风险，满足“高亮直接摘自原文”约束 | `candidates.stage1.jsonl` 数量可能低于模型原始返回条数，但可追溯性更强 |
+| 2026-04-07 | Stage 2 容错策略 | Stage 2 失败时回退本地多样性排序并继续产出 `selected.stage2.json` | 满足规范里的“stage 2 失败可保底继续生成”约束，避免整本任务中断 | 输出模式可能从 `ai` 降级为 `local_fallback`，但流程稳定性更高 |
+| 2026-04-07 | 重跑策略 | 引入 `--overwrite-policy`（默认 `resume`）并支持阶段缓存复用，保留 `replace` 全量重建 | 满足“失败可重跑、可跳过已完成环节或覆盖重建”验收标准 | 二次运行可跳过 excerpts/stage1/stage2 与已存在图片，降低重跑成本 |
+| 2026-04-07 | P6 目录冲突处理 | 在 batch 模式中，当不同文件映射到相同 slug 时标记为失败并继续其他书目 | 避免多个输入写入同一输出目录导致产物互相污染 | `batch.summary.json` 会显式记录冲突书目与错误原因 |
+| 2026-04-07 | P7 预留接口边界 | `captions/publish` 在 P7 只做参数与 manifest 契约校验，不执行真实生成或外部发布 | 保持命令接口稳定，避免过早绑定 caption 模型与社媒 API | 现阶段可被脚本安全调用并在后续阶段无缝替换内部实现 |
 
 ### 4. 实施日志
 每完成一步，在这里追加记录。
 
 | 日期 | 阶段 | 动作 | 结果 | 后续 |
 | --- | --- | --- | --- | --- |
-|  |  |  |  |  |
+| 2026-04-07 | P0 | 创建独立 Swift Package 与 `BatchCLI/Core/AI/Render/Models/Support` 六个 targets，补 `generate` 命令骨架、统一错误类型、日志目录规则与最小测试 | P0 骨架可编译、可运行，`generate` 可输出基础 run log | 进入 P1：接入 EPUB 解析与文本切块，产出 `excerpts.jsonl` |
+| 2026-04-07 | P1 | 新增 `BatchEPubParser` 与 `BatchExcerptChunker`，`BatchPipeline` 串接解析+切块并输出 `excerpts.jsonl`/`metrics.json`，补 `BatchCoreTests` 覆盖稳定 hash 与 generate 集成链路 | P1 可编译、可测试、可通过 CLI 生成稳定窗口中间产物 | 进入 P2：实现 Stage 1 AI 抽取并输出 `candidates.stage1.jsonl` |
+| 2026-04-07 | P2 | 扩展 `BatchAIClient`（`ai.json`/环境变量配置、超时+重试、Stage 1 prompt 与响应解析），`BatchPipeline` 串接 Stage 1 并输出 `candidates.stage1.jsonl`、`prompts/stage1/*.prompt.txt`、`prompts/stage1/*.response.json`，补 `BatchCoreTests` 覆盖成功链路与单窗口失败跳过 | P2 可编译、可测试、可稳定产出候选并记录 prompt/response 摘要；单窗口失败不再中断全书 | 进入 P3：实现候选去重、初筛与 Stage 2 筛选 |
+| 2026-04-07 | P3 | 在 `BatchPipeline` 增加候选去重/初筛和章节分散策略，扩展 `BatchAIClient` 增加 Stage 2 prompt + 请求解析，新增 `selected.stage2.json`、`prompts/stage2/selection.*` 与 Stage 2 metrics，补 Stage 2 成功/失败回退测试 | P3 可编译、可测试、可在 Stage 2 成功时按 AI 排序入选，失败时自动降级到本地排序并继续产出 | 进入 P4：实现 macOS 分享图渲染 |
+| 2026-04-07 | P4 | 在 `BatchRender/ShareCardRenderer.swift` 实现 macOS 渲染（`SwiftUI + ImageRenderer` + PNG 写盘），`BatchPipeline` 串接渲染并写入 `images/*.png`、渲染日志与 metrics；`SelectedHighlightItem` 增加 `imagePath`/`renderError`；补 `BatchCoreTests` 校验图片生成 | P4 可编译、可测试、可在 generate 主路径稳定产出分享图并回写路径到 `selected.stage2.json` | 进入 P5：实现 `manifest.json`、失败重跑与追溯一致性 |
+| 2026-04-07 | P5 | 在 `BatchModels` 新增 `BatchManifest` schema，`BatchPipeline` 写出 `manifest.json` 并补 `source_locator` 追溯；增加 `--overwrite-policy` 参数与 `resume/replace` 重跑；`resume` 复用 `excerpts`/`stage1`/`stage2` 与已生成图片；补 CLI 与 Pipeline 测试 | P5 可编译、可测试、可在重跑时跳过已完成环节并保持产物一致性 | 进入 P6：实现目录批处理与脚本封装 |
+| 2026-04-07 | P6 | 在 `generate` 增加 `--input-dir`（与 `--epub` 二选一），实现递归目录扫描、逐本容错执行、`batch.summary.json` 汇总输出与 slug 冲突保护；新增 `scripts/batch-generate.sh` 与 README 脚本说明，补 P6 CLI 集成测试 | P6 可编译、可测试、可在目录模式下单本失败不中断批次，并输出可追踪批量结果摘要 | 进入 P7：补 `captions/publish` 预留命令接口 |
+| 2026-04-07 | P7 | 在 `BatchCLI` 新增 `captions/publish` 参数解析与帮助文档，`BatchCommandRunner` 接入 manifest 校验型命令桩；在 `BatchManifest` 增加 `extensions` 预留结构并由 `generate` 默认写出；补 P7 CLI 参数与命令执行测试 | P7 可编译、可测试，`captions/publish` 接口稳定且不影响 `generate` 主链路 | 进入后续：定义 captions 实际生成策略与 publish orchestrator 边界 |
 
 ### 5. 验证记录
 每个阶段的实际验证命令和结果写在这里。
 
 | 日期 | 阶段 | 验证命令 | 结果 | 备注 |
 | --- | --- | --- | --- | --- |
-|  |  |  |  |  |
+| 2026-04-07 | P0 | `swift build` | PASS | 独立 package 编译成功 |
+| 2026-04-07 | P0 | `swift test` | PASS | 新增 6 个测试全部通过 |
+| 2026-04-07 | P0 | `swift run lanread-batch --help` | PASS | 根命令帮助可执行 |
+| 2026-04-07 | P0 | `swift run lanread-batch generate --help` | PASS | 子命令帮助可执行 |
+| 2026-04-07 | P0 | `swift run lanread-batch generate --epub test.epub --output build/batch-p0` | PASS | 生成输出目录与 `logs/run.log`（骨架行为） |
+| 2026-04-07 | P1 | `swift test` | PASS | 当前 package 共 8 个测试全部通过（含新增 `BatchCoreTests`） |
+| 2026-04-07 | P1 | `swift run lanread-batch generate --epub "Test Files/pg77090-images-3.epub" --output build/batch-p1` | PASS | 输出 `excerpts.jsonl`、`logs/run.log` 与 `logs/metrics.json` |
+| 2026-04-07 | P2 | `swift test` | PASS | 当前 package 共 9 个测试全部通过（含 Stage 1 成功链路与失败容错用例） |
+| 2026-04-07 | P2 | `swift run lanread-batch --help` | PASS | 根命令帮助更新为 P2 文案 |
+| 2026-04-07 | P2 | `swift run lanread-batch generate --help` | PASS | generate 帮助可执行，参数保持兼容 |
+| 2026-04-07 | P3 | `swift test` | PASS | 当前 package 共 10 个测试全部通过（含 Stage 2 成功链路与失败回退用例） |
+| 2026-04-07 | P3 | `swift run lanread-batch generate --help` | PASS | generate 帮助可执行，参数保持兼容 |
+| 2026-04-07 | P4 | `swift test` | PASS | 当前 package 共 10 个测试全部通过（含新增 P4 图片生成校验） |
+| 2026-04-07 | P4 | `swift run lanread-batch --help` | PASS | 根命令帮助更新为 P4 文案（含 PNG rendering） |
+| 2026-04-07 | P4 | `swift run lanread-batch generate --help` | PASS | generate 帮助可执行，参数保持兼容 |
+| 2026-04-07 | P5 | `swift test` | PASS | 当前 package 共 12 个测试全部通过（含 manifest 与 resume 重跑用例） |
+| 2026-04-07 | P5 | `swift run lanread-batch --help` | PASS | 根命令帮助更新为 P5 文案（含 manifest + rerun policy） |
+| 2026-04-07 | P5 | `swift run lanread-batch generate --help` | PASS | generate 帮助新增 `--overwrite-policy` 参数说明 |
+| 2026-04-07 | P6 | `swift test` | PASS | 当前 package 共 16 个测试全部通过（含新增目录批处理不中断用例） |
+| 2026-04-07 | P6 | `swift run lanread-batch --help` | PASS | 根命令帮助更新为 P6 文案（含 directory batch mode） |
+| 2026-04-07 | P6 | `swift run lanread-batch generate --help` | PASS | generate 帮助新增 `--input-dir` 与输入模式互斥说明 |
+| 2026-04-07 | P6 | `./scripts/batch-generate.sh --help` | PASS | 脚本可执行并输出 batch 参数帮助 |
+| 2026-04-07 | P7 | `swift test` | PASS | 当前 package 共 23 个测试全部通过（含新增 `captions/publish` 命令与参数测试） |
+| 2026-04-07 | P7 | `swift run lanread-batch captions --help` | PASS | `captions` 子命令帮助可执行，接口文案稳定 |
+| 2026-04-07 | P7 | `swift run lanread-batch publish --help` | PASS | `publish` 子命令帮助可执行，支持 `--channel` 参数说明 |
 
 ### 6. 风险与阻塞记录
 | 日期 | 类型 | 描述 | 当前处理 | 状态 |
@@ -815,4 +855,4 @@ MVP 先不记录精确 offset，使用以下三元组追溯来源：
 - 是否需要在 manifest 中记录 prompt version，以便后续追溯生成质量？
 
 ## 下一步
-进入 P0：创建 `Package.swift`、基础 targets 和 `generate` 命令骨架。
+基于 P7 预留接口，进入 captions 实际生成阶段（产出 `captions.jsonl`）并明确 publish 对接 orchestrator 的契约边界。

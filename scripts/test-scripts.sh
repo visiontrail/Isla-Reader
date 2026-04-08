@@ -64,7 +64,7 @@ fi
 echo -e "${BLUE}📋 检查脚本文件${NC}"
 echo ""
 
-SCRIPTS=("build.sh" "run.sh" "dev.sh" "simulator.sh")
+SCRIPTS=("build.sh" "run.sh" "dev.sh" "simulator.sh" "batch-generate.sh")
 
 for script in "${SCRIPTS[@]}"; do
     if [ -f "scripts/$script" ]; then
@@ -187,4 +187,3 @@ else
     echo ""
     exit 1
 fi
-

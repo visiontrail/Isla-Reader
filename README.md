@@ -198,6 +198,30 @@ xcodebuild test -project "Isla Reader.xcodeproj" -scheme "LanRead" -destination 
 ./scripts/preflight-app-review.sh --full
 ```
 
+## Batch Automation CLI (Internal)
+
+```bash
+# single EPUB
+swift run lanread-batch generate \
+  --epub "Test Files/pg77090-images-3.epub" \
+  --output "build/batch-single"
+
+# batch directory (recursive scan)
+swift run lanread-batch generate \
+  --input-dir "/path/to/epubs" \
+  --output "build/batch-output"
+
+# wrapper script for directory mode
+./scripts/batch-generate.sh --input-dir "/path/to/epubs"
+
+# P7 reserved command stubs (interface validation only)
+swift run lanread-batch captions --manifest "build/batch-single/<book-slug>/manifest.json"
+swift run lanread-batch publish --manifest "build/batch-single/<book-slug>/manifest.json" --channel xiaohongshu
+```
+
+Directory mode writes an aggregated summary at `output_root/batch.summary.json`.  
+Single-book artifacts remain under `output_root/<book-slug>/`.
+
 ## Optional Backend Quick Start
 
 ```bash

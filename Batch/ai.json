@@ -1,0 +1,7 @@
+{
+  "endpoint": "http://oneapi.yhroot.com/v1/chat/completions",
+  "apiKey": "sk-rebTXHBiV7Nr1PRzaODQOZKztKqpv7bPoQE10dNItF9yIyBh",
+  "model": "glm-4.6-chat",
+  "timeoutSeconds": 120,
+  "maxRetryCount": 2
+}
