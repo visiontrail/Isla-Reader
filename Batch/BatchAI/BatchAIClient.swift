@@ -249,7 +249,10 @@ public struct BatchAIClient {
         3. Prefer highlights with enough substance to look visually full on a share card; avoid overly short one-liners when a stronger longer option exists.
         4. Avoid duplicate or near-duplicate highlights.
         5. Keep the result balanced across chapters when possible.
-        6. Output strict JSON only. Do not wrap with markdown.
+        6. For each selected item, provide a social post title and optional expanded description.
+        7. post_title should be concise and hook-driven (about 35 to 110 characters).
+        8. post_description should be 1 to 3 sentences and can be empty only if no good expansion is possible.
+        9. Output strict JSON only. Do not wrap with markdown.
 
         Output schema:
         {
@@ -258,7 +261,9 @@ public struct BatchAIClient {
               "candidate_id": "string",
               "rank": 1,
               "score": 0.0,
-              "reason": "string"
+              "reason": "string",
+              "post_title": "string",
+              "post_description": "string"
             }
           ]
         }
@@ -268,7 +273,7 @@ public struct BatchAIClient {
         - author: \(request.bookMetadata.author ?? "unknown")
         - language: \(request.bookMetadata.language ?? "unknown")
 
-        Output language for reason field: \(request.outputLanguage)
+        Output language for reason, post_title, and post_description: \(request.outputLanguage)
 
         Candidate list JSON:
         \(candidatesJSON)
@@ -442,15 +447,27 @@ public struct BatchAIClient {
                 return nil
             }
             let reason = row.reason.trimmingCharacters(in: .whitespacesAndNewlines)
+            let postTitle = normalizeOptionalText(row.postTitle)
+            let postDescription = normalizeOptionalText(row.postDescription)
             let rank = (row.rank ?? 0) > 0 ? row.rank : nil
             let score = row.score.map { max(0, min(1, $0)) }
             return BatchStage2SelectionDraft(
                 candidateId: candidateId,
                 rank: rank,
                 score: score,
-                reason: reason
+                reason: reason,
+                postTitle: postTitle,
+                postDescription: postDescription
             )
         }
+    }
+
+    private func normalizeOptionalText(_ value: String?) -> String? {
+        guard let value else {
+            return nil
+        }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private func cleanupResponseBody(_ text: String) -> String {
@@ -697,6 +714,8 @@ private struct Stage2ResponseSelection: Decodable {
     var rank: Int?
     var score: Double?
     var reason: String
+    var postTitle: String?
+    var postDescription: String?
 
     enum CodingKeys: String, CodingKey {
         case candidateId
@@ -705,6 +724,13 @@ private struct Stage2ResponseSelection: Decodable {
         case rank
         case score
         case reason
+        case postTitle
+        case post_title
+        case title
+        case postDescription
+        case post_description
+        case description
+        case body
     }
 
     init(from decoder: Decoder) throws {
@@ -719,5 +745,21 @@ private struct Stage2ResponseSelection: Decodable {
         rank = try container.decodeIfPresent(Int.self, forKey: .rank)
         score = try container.decodeIfPresent(Double.self, forKey: .score)
         reason = try container.decodeIfPresent(String.self, forKey: .reason) ?? ""
+        if let camel = try container.decodeIfPresent(String.self, forKey: .postTitle) {
+            postTitle = camel
+        } else if let snake = try container.decodeIfPresent(String.self, forKey: .post_title) {
+            postTitle = snake
+        } else {
+            postTitle = try container.decodeIfPresent(String.self, forKey: .title)
+        }
+        if let camel = try container.decodeIfPresent(String.self, forKey: .postDescription) {
+            postDescription = camel
+        } else if let snake = try container.decodeIfPresent(String.self, forKey: .post_description) {
+            postDescription = snake
+        } else if let description = try container.decodeIfPresent(String.self, forKey: .description) {
+            postDescription = description
+        } else {
+            postDescription = try container.decodeIfPresent(String.self, forKey: .body)
+        }
     }
 }

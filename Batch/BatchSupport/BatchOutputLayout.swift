@@ -9,6 +9,7 @@ public struct BatchOutputLayout: Equatable, Sendable {
     public let candidatesStage1File: URL
     public let selectedStage2File: URL
     public let captionsFile: URL
+    public let socialPostsFile: URL
     public let imagesDirectory: URL
     public let promptsDirectory: URL
     public let stage1PromptsDirectory: URL
@@ -26,6 +27,7 @@ public struct BatchOutputLayout: Equatable, Sendable {
         candidatesStage1File = bookDirectory.appendingPathComponent("candidates.stage1.jsonl", isDirectory: false)
         selectedStage2File = bookDirectory.appendingPathComponent("selected.stage2.json", isDirectory: false)
         captionsFile = bookDirectory.appendingPathComponent("captions.jsonl", isDirectory: false)
+        socialPostsFile = bookDirectory.appendingPathComponent("social_posts.json", isDirectory: false)
         imagesDirectory = bookDirectory.appendingPathComponent("images", isDirectory: true)
         promptsDirectory = bookDirectory.appendingPathComponent("prompts", isDirectory: true)
         stage1PromptsDirectory = promptsDirectory.appendingPathComponent("stage1", isDirectory: true)

@@ -64,12 +64,17 @@ func generateOutputsStage2SelectedJSON() throws {
         Issue.record("expected manifest path")
         return
     }
+    guard let socialPostsPath = result.socialPostsPath else {
+        Issue.record("expected social posts path")
+        return
+    }
 
     #expect(fileManager.fileExists(atPath: excerptsPath))
     #expect(fileManager.fileExists(atPath: candidatesPath))
     #expect(fileManager.fileExists(atPath: selectedPath))
     #expect(fileManager.fileExists(atPath: imagesDirectory))
     #expect(fileManager.fileExists(atPath: manifestPath))
+    #expect(fileManager.fileExists(atPath: socialPostsPath))
     #expect(fileManager.fileExists(atPath: result.runLogPath))
 
     let content = try String(contentsOfFile: excerptsPath, encoding: .utf8)
@@ -93,6 +98,7 @@ func generateOutputsStage2SelectedJSON() throws {
     #expect(!selectedOutput.selected.isEmpty)
     #expect(selectedOutput.selected.count <= 20)
     #expect(selectedOutput.selected.allSatisfy { $0.imagePath != nil })
+    #expect(selectedOutput.selected.allSatisfy { ($0.postTitle ?? "").isEmpty == false })
 
     if let firstImageRelativePath = selectedOutput.selected.first?.imagePath {
         let firstImagePath = URL(fileURLWithPath: result.outputDirectory)
@@ -110,10 +116,17 @@ func generateOutputsStage2SelectedJSON() throws {
     #expect(manifest.stats.finalItems == selectedOutput.selected.count)
     #expect(manifest.items.allSatisfy { !$0.sourceLocator.excerptHash.isEmpty })
     #expect(manifest.items.contains { ($0.imagePath ?? "").hasPrefix("images/") })
+    #expect(manifest.items.allSatisfy { ($0.postTitle ?? "").isEmpty == false })
     #expect(manifest.config.profileDisplayName == "Reader")
     #expect(manifest.extensions?.captions.status == "reserved")
     #expect(manifest.extensions?.captions.outputFile == "captions.jsonl")
     #expect(manifest.extensions?.publish.status == "reserved")
+
+    let socialPostsData = try Data(contentsOf: URL(fileURLWithPath: socialPostsPath))
+    let socialPosts = try JSONDecoder().decode(BatchSocialPostsOutput.self, from: socialPostsData)
+    #expect(socialPosts.items.count == selectedOutput.selected.count)
+    #expect(socialPosts.items.allSatisfy { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+    #expect(socialPosts.items.contains { ($0.imagePath ?? "").hasPrefix("images/") })
 }
 
 @Test("stage1 单窗口失败不会中断整本任务")
@@ -382,7 +395,9 @@ private func makeStubAIClient(
                         "candidate_id": id,
                         "rank": index + 1,
                         "score": 0.88,
-                        "reason": "章节分布均衡，适合传播"
+                        "reason": "章节分布均衡，适合传播",
+                        "post_title": "值得分享的读书片段 #\(index + 1)",
+                        "post_description": "这段内容适合用于社媒发布，并可直接搭配图片卡片。"
                     ] as [String: Any]
                 }
                 let contentJSON = ["selected": selected]

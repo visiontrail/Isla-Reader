@@ -130,6 +130,7 @@ xcrun simctl list devices available | grep iPhone
 - ✅ 单本失败不终止整个批次
 - ✅ 每本书独立输出目录
 - ✅ 在输出根目录写入 `batch.summary.json`
+- ✅ 每本书额外输出 `social_posts.json`（图片与标题/描述关联）
 
 ---
 

@@ -121,3 +121,4 @@ __pycache__/
 Config/AISecrets.xcconfig
 .claude/settings.json
 server/.env
+Promotion/

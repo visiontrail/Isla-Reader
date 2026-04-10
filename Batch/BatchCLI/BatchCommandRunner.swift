@@ -182,6 +182,9 @@ public struct BatchCommandRunner {
         if let manifestPath = result.manifestPath {
             stdout("Manifest file: \(manifestPath)")
         }
+        if let socialPostsPath = result.socialPostsPath {
+            stdout("Social posts file: \(socialPostsPath)")
+        }
         stdout("Run log: \(result.runLogPath)")
     }
 

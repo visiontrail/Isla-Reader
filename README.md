@@ -220,7 +220,7 @@ swift run lanread-batch publish --manifest "build/batch-single/<book-slug>/manif
 ```
 
 Directory mode writes an aggregated summary at `output_root/batch.summary.json`.  
-Single-book artifacts remain under `output_root/<book-slug>/`.
+Single-book artifacts remain under `output_root/<book-slug>/`（包含 `manifest.json`、`selected.stage2.json`、图片目录，以及可直接用于社媒自动发布的 `social_posts.json`）。
 
 ## Optional Backend Quick Start
 

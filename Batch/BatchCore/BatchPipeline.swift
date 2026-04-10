@@ -309,6 +309,7 @@ public struct BatchPipeline {
             let fallbackSelected = makeLocalFallbackSelection(
                 from: fallbackPool,
                 targetCount: config.targetHighlightCount,
+                bookMetadata: parsedBook.metadata,
                 reason: "local_fallback"
             )
 
@@ -350,11 +351,13 @@ public struct BatchPipeline {
                     let mapped = mapStage2Selections(
                         stage2Result.selections,
                         from: stage2InputCandidates,
+                        bookMetadata: parsedBook.metadata,
                         targetCount: config.targetHighlightCount
                     )
                     let merged = mergeWithFallback(
                         selected: mapped,
                         fallbackPool: stage2InputCandidates,
+                        bookMetadata: parsedBook.metadata,
                         targetCount: config.targetHighlightCount
                     )
 
@@ -431,7 +434,10 @@ public struct BatchPipeline {
             timeZoneIdentifier: config.timeZoneIdentifier
         )
         let renderDurationMs = Int(Date().timeIntervalSince(renderStart) * 1_000)
-        selectedItems = renderResult.items
+        selectedItems = enrichSocialCopy(
+            renderResult.items,
+            bookMetadata: parsedBook.metadata
+        )
 
         let selectedOutput = Stage2SelectionOutput(
             mode: stage2Mode,
@@ -460,6 +466,15 @@ public struct BatchPipeline {
             renderSummary: renderResult
         )
         try jsonFileWriter.writeObject(manifest, to: layout.manifestFile)
+
+        let socialPosts = buildSocialPostsOutput(
+            runID: runID,
+            generatedAt: generatedAt,
+            sourceFilePath: config.epubPath,
+            book: parsedBook,
+            selectedItems: selectedItems
+        )
+        try jsonFileWriter.writeObject(socialPosts, to: layout.socialPostsFile)
 
         let metrics = BatchPipelineMetrics(
             runId: runID,
@@ -500,6 +515,7 @@ public struct BatchPipeline {
             "output.stage1_candidates=\(layout.candidatesStage1File.path)",
             "output.selected_stage2=\(layout.selectedStage2File.path)",
             "output.captions=\(layout.captionsFile.path)",
+            "output.social_posts=\(layout.socialPostsFile.path)",
             "output.images_dir=\(layout.imagesDirectory.path)",
             "output.stage1_prompts=\(layout.stage1PromptsDirectory.path)",
             "output.stage2_prompts=\(layout.stage2PromptsDirectory.path)",
@@ -553,7 +569,8 @@ public struct BatchPipeline {
             candidatesPath: layout.candidatesStage1File.path,
             selectedPath: layout.selectedStage2File.path,
             imagesDirectory: layout.imagesDirectory.path,
-            manifestPath: layout.manifestFile.path
+            manifestPath: layout.manifestFile.path,
+            socialPostsPath: layout.socialPostsFile.path
         )
     }
 
@@ -636,6 +653,8 @@ public struct BatchPipeline {
                 candidateId: item.candidateId,
                 excerptId: item.excerptId,
                 selectionReason: item.selectionReason,
+                postTitle: item.postTitle,
+                postDescription: item.postDescription,
                 renderError: item.renderError
             )
         }
@@ -671,6 +690,43 @@ public struct BatchPipeline {
             ),
             items: items,
             extensions: .reserved
+        )
+    }
+
+    private func buildSocialPostsOutput(
+        runID: String,
+        generatedAt: Date,
+        sourceFilePath: String,
+        book: BatchBook,
+        selectedItems: [SelectedHighlightItem]
+    ) -> BatchSocialPostsOutput {
+        let items = selectedItems.map { item in
+            let copy = socialCopy(for: item, bookMetadata: book.metadata)
+            return BatchSocialPostItem(
+                id: item.id,
+                rank: item.rank,
+                imagePath: item.imagePath,
+                imageFileName: item.imagePath.map { URL(fileURLWithPath: $0).lastPathComponent },
+                title: copy.title,
+                description: copy.description,
+                highlightText: item.highlightText,
+                noteText: item.noteText,
+                tags: item.tags,
+                candidateId: item.candidateId,
+                excerptId: item.excerptId
+            )
+        }
+
+        return BatchSocialPostsOutput(
+            runId: runID,
+            generatedAt: iso8601Timestamp(generatedAt),
+            sourceFile: sourceFilePath,
+            book: BatchManifestBook(
+                title: book.metadata.title,
+                author: book.metadata.author,
+                language: book.metadata.language
+            ),
+            items: items
         )
     }
 
@@ -787,6 +843,7 @@ public struct BatchPipeline {
     private func makeLocalFallbackSelection(
         from candidates: [Stage1Candidate],
         targetCount: Int,
+        bookMetadata: BatchBookMetadata,
         reason: String
     ) -> [SelectedHighlightItem] {
         guard !candidates.isEmpty, targetCount > 0 else {
@@ -802,7 +859,15 @@ public struct BatchPipeline {
         )
 
         return diversified.enumerated().map { index, candidate in
-            SelectedHighlightItem(
+            let copy = socialCopy(
+                highlightText: candidate.highlightText,
+                noteText: candidate.noteText,
+                chapterTitle: candidate.chapterTitle,
+                bookMetadata: bookMetadata,
+                preferredTitle: nil,
+                preferredDescription: nil
+            )
+            return SelectedHighlightItem(
                 id: "item-\(String(format: "%03d", index + 1))",
                 rank: index + 1,
                 candidateId: candidate.id,
@@ -816,7 +881,9 @@ public struct BatchPipeline {
                 tags: candidate.tags,
                 candidateScore: candidate.score,
                 stage2Score: nil,
-                selectionReason: reason
+                selectionReason: reason,
+                postTitle: copy.title,
+                postDescription: copy.description
             )
         }
     }
@@ -824,6 +891,7 @@ public struct BatchPipeline {
     private func mapStage2Selections(
         _ selections: [BatchStage2SelectionDraft],
         from candidates: [Stage1Candidate],
+        bookMetadata: BatchBookMetadata,
         targetCount: Int
     ) -> [SelectedHighlightItem] {
         guard !selections.isEmpty, !candidates.isEmpty else {
@@ -852,6 +920,14 @@ public struct BatchPipeline {
             seenIDs.insert(candidate.id)
 
             let rank = selected.count + 1
+            let copy = socialCopy(
+                highlightText: candidate.highlightText,
+                noteText: candidate.noteText,
+                chapterTitle: candidate.chapterTitle,
+                bookMetadata: bookMetadata,
+                preferredTitle: draft.postTitle,
+                preferredDescription: draft.postDescription
+            )
             selected.append(
                 SelectedHighlightItem(
                     id: "item-\(String(format: "%03d", rank))",
@@ -867,7 +943,9 @@ public struct BatchPipeline {
                     tags: candidate.tags,
                     candidateScore: candidate.score,
                     stage2Score: draft.score,
-                    selectionReason: draft.reason.isEmpty ? "selected_by_stage2" : draft.reason
+                    selectionReason: draft.reason.isEmpty ? "selected_by_stage2" : draft.reason,
+                    postTitle: copy.title,
+                    postDescription: copy.description
                 )
             )
 
@@ -882,6 +960,7 @@ public struct BatchPipeline {
     private func mergeWithFallback(
         selected: [SelectedHighlightItem],
         fallbackPool: [Stage1Candidate],
+        bookMetadata: BatchBookMetadata,
         targetCount: Int
     ) -> [SelectedHighlightItem] {
         guard targetCount > 0 else {
@@ -903,6 +982,14 @@ public struct BatchPipeline {
             if merged.count >= targetCount {
                 break
             }
+            let copy = socialCopy(
+                highlightText: candidate.highlightText,
+                noteText: candidate.noteText,
+                chapterTitle: candidate.chapterTitle,
+                bookMetadata: bookMetadata,
+                preferredTitle: nil,
+                preferredDescription: nil
+            )
             merged.append(
                 SelectedHighlightItem(
                     id: "",
@@ -918,7 +1005,9 @@ public struct BatchPipeline {
                     tags: candidate.tags,
                     candidateScore: candidate.score,
                     stage2Score: nil,
-                    selectionReason: "fallback_fill"
+                    selectionReason: "fallback_fill",
+                    postTitle: copy.title,
+                    postDescription: copy.description
                 )
             )
         }
@@ -934,6 +1023,145 @@ public struct BatchPipeline {
             updated.id = "item-\(String(format: "%03d", rank))"
             return updated
         }
+    }
+
+    private func enrichSocialCopy(
+        _ items: [SelectedHighlightItem],
+        bookMetadata: BatchBookMetadata
+    ) -> [SelectedHighlightItem] {
+        items.map { item in
+            var updated = item
+            let copy = socialCopy(for: item, bookMetadata: bookMetadata)
+            updated.postTitle = copy.title
+            updated.postDescription = copy.description
+            return updated
+        }
+    }
+
+    private func socialCopy(
+        for item: SelectedHighlightItem,
+        bookMetadata: BatchBookMetadata
+    ) -> (title: String, description: String?) {
+        socialCopy(
+            highlightText: item.highlightText,
+            noteText: item.noteText,
+            chapterTitle: item.chapterTitle,
+            bookMetadata: bookMetadata,
+            preferredTitle: item.postTitle,
+            preferredDescription: item.postDescription
+        )
+    }
+
+    private func socialCopy(
+        highlightText: String,
+        noteText: String,
+        chapterTitle: String,
+        bookMetadata: BatchBookMetadata,
+        preferredTitle: String?,
+        preferredDescription: String?
+    ) -> (title: String, description: String?) {
+        let normalizedTitle = normalizedOptionalText(preferredTitle)
+        let normalizedDescription = normalizedOptionalText(preferredDescription)
+        let normalizedNote = normalizedOptionalText(noteText)
+        let normalizedChapter = normalizedOptionalText(chapterTitle)
+        let normalizedBookTitle = normalizedOptionalText(bookMetadata.title)
+
+        let title = normalizedTitle ?? synthesizedPostTitle(
+            noteText: normalizedNote,
+            highlightText: highlightText,
+            bookTitle: normalizedBookTitle
+        )
+        let description = normalizedDescription ?? synthesizedPostDescription(
+            title: title,
+            noteText: normalizedNote,
+            chapterTitle: normalizedChapter,
+            bookTitle: normalizedBookTitle
+        )
+        return (title, description)
+    }
+
+    private func synthesizedPostTitle(
+        noteText: String?,
+        highlightText: String,
+        bookTitle: String?
+    ) -> String {
+        if let noteText,
+           noteText.count >= 12,
+           noteText.count <= 110
+        {
+            return noteText
+        }
+
+        let firstSentence = firstMeaningfulSentence(from: highlightText)
+        if !firstSentence.isEmpty {
+            return clamp(firstSentence, maxLength: 110)
+        }
+
+        if let bookTitle {
+            return "Highlights from \(clamp(bookTitle, maxLength: 60))"
+        }
+        return "Book highlight"
+    }
+
+    private func synthesizedPostDescription(
+        title: String,
+        noteText: String?,
+        chapterTitle: String?,
+        bookTitle: String?
+    ) -> String? {
+        var parts: [String] = []
+
+        if let noteText, noteText != title {
+            parts.append(noteText)
+        }
+
+        if let chapterTitle, let bookTitle {
+            parts.append("From \"\(bookTitle)\", \(chapterTitle).")
+        } else if let bookTitle {
+            parts.append("From \"\(bookTitle)\".")
+        }
+
+        let merged = parts.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !merged.isEmpty else {
+            return nil
+        }
+        return clamp(merged, maxLength: 280)
+    }
+
+    private func normalizedOptionalText(_ value: String?) -> String? {
+        guard let value else {
+            return nil
+        }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func firstMeaningfulSentence(from text: String) -> String {
+        let normalized = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else {
+            return ""
+        }
+
+        let separators = CharacterSet(charactersIn: ".!?。！？\n")
+        let components = normalized.components(separatedBy: separators)
+        for piece in components {
+            let trimmed = piece.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.count >= 12 {
+                return trimmed
+            }
+        }
+        return normalized
+    }
+
+    private func clamp(_ text: String, maxLength: Int) -> String {
+        guard text.count > maxLength else {
+            return text
+        }
+        let end = text.index(text.startIndex, offsetBy: maxLength)
+        return String(text[..<end]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func renderSelectedItems(

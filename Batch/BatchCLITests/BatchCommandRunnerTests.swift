@@ -263,7 +263,9 @@ private func makeStubAIClient() -> BatchAIClient {
                         "candidate_id": id,
                         "rank": index + 1,
                         "score": 0.88,
-                        "reason": "章节分布均衡"
+                        "reason": "章节分布均衡",
+                        "post_title": "值得分享的高亮 #\(index + 1)",
+                        "post_description": "直接配图可用于 Reddit / Discord 的发布草稿。"
                     ] as [String: Any]
                 }
                 responseData = try makeChatResponse(from: ["selected": selected])

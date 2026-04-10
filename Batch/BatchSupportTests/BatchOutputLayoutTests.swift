@@ -16,6 +16,7 @@ func outputLayoutRule() {
     #expect(layout.excerptsFile.path == "/tmp/out/my-sample-book/excerpts.jsonl")
     #expect(layout.candidatesStage1File.path == "/tmp/out/my-sample-book/candidates.stage1.jsonl")
     #expect(layout.captionsFile.path == "/tmp/out/my-sample-book/captions.jsonl")
+    #expect(layout.socialPostsFile.path == "/tmp/out/my-sample-book/social_posts.json")
     #expect(layout.imagesDirectory.path == "/tmp/out/my-sample-book/images")
     #expect(layout.promptsDirectory.path == "/tmp/out/my-sample-book/prompts")
     #expect(layout.stage1PromptsDirectory.path == "/tmp/out/my-sample-book/prompts/stage1")

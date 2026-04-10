@@ -53,4 +53,6 @@ func stage2PromptPrefersVisuallyFullCards() {
 
     #expect(prompt.contains("look visually full on a share card"))
     #expect(prompt.contains("avoid overly short one-liners"))
+    #expect(prompt.contains("\"post_title\""))
+    #expect(prompt.contains("\"post_description\""))
 }

@@ -253,12 +253,23 @@ public struct BatchStage2SelectionDraft: Equatable, Codable, Sendable {
     public var rank: Int?
     public var score: Double?
     public var reason: String
+    public var postTitle: String?
+    public var postDescription: String?
 
-    public init(candidateId: String, rank: Int?, score: Double?, reason: String) {
+    public init(
+        candidateId: String,
+        rank: Int?,
+        score: Double?,
+        reason: String,
+        postTitle: String? = nil,
+        postDescription: String? = nil
+    ) {
         self.candidateId = candidateId
         self.rank = rank
         self.score = score
         self.reason = reason
+        self.postTitle = postTitle
+        self.postDescription = postDescription
     }
 }
 
@@ -296,6 +307,8 @@ public struct SelectedHighlightItem: Equatable, Codable, Sendable {
     public var candidateScore: Double
     public var stage2Score: Double?
     public var selectionReason: String
+    public var postTitle: String?
+    public var postDescription: String?
     public var imagePath: String?
     public var renderError: String?
 
@@ -314,6 +327,8 @@ public struct SelectedHighlightItem: Equatable, Codable, Sendable {
         candidateScore: Double,
         stage2Score: Double?,
         selectionReason: String,
+        postTitle: String? = nil,
+        postDescription: String? = nil,
         imagePath: String? = nil,
         renderError: String? = nil
     ) {
@@ -331,6 +346,8 @@ public struct SelectedHighlightItem: Equatable, Codable, Sendable {
         self.candidateScore = candidateScore
         self.stage2Score = stage2Score
         self.selectionReason = selectionReason
+        self.postTitle = postTitle
+        self.postDescription = postDescription
         self.imagePath = imagePath
         self.renderError = renderError
     }
@@ -571,6 +588,8 @@ public struct BatchManifestItem: Equatable, Codable, Sendable {
     public var candidateId: String
     public var excerptId: String
     public var selectionReason: String
+    public var postTitle: String?
+    public var postDescription: String?
     public var renderError: String?
 
     public init(
@@ -588,6 +607,8 @@ public struct BatchManifestItem: Equatable, Codable, Sendable {
         candidateId: String,
         excerptId: String,
         selectionReason: String,
+        postTitle: String? = nil,
+        postDescription: String? = nil,
         renderError: String?
     ) {
         self.id = id
@@ -604,6 +625,8 @@ public struct BatchManifestItem: Equatable, Codable, Sendable {
         self.candidateId = candidateId
         self.excerptId = excerptId
         self.selectionReason = selectionReason
+        self.postTitle = postTitle
+        self.postDescription = postDescription
         self.renderError = renderError
     }
 
@@ -622,6 +645,8 @@ public struct BatchManifestItem: Equatable, Codable, Sendable {
         case candidateId = "candidate_id"
         case excerptId = "excerpt_id"
         case selectionReason = "selection_reason"
+        case postTitle = "post_title"
+        case postDescription = "post_description"
         case renderError = "render_error"
     }
 }
@@ -644,6 +669,90 @@ public struct BatchManifestSourceLocator: Equatable, Codable, Sendable {
     }
 }
 
+public struct BatchSocialPostsOutput: Equatable, Codable, Sendable {
+    public var runId: String
+    public var generatedAt: String
+    public var sourceFile: String
+    public var book: BatchManifestBook
+    public var items: [BatchSocialPostItem]
+
+    public init(
+        runId: String,
+        generatedAt: String,
+        sourceFile: String,
+        book: BatchManifestBook,
+        items: [BatchSocialPostItem]
+    ) {
+        self.runId = runId
+        self.generatedAt = generatedAt
+        self.sourceFile = sourceFile
+        self.book = book
+        self.items = items
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case runId = "run_id"
+        case generatedAt = "generated_at"
+        case sourceFile = "source_file"
+        case book
+        case items
+    }
+}
+
+public struct BatchSocialPostItem: Equatable, Codable, Sendable {
+    public var id: String
+    public var rank: Int
+    public var imagePath: String?
+    public var imageFileName: String?
+    public var title: String
+    public var description: String?
+    public var highlightText: String
+    public var noteText: String
+    public var tags: [String]
+    public var candidateId: String
+    public var excerptId: String
+
+    public init(
+        id: String,
+        rank: Int,
+        imagePath: String?,
+        imageFileName: String?,
+        title: String,
+        description: String?,
+        highlightText: String,
+        noteText: String,
+        tags: [String],
+        candidateId: String,
+        excerptId: String
+    ) {
+        self.id = id
+        self.rank = rank
+        self.imagePath = imagePath
+        self.imageFileName = imageFileName
+        self.title = title
+        self.description = description
+        self.highlightText = highlightText
+        self.noteText = noteText
+        self.tags = tags
+        self.candidateId = candidateId
+        self.excerptId = excerptId
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case rank
+        case imagePath = "image_path"
+        case imageFileName = "image_file_name"
+        case title
+        case description
+        case highlightText = "highlight_text"
+        case noteText = "note_text"
+        case tags
+        case candidateId = "candidate_id"
+        case excerptId = "excerpt_id"
+    }
+}
+
 public struct BatchGenerateResult: Equatable, Sendable {
     public enum Phase: String, Equatable, Sendable {
         case p0Scaffold
@@ -662,6 +771,7 @@ public struct BatchGenerateResult: Equatable, Sendable {
     public var selectedPath: String?
     public var imagesDirectory: String?
     public var manifestPath: String?
+    public var socialPostsPath: String?
 
     public init(
         phase: Phase,
@@ -671,7 +781,8 @@ public struct BatchGenerateResult: Equatable, Sendable {
         candidatesPath: String? = nil,
         selectedPath: String? = nil,
         imagesDirectory: String? = nil,
-        manifestPath: String? = nil
+        manifestPath: String? = nil,
+        socialPostsPath: String? = nil
     ) {
         self.phase = phase
         self.outputDirectory = outputDirectory
@@ -681,5 +792,6 @@ public struct BatchGenerateResult: Equatable, Sendable {
         self.selectedPath = selectedPath
         self.imagesDirectory = imagesDirectory
         self.manifestPath = manifestPath
+        self.socialPostsPath = socialPostsPath
     }
 }
