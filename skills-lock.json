@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "markdown-to-epub-converter": {
+      "source": "smerchek/claude-epub-skill",
+      "sourceType": "github",
+      "computedHash": "dd2aa7897635371d8ddcc85299f003e2f64d4914fc02b8f76c3e1699f01fa727"
+    }
+  }
+}
