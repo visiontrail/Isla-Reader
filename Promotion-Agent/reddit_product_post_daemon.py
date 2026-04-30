@@ -42,7 +42,16 @@ PROMPT = (
 )
 
 # Runtime behavior.
-COMMAND_TIMEOUT_SECONDS: Optional[int] = None
+# Hard upper bound (seconds) for a single Claude run.  When the schedule
+# provides a tighter deadline (next run - TIMEOUT_BUFFER_SECONDS), that
+# tighter value is used instead.  Set to None to rely solely on the
+# schedule-derived deadline.
+COMMAND_TIMEOUT_SECONDS: Optional[int] = 45 * 60  # 45 minutes absolute max
+
+# Seconds to reserve before the next scheduled run so the process is
+# guaranteed to finish before the next one starts.
+TIMEOUT_BUFFER_SECONDS: int = 3 * 60  # 3 minutes
+
 WORKING_DIRECTORY = Path(__file__).resolve().parent
 LOG_FILE = WORKING_DIRECTORY / "reddit_claude_daemon.log"
 DRY_RUN = False
@@ -154,7 +163,7 @@ def format_command(parts: Iterable[str]) -> str:
     return " ".join(repr(part) if " " in part else part for part in parts)
 
 
-def run_claude(run_index: int, total_runs: int) -> None:
+def run_claude(run_index: int, total_runs: int, deadline: Optional[datetime] = None) -> None:
     cmd = command()
     logging.info("Run %s/%s: %s", run_index, total_runs, format_command(cmd))
 
@@ -162,20 +171,48 @@ def run_claude(run_index: int, total_runs: int) -> None:
         logging.info("DRY_RUN is enabled; command was not executed.")
         return
 
+    # Compute effective timeout: tightest of the hard cap and the schedule deadline.
+    effective_timeout: Optional[float] = None
+    if deadline is not None:
+        seconds_until_deadline = (deadline - datetime.now()).total_seconds()
+        if seconds_until_deadline <= 0:
+            logging.warning(
+                "Run %s/%s: deadline already passed, skipping.", run_index, total_runs
+            )
+            return
+        effective_timeout = seconds_until_deadline
+    if COMMAND_TIMEOUT_SECONDS is not None:
+        effective_timeout = (
+            min(effective_timeout, COMMAND_TIMEOUT_SECONDS)
+            if effective_timeout is not None
+            else float(COMMAND_TIMEOUT_SECONDS)
+        )
+
+    if effective_timeout is not None:
+        logging.info(
+            "Run %s/%s: timeout set to %.0f seconds.", run_index, total_runs, effective_timeout
+        )
+
     try:
         completed = subprocess.run(
             cmd,
             cwd=WORKING_DIRECTORY,
             text=True,
             capture_output=True,
-            timeout=COMMAND_TIMEOUT_SECONDS,
+            timeout=effective_timeout,
             check=False,
         )
     except FileNotFoundError:
         logging.exception("Claude command not found: %s", CLAUDE_BINARY)
         return
-    except subprocess.TimeoutExpired:
-        logging.exception("Claude command timed out after %s seconds.", COMMAND_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired as exc:
+        out = (exc.stdout or b"").decode(errors="replace").strip() if isinstance(exc.stdout, bytes) else (exc.stdout or "").strip()
+        if out:
+            logging.info("stdout (partial):\n%s", out)
+        logging.error(
+            "Run %s/%s timed out after %.0f seconds and was killed.",
+            run_index, total_runs, effective_timeout,
+        )
         return
     except Exception:
         logging.exception("Claude command failed before completion.")
@@ -205,11 +242,17 @@ def run_window(start: datetime, end: datetime) -> None:
     for index, scheduled_at in enumerate(schedule, start=1):
         if SHOULD_STOP:
             return
+        # Deadline = next scheduled run (minus buffer), or window end for the last run.
+        if index < len(schedule):
+            next_run_at = schedule[index]  # schedule is 0-based; index is already +1
+            deadline = next_run_at - timedelta(seconds=TIMEOUT_BUFFER_SECONDS)
+        else:
+            deadline = end - timedelta(seconds=TIMEOUT_BUFFER_SECONDS)
         logging.info("Next run %s/%s scheduled at %s.", index, len(schedule), scheduled_at)
         sleep_until(scheduled_at)
         if SHOULD_STOP:
             return
-        run_claude(index, len(schedule))
+        run_claude(index, len(schedule), deadline=deadline)
 
 
 def main() -> int:
