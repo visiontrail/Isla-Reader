@@ -26,7 +26,7 @@ WINDOW_START = "22:30"
 WINDOW_END = "08:40"
 
 # How many times to run the command per active window.
-RUNS_PER_WINDOW = 5
+RUNS_PER_WINDOW = 15
 
 # Set to None for fully random placement across the window, or use a positive
 # number to avoid executions being too close together.
@@ -36,7 +36,7 @@ MIN_SECONDS_BETWEEN_RUNS: Optional[int] = 60
 CLAUDE_BINARY = "claude"
 CLAUDE_ARGS = ["--dangerously-skip-permissions"]
 PROMPT = (
-    "请你使用 /reddit-post 在Reddit中的r/ereader或/r/books中浏览你认为有价值的1个帖子，"
+    "请你使用 /reddit-post 在Reddit中的r/selfimprovement或r/productivity中浏览你认为有价值的1个帖子，"
     "并且回复他，你在想要回复的帖子中 需要确认是否已经有“Spirited-Client7012”"
     "也就是你账号的名字已经回复过的帖子，切记不要再次回复"
 )
