@@ -122,3 +122,4 @@ Config/AISecrets.xcconfig
 .claude/settings.json
 server/.env
 Promotion/
+Promotion-Agent/Promotion-Content/*
