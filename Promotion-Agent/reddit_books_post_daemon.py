@@ -36,7 +36,7 @@ MIN_SECONDS_BETWEEN_RUNS: Optional[int] = 60
 CLAUDE_BINARY = "claude"
 CLAUDE_ARGS = ["--dangerously-skip-permissions"]
 PROMPT = (
-    "请你使用 /reddit-post 在Reddit中的r/ereader或/r/books中浏览你认为有价值的1个帖子，"
+    "请你使用 /reddit-post 在Reddit中的r/ereader或/r/worldnews中浏览你认为有价值的1个帖子，"
     "并且回复他，你在想要回复的帖子中 需要确认是否已经有“Spirited-Client7012”"
     "也就是你账号的名字已经回复过的帖子，切记不要再次回复"
 )
