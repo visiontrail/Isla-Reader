@@ -238,6 +238,7 @@ struct LibraryView: View {
                                         .font(.title2)
                                         .foregroundColor(.secondary)
                                 }
+                                .accessibilityIdentifier("ai.summary.close")
                             }
                         }
                 }
@@ -594,6 +595,9 @@ struct BookCardView: View {
         .onTapGesture {
             onTap?()
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("library.book.card")
         .contextMenu {
             Button(action: { onSkim?() }) {
                 Label(NSLocalizedString("skimming.mode.title", comment: ""), systemImage: "sparkles.rectangle.stack")

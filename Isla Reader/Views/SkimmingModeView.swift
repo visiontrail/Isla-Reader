@@ -121,6 +121,7 @@ struct SkimmingModeView: View {
                 }
             }
         }
+        .achievementCelebrationHost(priority: 20)
     }
     
     private var contentView: some View {

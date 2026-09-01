@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct MainTabView: View {
     private enum PhoneTab: Hashable {
@@ -18,6 +19,8 @@ struct MainTabView: View {
     @StateObject private var reminderCoordinator = ReadingReminderCoordinator.shared
     @StateObject private var updatePromptCoordinator = AppUpdatePromptCoordinator.shared
     @StateObject private var aiConsentManager = AIConsentManager.shared
+    @StateObject private var achievementStore = AchievementStore.shared
+    @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
@@ -26,12 +29,45 @@ struct MainTabView: View {
     @State private var handledContinueReadingRequestID = 0
     @State private var handledReminderTapRequestID = 0
     @State private var hasTriggeredLaunchUpdateCheck = false
+
+    @FetchRequest(sortDescriptors: [], animation: .default)
+    private var readingProgresses: FetchedResults<ReadingProgress>
+
+    @FetchRequest(sortDescriptors: [], animation: .default)
+    private var books: FetchedResults<Book>
+
+    @FetchRequest(sortDescriptors: [], animation: .default)
+    private var highlights: FetchedResults<Highlight>
+
+    @FetchRequest(sortDescriptors: [], animation: .default)
+    private var bookmarks: FetchedResults<Bookmark>
+
+    private var achievementMetrics: AchievementMetrics {
+        AchievementMetrics.current(
+            readingProgresses: Array(readingProgresses),
+            books: Array(books),
+            highlights: Array(highlights),
+            bookmarks: Array(bookmarks)
+        )
+    }
     
     var body: some View {
         appShell
         .lanReadGlassGroup(spacing: 26)
         .tint(.blue)
         .preferredColorScheme(appSettings.theme.colorScheme)
+        .achievementCelebrationHost(store: achievementStore)
+        .onChange(of: achievementMetrics) { metrics in
+            achievementStore.evaluateAndPresent(metrics: metrics)
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: .NSManagedObjectContextDidSave,
+                object: viewContext
+            )
+        ) { _ in
+            evaluatePersistedAchievements(reason: "managed_object_context_saved")
+        }
         .onChange(of: reminderCoordinator.continueReadingRequestID) { _ in
             processPendingContinueReadingRequestIfNeeded(isSceneActive: scenePhase == .active)
         }
@@ -48,6 +84,7 @@ struct MainTabView: View {
             }
         }
         .onAppear {
+            evaluatePersistedAchievements(reason: "main_tab_appeared")
             guard !hasTriggeredLaunchUpdateCheck else { return }
             hasTriggeredLaunchUpdateCheck = true
             aiConsentManager.presentLaunchConsentIfNeeded()
@@ -100,6 +137,18 @@ struct MainTabView: View {
                 secondaryButton: .cancel(Text(NSLocalizedString("update.prompt.later", comment: ""))) {
                     updatePromptCoordinator.consumePrompt()
                 }
+            )
+        }
+    }
+
+    private func evaluatePersistedAchievements(reason: String) {
+        do {
+            let metrics = try AchievementMetrics.current(in: viewContext)
+            achievementStore.evaluateAndPresent(metrics: metrics)
+        } catch {
+            DebugLogger.error(
+                "AchievementSystem: 读取运行指标失败，reason=\(reason)",
+                error: error
             )
         }
     }
@@ -267,6 +316,7 @@ private struct AIPrivacyLaunchConsentSheet: View {
                             .padding(.vertical, 12)
                     }
                     .lanReadGlassButtonStyle()
+                    .accessibilityIdentifier("ai.consent.decline")
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)

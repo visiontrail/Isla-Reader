@@ -40,6 +40,7 @@ struct AISummaryView: View {
             SkimmingModeView(book: book)
                 .navigationBarHidden(true)
         }
+        .achievementCelebrationHost(priority: 10)
         .onAppear {
             DebugLogger.info("AISummaryView: onAppear触发")
             DebugLogger.info("AISummaryView: 书籍标题 = \(book.displayTitle)")
@@ -209,6 +210,7 @@ struct AISummaryView: View {
                 .cornerRadius(10)
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityIdentifier("ai.summary.start_reading")
         }
         .padding()
         .background(Color(.systemGray5))

@@ -160,6 +160,7 @@ struct ReaderView: View {
         .navigationBarHidden(true)
         .preferredColorScheme(appSettings.theme.colorScheme)
         .statusBar(hidden: !showingToolbar)
+        .achievementCelebrationHost(priority: 30)
         .sheet(isPresented: $showingTableOfContents) {
             TableOfContentsView(
                 tocItems: tocItems,
@@ -872,6 +873,7 @@ struct ReaderView: View {
                             .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
                     )
             }
+            .accessibilityIdentifier("reader.back")
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(book.displayTitle)

@@ -16,9 +16,19 @@ struct ReadingProgressView: View {
         sortDescriptors: [NSSortDescriptor(keyPath: \ReadingProgress.lastReadAt, ascending: false)],
         animation: .default)
     private var readingProgresses: FetchedResults<ReadingProgress>
+
+    @FetchRequest(sortDescriptors: [], animation: .default)
+    private var books: FetchedResults<Book>
+
+    @FetchRequest(sortDescriptors: [], animation: .default)
+    private var highlights: FetchedResults<Highlight>
+
+    @FetchRequest(sortDescriptors: [], animation: .default)
+    private var bookmarks: FetchedResults<Bookmark>
     
     @State private var selectedTimeRange: TimeRange = .week
     @State private var readerLaunchTarget: ReaderLaunchTarget? = nil
+    @ObservedObject private var achievementStore = AchievementStore.shared
 
     private struct RecentlyReadEntry: Identifiable {
         let progress: ReadingProgress
@@ -93,6 +103,15 @@ struct ReadingProgressView: View {
     private var completedBooksCount: Int {
         recentlyReadEntries.filter { isCompleted($0) }.count
     }
+
+    private var achievementMetrics: AchievementMetrics {
+        AchievementMetrics.current(
+            readingProgresses: Array(readingProgresses),
+            books: Array(books),
+            highlights: Array(highlights),
+            bookmarks: Array(bookmarks)
+        )
+    }
     
     var body: some View {
         NavigationStack {
@@ -161,6 +180,12 @@ struct ReadingProgressView: View {
                         dailyGoal: appSettings.dailyReadingGoal,
                         currentProgress: Int(totalReadingTime / 60), // Convert to minutes
                         timeRange: selectedTimeRange
+                    )
+                    .padding(.horizontal)
+
+                    AchievementSummarySection(
+                        metrics: achievementMetrics,
+                        store: achievementStore
                     )
                     .padding(.horizontal)
                     
